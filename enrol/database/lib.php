@@ -21,6 +21,8 @@
  *
  * @package    enrol_database
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
+ * @copyright  2013 Iñaki Arenaza {@link http://www.mondragon.edu/}
+ * @copyright  2016 Julen Pardo {@link http://mondragon.edu}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -29,6 +31,8 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Database enrolment plugin implementation.
  * @author  Petr Skoda - based on code by Martin Dougiamas, Martin Langhoff and others
+ * @author  Iñaki Arenaza
+ * @author  Julen Pardo
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class enrol_database_plugin extends enrol_plugin {
@@ -673,31 +677,46 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname  = trim($this->get_config('newcoursefullname'));
         $shortname = trim($this->get_config('newcourseshortname'));
         $idnumber  = trim($this->get_config('newcourseidnumber'));
+        $summary   = trim($this->get_config('newcoursesummary'));
+        $template  = trim($this->get_config('newcoursetemplate'));
         $category  = trim($this->get_config('newcoursecategory'));
+        $categoryname = trim($this->get_config('newcoursecategorypath'));
 
         // Lowercased versions - necessary because we normalise the resultset with array_change_key_case().
         $fullname_l  = strtolower($fullname);
         $shortname_l = strtolower($shortname);
         $idnumber_l  = strtolower($idnumber);
+        $template_l  = strtolower($template);
+        $summary_l   = strtolower($summary);
         $category_l  = strtolower($category);
+        $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
         $defaultcategory    = $this->get_config('defaultcategory');
 
-        if (!$DB->record_exists('course_categories', array('id'=>$defaultcategory))) {
+        require_once($CFG->libdir.'/coursecatlib.php');
+        if (null === ($defaultcategory = coursecat::get($defaultcategory, IGNORE_MISSING, true))) {
             $trace->output("default course category does not exist!", 1);
-            $categories = $DB->get_records('course_categories', array(), 'sortorder', 'id', 0, 1);
-            $first = reset($categories);
-            $defaultcategory = $first->id;
+            $defaultcategory = coursecat::get_default();
         }
 
         $sqlfields = array($fullname, $shortname);
         if ($category) {
             $sqlfields[] = $category;
         }
+        if ($summary) {
+        	$sqlfields[] = $summary;
+        }
+        if ($template) {
+        	$sqlfields[] = $template;
+        }
         if ($idnumber) {
             $sqlfields[] = $idnumber;
         }
+        if ($categoryname) {
+            $sqlfields[] = $categoryname;
+        }
+        
         $sql = $this->db_get_sql($table, array(), $sqlfields, true);
         $createcourses = array();
         if ($rs = $extdb->Execute($sql)) {
@@ -722,14 +741,12 @@ class enrol_database_plugin extends enrol_plugin {
                     $course->fullname  = $fields[$fullname_l];
                     $course->shortname = $fields[$shortname_l];
                     $course->idnumber  = $idnumber ? $fields[$idnumber_l] : '';
-                    if ($category) {
-                        if (empty($fields[$category_l])) {
-                            // Empty category means use default.
-                            $course->category = $defaultcategory;
-                        } else if ($coursecategory = $DB->get_record('course_categories', array($localcategoryfield=>$fields[$category_l]), 'id')) {
-                            // Yay, correctly specified category!
-                            $course->category = $coursecategory->id;
-                            unset($coursecategory);
+                    $course->template  = $template ? trim($fields[$template_l]) : '';
+                    $course->summary   = $summary ? $fields[$summary_l] : '';
+                    if ($categoryname_l) {
+                        if ($categoryid = $this->get_categoryid($fields[$categoryname_l], $localcategoryfield, $trace)) {
+                            $course->category = $categoryid;
+
                         } else {
                             // Bad luck, better not continue because unwanted ppl might get access to course in different category.
                             $trace->output('error: invalid category '.$localcategoryfield.', can not create course: '.$fields[$shortname_l], 1);
@@ -744,58 +761,82 @@ class enrol_database_plugin extends enrol_plugin {
             $rs->Close();
         } else {
             $extdb->Close();
-            $trace->output('Error reading data from the external course table');
+            $trace->output('Error reading data from the external course table.');
             $trace->finished();
             return 4;
         }
         if ($createcourses) {
-            require_once("$CFG->dirroot/course/lib.php");
+            require_once($CFG->dirroot.'/course/lib.php');
 
             $templatecourse = $this->get_config('templatecourse');
 
-            $template = false;
+            $defaulttemplate = false;
+            $defaulttemplateid = 0;
             if ($templatecourse) {
-                if ($template = $DB->get_record('course', array('shortname'=>$templatecourse))) {
-                    $template = fullclone(course_get_format($template)->get_course());
-                    if (!isset($template->numsections)) {
-                        $template->numsections = course_get_format($template)->get_last_section_number();
+                if ($defaulttemplate = $DB->get_record('course', array('shortname'=>$templatecourse))) {
+                    $defaulttemplate = fullclone(course_get_format($defaulttemplate)->get_course());
+                    $defaulttemplateid = $defaulttemplate->id;
+                    if (!isset($defaulttemplate->numsections)) {
+                        $defaulttemplate->numsections = course_get_format($defaulttemplate)->get_last_section_number();
                     }
-                    unset($template->id);
-                    unset($template->fullname);
-                    unset($template->shortname);
-                    unset($template->idnumber);
-                } else {
+                    unset($defaulttemplate->id);
+                    unset($defaulttemplate->fullname);
+                    unset($defaulttemplate->shortname);
+                    unset($defaulttemplate->idnumber);
+                    unset($defaulttemplate->summary);
+                    unset($defaulttemplate->category);
+				} else {
                     $trace->output("can not find template for new course!", 1);
                 }
             }
-            if (!$template) {
+            if (!$defaulttemplate) {
+                // We don't set $defaulttemplateid here (and keep it as 0), because we can't import
+                // content from this template (as it's not really a course!).
                 $courseconfig = get_config('moodlecourse');
-                $template = new stdClass();
-                $template->summary        = '';
-                $template->summaryformat  = FORMAT_HTML;
-                $template->format         = $courseconfig->format;
-                $template->numsections    = $courseconfig->numsections;
-                $template->newsitems      = $courseconfig->newsitems;
-                $template->showgrades     = $courseconfig->showgrades;
-                $template->showreports    = $courseconfig->showreports;
-                $template->maxbytes       = $courseconfig->maxbytes;
-                $template->groupmode      = $courseconfig->groupmode;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->visible        = $courseconfig->visible;
-                $template->lang           = $courseconfig->lang;
-                $template->enablecompletion = $courseconfig->enablecompletion;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->startdate      = usergetmidnight(time());
+                $defaulttemplate = new stdClass();
+                $defaulttemplate->summary        = '';
+                $defaulttemplate->summaryformat  = FORMAT_HTML;
+                $defaulttemplate->format         = $courseconfig->format;
+                $defaulttemplate->numsections    = $courseconfig->numsections;
+                $defaulttemplate->newsitems      = $courseconfig->newsitems;
+                $defaulttemplate->showgrades     = $courseconfig->showgrades;
+                $defaulttemplate->showreports    = $courseconfig->showreports;
+                $defaulttemplate->maxbytes       = $courseconfig->maxbytes;
+                $defaulttemplate->groupmode      = $courseconfig->groupmode;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->visible        = $courseconfig->visible;
+                $defaulttemplate->lang           = $courseconfig->lang;
+                $defaulttemplate->enablecompletion = $courseconfig->enablecompletion;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->startdate      = usergetmidnight(time());
                 if ($courseconfig->courseenddateenabled) {
-                    $template->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
+                    $defaulttemplate->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
                 }
             }
 
             foreach ($createcourses as $fields) {
-                $newcourse = clone($template);
+                $templateid = $defaulttemplateid;
+                if ($fields->template) {
+                    if ($coursetemplate = $DB->get_record('course', array($this->get_config('localtemplatefield')=>$fields->template))) {
+                        $newcourse = fullclone(course_get_format($coursetemplate)->get_course());
+                        $templateid = $newcourse->id;
+                        unset($newcourse->id);
+                        unset($newcourse->fullname);
+                        unset($newcourse->shortname);
+                        unset($newcourse->idnumber);
+                        unset($newcourse->summary);
+                        unset($newcourse->category);
+                    } else {
+                        $newcourse = clone($defaulttemplate);
+                        $trace->output('can not find template for new course! Using default template.', 1);
+                    }
+                } else {
+                    $newcourse = clone($defaulttemplate);
+                }
                 $newcourse->fullname  = $fields->fullname;
                 $newcourse->shortname = $fields->shortname;
                 $newcourse->idnumber  = $fields->idnumber;
+                $newcourse->summary   = $fields->summary;
                 $newcourse->category  = $fields->category;
 
                 // Detect duplicate data once again, above we can not find duplicates
@@ -808,11 +849,37 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
                 $c = create_course($newcourse);
-                $trace->output("creating course: $c->id, $c->fullname, $c->shortname, $c->idnumber, $c->category", 1);
+                $trace->output("creating course: $c->id, $c->fullname, $c->shortname, $c->idnumber, $c->summary, $c->category", 1);
+                if ($templateid) {
+                    require_once($CFG->dirroot.'/course/externallib.php');
+
+                    // If we have a real template (i.e., based on an existing course) import the
+                    // course content from the templatei into the new course (including all activities,
+                    // blocks and filters).
+                    static $importcourseopts = array(
+                        array('name'=>'activities', 'value'=>1),
+                        array('name'=>'blocks', 'value'=>1),
+                        array('name'=>'filters', 'value'=>1),
+                    );
+
+                    // This requires special permissions. Temporarily elevate our privileges.
+                    // And remember to drop the elevated privileges as soon as they are not needed.
+                    global $USER;
+                    $olduser = $USER;
+                    $USER = get_admin();
+                    core_course_external::import_course($templateid, $c->id, 1, $importcourseopts);
+                    // This workaround updates the last imported course setting the summary, if it's not empty,
+                    // because seems that "core_course_external::import_course" is obviating it...
+                    if ($c->summary) {
+                        $DB->update_record('course', array('id' => $c->id, 'summary' => $c->summary));
+                    }
+                    $USER = $olduser;
+                }
             }
 
+            unset($importcourseopts);
             unset($createcourses);
-            unset($template);
+            unset($defaulttemplate);
         }
 
         // Close db connection.
@@ -1076,5 +1143,134 @@ class enrol_database_plugin extends enrol_plugin {
         ini_set('display_errors', $olddisplay);
         error_reporting($CFG->debug);
         ob_end_flush();
+    }
+
+    /**
+     * Returns the id of a given course category. If $this->autocreatecategory
+     * is set and the category doesn't exist, it creates it and returns the new
+     * id. Otherwise it returns false.
+     *
+     * If $this->categoryseparator is set, it can handle subcategories of
+     * any depth. You just need to specify the 'path' of the subcategory
+     * as the identifiers of the categories separated by the value of the
+     * separator. For example, if we use '/' as the separator, we can
+     * specify 'categoryid1/categoryid2/categoryid3' if we are interested
+     * in a category identified by 'category3' that is inside a category
+     * identified by 'category2' that is inside a category identified by
+     * 'category1' that is a top level category. 
+     *
+     * If $this->categoryseparator and $this->autocreate are set, it creates the 
+     * whole category tree. For example, if we are looking for 
+     * 'categoryname1/categoryname2/categoryname3', and they don't exist, it will 
+     * start creating the shallower category (i.e. 'categoryname1'), and it will continue
+     * creating categories for deeper categories, building the tree (the next
+     * category would be 'categoryname1/categoryname2', and so on).
+     *
+     * @param string $category the value that identifies the category, according to $categoryfield.
+     * @param string $categoryname the field used to check if category exists (in the course_categories table) in idnumber field.
+     * @param string $categoryfield the field (in the course_categories table) used to look up $category.
+     * @param progress_trace $trace
+     *
+     * @return category id (int) or false.
+     * @uses $DB
+     */
+    function get_categoryid($categoryname, $categoryfield, $trace) {
+        global $DB;
+
+        if (empty($categoryname)) {
+            return $false;
+        }
+
+        $separator = $this->get_config('categoryseparator');
+        $autocreate = $this->get_config('autocreatecategory');
+        $catidnumber = $DB->get_record('course_categories', array('idnumber' => $categoryname), 'id');
+        
+        if (!$separator) {
+            if (!$autocreate) {
+                if ($catidnumber) {
+                    // Yay, correctly specified category!
+                    return $catidnumber->id;
+                } else {
+                    // Bad luck, better not continue because unwanted ppl might get access to course in different category.
+                    $trace->output('error: category ['.$categoryname.'] not found (and not autocreating categories)', 1);
+                    return false;
+                }
+             // Not separator, but autocreate (only if the category does not exist).
+            } else {
+                if (!$catidnumber) {
+                    $newcategory = new stdClass();
+                    $newcategory->name = $categoryname;
+                    $newcategory->idnumber = $categoryname;
+                    $newcategory = coursecat::create($newcategory);
+
+                    return $newcategory->id;
+                }
+            }
+        } else {
+            $categoryname = trim($categoryname);
+            if ((strpos($categoryname, $separator) === 0) || (strrpos($categoryname, $separator) === (strlen($categoryname) - 1))) {
+                $trace->output('error: category name syntax invalid (can not start or end with category separator): '.$categoryname, 1);
+                return false;
+            }
+        }
+
+        $categorypath = '';
+        $categoryidpath = '';
+        $parent = 0;
+        if ($separator) {
+            // We iterate through the subcategories splited by the separator.
+            $categories = explode($separator, $categoryname);
+            foreach ($categories as $depth => $currentcat) {
+                $currentcat = trim($currentcat);
+                if (empty($currentcat)) {
+                    continue;
+                }
+
+                // We build the category tree, and we query if a category exists for that category path.
+                $categorypath .= '/' . $currentcat;
+                $categorypath = trim($categorypath, '/');
+                $dbcat = $DB->get_record('course_categories', array('idnumber' => $categorypath), 'id');
+
+                if (!$autocreate) {
+                    // If not autocreating, if exists a category for the category tree build above, that will be the
+                    // category we're looking for.
+                    if ($dbcat) {
+                        return $dbcat;
+                    } else {
+                        continue;
+                    }
+                } else {
+
+                    $newcategory = new stdClass();
+
+                    if (!$dbcat) {
+                        // If the subcategory does not exist, we create it.
+                        $newcategory->name = $currentcat;
+                        $newcategory->idnumber = $categorypath;
+                        $newcategory->parent = $parent;
+                        if ($depth > 0) {
+                            $newcategory->path = $categoryidpath;
+                        }
+
+                        $newcategory = coursecat::create($newcategory);
+                    } else {
+                        // If it exists, we take it's id.
+                        $newcategory->id = $dbcat->id;
+                    }
+
+                    $categoryidpath .= '/' . $newcategory->id;
+                    $parent = $newcategory->id;
+                }
+            }
+
+            if (!$autocreate) {
+                // If we have arrived here not having to autocreate the category, means that the category does not exist.
+                $trace->output('error: category ['.$categoryname.'] not found (and not autocreating categories)', 1);
+                return false;
+            } else {
+                // We return the last created subcategory's id, which will actually be the whole category path.
+                return $newcategory->id;
+            }
+        }   
     }
 }
