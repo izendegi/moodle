@@ -23,6 +23,7 @@
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
  * @copyright  2013 Iñaki Arenaza {@link http://www.mondragon.edu/}
  * @copyright  2016 Julen Pardo {@link http://mondragon.edu}
+ * @copyright  2020 Kepa Urzelai {@link http://mondragon.edu}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
