@@ -128,9 +128,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('enrol_database/autocreatecategory', get_string('autocreatecategory', 'enrol_database'), get_string('autocreatecategory_desc', 'enrol_database'), 0));
 
-    $settings->add(new admin_settings_coursecat_select('enrol_database/defaultcategory',
-        get_string('defaultcategory', 'enrol_database'),
-        get_string('defaultcategory_desc', 'enrol_database'), 1));
+    $settings->add(new admin_settings_coursecat_select('enrol_database/defaultcategory', get_string('defaultcategory', 'enrol_database'), get_string('defaultcategory_desc', 'enrol_database'), 1));
 
     $settings->add(new admin_setting_configtext('enrol_database/templatecourse', get_string('templatecourse', 'enrol_database'), get_string('templatecourse_desc', 'enrol_database'), ''));
 
