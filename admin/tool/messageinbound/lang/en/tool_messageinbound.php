@@ -88,6 +88,10 @@ $string['messageprovider:messageprocessingerror'] = 'Warning when an inbound mes
 $string['messageprovider:messageprocessingsuccess'] = 'Confirmation that a message was successfully processed';
 $string['noencryption'] = 'Off - No encryption';
 $string['noexpiry'] = 'No expiry';
+$string['oauth2issuer'] = 'OAuth2 Service';
+$string['oauth2issuer_desc'] = 'OAuth2 service to use to access the IMAP server, using XOAUTH2 authentication. If the service does not exist yet, you will need to create it.';
+$string['oauth2issuer_disabled'] = 'The configured OAuth2 Service is disabled. Incoming mail processing cannot proceed.';
+$string['oauth2issuer_connectionerror'] = 'The configured OAuth2 service could not connect to the service. Check service configuration and connected system account details.';
 $string['oldmessagenotfound'] = 'You tried to manually authenticate a message, but the message could not be found. This could be because it has already been processed, or because the message expired.';
 $string['oneday'] = 'One day';
 $string['onehour'] = 'One hour';
@@ -103,6 +107,7 @@ $string['privacy:metadata:messagelist:userid'] = 'The ID of user who need to app
 $string['replysubjectprefix'] = 'Re:';
 $string['requirevalidation'] = 'Validate sender address';
 $string['name'] = 'Name';
+$string['selectissuer'] = 'Select OAuth2 Service...';
 $string['ssl'] = 'SSL (Auto-detect SSL version)';
 $string['sslv2'] = 'SSLv2 (Force SSL Version 2)';
 $string['sslv3'] = 'SSLv3 (Force SSL Version 3)';
@@ -116,3 +121,5 @@ $string['validateaddress_help'] = 'When a message is received from a user, Moodl
 If the sender does not match, then the user is sent a notification to confirm that they really did send the email.
 
 If this setting is disabled, then the email address of the sender is not checked at all.';
+$string['xoauth2'] = 'Use XOAUTH2';
+$string['xoauth2_desc'] = 'Use XOAUTH2 to authenticate to the IMAP server. Gmail has enforced stricter security standards for apps that try to access their IMAP servers, and is blocking access using tradicional authentication methods (based on usernames and passwords). You can change the security settings of your Gmail account to let Moodle connect using traditional methods (this must be allowed by your G Suite Administator if your account is part of a G Suite domain), or you can use XOAUTH2 authentication. You need to specify the OAuth2 Service to be used for this.';
