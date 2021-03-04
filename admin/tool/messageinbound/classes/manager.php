@@ -103,6 +103,30 @@ class manager {
             'debug'    => empty($CFG->debugimap) ? null : fopen('php://stderr', 'w'),
         );
 
+        if (!empty($CFG->messageinbound_xoauth2)) {
+            // See https://developers.google.com/gmail/imap/xoauth2-protocol for details.
+            try {
+                $issuer = \core\oauth2\api::get_issuer($CFG->messageinbound_oauth2issuer);
+            } catch (dml_missing_record_exception $e) {
+                $message = $e->getMessage();
+                throw new \moodle_exception('oauth2servicefailure', 'tool_messageinbound', '', null, $message);
+            }
+
+            if ($issuer && !$issuer->get('enabled')) {
+                $message = get_string('auth2issuer_disabled', 'tool_messageinbound');
+                throw new \moodle_exception('oauth2servicefailure', 'tool_messageinbound', '', null, $message);
+            }
+
+            if (!($oauth2client = \core\oauth2\api::get_system_oauth_client($issuer))) {
+                $message = get_string('auth2issuer_connectionerror', 'tool_messageinbound');
+                throw new \moodle_exception('oauth2servicefailure', 'tool_messageinbound', '', null, $message);
+            }
+
+            $accesstoken = $oauth2client->get_accesstoken();
+            $xoauth2token = new \Horde_Imap_Client_Password_Xoauth2($configuration['username'], $accesstoken->token);
+            $configuration['xoauth2_token'] = $xoauth2token;
+        }
+
         if (strpos($configuration['hostspec'], ':')) {
             $hostdata = explode(':', $configuration['hostspec']);
             if (count($hostdata) === 2) {
