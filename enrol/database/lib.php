@@ -962,9 +962,10 @@ class enrol_database_plugin extends enrol_plugin {
 
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
+        $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
-        $defaultcategory    = $this->get_config('defaultcategory');
+        $defaultcategory = $this->get_config('defaultcategory');
 
         if (null === ($defaultcategory = core_course_category::get($defaultcategory, IGNORE_MISSING, true))) {
             $trace->output("default course category  does not exist!", 1);
@@ -992,6 +993,8 @@ class enrol_database_plugin extends enrol_plugin {
         }
         if ($enddate) {
             $sqlfields[] = $enddate;
+        if ($categoryname) {
+            $sqlfields[] = $categoryname_l;
         }
 
         $sql = $this->db_get_sql($table, array(), $sqlfields, true);
@@ -1015,7 +1018,7 @@ class enrol_database_plugin extends enrol_plugin {
                         continue;
                     }
                     $course = new stdClass();
-                    $course->fullname  = $fields[$fullname_l];
+                    $course->fullname = $fields[$fullname_l];
                     $course->shortname = $fields[$shortname_l];
                     $course->idnumber  = $idnumber_l ? $fields[$idnumber_l] : '';
                     $course->template  = $template_l ? trim($fields[$template_l]) : '';
@@ -1574,7 +1577,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         return $sql;
     }
-
+    
     /**
      * Tries to make connection to the external database.
      *
@@ -1773,6 +1776,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External enrolment table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
@@ -1790,6 +1794,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External course table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
