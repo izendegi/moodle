@@ -173,7 +173,7 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_heading('enrol_database_groupenrolheader', get_string('settingsheadergroupenrol', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/groupenroltable', get_string('groupenroltable', 'enrol_database'), get_string('groupenroltable_desc', 'enrol_database'), ''));
-    
+
     $settings->add(new admin_setting_configtext('enrol_database/userfield', get_string('userfield', 'enrol_database'), get_string('userfield_desc', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/groupfield', get_string('groupfield', 'enrol_database'), get_string('groupfield_desc', 'enrol_database'), ''));
