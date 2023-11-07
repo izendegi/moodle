@@ -1562,8 +1562,13 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                if ($DB->record_exists('groups', ['idnumber' => $group[$idnumberlow], 'courseid' => $courseid])) {
-                    // Already exists (with a different case in the idnumber), skip.
+                $courseid = $DB->get_field_sql("SELECT id
+                                                  FROM {course}
+                                                 WHERE shortname="."'".$group[$courselow]."'");
+                if ($DB->record_exists('groups', array('idnumber' => $group[$idnumberlow], 'courseid' => $courseid))) {
+                    // Already exists, skip.
+                    //$trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
+                    //               .$group[$courselow].", but with a different name.");
                     continue;
                 }
 
