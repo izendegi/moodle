@@ -700,9 +700,10 @@ class enrol_database_plugin extends enrol_plugin {
         $template_l  = strtolower($template);
         $summary_l   = strtolower($summary);
         $category_l  = strtolower($category);
+        $categoryname_l = strtolower($categoryname);
+
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
-        $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
         $defaultcategory = $this->get_config('defaultcategory');
@@ -725,13 +726,14 @@ class enrol_database_plugin extends enrol_plugin {
         if ($idnumber) {
             $sqlfields[] = $idnumber_l;
         }
+        if ($categoryname) {
+            $sqlfields[] = $categoryname_l;
+        }
         if ($startdate) {
             $sqlfields[] = $startdate;
         }
         if ($enddate) {
             $sqlfields[] = $enddate;
-        if ($categoryname) {
-            $sqlfields[] = $categoryname_l;
         }
 
         $sql = $this->db_get_sql($table, array(), $sqlfields, true);
@@ -837,7 +839,8 @@ class enrol_database_plugin extends enrol_plugin {
             if (!$defaulttemplate) {
                 // We don't set $defaulttemplateid here (and keep it as 0), because we can't import
                 // content from this template (as it's not really a course!).
-//                $courseconfig = get_config('moodlecourse');
+                // The next line has been removed on Moodle 4.5 core
+                //$courseconfig = get_config('moodlecourse');
                 $defaulttemplate = new stdClass();
                 $defaulttemplate->summary = '';
                 $defaulttemplate->summaryformat = FORMAT_HTML;
