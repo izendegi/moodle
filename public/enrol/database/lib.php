@@ -24,7 +24,7 @@
  * @copyright  2013 Iñaki Arenaza {@link https://www.mondragon.edu}
  * @copyright  2016 Julen Pardo {@link https://www.mondragon.edu}
  * @copyright  2019 Kepa Urzelai {@link https://www.mondragon.edu}
- * @copyright  2023 Iñigo Zendegi {@link https://www.mondragon.edu} 
+ * @copyright  2023 Iñigo Zendegi {@link https://www.mondragon.edu}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -507,6 +507,7 @@ class enrol_database_plugin extends enrol_plugin {
             $currentenrols = array();
             $currentstatus = array();
             $usermapping   = array();
+            $useridentifier = array();
             $sql = "SELECT u.$localuserfield AS mapping, u.id AS userid, ue.status, ra.roleid
                       FROM {user} u
                       JOIN {role_assignments} ra ON (ra.userid = u.id AND ra.component = 'enrol_database' AND ra.itemid = :enrolid)
@@ -521,7 +522,7 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($rs as $ue) {
                 $currentroles[$ue->userid][$ue->roleid] = $ue->roleid;
                 $usermapping[$ue->mapping] = $ue->userid;
-
+                $useridentifier[$ue->userid] = $ue->mapping;
                 if (isset($ue->status)) {
                     $currentenrols[$ue->userid][$ue->roleid] = $ue->roleid;
                     $currentstatus[$ue->userid] = $ue->status;
@@ -542,14 +543,14 @@ class enrol_database_plugin extends enrol_plugin {
                     while ($fields = $rs->FetchRow()) {
                         $fields = array_change_key_case($fields, CASE_LOWER);
                         if (empty($fields[$userfield_l])) {
-                            $trace->output("error: skipping user without mandatory $localuserfield in course '$course->mapping'", 1);
+                            $trace->output("error: skipping user without mandatory $localuserfield in course $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                             continue;
                         }
                         $mapping = $fields[$userfield_l];
                         if (!isset($usermapping[$mapping])) {
                             $usersearch[$localuserfield] = $mapping;
                             if (!$user = $DB->get_record('user', $usersearch, 'id', IGNORE_MULTIPLE)) {
-                                $trace->output("error: skipping unknown user $localuserfield '$mapping' in course '$course->mapping'", 1);
+                                $trace->output("error: skipping unknown $localuserfield '$mapping' in course $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                                 continue;
                             }
                             $usermapping[$mapping] = $user->id;
@@ -559,7 +560,7 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         if (empty($fields[$rolefield_l]) or !isset($roles[$fields[$rolefield_l]])) {
                             if (!$defaultrole) {
-                                $trace->output("error: skipping user '$userid' in course '$course->mapping' - missing course and default role", 1);
+                                $trace->output("error: skipping user $localuserfield '$mapping' in course $course->mapping - missing course and default role: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                                 continue;
                             }
                             $roleid = $defaultrole;
@@ -571,11 +572,12 @@ class enrol_database_plugin extends enrol_plugin {
                         if (empty($fields[$otheruserfieldlower])) {
                             $requestedenrols[$userid][$roleid] = $roleid;
                         }
+                        $useridentifier[$userid] = $mapping;
                     }
                 }
                 $rs->Close();
             } else {
-                $trace->output("error: skipping course '$course->mapping' - could not match with external database", 1);
+                $trace->output("error: skipping course $course->mapping - could not match with external database: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                 continue;
             }
             unset($usermapping);
@@ -588,14 +590,14 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentroles[$userid][$roleid] = $roleid;
                         $currentenrols[$userid][$roleid] = $roleid;
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
-                        $trace->output("enrolling: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+                        $trace->output("enrolling $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
                 // Reenable enrolment when previously disable enrolment refreshed.
                 if ($currentstatus[$userid] == ENROL_USER_SUSPENDED) {
                     $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE);
-                    $trace->output("unsuspending: $userid ==> $course->shortname", 1);
+                    $trace->output("unsuspending $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                 }
             }
 
@@ -605,7 +607,7 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($currentroles[$userid][$roleid])) {
                         role_assign($roleid, $userid, $context->id, 'enrol_database', $instance->id);
                         $currentroles[$userid][$roleid] = $roleid;
-                        $trace->output("assigning roles: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+                        $trace->output("assigning user roles: $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
@@ -614,7 +616,7 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($userroles[$cr])) {
                         role_unassign($cr, $userid, $context->id, 'enrol_database', $instance->id);
                         unset($currentroles[$userid][$cr]);
-                        $trace->output("unsassigning roles: $userid ==> $course->shortname", 1);
+                        $trace->output("unassigning user roles: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
@@ -636,7 +638,7 @@ class enrol_database_plugin extends enrol_plugin {
                             continue;
                         }
                         $this->unenrol_user($instance, $userid);
-                        $trace->output("unenrolling: $userid ==> $course->shortname", 1);
+                        $trace->output("unenrolling user: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
@@ -651,7 +653,7 @@ class enrol_database_plugin extends enrol_plugin {
                     }
                     if ($status != ENROL_USER_SUSPENDED) {
                         $this->update_user_enrol($instance, $userid, ENROL_USER_SUSPENDED);
-                        $trace->output("suspending: $userid ==> $course->shortname", 1);
+                        $trace->output("suspending user: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                     if ($unenrolaction == ENROL_EXT_REMOVED_SUSPENDNOROLES) {
                         if (isset($requestedroles[$userid])) {
@@ -660,7 +662,7 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         role_unassign_all(array('contextid'=>$context->id, 'userid'=>$userid, 'component'=>'enrol_database', 'itemid'=>$instance->id));
 
-                        $trace->output("unsassigning all roles: $userid ==> $course->shortname", 1);
+                        $trace->output("unassigning user all roles: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
             }
@@ -727,9 +729,10 @@ class enrol_database_plugin extends enrol_plugin {
         $template_l  = strtolower($template);
         $summary_l   = strtolower($summary);
         $category_l  = strtolower($category);
+        $categoryname_l = strtolower($categoryname);
+
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
-        $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
         $defaultcategory = $this->get_config('defaultcategory');
@@ -752,13 +755,14 @@ class enrol_database_plugin extends enrol_plugin {
         if ($idnumber) {
             $sqlfields[] = $idnumber_l;
         }
+        if ($categoryname) {
+            $sqlfields[] = $categoryname_l;
+        }
         if ($startdate) {
             $sqlfields[] = $startdate;
         }
         if ($enddate) {
             $sqlfields[] = $enddate;
-        if ($categoryname) {
-            $sqlfields[] = $categoryname_l;
         }
 
         $sql = $this->db_get_sql($table, array(), $sqlfields, true);
@@ -864,7 +868,8 @@ class enrol_database_plugin extends enrol_plugin {
             if (!$defaulttemplate) {
                 // We don't set $defaulttemplateid here (and keep it as 0), because we can't import
                 // content from this template (as it's not really a course!).
-//                $courseconfig = get_config('moodlecourse');
+                // The next line has been removed on Moodle 4.5 core
+                //$courseconfig = get_config('moodlecourse');
                 $defaulttemplate = new stdClass();
                 $defaulttemplate->summary = '';
                 $defaulttemplate->summaryformat = FORMAT_HTML;
@@ -942,8 +947,8 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                $trace->output("creating course: $newcourse->idnumber, $newcourse->fullname, $newcourse->shortname, "
-                ."$newcourse->summary, $newcourse->category", 1);
+                $trace->output("creating course: $newcourse->idnumber, $newcourse->fullname, $newcourse->shortname, ".
+                               "$newcourse->summary, $newcourse->category", 1);
 
                 if ($templateid) {
                     // If we have a real template (i.e., based on an existing course) duplicate it (including all activities,
@@ -1062,7 +1067,7 @@ class enrol_database_plugin extends enrol_plugin {
                          '.json_encode($fields), 1);
                         continue;
                     }
-                    $extdbgroups[$fields[$idnumberlow]] = $fields;
+                    $extdbgroups[$fields[$courselow].$fields[$idnumberlow]] = $fields;
                 }
             }
         } else {
@@ -1084,7 +1089,7 @@ class enrol_database_plugin extends enrol_plugin {
                 $group[$namelow] = $rs->name;
                 $group[$descriptionlow] = $rs->description;
                 $group[$courselow] = $rs->coursename;
-                $dbgroups[$rs->idnumber] = $group;
+                $dbgroups[$rs->index] = $group;
             }
         }
 
@@ -1097,8 +1102,8 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($creategroups as $group) {
                 // The course to which the group will belong must exist.
                 if (!$DB->record_exists('course', array('shortname' => $group[$courselow]))) {
-                    $trace->output("  [x] Course " . $group[$courselow] . " to which the group " . $group[$namelow] .
-                            " should belong doesn't exist, group will not be created.");
+                    $trace->output("  [x] Course shortname " . $group[$courselow] . " to which the group ID number "
+                                   . $group[$idnumberlow] ." should belong doesn't exist, group will not be created.");
                     continue;
                 }
 
@@ -1107,8 +1112,8 @@ class enrol_database_plugin extends enrol_plugin {
                                                  WHERE shortname="."'".$group[$courselow]."'");
                 if ($DB->record_exists('groups', array('name' => $group[$namelow], 'courseid' => $courseid))) {
                     // Already exists, skip.
-                    $trace->output("[x] Group ".$group[$namelow]." already exists in course ".$group[$courselow].
-                            ", but with a different idnumber.");
+                    $trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
+                                   .$group[$courselow].", but with a different idnumber.");
                     continue;
                 }
 
@@ -1204,6 +1209,10 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($result as $rs){
                 $group['userid'] = $rs->userid;
                 $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['localcoursefield'] = $rs->localcoursefield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
                 $requestedgroups[$rs->index] = $group;
             }
             // Adding users to their respective groups.
@@ -1211,11 +1220,12 @@ class enrol_database_plugin extends enrol_plugin {
                 require_once($CFG->dirroot.'/group/lib.php');
 
                 if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
-                    $trace->output("  adding user with id: ".$group['userid']." to group: ".$group['groupid']);
+                    $trace->output("  adding user ".$group['localuserfield']." to group: ".$group['groupfield'].
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
                 } else {
                     $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
-                    $trace->output("  error adding user ".$group['userid']." to group ".$group['groupid'].",".
-                    " not enrolled in course ".$errorcourse->courseid);
+                    $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ID ".$errorcourse->courseid.
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
                 }
             }
             unset($requestedgroups);
@@ -1224,7 +1234,7 @@ class enrol_database_plugin extends enrol_plugin {
         // This group membership update should be controlled by a new setting allowing it
         $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
                              mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
-                             ge.$groupfield
+                             ge.$groupfield as groupfield, c.id as courseid
                         FROM $table ge
                         JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
                         JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
@@ -1239,27 +1249,33 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($result as $rs){
                 $group['userid'] = $rs->userid;
                 $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['localcoursefield'] = $rs->localcoursefield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
                 $requestedgroups[$rs->index] = $group;
             }
             // Removing users without component from groups and adding them back.
             foreach ($requestedgroups as $group) {
                 require_once($CFG->dirroot.'/group/lib.php');
 
-                $trace->output("  removing group ".$group['groupid']." membership of user with id ".$group['userid']." with empty component");
+                $trace->output("  removing user ".$group['localuserfield']." with empty component from group ".$group['groupfield'].
+                               ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
                 groups_remove_member($group['groupid'], $group['userid']);
                 if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
-                    $trace->output("  adding back the user with id: ".$group['userid']." to group: ".$group['groupid']);
+                    $trace->output("  adding back the user ".$group['localuserfield']." to group: ".$group['groupfield'].
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
                 } else {
                     $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
-                    $trace->output("  error adding user ".$group['userid']." to group ".$group['groupid'].",".
-                    " not enrolled in course ".$errorcourse->courseid);
+                    $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ".$errorcourse->courseid.
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
                 }
             }
             unset($requestedgroups);
         }
 
         $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
-                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield
+                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield, mg.courseid as courseid
                          FROM {groups_members} mgm
                          JOIN {user} mu on (mu.id = mgm.userid)
                          JOIN {groups} mg on (mgm.groupid = mg.id)
@@ -1275,12 +1291,16 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($result as $rs){
                 $group['userid'] = $rs->userid;
                 $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
                 $requestedunenrolments[$rs->index] = $group;
             }
             // Deletes the link between the specified user and group.
             foreach ($requestedunenrolments as $group) {
                 require_once($CFG->dirroot.'/group/lib.php');
-                $trace->output("  removing group ".$group['groupid']." membership of user with id ".$group['userid']);
+                $trace->output("  removing user ".$group['localuserfield']." from group ".$group['groupfield'].
+                               ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
                 groups_remove_member($group['groupid'], $group['userid']);
             }
             unset($requestedunenrolments);
