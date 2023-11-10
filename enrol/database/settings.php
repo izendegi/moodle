@@ -126,8 +126,6 @@ if ($ADMIN->fulltree) {
         get_string('newcourseenddate', 'enrol_database'),
         get_string('newcourseenddate_desc', 'enrol_database'), ''));
 
-    $settings->add(new admin_setting_configtext('enrol_database/newcoursecategory', get_string('newcoursecategory', 'enrol_database'), '', ''));
-
     $settings->add(new admin_setting_configtext('enrol_database/newcoursesummary', get_string('newcoursesummary', 'enrol_database'), '', ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/newcoursetemplate', get_string('newcoursetemplate', 'enrol_database'), '', ''));
