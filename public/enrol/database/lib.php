@@ -21,10 +21,10 @@
  *
  * @package    enrol_database
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
- * @copyright  2013 Iñaki Arenaza {@link http://www.mondragon.edu/}
- * @copyright  2016 Julen Pardo {@link http://mondragon.edu}
- * @copyright  2019 Kepa Urzelai {@link http://mondragon.edu}
- * @copyright  2023 Iñigo Zendegi {@link http://www.mondragon.edu}
+ * @copyright  2013 Iñaki Arenaza {@link https://www.mondragon.edu}
+ * @copyright  2016 Julen Pardo {@link https://www.mondragon.edu}
+ * @copyright  2019 Kepa Urzelai {@link https://www.mondragon.edu}
+ * @copyright  2023 Iñigo Zendegi {@link https://www.mondragon.edu} 
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -1073,24 +1073,23 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Moodle db groups (existing groups).
-        $dbsql = "select coursename||idnumber,idnumber,name,description,coursename  from (SELECT idnumber,name,description,(
-                    SELECT shortname FROM {course} c WHERE c.id = courseid
-                  ) AS coursename
-                  FROM {groups}
-                  WHERE idnumber is not null and idnumber<>'') t";
+        $dbsql = "SELECT c.shortname||g.idnumber as index, g.idnumber, g.name, g.description, c.shortname as coursename
+                    FROM {groups} g 
+                         JOIN {course} c on (g.courseid=c.id)
+                   WHERE g.idnumber is not null 
+                     AND g.idnumber<>''";
         if ($result = $DB->get_records_sql($dbsql)) {
             foreach ($result as $rs) {
-                $group[$namelow] = $rs->name;
                 $group[$idnumberlow] = $rs->idnumber;
-                $group[$courselow] = $rs->coursename;
+                $group[$namelow] = $rs->name;
                 $group[$descriptionlow] = $rs->description;
+                $group[$courselow] = $rs->coursename;
                 $dbgroups[$rs->idnumber] = $group;
             }
         }
 
         error_reporting(E_ALL & ~E_NOTICE); // Avoids showing the php notice thrown by the next function:
         $creategroups = array_diff_assoc($extdbgroups, $dbgroups); // PHP Notice: array to string conversion.
-        //$trace->output($creategroups);
         error_reporting($CFG->debug); // Set again the debug messaging level configured in the site administration.
 
         if ($creategroups) {
@@ -1103,7 +1102,9 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                $courseid = $DB->get_field_sql("SELECT id FROM {course} WHERE shortname="."'".$group[$courselow]."'");
+                $courseid = $DB->get_field_sql("SELECT id 
+                                                  FROM {course} 
+                                                 WHERE shortname="."'".$group[$courselow]."'");
                 if ($DB->record_exists('groups', array('name' => $group[$namelow], 'courseid' => $courseid))) {
                     // Already exists, skip.
                     $trace->output("[x] Group ".$group[$namelow]." already exists in course ".$group[$courselow].
@@ -1186,17 +1187,19 @@ class enrol_database_plugin extends enrol_plugin {
         $localcoursefield = trim($this->get_config('localcoursefield'));
         $groupfield  = trim($this->get_config('groupfield'));
 
-        // postgres_fdw needed
-        $enrolsql = "select row_number() over() as index, mu.id as userid, mg.id as groupid
-                       from $table ge
-                       join {user} mu on (ge.$userfield = mu.$localuserfield)
-                       join {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                       join {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                      where mu.deleted = 0
-                        and not exists (select 1
-                                          from {groups_members} mgm
-                                          where mgm.groupid = mg.id
-                                            and mgm.userid = mu.id);";
+        // Warning: postgres_fdw is needed to join Moodle tables and external database tables
+        $enrolsql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                            mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                            mg.idnumber as groupfield, c.id as courseid
+                       FROM $table ge
+                       JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                       JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                       JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                      WHERE mu.deleted = 0
+                        AND not exists (SELECT 1
+                                          FROM {groups_members} mgm
+                                         WHERE mgm.groupid = mg.id
+                                           AND mgm.userid = mu.id);";
         if ($result = $DB->get_records_sql($enrolsql)) {
             foreach ($result as $rs){
                 $group['userid'] = $rs->userid;
@@ -1218,18 +1221,20 @@ class enrol_database_plugin extends enrol_plugin {
             unset($requestedgroups);
         }
 
-// This group membership update should be controlled by a new setting allowing it
-        $updatesql = "select row_number() over() as index, mu.id as userid, mg.id as groupid
-                       from $table ge
-                       join {user} mu on (ge.$userfield = mu.$localuserfield)
-                       join {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                       join {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                      where mu.deleted = 0
-                        and exists (select 1
-                                          from {groups_members} mgm
-                                          where mgm.groupid = mg.id
-                                            and mgm.userid = mu.id
-                                            and mgm.component='');";
+        // This group membership update should be controlled by a new setting allowing it
+        $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                             mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                             ge.$groupfield
+                        FROM $table ge
+                        JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                        JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                        JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                       WHERE mu.deleted = 0
+                         AND exists (SELECT 1
+                                       FROM {groups_members} mgm
+                                      WHERE mgm.groupid = mg.id
+                                        AND mgm.userid = mu.id
+                                        AND mgm.component='');";
         if ($result = $DB->get_records_sql($updatesql)) {
             foreach ($result as $rs){
                 $group['userid'] = $rs->userid;
@@ -1253,19 +1258,19 @@ class enrol_database_plugin extends enrol_plugin {
             unset($requestedgroups);
         }
 
-        $unenrolsql = "select row_number() over() as index, mgm.groupid, mgm.userid
-                         from {groups_members} mgm
-                         join {user} mu on (mu.id = mgm.userid)
-                         join {groups} mg on (mgm.groupid = mg.id)
-                         join $grouptable g on (mg.idnumber = g.$idnumber)
-                        where mu.deleted = 0
-                          and mgm.component = 'enrol_database'
-                          and (mu.$localuserfield,mgm.groupid) not in (
-                              select ge2.$userfield, mgm2.groupid
-                                from $table ge2
-                                join {user} u2 on (ge2.$userfield = u2.$localuserfield)
-                                join {groups} mg2 on (ge2.$groupfield = mg2.idnumber)
-                                join {groups_members} mgm2 on (mg2.id = mgm2.groupid and u2.id=mgm2.userid));";
+        $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
+                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield
+                         FROM {groups_members} mgm
+                         JOIN {user} mu on (mu.id = mgm.userid)
+                         JOIN {groups} mg on (mgm.groupid = mg.id)
+                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
+                        WHERE mu.deleted = 0
+                          AND mgm.component = 'enrol_database'
+                          AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
+                                                                          FROM $table ge2
+                                                                          JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
+                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber)
+                                                                          JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
         if ($result = $DB->get_records_sql($unenrolsql)) {
             foreach ($result as $rs){
                 $group['userid'] = $rs->userid;
