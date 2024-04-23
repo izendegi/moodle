@@ -141,7 +141,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configtext('enrol_database/templatecourse', get_string('templatecourse', 'enrol_database'), get_string('templatecourse_desc', 'enrol_database'), ''));
 
-    //--- creation of new groups ---------------------------------------------------------------------------
+    //Creation of new groups
     $settings->add(new admin_setting_heading('enrol_database_newgroupsheader', get_string('settingsheadernewgroups', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/newgrouptable', get_string('newgrouptable', 'enrol_database'), get_string('newgrouptable_desc', 'enrol_database'), ''));
