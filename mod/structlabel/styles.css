@@ -1,0 +1,93 @@
+.mod_structlabel-wrapper {
+}
+
+.mod_structlabel-title {
+    margin-bottom: 0;
+    padding-bottom: 1rem;
+    position: relative;
+}
+
+.mod_structlabel-title::after {
+    content: '';
+    position: absolute;
+    background-color: #e2e2e2;
+    height: 1px;
+    bottom: 0;
+
+    width: 100%; /* Fallback for width with calc. */
+    left: 0; /* Fallback for the left with calc. */
+
+    width: calc(100% + 10px); /* Should be this, unfortunately Moodle strips off calcs with a +. */
+    left: calc(0% + -5px); /* We add this weird one so that it only applies when the width also does. */
+}
+
+.mod_structlabel-contentwrapper {
+    padding: 1rem 0 0;
+}
+
+.mod_structlabel-content {
+    display: flex;
+}
+
+.mod_structlabel-paragraph {
+    flex: 1 1 auto;
+    order: -1;
+}
+
+.mod_structlabel-image {
+    padding-left: 2rem;
+    flex: 0 0 auto;
+}
+
+.mod_structlabel-resources {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.mod_structlabel-resource {
+    margin: 0 1.5rem .5rem 0;
+}
+
+.mod_structlabel-resourcesbox h4 {
+    font-size: 1.1em;
+}
+
+.mod_structlabel-resource a {
+    border-radius: 3px;
+    padding: 3px 9px;
+    text-decoration: none;
+    background-color: #00bd70;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 250px;
+}
+
+.mod_structlabel-resource a:hover,
+.mod_structlabel-resource a:visited,
+.mod_structlabel-resource a:active,
+.mod_structlabel-resource a:focus {
+    text-decoration: none;
+    color: #fff;
+}
+
+.mod_structlabel-resource a:hover {
+    opacity: .8;
+}
+
+.mod_structlabel-resource .fa {
+    margin-right: 5px;
+}
+
+@media (max-width: 576px) {
+    .mod_structlabel-content {
+        flex-wrap: wrap;
+    }
+    .mod_structlabel-image {
+        padding: 0;
+        margin-bottom: 1rem;
+        order: -1;
+    }
+}
