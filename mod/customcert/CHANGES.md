@@ -4,58 +4,9 @@ All notable changes to this project will be documented in this file.
 
 Note - All hash comments refer to the issue number. Eg. #169 refers to https://github.com/mdjnelson/moodle-mod_customcert/issues/169.
 
-## [4.4.3] - 2024-10-12
+## [4.2.5] - 2024-XX-YY
 
-### Fixed
-
-- A SQL error in the issue certificate task on Oracle (#646).
-- Verification error when expiry date element is presnet (#647).
-
-### Added
-
-- Only fetch teachers during the email process when necessary, reducing the number of SQL queries if they are not included (#531). 
-- Filter users before process to speed up certificate task (#634).
-
-## [4.4.2] - 2024-09-28
-
-### Fixed
-
-- Mobile app: Stop using deprecated module-description.
-- Fixed auto-linking filters moving text element positions if reference point is center (#629).
-
-### Changed
-
-- Mobile app: Update Mobile template to Ionic 7.
-- Mobile app: Remove Ionic 3 template.
-
-### Added
-
-- Optimise email certificate task by reducing database reads/writes and introducing
-  configurable settings for task efficiency (#531).
-- New element `expiry` which when used will display the expiry date on the list of issued certificates 
-  and the verification pages.<br />
-  Any Custom Certificates that are using the `date` element and selected the expiry dates will
-  automatically be upgraded to use this new element (#499).
-
-## [4.4.1] - 2024-05-28
-
-### Fixed
-
-- Major issue with the pop-up window not working in the reposition element page (#483).
-- Non-editing teachers being able to see the download certificate link for a user which took them to a blank page (#620).
-
-## [4.4.0] - 2024-05-28
-
-### Added
-
-- Added 'Save and Continue' option when editing image elements (#613).
-  This means you can add an image to the filemanager, click 'Save and Continue'
-  and then select it in the drop-down avoiding renavigating to the edit element page.
-- Added monologo image (#568).
-
-## [4.2.5] - 2024-04-23
-
-### Fixed
+### Fixed 
 
 - Fixed issue when restoring `date`, `daterange`, `gradeitemname` and `grade` that have been linked to a manual grade item (#582).
 - Removed unnecessary set_context() call causing a PHP notice to be shown (#443).

@@ -24,8 +24,6 @@
 
 namespace mod_customcert;
 
-use customcertelement_expiry\element as expiry_element;
-
 defined('MOODLE_INTERNAL') || die;
 
 global $CFG;
@@ -69,11 +67,6 @@ class report_table extends \table_sql {
 
         $context = \context_module::instance($cm->id);
         $extrafields = \core_user\fields::for_identity($context)->get_required_fields();
-        $showexpiry = false;
-
-        if (class_exists('\customcertelement_expiry\element')) {
-            $showexpiry = expiry_element::has_expiry($customcertid);
-        }
 
         $columns = [];
         $columns[] = 'fullname';
@@ -81,11 +74,6 @@ class report_table extends \table_sql {
             $columns[] = $extrafield;
         }
         $columns[] = 'timecreated';
-
-        if ($showexpiry) {
-            $columns[] = 'timeexpires';
-        }
-
         $columns[] = 'code';
 
         $headers = [];
@@ -94,11 +82,6 @@ class report_table extends \table_sql {
             $headers[] = \core_user\fields::get_display_name($extrafield);
         }
         $headers[] = get_string('receiveddate', 'customcert');
-
-        if ($showexpiry) {
-            $headers[] = get_string('expireson', 'customcertelement_expiry');
-        }
-
         $headers[] = get_string('code', 'customcert');
 
         // Check if we were passed a filename, which means we want to download it.
@@ -157,20 +140,6 @@ class report_table extends \table_sql {
         }
         $format = '%Y-%m-%d %H:%M';
         return userdate($user->timecreated, $format);
-    }
-
-    /**
-     * Generate the optional certificate expires time column.
-     *
-     * @param \stdClass $user
-     * @return string
-     */
-    public function col_timeexpires($user) {
-        if ($this->is_downloading() === '') {
-            return expiry_element::get_expiry_html($this->customcertid, $user->id);
-        }
-        $format = '%Y-%m-%d %H:%M';
-        return userdate(expiry_element::get_expiry_date($this->customcertid, $user->id), $format);
     }
 
     /**
@@ -254,3 +223,4 @@ class report_table extends \table_sql {
         exit;
     }
 }
+
