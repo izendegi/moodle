@@ -29,3 +29,4 @@ $plugin->requires  = 2024041600;
 
 $plugin->component = 'qtype_gapselect';
 $plugin->maturity  = MATURITY_STABLE;
+$plugin->release   = '4.4 (wordtable)';
