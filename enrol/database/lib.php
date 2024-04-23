@@ -1249,6 +1249,10 @@ class enrol_database_plugin extends enrol_plugin {
                     // Already exists, skip.
                     $trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
                                    .$group[$courselow].", but with a different name.");
+                if ($DB->record_exists('groups', array('name' => $group[$namelow], 'courseid' => $courseid))) {
+                    // Already exists, skip.
+                    $trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
+                                   .$group[$courselow].", but with a different idnumber.");
                     continue;
                 }
 
