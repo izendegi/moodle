@@ -33,7 +33,6 @@ Feature: Enrolments are synchronised with metabulk courses
     And I click on "Enable" "link" in the "Bulk meta course link" "table_row"
     And I am on homepage
     And I follow "Courses"
-
   Scenario: Add bulk meta enrolment instance to a course
     When I follow "Course 3"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
@@ -44,7 +43,6 @@ Feature: Enrolments are synchronised with metabulk courses
     And I press "Next"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
     Then I should see "testname1" in the "table.generaltable" "css_element"
-
   Scenario: Add metabulk instance and link multiple courses in that instance
     When I follow "Course 3"
     And I navigate to "Enrolment methods" node in "Course administration > Users"

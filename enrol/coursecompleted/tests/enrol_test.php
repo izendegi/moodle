@@ -381,7 +381,6 @@ final class enrol_test extends advanced_testcase {
         $this->assertCount(1, $this->plugin->get_info_icons([$this->instance]));
         $this->setUser($this->student);
         $this->assertCount(1, $this->plugin->get_info_icons([$this->instance]));
-
         $this->assertfalse($this->plugin->can_add_instance($this->course1->id));
         $this->assertfalse($this->plugin->allow_unenrol($this->instance));
         $this->assertfalse($this->plugin->allow_manage($this->instance));
