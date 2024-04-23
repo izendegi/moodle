@@ -1,0 +1,117 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template report_sphorphanedfiles/sectionTable
+
+    Example context (json):
+    {
+      "orphanedFilesList": [
+        {
+          "modName": "label",
+          "name": "Textfeld id=65",
+          "instanceId": "65",
+          "contextId": 104,
+          "filename": "<span><a target=\"_blank\" href=\"http:\/\/localhost:8000\/pluginfile.php\/104\/mod_label\/intro\/brot.jpeg\">brot.jpeg<\/a><\/span>",
+          "preview": "<div class=\"courseimage\"><img height=\"100px\" src=\"http:\/\/localhost:8000\/pluginfile.php\/104\/mod_label\/intro\/brot.jpeg\" \/><\/div>",
+          "content": "<div class=\"no-overflow\"><p dir=\"ltr\" style=\"text-align: left;\">Textfeld mit Bild:<\/p><p dir=\"ltr\" style=\"text-align: left;\"><br><\/p><\/div>",
+          "userAllowedToDeleteThisFile": true,
+          "filesize": "0,66",
+          "post_pathnamehash": "62e97d354081ac180871f97d31725811f4933293",
+          "post_contextId": 104,
+          "post_component": "mod_label",
+          "post_filearea": "intro",
+          "post_itemId": "0",
+          "post_filepath": "\/",
+          "post_filename": "brot.jpeg"
+        }
+      ],
+      "translation": {
+        "isallowedtodeleteallfiles": "User is allowed \/ User has capability to delete all files in this course",
+        "description": "If a teacher adds a file to the editor and delete the file then the file is still be stored in the \nbackground of this context (eg label). The teacher can delete the file with the \"manage file\" dialog in the editor. This is not very comfortable. \nThis report helps to shows orphaned files that might are not used in descriptions of activitys or resources and helps to delete them.",
+        "isgridlayoutfilehint": "This file maybe was used by gridlayout-plugin but seems to be not in use.",
+        "header": {
+          "modName": "Module",
+          "content": "Content",
+          "filename": "Filename",
+          "preview": "",
+          "tool": "delete orphanded without request!",
+          "moduleContent": "Description, ...",
+          "code": "Sourcecode:"
+        }
+      }
+    }
+}}
+
+<table class="table table-hover table-bordered">
+    <thead class='orphandfilesth'>
+    <tr>
+        <th class="report_sphorphandfiles-modName" scope="col">{{translation.header.modName}}</th>
+        <th class="report_sphorphandfiles-content" scope="col">{{translation.header.content}}</th>
+        <th class="report_sphorphandfiles-filename" scope="col">{{translation.header.filename}}</th>
+        <th class="report_sphorphandfiles-tool" scope="col">{{translation.header.tool}}</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{#orphanedFilesList}}
+        <tr>
+            <td><a href='{{{modurl}}}'>{{{iconHtml}}}{{name}}</a></td>
+            <td><details>
+                    <summary>{{translation.header.code}}:</summary>
+                    <textarea style="width: 100%;" rows="4">{{content}}</textarea>
+                </details> 
+                <details>
+                    <summary>{{translation.header.moduleContent}}:</summary>{{{content}}}
+                    </details>
+            </td>
+           <td><div class='row ml-0'>
+                <div class='ml-1'>{{{filename}}}</div>
+                <div class='ml-1'>({{{filesize}}} MB)</div>
+                </div>
+                {{{preview}}}
+            </td>
+            <td>
+                {{#userAllowedToDeleteThisFile}}
+                    <form action="#" method="POST">
+                        <!-- <input type="hidden" name="fileID" value="{{filepath_filename}}"> -->
+
+                        <input type="hidden" name="pathnamehash" value="{{post_pathnamehash}}">
+                        <input type="hidden" name="contextId" value="{{post_contextId}}">
+                        <input type="hidden" name="component" value="{{post_component}}">
+                        <input type="hidden" name="filearea" value="{{post_filearea}}">
+                        <input type="hidden" name="itemId" value="{{post_itemId}}">
+                        <input type="hidden" name="filepath" value="{{post_filepath}}">
+                        <input type="hidden" name="filename" value="{{post_filename}}">
+
+                        <div>
+                            <button class="btn btn-sm btn-danger p-1"><i class="fa fa-trash fa-fw h4 m-b-0"></i>
+                            </button>
+                        </div>
+                    </form>
+                {{/userAllowedToDeleteThisFile}}
+                {{^userAllowedToDeleteThisFile}}
+                    No
+                {{/userAllowedToDeleteThisFile}}
+                {{#isGridlayoutFile}}      
+                    {{translation.isgridlayoutfilehint}}
+                    <br>
+                {{/isGridlayoutFile}} 
+            </td>
+        </tr>
+    {{/orphanedFilesList}}
+
+    </tbody>
+</table>
