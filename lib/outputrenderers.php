@@ -3972,7 +3972,7 @@ EOD;
             }
             $this->language = $custommenu->add($currentlang, new moodle_url('#'), $strlang, 10000);
             foreach ($langs as $langtype => $langname) {
-                $this->language->add($langname, new moodle_url($this->page->url, array('lang' => $langtype)), $langname);
+                $this->language->add($langname, new moodle_url($this->page->url, ['lang' => $langtype]), $langname);
             }
         }
 
