@@ -10,13 +10,25 @@ export const Tooltip: React.FC<{ children: React.ReactElement; content: string }
       return;
     }
 
-    ref.current.setAttribute("data-toggle", "popover");
     ref.current.setAttribute("data-container", "body");
     ref.current.setAttribute("title", content);
 
     $(ref.current).tooltip("enable");
     return () => {
-      $(ref.current).tooltip("dispose");
+      // There is extra caution here, double checking whether the reference still exists,
+      // and is still bound to the tooltip function, and that the tooltip function does
+      // not throw an exception. This is to mitigate themes that redeclare Bootstrap and
+      // end-up causing troubles.
+      if (!ref.current || !$(ref.current).tooltip) {
+        return;
+      }
+      try {
+        $(ref.current).tooltip("dispose");
+      } catch (e) {
+        try {
+          $(ref.current).tooltip("destroy");
+        } catch (e) {}
+      }
     };
   }, [content]);
 
