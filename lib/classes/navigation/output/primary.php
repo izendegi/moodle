@@ -20,6 +20,7 @@ use renderable;
 use renderer_base;
 use templatable;
 use custom_menu;
+use filter_manager;
 
 /**
  * Primary navigation renderable
@@ -119,6 +120,13 @@ class primary implements renderable, templatable {
         }
 
         $custommenuitems = $CFG->custommenuitems;
+
+        // Filter custom menu items without applying auto-linking filters.
+        $skipfilters = ['activitynames', 'data', 'glossary', 'sectionnames', 'bookchapters', 'urltolink'];
+        $filteroptions = ['originalformat' => FORMAT_HTML, 'noclean' => true];
+        $filtermanager = filter_manager::instance();
+        $custommenuitems = $filtermanager->filter_text($custommenuitems, \context_system::instance(), $filteroptions, $skipfilters);
+
         $currentlang = current_language();
         $custommenunodes = custom_menu::convert_text_to_menu_nodes($custommenuitems, $currentlang);
         $nodes = [];
