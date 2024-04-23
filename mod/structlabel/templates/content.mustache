@@ -1,0 +1,67 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_structlabel/content
+
+    The content.
+
+    Example context (json):
+    {
+        "title": "Awesome Structured Title",
+        "content": "<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Vitae perspiciatis sint quas enim! Ratione velit, dolores doloremque! Ipsa animi accusantium error laudantium incidunt veniam totam itaque vitae. Blanditiis, libero voluptatem.</p>",
+        "hasresources": false,
+        "resources": [
+            {
+                "url": "https://google.com",
+                "text": "Google",
+                "icon": "fa-link"
+            },
+            {
+                "url": "https://moodle.com",
+                "text": "Moodle"
+            }
+        ],
+        "imageurl": "https://placekitten.com/200/300"
+    }
+}}
+<div class="mod_structlabel-wrapper">
+    <h3 class="mod_structlabel-title">{{title}}</h3>
+    <div class="mod_structlabel-contentwrapper">
+        <div class="mod_structlabel-content">
+            <div class="mod_structlabel-image"><img src="{{imageurl}}" alt=""></div>
+            <div class="mod_structlabel-paragraph">
+                {{{content}}}
+                {{! We need a spacer to push the content out as some course formats
+                    do not display module regions at 100% width by default. Also we wrap
+                    that in a div otherwise the height taken may be greater than 1px. }}
+                <div style="height:1px"><img style="width:10000px;max-width:100%;height:1px;visibility:hidden;" src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="></div>
+            </div>
+        </div>
+        {{#hasresources}}
+            <div class="mod_structlabel-resourcesbox">
+                <h4>{{#str}}supportingresources, mod_structlabel{{/str}}</h4>
+                <div class="mod_structlabel-resources">
+                {{#resources}}
+                    <div class="mod_structlabel-resource">
+                        <a href="{{url}}" {{#colour}}style="background-color:{{.}};"{{/colour}}>{{#icon}}<i class="fa {{.}}"></i>{{/icon}}{{text}}</a>
+                    </div>
+                {{/resources}}
+                </div>
+            </div>
+        {{/hasresources}}
+    </div>
+</div>

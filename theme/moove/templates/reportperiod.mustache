@@ -1,0 +1,104 @@
+<div class="card card-body">
+    <form action="{{config.wwwroot}}/theme/moove/reportperiod.php" method="get" class="form">
+        <div class="form-row">
+            <div class="form-group col-md-5">
+                <label for="startdate">{{#str}}startdate, theme_moove{{/str}}</label>
+                <input type="date" class="form-control" id="startdate" name="startdate" value="{{{startdate}}}" required>
+            </div>
+            <div class="form-group col-md-5">
+                <label for="enddate">{{#str}}enddate, theme_moove{{/str}}</label>
+                <input type="date" class="form-control" id="enddate" name="enddate" value="{{{enddate}}}" required>
+            </div>
+            <div class="form-group col-md-2">
+                <label>&nbsp</label>
+                <button type="submit" class="btn btn-primary btn-block">{{#str}}filter, theme_moove{{/str}}</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<h2 class="my-3">{{#str}}inthisperiodwehad, theme_moove{{/str}}</h2>
+
+<div class="row">
+    <div class="col-md-4">
+        <!-- small box -->
+        <div class="small-box bg-1">
+            <div class="inner">
+                <h3>{{{totalusers}}}</h3>
+
+                <p>{{#str}}newusers, theme_moove{{/str}}</p>
+            </div>
+            <div class="icon">
+                <i class="fa fa-users"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- small box -->
+        <div class="small-box bg-2">
+            <div class="inner">
+                <h3>{{{totalenrolments}}}</h3>
+
+                <p>{{#str}}newenrolments, theme_moove{{/str}}</p>
+            </div>
+            <div class="icon">
+                <i class="fa fa-plug"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- small box -->
+        <div class="small-box bg-4">
+            <div class="inner">
+                <h3>{{{totalconclusions}}}</h3>
+
+                <p>{{#str}}conclusions, theme_moove{{/str}}</p>
+            </div>
+            <div class="icon">
+                <i class="fa fa-graduation-cap"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-body">
+    <h4>{{#str}}enrolmentsbycourse, theme_moove{{/str}}</h4>
+    <table class="table table-striped table-bordered table-hover">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">{{#str}}shortname, theme_moove{{/str}}</th>
+                <th scope="col">{{#str}}qtd, theme_moove{{/str}}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#coursesenrolments}}
+                <tr>
+                    <td>{{{shortname}}}</td>
+                    <td>{{{qtd}}}</td>
+                </tr>
+            {{/coursesenrolments}}
+        </tbody>
+    </table>
+</div>
+
+<div class="card card-body mt-3">
+    <h4>{{#str}}conclusionsbycourse, theme_moove{{/str}}</h4>
+    <table class="table table-striped table-bordered table-hover">
+        <thead class="thead-dark">
+        <tr>
+            <th scope="col">{{#str}}shortname, theme_moove{{/str}}</th>
+            <th scope="col">{{#str}}qtd, theme_moove{{/str}}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{#coursescompletions}}
+            <tr>
+                <td>{{{shortname}}}</td>
+                <td>{{{qtd}}}</td>
+            </tr>
+        {{/coursescompletions}}
+        </tbody>
+    </table>
+</div>
