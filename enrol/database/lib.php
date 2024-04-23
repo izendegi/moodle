@@ -21,6 +21,10 @@
  *
  * @package    enrol_database
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
+ * @copyright  2013 Iñaki Arenaza {@link https://www.mondragon.edu}
+ * @copyright  2016 Julen Pardo {@link https://www.mondragon.edu}
+ * @copyright  2019 Kepa Urzelai {@link https://www.mondragon.edu}
+ * @copyright  2023 Iñigo Zendegi {@link https://www.mondragon.edu}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -29,6 +33,10 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Database enrolment plugin implementation.
  * @author  Petr Skoda - based on code by Martin Dougiamas, Martin Langhoff and others
+ * @author  Iñaki Arenaza
+ * @author  Julen Pardo
+ * @author  Kepa Urzelai
+ * @author  Iñigo Zendegi
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class enrol_database_plugin extends enrol_plugin {
@@ -147,7 +155,7 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Read remote enrols and create instances.
-        $sql = $this->db_get_sql($table, array($userfield=>$user->$localuserfield), array(), false);
+        $sql = $this->db_get_sql($table, array($userfield_l=>$user->$localuserfield), array(), false);
 
         if ($rs = $extdb->Execute($sql)) {
             if (!$rs->EOF) {
@@ -303,7 +311,7 @@ class enrol_database_plugin extends enrol_plugin {
             return 0;
         }
 
-        $trace->output('Starting user enrolment synchronisation...');
+        $trace->output("\nStarting user enrolment synchronisation...");
 
         if (!$extdb = $this->db_init()) {
             $trace->output('Error while communicating with external enrolment database');
@@ -370,7 +378,7 @@ class enrol_database_plugin extends enrol_plugin {
         } else {
             // Get a list of courses to be synced that are in external table.
             $externalcourses = array();
-            $sql = $this->db_get_sql($table, array(), array($coursefield), true);
+            $sql = $this->db_get_sql($table, array(), array($coursefield_l), true);
             if ($rs = $extdb->Execute($sql)) {
                 if (!$rs->EOF) {
                     while ($mapping = $rs->FetchRow()) {
@@ -449,12 +457,12 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Sync user enrolments.
-        $sqlfields = array($userfield);
+        $sqlfields = array($userfield_l);
         if ($rolefield) {
-            $sqlfields[] = $rolefield;
+            $sqlfields[] = $rolefield_l;
         }
         if ($otheruserfield) {
-            $sqlfields[] = $otheruserfield;
+            $sqlfields[] = $otheruserfieldlower;
         }
         foreach ($existing as $course) {
             if ($ignorehidden and !$course->visible) {
@@ -470,6 +478,7 @@ class enrol_database_plugin extends enrol_plugin {
             $currentenrols = array();
             $currentstatus = array();
             $usermapping   = array();
+            $useridentifier = array();
             $sql = "SELECT u.$localuserfield AS mapping, u.id AS userid, ue.status, ra.roleid
                       FROM {user} u
                       JOIN {role_assignments} ra ON (ra.userid = u.id AND ra.component = 'enrol_database' AND ra.itemid = :enrolid)
@@ -484,7 +493,7 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($rs as $ue) {
                 $currentroles[$ue->userid][$ue->roleid] = $ue->roleid;
                 $usermapping[$ue->mapping] = $ue->userid;
-
+                $useridentifier[$ue->userid] = $ue->mapping;
                 if (isset($ue->status)) {
                     $currentenrols[$ue->userid][$ue->roleid] = $ue->roleid;
                     $currentstatus[$ue->userid] = $ue->status;
@@ -505,14 +514,14 @@ class enrol_database_plugin extends enrol_plugin {
                     while ($fields = $rs->FetchRow()) {
                         $fields = array_change_key_case($fields, CASE_LOWER);
                         if (empty($fields[$userfield_l])) {
-                            $trace->output("error: skipping user without mandatory $localuserfield in course '$course->mapping'", 1);
+                            $trace->output("error: skipping user without mandatory $localuserfield in course $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                             continue;
                         }
                         $mapping = $fields[$userfield_l];
                         if (!isset($usermapping[$mapping])) {
                             $usersearch[$localuserfield] = $mapping;
                             if (!$user = $DB->get_record('user', $usersearch, 'id', IGNORE_MULTIPLE)) {
-                                $trace->output("error: skipping unknown user $localuserfield '$mapping' in course '$course->mapping'", 1);
+                                $trace->output("error: skipping unknown $localuserfield '$mapping' in course $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                                 continue;
                             }
                             $usermapping[$mapping] = $user->id;
@@ -522,7 +531,7 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         if (empty($fields[$rolefield_l]) or !isset($roles[$fields[$rolefield_l]])) {
                             if (!$defaultrole) {
-                                $trace->output("error: skipping user '$userid' in course '$course->mapping' - missing course and default role", 1);
+                                $trace->output("error: skipping user $localuserfield '$mapping' in course $course->mapping - missing course and default role: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                                 continue;
                             }
                             $roleid = $defaultrole;
@@ -534,11 +543,12 @@ class enrol_database_plugin extends enrol_plugin {
                         if (empty($fields[$otheruserfieldlower])) {
                             $requestedenrols[$userid][$roleid] = $roleid;
                         }
+                        $useridentifier[$userid] = $mapping;
                     }
                 }
                 $rs->Close();
             } else {
-                $trace->output("error: skipping course '$course->mapping' - could not match with external database", 1);
+                $trace->output("error: skipping course $course->mapping - could not match with external database: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                 continue;
             }
             unset($usermapping);
@@ -551,14 +561,14 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentroles[$userid][$roleid] = $roleid;
                         $currentenrols[$userid][$roleid] = $roleid;
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
-                        $trace->output("enrolling: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+                        $trace->output("enrolling $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
                 // Reenable enrolment when previously disable enrolment refreshed.
                 if ($currentstatus[$userid] == ENROL_USER_SUSPENDED) {
                     $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE);
-                    $trace->output("unsuspending: $userid ==> $course->shortname", 1);
+                    $trace->output("unsuspending $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                 }
             }
 
@@ -568,7 +578,7 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($currentroles[$userid][$roleid])) {
                         role_assign($roleid, $userid, $context->id, 'enrol_database', $instance->id);
                         $currentroles[$userid][$roleid] = $roleid;
-                        $trace->output("assigning roles: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+                        $trace->output("assigning user roles: $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
@@ -577,7 +587,7 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($userroles[$cr])) {
                         role_unassign($cr, $userid, $context->id, 'enrol_database', $instance->id);
                         unset($currentroles[$userid][$cr]);
-                        $trace->output("unsassigning roles: $userid ==> $course->shortname", 1);
+                        $trace->output("unassigning user roles: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
@@ -599,7 +609,7 @@ class enrol_database_plugin extends enrol_plugin {
                             continue;
                         }
                         $this->unenrol_user($instance, $userid);
-                        $trace->output("unenrolling: $userid ==> $course->shortname", 1);
+                        $trace->output("unenrolling user: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
 
@@ -614,7 +624,7 @@ class enrol_database_plugin extends enrol_plugin {
                     }
                     if ($status != ENROL_USER_SUSPENDED) {
                         $this->update_user_enrol($instance, $userid, ENROL_USER_SUSPENDED);
-                        $trace->output("suspending: $userid ==> $course->shortname", 1);
+                        $trace->output("suspending user: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                     if ($unenrolaction == ENROL_EXT_REMOVED_SUSPENDNOROLES) {
                         if (isset($requestedroles[$userid])) {
@@ -623,7 +633,7 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         role_unassign_all(array('contextid'=>$context->id, 'userid'=>$userid, 'component'=>'enrol_database', 'itemid'=>$instance->id));
 
-                        $trace->output("unsassigning all roles: $userid ==> $course->shortname", 1);
+                        $trace->output("unassigning user all roles: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                     }
                 }
             }
@@ -632,7 +642,7 @@ class enrol_database_plugin extends enrol_plugin {
         // Close db connection.
         $extdb->Close();
 
-        $trace->output('...user enrolment synchronisation finished.');
+        $trace->output("...user enrolment synchronisation finished.");
         $trace->finished();
 
         return 0;
@@ -641,8 +651,8 @@ class enrol_database_plugin extends enrol_plugin {
     /**
      * Performs a full sync with external database.
      *
-     * First it creates new courses if necessary, then
-     * enrols and unenrols users.
+     * It creates new courses if necessary,
+     * to then enrol and unenrol users.
      *
      * @param progress_trace $trace
      * @return int 0 means success, 1 db connect failure, 4 db read failure
@@ -657,7 +667,7 @@ class enrol_database_plugin extends enrol_plugin {
             return 0;
         }
 
-        $trace->output('Starting course synchronisation...');
+        $trace->output("\nStarting course synchronisation...");
 
         // We may need a lot of memory here.
         core_php_time_limit::raise();
@@ -673,31 +683,45 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname  = trim($this->get_config('newcoursefullname'));
         $shortname = trim($this->get_config('newcourseshortname'));
         $idnumber  = trim($this->get_config('newcourseidnumber'));
+        $summary = trim($this->get_config('newcoursesummary'));
+        $template = trim($this->get_config('newcoursetemplate'));
         $category  = trim($this->get_config('newcoursecategory'));
+        $categoryname = trim($this->get_config('newcoursecategorypath'));
 
         // Lowercased versions - necessary because we normalise the resultset with array_change_key_case().
         $fullname_l  = strtolower($fullname);
         $shortname_l = strtolower($shortname);
         $idnumber_l  = strtolower($idnumber);
+        $template_l  = strtolower($template);
+        $summary_l   = strtolower($summary);
         $category_l  = strtolower($category);
+        $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
-        $defaultcategory    = $this->get_config('defaultcategory');
+        $defaultcategory = $this->get_config('defaultcategory');
 
-        if (!$DB->record_exists('course_categories', array('id'=>$defaultcategory))) {
-            $trace->output("default course category does not exist!", 1);
-            $categories = $DB->get_records('course_categories', array(), 'sortorder', 'id', 0, 1);
-            $first = reset($categories);
-            $defaultcategory = $first->id;
+        if (null === ($defaultcategory = core_course_category::get($defaultcategory, IGNORE_MISSING, true))) {
+            $trace->output("default course category  does not exist!", 1);
+            $defaultcategory = core_course_category::get_default();
         }
 
-        $sqlfields = array($fullname, $shortname);
+        $sqlfields = array($fullname_l, $shortname_l);
         if ($category) {
-            $sqlfields[] = $category;
+            $sqlfields[] = $category_l;
+        }
+        if ($summary) {
+            $sqlfields[] = $summary_l;
+        }
+        if ($template) {
+            $sqlfields[] = $template_l;
         }
         if ($idnumber) {
-            $sqlfields[] = $idnumber;
+            $sqlfields[] = $idnumber_l;
         }
+        if ($categoryname) {
+            $sqlfields[] = $categoryname_l;
+        }
+
         $sql = $this->db_get_sql($table, array(), $sqlfields, true);
         $createcourses = array();
         if ($rs = $extdb->Execute($sql)) {
@@ -719,24 +743,21 @@ class enrol_database_plugin extends enrol_plugin {
                         continue;
                     }
                     $course = new stdClass();
-                    $course->fullname  = $fields[$fullname_l];
+                    $course->fullname = $fields[$fullname_l];
                     $course->shortname = $fields[$shortname_l];
-                    $course->idnumber  = $idnumber ? $fields[$idnumber_l] : '';
-                    if ($category) {
-                        if (empty($fields[$category_l])) {
-                            // Empty category means use default.
-                            $course->category = $defaultcategory;
-                        } else if ($coursecategory = $DB->get_record('course_categories', array($localcategoryfield=>$fields[$category_l]), 'id')) {
-                            // Yay, correctly specified category!
-                            $course->category = $coursecategory->id;
-                            unset($coursecategory);
+                    $course->idnumber = $idnumber_l ? $fields[$idnumber_l] : '';
+                    $course->template = $template_l ? trim($fields[$template_l]) : '';
+                    $course->summary = $summary_l ? $fields[$summary_l] : '';
+                    if ($categoryname_l and $fields[$categoryname_l]) {
+                        if ($categoryid = $this->get_categoryid($fields[$categoryname_l], $trace)) {
+                            $course->category = $categoryid;
                         } else {
                             // Bad luck, better not continue because unwanted ppl might get access to course in different category.
                             $trace->output('error: invalid category '.$localcategoryfield.', can not create course: '.$fields[$shortname_l], 1);
                             continue;
                         }
                     } else {
-                        $course->category = $defaultcategory;
+                        $course->category = $defaultcategory->id;
                     }
                     $createcourses[] = $course;
                 }
@@ -753,49 +774,75 @@ class enrol_database_plugin extends enrol_plugin {
 
             $templatecourse = $this->get_config('templatecourse');
 
-            $template = false;
+            $defaulttemplate = false;
+            $defaulttemplateid = 0;
             if ($templatecourse) {
-                if ($template = $DB->get_record('course', array('shortname'=>$templatecourse))) {
-                    $template = fullclone(course_get_format($template)->get_course());
-                    if (!isset($template->numsections)) {
-                        $template->numsections = course_get_format($template)->get_last_section_number();
+                if ($defaulttemplate = $DB->get_record('course', array('shortname'=>$templatecourse))) {
+                    $defaulttemplate = fullclone(course_get_format($defaulttemplate)->get_course());
+                    $defaulttemplateid = $defaulttemplate->id;
+                    if (!isset($defaulttemplate->numsections)) {
+                        $defaulttemplate->numsections = course_get_format($defaulttemplate)->get_last_section_number();
                     }
-                    unset($template->id);
-                    unset($template->fullname);
-                    unset($template->shortname);
-                    unset($template->idnumber);
+                    unset($defaulttemplate->id);
+                    unset($defaulttemplate->fullname);
+                    unset($defaulttemplate->shortname);
+                    unset($defaulttemplate->idnumber);
+                    unset($defaulttemplate->summary);
+                    unset($defaulttemplate->category);
                 } else {
                     $trace->output("can not find template for new course!", 1);
                 }
             }
-            if (!$template) {
+            if (!$defaulttemplate) {
+                // We don't set $defaulttemplateid here (and keep it as 0), because we can't import
+                // content from this template (as it's not really a course!).
                 $courseconfig = get_config('moodlecourse');
-                $template = new stdClass();
-                $template->summary        = '';
-                $template->summaryformat  = FORMAT_HTML;
-                $template->format         = $courseconfig->format;
-                $template->numsections    = $courseconfig->numsections;
-                $template->newsitems      = $courseconfig->newsitems;
-                $template->showgrades     = $courseconfig->showgrades;
-                $template->showreports    = $courseconfig->showreports;
-                $template->maxbytes       = $courseconfig->maxbytes;
-                $template->groupmode      = $courseconfig->groupmode;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->visible        = $courseconfig->visible;
-                $template->lang           = $courseconfig->lang;
-                $template->enablecompletion = $courseconfig->enablecompletion;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->startdate      = usergetmidnight(time());
+                $defaulttemplate = new stdClass();
+                $defaulttemplate->summary = '';
+                $defaulttemplate->summaryformat = FORMAT_HTML;
+                $defaulttemplate->format = $courseconfig->format;
+                $defaulttemplate->numsections = $courseconfig->numsections;
+                $defaulttemplate->newsitems = $courseconfig->newsitems;
+                $defaulttemplate->showgrades = $courseconfig->showgrades;
+                $defaulttemplate->showreports = $courseconfig->showreports;
+                $defaulttemplate->maxbytes = $courseconfig->maxbytes;
+                $defaulttemplate->groupmode = $courseconfig->groupmode;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->visible = $courseconfig->visible;
+                $defaulttemplate->lang = $courseconfig->lang;
+                $defaulttemplate->enablecompletion = $courseconfig->enablecompletion;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->startdate = usergetmidnight(time());
                 if ($courseconfig->courseenddateenabled) {
-                    $template->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
+                    $defaulttemplate->enddate = usergetmidnight(time()) + $courseconfig->courseduration;
                 }
             }
 
             foreach ($createcourses as $fields) {
-                $newcourse = clone($template);
+                $templateid = $defaulttemplateid;
+                if ($fields->template) {
+                    if ($coursetemplate = $DB->get_record('course',
+                            array($this->get_config('localtemplatefield') => $fields->template))) {
+                        $newcourse = fullclone(course_get_format($coursetemplate)->get_course());
+                        $templateid = $newcourse->id;
+                        unset($newcourse->id);
+                        unset($newcourse->fullname);
+                        unset($newcourse->shortname);
+                        unset($newcourse->idnumber);
+                        unset($newcourse->summary);
+                        unset($newcourse->category);
+                    } else {
+                        $newcourse = clone($defaulttemplate);
+                        $trace->output('can not find template for new course! Using default template.', 1);
+                    }
+                } else {
+                    $newcourse = clone($defaulttemplate);
+                }
+
                 $newcourse->fullname  = $fields->fullname;
                 $newcourse->shortname = $fields->shortname;
                 $newcourse->idnumber  = $fields->idnumber;
+                $newcourse->summary = $fields->summary;
                 $newcourse->category  = $fields->category;
 
                 // Detect duplicate data once again, above we can not find duplicates
@@ -807,12 +854,47 @@ class enrol_database_plugin extends enrol_plugin {
                     $trace->output("can not insert new course, duplicate idnumber detected: ".$newcourse->idnumber, 1);
                     continue;
                 }
-                $c = create_course($newcourse);
-                $trace->output("creating course: $c->id, $c->fullname, $c->shortname, $c->idnumber, $c->category", 1);
+
+                $trace->output("creating course: $newcourse->idnumber, $newcourse->fullname, $newcourse->shortname, ".
+                               "$newcourse->summary, $newcourse->category", 1);
+
+                if ($templateid) {
+                    // If we have a real template (i.e., based on an existing course) duplicate it (including all activities,
+                    // blocks, filters and enrolments) and update the resulting course with the new course fields.
+                    require_once("$CFG->dirroot/course/externallib.php");
+                    require_once("$CFG->dirroot/group/lib.php");
+
+                    // This requires special permissions. Temporarily elevate our privileges.
+                    // And remember to drop the elevated privileges as soon as they are not needed.
+                    global $USER;
+                    $olduser = $USER;
+                    $USER = get_admin();
+
+                    static $backupsettings = array(
+                        array('name' => 'users', 'value' => 0)
+                    );
+
+                    $duplicatecoursereturns = core_course_external::duplicate_course($templateid, $newcourse->fullname,
+                            $newcourse->shortname, $newcourse->category, 1, $backupsettings);
+
+                    $updatecourse = array('courses' => array(
+                            'id' => $duplicatecoursereturns['id'],
+                            'idnumber' => $newcourse->idnumber,
+                            'summary' => $newcourse->summary));
+                    core_course_external::update_courses($updatecourse);
+                    groups_delete_groups($duplicatecoursereturns['id'], $showfeedback=false);
+                    groups_delete_groupings($duplicatecoursereturns['id'], $showfeedback=false);
+
+                    $USER = $olduser;
+                } else {
+                    // Course creation without a template.
+                    create_course($newcourse);
+                }
             }
 
             unset($createcourses);
-            unset($template);
+            unset($defaulttemplate);
+
         }
 
         // Close db connection.
@@ -823,6 +905,323 @@ class enrol_database_plugin extends enrol_plugin {
 
         return 0;
     }
+
+    /**
+     * It synchronizes user groups with external database,
+     * creating new ones if necessary.
+     * Groups can be added to groupings if defined, and if groupingcreation
+     * setting is enabled defined new groupings are created.
+     *
+     * @param progress_trace $trace
+     * @return int 0 means success, 1 db connect failure, 4 db read failure
+     * @throws dml_exception
+     */
+    public function sync_groups(progress_trace $trace) {
+        global $CFG, $DB;
+
+        if (!$this->get_config('dbtype') or !$this->get_config('newgrouptable') or
+                !$this->get_config('newgroupname') or !$this->get_config('newgroupidnumber') or
+                !$this->get_config('newgroupcourse')) {
+            $trace->output('Groups synchronisation skipped.');
+            $trace->finished();
+            return 0;
+        }
+
+        $trace->output("\nStarting group synchronisation...");
+
+        // We may need a lot of memory here.
+        core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_HUGE);
+
+        if (!$extdb = $this->db_init()) {
+            $trace->output('Error while communicating with external enrolment database');
+            $trace->finished();
+            return 1;
+        }
+
+        $table = $this->get_config('newgrouptable');
+        $name = trim($this->get_config('newgroupname'));
+        $idnumber = trim($this->get_config('newgroupidnumber'));
+        $description = trim($this->get_config('newgroupdesc'));
+        $course = trim($this->get_config('newgroupcourse'));
+        $grouping = trim($this->get_config('newgroupgroupings'));
+        $groupingcreation = $this->get_config('groupingcreation');
+        $messaging = $this->get_config('groupmessaging');
+
+        $namelow = strtolower($name);
+        $idnumberlow = strtolower($idnumber);
+        $courselow = strtolower($course);
+        $descriptionlow = strtolower($description);
+        $groupinglow = strtolower($grouping);
+        
+        $extdbgroups = array();
+        $dbgroups = array();
+
+        // External db groups.
+        $sqlfields = array($namelow, $idnumberlow, $courselow);
+        if ($description) {
+            $sqlfields[] = $descriptionlow;
+        }
+        if ($grouping) {
+            $sqlfields[] = $groupinglow;
+        }
+        $sql = $this->db_get_sql($table, array(), $sqlfields, true);
+        if ($rs = $extdb->Execute($sql)) {
+            if (!$rs->EOF) {
+                while ($fields = $rs->FetchRow()) {
+                    $fields = $this->db_decode($fields);
+                    if (empty($fields[$namelow]) or empty($fields[$idnumberlow]) or empty($fields[$courselow])) {
+                        $trace->output('error: invalid external group record, name, id number and course shortname are mandatory:
+                         '.json_encode($fields), 1);
+                        continue;
+                    }
+                    $extdbgroups[$fields[$courselow].$fields[$idnumberlow]] = $fields;
+                }
+            }
+        } else {
+            $extdb->Close();
+            $trace->output('Error reading data from the external groups table');
+            $trace->finished();
+            return 4;
+        }
+
+        // Moodle db groups (existing groups).
+        $dbsql = "SELECT c.shortname||g.idnumber as index, g.idnumber, g.name, g.description, c.shortname as coursename
+                    FROM {groups} g 
+                         JOIN {course} c on (g.courseid=c.id)
+                   WHERE g.idnumber is not null 
+                     AND g.idnumber<>''";
+        if ($result = $DB->get_records_sql($dbsql)) {
+            foreach ($result as $rs) {
+                $group[$idnumberlow] = $rs->idnumber;
+                $group[$namelow] = $rs->name;
+                $group[$descriptionlow] = $rs->description;
+                $group[$courselow] = $rs->coursename;
+                $dbgroups[$rs->index] = $group;
+            }
+        }
+
+        error_reporting(E_ALL & ~E_NOTICE); // Avoids showing the php notice thrown by the next function:
+        $creategroups = array_diff_assoc($extdbgroups, $dbgroups); // PHP Notice: array to string conversion.
+        error_reporting($CFG->debug); // Set again the debug messaging level configured in the site administration.
+
+        if ($creategroups) {
+            require_once("$CFG->dirroot/group/lib.php");
+            foreach ($creategroups as $group) {
+                // The course to which the group will belong must exist.
+                if (!$DB->record_exists('course', array('shortname' => $group[$courselow]))) {
+                    $trace->output("  [x] Course shortname " . $group[$courselow] . " to which the group ID number "
+                                   . $group[$idnumberlow] ." should belong doesn't exist, group will not be created.");
+                    continue;
+                }
+
+                $courseid = $DB->get_field_sql("SELECT id 
+                                                  FROM {course} 
+                                                 WHERE shortname="."'".$group[$courselow]."'");
+                if ($DB->record_exists('groups', array('name' => $group[$namelow], 'courseid' => $courseid))) {
+                    // Already exists, skip.
+                    $trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
+                                   .$group[$courselow].", but with a different idnumber.");
+                    continue;
+                }
+
+                $newgroup = new stdClass();
+                $newgroup->courseid = $courseid;
+                $newgroup->name = $group[$namelow];
+                $newgroup->idnumber = $group[$idnumberlow];
+                $newgroup->description = $group[$descriptionlow];
+                $newgroup->course = $group[$courselow];
+                $newgroup->enablemessaging = $messaging;
+
+                $trace->output("  creating group: $newgroup->name, $newgroup->idnumber, $newgroup->description, in course "
+                .$newgroup->course);
+                $newgroupid = groups_create_group($newgroup);
+
+                if ($group[$groupinglow]){
+                    $recordset = $DB->get_record('groupings', array('idnumber' => $group[$groupinglow]));
+                    if(!$recordset and $groupingcreation) {
+                        $newgrouping = new stdClass();
+                        $newgrouping->idnumber = $group[$groupinglow];
+                        $newgrouping->courseid = $courseid;
+                        $newgrouping->name = $group[$groupinglow];
+                        $newgroupingid = groups_create_grouping($newgrouping);
+
+                        groups_assign_grouping($newgroupingid, $newgroupid);
+                    } else {
+                        groups_assign_grouping($recordset->id, $newgroupid);
+                    }
+                }
+            }
+            unset($creategroups);
+        }
+
+        // Close db connection.
+        $extdb->Close();
+
+        $trace->output('...group synchronisation finished.');
+        $trace->finished();
+        return 0;
+    }
+
+    /**
+     * Forces synchronisation of group enrolments with external database,
+     *
+     * @param progress_trace $trace
+     * @return void
+     */
+    public function sync_group_enrolments(progress_trace $trace) {
+        global $CFG, $DB;
+
+        if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
+                or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
+            $trace->output('Group enrolments synchronisation skipped.');
+            $trace->finished();
+            return 0;
+        }
+
+        $trace->output("\nStarting group enrolment synchronisation...");
+
+        if (!$extdb = $this->db_init()) {
+            $trace->output('Error while communicating with external enrolment database');
+            $trace->finished();
+            return 1;
+        }
+
+        // We may need a lot of memory here.
+        core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_HUGE);
+
+        $table  = trim($this->get_config('groupenroltable'));
+        $grouptable = trim($this->get_config('newgrouptable'));
+        $idnumber = trim($this->get_config('newgroupidnumber'));
+        $groupcoursefield = trim($this->get_config('newgroupcourse'));
+        $userfield  = trim($this->get_config('userfield'));
+        $localuserfield  = trim($this->get_config('localuserfield'));
+        $localcoursefield = trim($this->get_config('localcoursefield'));
+        $groupfield  = trim($this->get_config('groupfield'));
+
+        // Warning: postgres_fdw is needed to join Moodle tables and external database tables
+        $enrolsql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                            mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                            mg.idnumber as groupfield, c.id as courseid
+                       FROM $table ge
+                       JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                       JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                       JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                      WHERE mu.deleted = 0
+                        AND not exists (SELECT 1
+                                          FROM {groups_members} mgm
+                                         WHERE mgm.groupid = mg.id
+                                           AND mgm.userid = mu.id);";
+        if ($result = $DB->get_records_sql($enrolsql)) {
+            foreach ($result as $rs){
+                $group['userid'] = $rs->userid;
+                $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['localcoursefield'] = $rs->localcoursefield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
+                $requestedgroups[$rs->index] = $group;
+            }
+            // Adding users to their respective groups.
+            foreach ($requestedgroups as $group) {
+                require_once($CFG->dirroot.'/group/lib.php');
+
+                if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
+                    $trace->output("  adding user ".$group['localuserfield']." to group: ".$group['groupfield'].
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                } else {
+                    $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
+                    $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ID ".$errorcourse->courseid.
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                }
+            }
+            unset($requestedgroups);
+        }
+
+        // This group membership update should be controlled by a new setting allowing it
+        $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                             mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                             ge.$groupfield as groupfield, c.id as courseid
+                        FROM $table ge
+                        JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                        JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                        JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                       WHERE mu.deleted = 0
+                         AND exists (SELECT 1
+                                       FROM {groups_members} mgm
+                                      WHERE mgm.groupid = mg.id
+                                        AND mgm.userid = mu.id
+                                        AND mgm.component='');";
+        if ($result = $DB->get_records_sql($updatesql)) {
+            foreach ($result as $rs){
+                $group['userid'] = $rs->userid;
+                $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['localcoursefield'] = $rs->localcoursefield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
+                $requestedgroups[$rs->index] = $group;
+            }
+            // Removing users without component from groups and adding them back.
+            foreach ($requestedgroups as $group) {
+                require_once($CFG->dirroot.'/group/lib.php');
+
+                $trace->output("  removing user ".$group['localuserfield']." with empty component from group ".$group['groupfield'].
+                               ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                groups_remove_member($group['groupid'], $group['userid']);
+                if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
+                    $trace->output("  adding back the user ".$group['localuserfield']." to group: ".$group['groupfield'].
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                } else {
+                    $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
+                    $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ".$errorcourse->courseid.
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                }
+            }
+            unset($requestedgroups);
+        }
+
+        $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
+                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield, mg.courseid as courseid
+                         FROM {groups_members} mgm
+                         JOIN {user} mu on (mu.id = mgm.userid)
+                         JOIN {groups} mg on (mgm.groupid = mg.id)
+                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
+                        WHERE mu.deleted = 0
+                          AND mgm.component = 'enrol_database'
+                          AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
+                                                                          FROM $table ge2
+                                                                          JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
+                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber)
+                                                                          JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
+        if ($result = $DB->get_records_sql($unenrolsql)) {
+            foreach ($result as $rs){
+                $group['userid'] = $rs->userid;
+                $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
+                $requestedunenrolments[$rs->index] = $group;
+            }
+            // Deletes the link between the specified user and group.
+            foreach ($requestedunenrolments as $group) {
+                require_once($CFG->dirroot.'/group/lib.php');
+                $trace->output("  removing user ".$group['localuserfield']." from group ".$group['groupfield'].
+                               ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                groups_remove_member($group['groupid'], $group['userid']);
+            }
+            unset($requestedunenrolments);
+        }
+
+        // Close db connection.
+        $extdb->Close();
+
+        $trace->output("...group enrolment synchronisation finished.\n");
+        $trace->finished();
+        return 0;
+    }
+
 
     protected function db_get_sql($table, array $conditions, array $fields, $distinct = false, $sort = "") {
         $fields = $fields ? implode(',', $fields) : "*";
@@ -844,7 +1243,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         return $sql;
     }
-
+    
     /**
      * Tries to make connection to the external database.
      *
@@ -1043,6 +1442,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External enrolment table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
@@ -1060,6 +1460,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External course table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
@@ -1073,4 +1474,143 @@ class enrol_database_plugin extends enrol_plugin {
         error_reporting($CFG->debug);
         ob_end_flush();
     }
+
+    /**
+     * Returns the id of a given course category. If $this->autocreatecategory
+     * is set and the category doesn't exist, it creates it and returns the new
+     * id. Otherwise it returns false.
+     *
+     * If $this->categoryseparator is set, it can handle subcategories of
+     * any depth. You just need to specify the 'path' of the subcategory
+     * as the identifiers of the categories separated by the value of the
+     * separator. For example, if we use '/' as the separator, we can
+     * specify 'categoryid1/categoryid2/categoryid3' if we are interested
+     * in a category identified by 'category3' that is inside a category
+     * identified by 'category2' that is inside a category identified by
+     * 'category1' that is a top level category.
+     *
+     * If $this->categoryseparator and $this->autocreate are set, it creates the
+     * whole category tree. For example, if we are looking for
+     * 'categoryname1/categoryname2/categoryname3', and they don't exist, it will
+     * start creating the shallower category (i.e. 'categoryname1'), and it will continue
+     * creating categories for deeper categories, building the tree (the next
+     * category would be 'categoryname1/categoryname2', and so on).
+     *
+     * @param string $categoryname the field used to check if category exists (in the course_categories table) in idnumber field.
+     * @param progress_trace $trace
+     *
+     * @return category id (int) or false.
+     * @uses $DB
+     */
+    public function get_categoryid($categoryname, $trace) {
+        global $DB;
+
+        if (empty($categoryname)) {
+            $defaultcategory = core_course_category::get_default();
+            return $defaultcategory->id;
+        }
+
+        $separator = $this->get_config('categoryseparator');
+        $autocreate = $this->get_config('autocreatecategory');
+        $catidnumber = $DB->get_record('course_categories', array('idnumber' => $categoryname), 'id');
+
+        if (!$separator) {
+            if (!$autocreate) {
+                if ($catidnumber) {
+                    // Yay, correctly specified category!
+                    return $catidnumber->id;
+                } else {
+                    // Bad luck, better not continue because unwanted ppl might get access to course in different category.
+                    $trace->output('error: category ['.$categoryname.'] not found (and not autocreating categories)', 1);
+                    return false;
+                }
+                // Not separator, but autocreate (only if the category does not exist).
+            } else {
+                if (!$catidnumber) {
+                    $newcategory = new stdClass();
+                    $newcategory->name = $categoryname;
+                    $newcategory->idnumber = $categoryname;
+                    $newcategory = core_course_category::create($newcategory);
+
+                    return $newcategory->id;
+                }
+            }
+        } else {
+            $categoryname = trim($categoryname);
+            if ((strpos($categoryname, $separator) === 0) || (strrpos($categoryname, $separator) === (strlen($categoryname) - 1))) {
+                $trace->output('error: category name syntax invalid (can not start or end with category separator): '
+                        .$categoryname, 1);
+                return false;
+            }
+        }
+
+        $categorypath = '';
+        $categoryidpath = '';
+        $parent = 0;
+        if ($separator) {
+            // We iterate through the subcategories splited by the separator.
+            $categories = explode($separator, $categoryname);
+            foreach ($categories as $depth => $currentcat) {
+                $currentcat = trim($currentcat);
+                if (empty($currentcat)) {
+                    continue;
+                }
+
+                // We build the category tree, and we query if a category exists for that category path.
+                $categorypath .= '/' . $currentcat;
+                $categorypath = trim($categorypath, '/');
+                $dbcat = $DB->get_record('course_categories', array('idnumber' => $categorypath), 'id');
+
+                if (!$autocreate) {
+                    // If not autocreating, if exists a category for the category tree build above, that will be the
+                    // category we're looking for.
+                    if ($dbcat) {
+                        return $dbcat;
+                    } else {
+                        continue;
+                    }
+                } else {
+
+                    $newcategory = new stdClass();
+
+                    if (!$dbcat) {
+                        // If the subcategory does not exist, we create it.
+                        $newcategory->name = $currentcat;
+                        $newcategory->idnumber = $categorypath;
+                        $newcategory->parent = $parent;
+                        if ($depth > 0) {
+                            $newcategory->path = $categoryidpath;
+                        }
+
+                        $newcategory = core_course_category::create($newcategory);
+                    } else {
+                        // If it exists, we take it's id.
+                        $newcategory->id = $dbcat->id;
+                    }
+
+                    $categoryidpath .= '/' . $newcategory->id;
+                    $parent = $newcategory->id;
+                }
+            }
+
+            if (!$autocreate) {
+                // If we have arrived here not having to autocreate the category, means that the category does not exist.
+                $trace->output('error: category ['.$categoryname.'] not found (and not autocreating categories)', 1);
+                return false;
+            } else {
+                // We return the last created subcategory's id, which will actually be the whole category path.
+                return $newcategory->id;
+            }
+        }
+    }
+}
+/**
+ * Prevent removal of enrol_database group member allocation.
+ * @param int $itemid
+ * @param int $groupid
+ * @param int $userid
+ * @return bool
+ */
+function enrol_database_allow_group_member_remove($itemid, $groupid, $userid) {
+    return false;
 }
