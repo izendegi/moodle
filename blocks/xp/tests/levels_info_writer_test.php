@@ -39,7 +39,7 @@ use block_xp\tests\base_testcase;
  * @author     Frédéric Massart <fred@branchup.tech>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class levels_info_writer_test extends base_testcase {
+final class levels_info_writer_test extends base_testcase {
 
     /**
      * Data provider.
@@ -73,7 +73,7 @@ class levels_info_writer_test extends base_testcase {
      * @dataProvider update_world_after_restore_provider
      * @param string $rawlevelsdata The raw levels data.
      */
-    public function test_update_world_after_restore($rawlevelsdata) {
+    public function test_update_world_after_restore($rawlevelsdata): void {
         $c1 = $this->getDataGenerator()->create_course();
         $world = $this->get_world($c1->id);
         $world->get_config()->set('levelsdata', $rawlevelsdata);
@@ -92,8 +92,8 @@ class levels_info_writer_test extends base_testcase {
     /**
      * Assert two array of levels are the same.
      *
-     * @param level $levelexpected The expected level.
-     * @param level $levelactual The actual level.
+     * @param level[] $levelsexpected The expected level.
+     * @param level[] $levelsactual The actual level.
      */
     protected function assert_levels_equal($levelsexpected, $levelsactual) {
         $this->assertEquals(count($levelsexpected), count($levelsactual));

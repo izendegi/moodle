@@ -135,7 +135,11 @@ class report_table extends \table_sql {
      * @return string
      */
     public function col_timecreated($user) {
-        return userdate($user->timecreated);
+        if ($this->is_downloading() === '') {
+            return userdate($user->timecreated);
+        }
+        $format = '%Y-%m-%d %H:%M';
+        return userdate($user->timecreated, $format);
     }
 
     /**
@@ -161,7 +165,7 @@ class report_table extends \table_sql {
         $link = new \moodle_url('/mod/customcert/view.php',
             [
                 'id' => $this->cm->id,
-                'downloadissue' => $user->id
+                'downloadissue' => $user->id,
             ]
         );
 
@@ -182,7 +186,7 @@ class report_table extends \table_sql {
             [
                 'id' => $this->cm->id,
                 'deleteissue' => $user->issueid,
-                'sesskey' => sesskey()
+                'sesskey' => sesskey(),
             ]
         );
 

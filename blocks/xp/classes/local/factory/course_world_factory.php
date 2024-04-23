@@ -39,7 +39,7 @@ interface course_world_factory {
      * Get the world.
      *
      * @param int $courseid Course ID.
-     * @return block_xp\local\course_world
+     * @return \block_xp\local\course_world
      */
     public function get_world($courseid);
 

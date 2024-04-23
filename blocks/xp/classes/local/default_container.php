@@ -44,16 +44,18 @@ class default_container implements container {
         'ajax_base_url' => true,
         'ajax_router' => true,
         'ajax_url_resolver' => true,
-        'base_url' => true,
+        'backup_content_manager' => true,
         'badge_manager' => true,
         'badge_url_resolver' => true,
         'badge_url_resolver_course_world_factory' => true,
+        'base_url' => true,
         'block_class' => true,
         'block_edit_form_class' => true,
         'collection_logger' => true,
         'collection_strategy' => true,
         'config' => true,
         'config_locked' => true,
+        'context_world_factory' => true,
         'course_world_block_any_instance_finder_in_context' => true,
         'course_world_block_instance_finder' => true,
         'course_world_block_instances_finder_in_context' => true,
@@ -68,7 +70,10 @@ class default_container implements container {
         'observer_rules_maker' => true,
         'renderer' => true,
         'router' => true,
+        'rule_dictator' => true,
         'rule_event_lister' => true,
+        'rule_filter_handler' => true,
+        'rule_type_resolver' => true,
         'serializer_factory' => true,
         'settings_maker' => true,
         'shortcodes_definition_maker' => true,
@@ -147,6 +152,15 @@ class default_container implements container {
             $this->get('ajax_base_url'),
             $this->get_ajax_routes_config()
         );
+    }
+
+    /**
+     * Get the content manager.
+     *
+     * @return backup\content_manager
+     */
+    protected function get_backup_content_manager() {
+        return new backup\content_manager();
     }
 
     /**
@@ -249,6 +263,17 @@ class default_container implements container {
     }
 
     /**
+     * Context world factory.
+     *
+     * @return factory\context_world_factory
+     */
+    protected function get_context_world_factory() {
+        $factory = new factory\default_context_world_factory($this->get('config'));
+        $factory->set_course_world_factory($this->get('course_world_factory'));
+        return $factory;
+    }
+
+    /**
      * Get the course world block any instance finder in context.
      *
      * @return course_world_instance_finder
@@ -335,10 +360,10 @@ class default_container implements container {
     /**
      * Get the file server.
      *
-     * @return file_server
+     * @return file\file_server
      */
     protected function get_file_server() {
-        return new \block_xp\local\file\file_server(get_file_storage(), $this->get('config')->get('context'));
+        return new file\file_server(get_file_storage(), $this->get('config')->get('context'));
     }
 
     /**
@@ -407,12 +432,39 @@ class default_container implements container {
     }
 
     /**
+     * Get the rule dictator.
+     *
+     * @return rule\dictator
+     */
+    protected function get_rule_dictator() {
+        return new rule\the_dictator($this->get('db'), $this->get('rule_filter_handler'));
+    }
+
+    /**
      * Get the rule event lister.
      *
      * @return event_lister
      */
     protected function get_rule_event_lister() {
         return new \block_xp\local\rule\event_lister($this->get('config'));
+    }
+
+    /**
+     * Get the rule filter handler.
+     *
+     * @return rulefilter\handler
+     */
+    protected function get_rule_filter_handler() {
+        return new rulefilter\default_handler();
+    }
+
+    /**
+     * Get the rule type resolver.
+     *
+     * @return ruletype\resolver
+     */
+    protected function get_rule_type_resolver() {
+        return new ruletype\default_resolver();
     }
 
     /**

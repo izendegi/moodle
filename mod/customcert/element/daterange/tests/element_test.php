@@ -62,7 +62,7 @@ class element_test extends advanced_testcase {
             'posx' => 0,
             'posy' => 0,
             'width' => 100,
-            'refpoint' => 1
+            'refpoint' => 1,
         ];
     }
 
@@ -102,7 +102,7 @@ class element_test extends advanced_testcase {
      * Data provider for test_get_daterange_string_for_recurring_ranges.
      * @return array
      */
-    public function get_test_get_daterange_string_for_recurring_ranges_data_provider() {
+    public static function get_test_get_daterange_string_for_recurring_ranges_data_provider(): array {
         return [
             ['1.11.2016', 'WS 2016/2017'],
             ['1.11.2017', 'WS 2017/2018'],
