@@ -3910,7 +3910,7 @@ EOD;
     }
 
     /**
-     * Returns the custom menu if one has been set
+     * Applies Moodle filters to the custom menu and returns the custom menu if one has been set.
      *
      * A custom menu can be configured by browsing to a theme's settings page
      * and then configuring the custommenu config setting as described.
@@ -3918,8 +3918,8 @@ EOD;
      * Theme developers: DO NOT OVERRIDE! Please override function
      * {@link core_renderer::render_custom_menu()} instead.
      *
-     * @param string $custommenuitems - custom menuitems set by theme instead of global theme settings
-     * @return string
+     * @param string $custommenuitems - custom menuitems set by theme instead of global theme settings.
+     * @return string Rendered custom_menu after filters have been applied.
      */
     public function custom_menu($custommenuitems = '') {
         global $CFG;
@@ -3927,6 +3927,14 @@ EOD;
         if (empty($custommenuitems) && !empty($CFG->custommenuitems)) {
             $custommenuitems = $CFG->custommenuitems;
         }
+
+        // Filter custom menu items without applying auto-linking filters.
+        $context = \context_system::instance();
+        $skipfilters = ['activitynames', 'data', 'glossary', 'sectionnames', 'bookchapters', 'urltolink'];
+        $filteroptions = ['originalformat' => FORMAT_HTML, 'noclean' => true];
+        $filtermanager = filter_manager::instance();
+        $custommenuitems = $filtermanager->filter_text($custommenuitems, $context, $filteroptions, $skipfilters);
+
         $custommenu = new custom_menu($custommenuitems, current_language());
         return $this->render_custom_menu($custommenu);
     }
@@ -3942,6 +3950,15 @@ EOD;
         if (empty($custommenuitems) && !empty($CFG->custommenuitems)) {
             $custommenuitems = $CFG->custommenuitems;
         }
+
+        // Filter custom menu items without applying auto-linking filters.
+        $context = \context_system::instance();
+        $skipfilters = ['activitynames', 'data', 'glossary', 'sectionnames', 'bookchapters', 'urltolink'];
+        $filteroptions = ['originalformat' => FORMAT_HTML, 'noclean' => true];
+        $filtermanager = filter_manager::instance();
+
+        $custommenuitems = $filtermanager->filter_text($custommenuitems, $context, $filteroptions, $skipfilters);
+
         $custommenu = new custom_menu($custommenuitems, current_language());
         $langs = get_string_manager()->get_list_of_translations();
         $haslangmenu = $this->lang_menu() != '';
@@ -3956,7 +3973,7 @@ EOD;
             }
             $this->language = $custommenu->add($currentlang, new moodle_url('#'), $strlang, 10000);
             foreach ($langs as $langtype => $langname) {
-                $this->language->add($langname, new moodle_url($this->page->url, array('lang' => $langtype)), $langname);
+                $this->language->add($langname, new moodle_url($this->page->url, ['lang' => $langtype]), $langname);
             }
         }
 
