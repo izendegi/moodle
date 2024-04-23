@@ -26,6 +26,7 @@
 namespace block_xp\external;
 
 use block_xp\di;
+use completion_info;
 use core_text;
 
 /**
@@ -47,6 +48,10 @@ class search_modules extends external_api {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT),
             'query' => new external_value(PARAM_RAW),
+            'options' => new external_single_structure([
+                'completionenabled' => new external_value(PARAM_BOOL, '', VALUE_OPTIONAL),
+                'type' => new external_value(PARAM_ALPHANUMEXT, '', VALUE_OPTIONAL),
+            ], '', VALUE_DEFAULT, []),
         ]);
     }
 
@@ -55,12 +60,17 @@ class search_modules extends external_api {
      *
      * @param int $courseid The course ID.
      * @param string $query The query.
+     * @param array $options The options.
      * @return array
      */
-    public static function execute($courseid, $query) {
-        $params = self::validate_parameters(self::execute_parameters(), compact('courseid', 'query'));
+    public static function execute($courseid, $query, $options = []) {
+        global $CFG;
+        require_once($CFG->libdir . '/completionlib.php');
+
+        $params = self::validate_parameters(self::execute_parameters(), compact('courseid', 'query', 'options'));
         $courseid = $params['courseid'];
         $query = core_text::strtolower(trim($params['query']));
+        $options = (array) $params['options'];
 
         // We fetch the world, but do not update the $courseid as per world::get_courseid, because
         // if we are using the plugin for the whole site, then users should be able to search in
@@ -71,8 +81,15 @@ class search_modules extends external_api {
         $world->get_access_permissions()->require_manage();
 
         $modinfo = get_fast_modinfo($courseid);
+        if (!can_access_course($modinfo->get_course())) {
+            throw new \require_login_exception('Cannot access course.');
+        }
         $courseformat = course_get_format($courseid);
+        $completion = new completion_info($modinfo->get_course());
         $sections = [];
+
+        $completionenabled = $options['completionenabled'] ?? null;
+        $moduletype = $options['type'] ?? null;
 
         foreach ($modinfo->get_sections() as $sectionnum => $cmids) {
 
@@ -82,6 +99,17 @@ class search_modules extends external_api {
                 $name = $cm->get_formatted_name();
                 $comparablename = core_text::strtolower($name);
 
+                // Filter out modules by type.
+                if ($moduletype !== null && $moduletype !== $cm->modname) {
+                    continue;
+                }
+
+                // Filter out modules that are not enabled for completion.
+                if ($completionenabled !== null && $completionenabled !== (bool) $completion->is_enabled($cm)) {
+                    continue;
+                }
+
+                // Check that module matches the query.
                 if ($query == '*' || strpos($comparablename, $query) !== false) {
                     $modules[] = [
                         'cmid' => $cm->id,

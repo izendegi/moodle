@@ -75,7 +75,7 @@ class element extends \mod_customcert\element {
         // Array of data we will be storing in the database.
         $arrtostore = [
             'gradeitem' => $data->gradeitem,
-            'gradeformat' => $data->gradeformat
+            'gradeformat' => $data->gradeformat,
         ];
 
         // Encode these variables before saving into the DB.
@@ -194,8 +194,21 @@ class element extends \mod_customcert\element {
         global $DB;
 
         $gradeinfo = json_decode($this->get_data());
-        if ($newitem = \restore_dbops::get_backup_ids_record($restore->get_restoreid(), 'course_module', $gradeinfo->gradeitem)) {
-            $gradeinfo->gradeitem = $newitem->newitemid;
+
+        $isgradeitem = false;
+        $oldid = $gradeinfo->gradeitem;
+        if (str_starts_with($gradeinfo->gradeitem, 'gradeitem:')) {
+            $isgradeitem = true;
+            $oldid = str_replace('gradeitem:', '', $gradeinfo->gradeitem);
+        }
+
+        $itemname = $isgradeitem ? 'grade_item' : 'course_module';
+        if ($newitem = \restore_dbops::get_backup_ids_record($restore->get_restoreid(), $itemname, $oldid)) {
+            $gradeinfo->gradeitem = '';
+            if ($isgradeitem) {
+                $gradeinfo->gradeitem = 'gradeitem:';
+            }
+            $gradeinfo->gradeitem = $gradeinfo->gradeitem . $newitem->newitemid;
             $DB->set_field('customcert_elements', 'data', $this->save_unique_data($gradeinfo), ['id' => $this->get_id()]);
         }
     }

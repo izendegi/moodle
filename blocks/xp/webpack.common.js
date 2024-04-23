@@ -1,10 +1,12 @@
 const webpack = require('webpack');
 const path = require('path');
+const WrapperPlugin = require('wrapper-webpack-plugin');
 
 module.exports = {
-    target: ['web', 'es5'],
+    target: ['web', 'es2021'],
     entry: {
-        'ui-levels': './ui/src/levels.tsx'
+        'ui-completion-rules': './ui/src/completion-rules.tsx',
+        'ui-levels': './ui/src/levels.tsx',
     },
     output: {
         filename: '[name]-lazy.js',
@@ -23,12 +25,29 @@ module.exports = {
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
     },
+    optimization: {
+        splitChunks: {
+            cacheGroups: {
+                commons: {
+                    test: /[\\/]node_modules[\\/]/,
+                    name: 'ui-commons',
+                    chunks: 'all'
+                }
+            }
+        }
+    },
     plugins: [
-        // Without this, Moodle prevents grunt from compiling the file.
-        new webpack.BannerPlugin({
-            banner: '/* eslint-disable */\n/* Do not edit directly, refer to ui/ folder. */',
-            raw: true,
-            entryOnly: true,
+        // Wrap the ui-commons to make it an AMD module.
+        new WrapperPlugin({
+            test: /ui-commons-lazy\.js$/,
+            header: 'define(() => {\n',
+            footer: '\n});'
+        }),
+        // Without this, Moodle prevents grunt from compiling the files.
+        new WrapperPlugin({
+            test: /-lazy\.js$/,
+            header: '/* eslint-disable */\n/* Do not edit directly, refer to ui/ folder. */\n\n',
+            footer: ''
         }),
     ],
 };

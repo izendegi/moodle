@@ -40,7 +40,7 @@ use block_xp\output\xp_widget;
  */
 class block_xp_renderer extends plugin_renderer_base {
 
-    /** @const Notice flag. */
+    /** Notice flag. */
     const NOTICE_FLAG_QUEST = 'block_xp_notice_quest';
 
     /** @var string Notices flag. */
@@ -424,6 +424,35 @@ class block_xp_renderer extends plugin_renderer_base {
             'infopageurl' => $infopageurl ? $infopageurl->out(false) : null,
             'leaderboardurl' => $leaderboardurl ? $leaderboardurl->out(false) : null,
         ];
+    }
+
+    /**
+     * Make a single button.
+     *
+     * This is mostly for the convenience of handling multiple versions.
+     *
+     * @param moodle_url $url The URL.
+     * @param string $text The text.
+     * @param array $options The options, see code.
+     * @return single_button
+     */
+    public function make_single_button($url, $text, $options = []) {
+        $method = $options['method'] ?? 'get';
+        $button = new single_button($url, $text, $method);
+
+        if (!empty($options['primary'])) {
+            if (defined('single_button::BUTTON_PRIMARY')) {
+                $button->type = single_button::BUTTON_PRIMARY;
+            } else {
+                $button->primary = true;
+            }
+        } else if (!empty($options['danger'])) {
+            if (defined('single_button::BUTTON_DANGER')) {
+                $button->type = single_button::BUTTON_DANGER;
+            }
+        }
+
+        return $button;
     }
 
     /**
@@ -977,11 +1006,8 @@ EOT
      * @return void
      */
     public function react_module($module, $props) {
-        global $CFG;
-
         $id = html_writer::random_id('block_xp-react-app');
         $propsid = html_writer::random_id('block_xp-react-app-props');
-        $iconname = $CFG->branch >= 32 ? 'y/loading' : 'i/loading';
 
         $o = '';
         $o .= html_writer::start_div('block_xp-react', ['id' => $id]);
@@ -997,8 +1023,8 @@ EOT
         $o .= $this->json_script($props, $propsid);
 
         $this->page->requires->js_amd_inline("
-            require(['block_xp/launcher'], function(launcher) {
-                launcher('$module', '$id', '$propsid');
+            require(['block_xp/react-launcher'], function(Launcher) {
+                Launcher.launch('$module', '$id', '$propsid');
             });
         ");
 

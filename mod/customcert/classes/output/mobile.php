@@ -24,10 +24,6 @@
 
 namespace mod_customcert\output;
 
-defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
-
-require_once($CFG->libdir . '/externallib.php');
-
 /**
  * Mobile output class for the custom certificate.
  *
@@ -59,8 +55,8 @@ class mobile {
         // Set some variables we are going to be using.
         $certificate = $DB->get_record('customcert', ['id' => $cm->instance], '*', MUST_EXIST);
         $certificate->name = format_string($certificate->name);
-        list($certificate->intro, $certificate->introformat) = external_format_text($certificate->intro,
-            $certificate->introformat, $context->id, 'mod_customcert', 'intro');
+        list($certificate->intro, $certificate->introformat) = \core_external\util::format_text($certificate->intro,
+            $certificate->introformat, $context, 'mod_customcert', 'intro');
 
         // Get any issues this person may have.
         $issue = false;
@@ -118,7 +114,7 @@ class mobile {
             'hasrecipients' => !empty($recipients),
             'recipients' => array_values($recipients),
             'numrecipients' => count($recipients),
-            'currenttimestamp' => time()
+            'currenttimestamp' => time(),
         ];
 
         return [
@@ -131,7 +127,7 @@ class mobile {
             'javascript' => '',
             'otherdata' => [
                 'group' => $groupid,
-            ]
+            ],
         ];
     }
 
