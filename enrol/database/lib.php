@@ -1249,6 +1249,10 @@ class enrol_database_plugin extends enrol_plugin {
                     // Already exists, skip.
                     $trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
                                    .$group[$courselow].", but with a different name.");
+                if ($DB->record_exists('groups', array('name' => $group[$namelow], 'courseid' => $courseid))) {
+                    // Already exists, skip.
+                    $trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
+                                   .$group[$courselow].", but with a different idnumber.");
                     continue;
                 }
 
@@ -1473,7 +1477,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         return $sql;
     }
-
+    
     /**
      * Tries to make connection to the external database.
      *
@@ -1672,6 +1676,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External enrolment table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
@@ -1689,6 +1694,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External course table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
