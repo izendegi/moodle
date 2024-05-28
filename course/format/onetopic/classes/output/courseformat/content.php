@@ -61,14 +61,14 @@ class content extends content_base {
     /**
      * Export this data so it can be used as the context for a mustache template (core/inplace_editable).
      *
-     * @param renderer_base $output typically, the renderer that's calling this function
+     * @param \renderer_base $output typically, the renderer that's calling this function
      * @return stdClass data context for a mustache template
      */
     public function export_for_template(\renderer_base $output) {
         global $PAGE;
         $format = $this->format;
         $course = $format->get_course();
-        $currentsection = $this->format->get_section_number();
+        $currentsection = $this->format->get_sectionnum();
 
         // If format use the section 0 as a separate section so remove from the list.
         $sections = $this->export_sections($output);
@@ -117,13 +117,18 @@ class content extends content_base {
             $data->numsections = $addsection->export_for_template($output);
         }
 
+        if ($format->show_editor()) {
+            $bulkedittools = new $this->bulkedittoolsclass($format);
+            $data->bulkedittools = $bulkedittools->export_for_template($output);
+        }
+
         return $data;
     }
 
     /**
      * Export sections array data.
      *
-     * @param renderer_base $output typically, the renderer that's calling this function
+     * @param \renderer_base $output typically, the renderer that's calling this function
      * @return array data context for a mustache template
      */
     protected function export_sections(\renderer_base $output): array {
@@ -132,11 +137,14 @@ class content extends content_base {
         $course = $format->get_course();
         $modinfo = $this->format->get_modinfo();
 
+        $realcoursedisplay = property_exists($course, 'realcoursedisplay') ? $course->realcoursedisplay : false;
+        $firstsectionastab = ($realcoursedisplay == COURSE_DISPLAY_MULTIPAGE) ? 1 : 0;
+
         // Generate section list.
         $sections = [];
         $stealthsections = [];
         $numsections = $format->get_last_section_number();
-        foreach ($this->get_sections_to_display($modinfo) as $sectionnum => $thissection) {
+        foreach ($this->get_sections_to_display($modinfo) as $thissection) {
             // The course/view.php check the section existence but the output can be called
             // from other parts so we need to check it.
             if (!$thissection) {
@@ -144,6 +152,11 @@ class content extends content_base {
             }
 
             $section = new $this->sectionclass($format, $thissection);
+            $sectionnum = $section->get_sectionnum();
+
+            if ($sectionnum === 0 && $firstsectionastab) {
+                continue;
+            }
 
             if ($sectionnum > $numsections) {
                 // Activities inside this section are 'orphaned', this section will be printed as 'stealth' below.
@@ -176,7 +189,7 @@ class content extends content_base {
      */
     private function get_sections_to_display(course_modinfo $modinfo): array {
         $sections = [];
-        $singlesection = $this->format->get_section_number();
+        $singlesection = $this->format->get_sectionnum();
         $sections[] = $modinfo->get_section_info($singlesection);
 
         return $sections;

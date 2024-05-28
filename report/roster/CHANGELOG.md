@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 4.1.0 (May 1, 2024)
+
+- [Bugfix] Explicitly exclude `fullname` from enrolled user query
+- Dropped support for Moodle 4.0
+
+## 4.0.1 (April 12, 2022)
 
 - Fixup version information (thanks @jrm-unamur)
 - Updated tests for [MDL-74276](https://tracker.moodle.org/browse/MDL-74276)

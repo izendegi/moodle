@@ -135,7 +135,7 @@ class format_onetopic extends core_courseformat\base {
                 $scope = [];
             }
 
-            $pagesavailable = ['course-view-onetopic', 'course-view'];
+            $pagesavailable = ['course-view-onetopic', 'course-view', 'lib-ajax-service'];
 
             if (!in_array($PAGE->pagetype, $pagesavailable)) {
 
@@ -186,28 +186,27 @@ class format_onetopic extends core_courseformat\base {
                 }
 
                 if ($course->realcoursedisplay == COURSE_DISPLAY_MULTIPAGE && $realsection === 0 && $numsections >= 1) {
-                    $realsection = 1;
+                    $realsection = null;
                 }
-
-                // Can view the hidden sections in current course?
-                $canviewhidden = has_capability('moodle/course:viewhiddensections', $context);
 
                 $modinfo = get_fast_modinfo($course);
                 $sections = $modinfo->get_section_info_all();
 
                 // Check if the display section is available.
-                if ((!$canviewhidden && (!$sections[$realsection]->uservisible || !$sections[$realsection]->available))) {
+                if ($realsection === null || !$sections[$realsection]->uservisible) {
 
-                    self::$formatmsgs[] = get_string('hidden_message', 'format_onetopic', $this->get_section_name($realsection));
+                    if ($realsection) {
+                        self::$formatmsgs[] = get_string('hidden_message',
+                                                            'format_onetopic',
+                                                            $this->get_section_name($realsection));
+                    }
 
                     $valid = false;
                     $k = $course->realcoursedisplay ? 1 : 0;
 
                     do {
                         $formatoptions = $this->get_format_options($k);
-                        if ($formatoptions['level'] == 0
-                                && ($sections[$k]->available && $sections[$k]->uservisible)
-                                || $canviewhidden) {
+                        if ($formatoptions['level'] == 0 && $sections[$k]->uservisible) {
                             $valid = true;
                             break;
                         }
@@ -219,7 +218,10 @@ class format_onetopic extends core_courseformat\base {
                     $realsection = $valid ? $k : 0;
                 }
 
+                $realsection = $realsection ?? 0;
+                // The $section var is a global var, we need to set it to the real section.
                 $section = $realsection;
+                $this->set_sectionnum($section);
                 $USER->display[$course->id] = $realsection;
                 $urlparams['section'] = $realsection;
                 $PAGE->set_url('/course/view.php', $urlparams);
@@ -290,6 +292,17 @@ class format_onetopic extends core_courseformat\base {
     }
 
     /**
+     * Get the current section number to display.
+     * Some formats has the hability to swith from one section to multiple sections per page.
+     *
+     * @since Moodle 4.4
+     * @return int|null the current section number or null when there is no single section.
+     */
+    public function get_sectionnum(): ?int {
+        return $this->singlesection == null ? 0 : $this->singlesection;
+    }
+
+    /**
      * Returns the default section name for the topics course format.
      *
      * If the section number is 0, it will use the string with key = section0name from the course format's lang file.
@@ -311,12 +324,25 @@ class format_onetopic extends core_courseformat\base {
     }
 
     /**
+     * Get if the current format instance will show multiple sections or an individual one.
+     *
+     * Some formats has the hability to swith from one section to multiple sections per page,
+     * output components will use this method to know if the current display is a single or
+     * multiple sections.
+     *
+     * @return int|null null for all sections or the sectionid.
+     */
+    public function get_sectionid(): ?int {
+        return null;
+    }
+
+    /**
      * Generate the title for this section page.
      *
      * @return string the page title
      */
     public function page_title(): string {
-        return get_string('topicoutline');
+        return get_string('sectionoutline');
     }
 
     /**
@@ -851,7 +877,7 @@ class format_onetopic extends core_courseformat\base {
      * @param moodle_page $page instance of page calling set_cm
      */
     public function page_set_cm(moodle_page $page) {
-        $this->set_section_number($page->cm->sectionnum);
+        $this->set_sectionnum($page->cm->sectionnum);
     }
 
     /**
@@ -897,11 +923,11 @@ class format_onetopic extends core_courseformat\base {
     public function inplace_editable_render_section_name($section, $linkifneeded = true,
             $editable = null, $edithint = null, $editlabel = null) {
         if (empty($edithint)) {
-            $edithint = new lang_string('editsectionname', 'format_topics');
+            $edithint = new lang_string('editsectionname');
         }
         if (empty($editlabel)) {
             $title = get_section_name($section->course, $section);
-            $editlabel = new lang_string('newsectionname', 'format_topics', $title);
+            $editlabel = new lang_string('newsectionname', 'core', $title);
         }
         return parent::inplace_editable_render_section_name($section, $linkifneeded, $editable, $edithint, $editlabel);
     }
@@ -989,7 +1015,7 @@ class format_onetopic extends core_courseformat\base {
         }
 
         $course = $this->get_course();
-        $realcoursedisplay = property_exists($course, 'coursedisplay') ? $course->coursedisplay : false;
+        $realcoursedisplay = property_exists($course, 'realcoursedisplay') ? $course->realcoursedisplay : false;
         $firstsection = ($realcoursedisplay == COURSE_DISPLAY_MULTIPAGE) ? 1 : 0;
         $sections = $this->get_sections();
         $parentsections = [];
@@ -1052,14 +1078,6 @@ class format_onetopic extends core_courseformat\base {
         return parent::show_editor($capabilities);
     }
 
-}
-
-/**
- * Moodle native lib/navigationlib.php calls this hook allowing us to override UI.
- */
-function format_onetopic_before_http_headers() {
-    global $PAGE;
-    $PAGE->requires->css('/course/format/onetopic/styles.php');
 }
 
 /**

@@ -1,18 +1,24 @@
 CHANGELOG
 =========
 
-4.3 (2023-11-14)
+4.4.0 (2024-04-22)
+------------------
+* [FEATURE] #2574 Added PHPUnit tests for lib.php
+* #7894 Moodle 4.4 compatible version
+
+4.3.0 (2023-11-14)
+------------------
 * [FIXED] #7722 Resolved Code Checker Issues
 * [FIXED] #7792 Fix duplicates in dropdown menu
 * #7730 Moodle 4.3 compatible version
 
-4.2 (2023-05-17)
+4.2.0 (2023-05-17)
 ------------------
 * [FEATURE] #7574 Improve design of download data functions
 * [FEATURE] #7573 Grade columns like in grader report, displaying module type
 * #7490 Moodle 4.2 compatible version
 
-4.1 (2022-11-17)
+4.1.0 (2022-11-17)
 ------------------
 * [FEATURE] #7418 Optimize page structure
 * #7144 Moodle 4.1 compatible version
