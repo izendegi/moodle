@@ -1,16 +1,17 @@
 TinyMCE multilanguage plugin
 ============================
 
-![Release](https://img.shields.io/badge/Release-1.1-blue.svg)
-[![Moodle Plugin CI](https://github.com/bfh/moodle-tiny_multilang2/workflows/Moodle%20Plugin%20CI/badge.svg?branch=master)](https://github.com/bfh/moodle-tiny_multilang2/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amaster)
-![Supported](https://img.shields.io/badge/Moodle-4.1+-orange.svg)
+![Release](https://img.shields.io/badge/Release-1.2-blue.svg)
+[![Moodle Plugin CI](https://github.com/bfh/moodle-tiny_multilang2/workflows/Moodle%20Plugin%20CI/badge.svg?branch=main)](https://github.com/bfh/moodle-tiny_multilang2/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amain)
+[![PHP Support](https://img.shields.io/badge/php-7.4--8.3-blue)](https://github.com/bfh/moodle-tiny_multilang2/actions)
+[![Moodle Support](https://img.shields.io/badge/Moodle-4.1--4.4+-orange)](https://github.com/bfh/moodle-tiny_multilang2/actions)
 [![License GPL-3.0](https://img.shields.io/github/license/bfh/moodle-tiny_multilang2?color=lightgrey)](https://github.com/bfh/moodle-tiny_multilang2/blob/main/LICENSE)
 [![GitHub contributors](https://img.shields.io/github/contributors/bfh/moodle-tiny_multilang2)](https://github.com/bfh/moodle-tiny_multilang2/graphs/contributors)
 
 This plugin will make the creation of multilingual contents on Moodle much easier with the TinyMCE editor.
 
-The plugin is developed to work with the optionally installed 
-[Iñaki Arenaza's multilang2 filter][1].
+The plugin is developed to work with the optionally installed
+[Iñaki Arenaza's multilang2 filter](https://github.com/iarenaza/moodle-filter_multilang2).
 
 This plugin was started as an adaption of [Iñaki Arenaza's plugin for legacy TinyMCE editor](https://github.com/iarenaza/moodle-tinymce_moodlelang2)
 and has been made to work with TinyMCE 6 that is included in Moodle ≥ 4.1. Further development
@@ -28,7 +29,7 @@ formatting of the text is correct.
 
 ## Current version
 
-The latest release is v1.1 (build 2023100900) for Moodle 4.1 and newer.
+The latest release is v1.2 (build 2024042200) for Moodle 4.1 and newer.
 
 ## Requirements
 
@@ -36,8 +37,8 @@ There are no additional requirements. To benefit from the plugin capabilities
 the TinyMCE editor must be used in text area (either set as a user preference or
 being the standard editor set by the Moodle site admin). 
 If you use the plugin with the [multilang2 filter][1] the
-`{mlang}` tags for the filter are used. If the filter is not installed and the fallback
-is enabled, the standard `<span class="multilang">` tags are used.
+`{mlang}` tags for the filter are used. If the filter is not installed,
+the standard `<span class="multilang">` tags are used.
 
 ## Installation
 
@@ -82,9 +83,12 @@ of the editor are converted to correct language tags that can be used within the
 If the [multilang2 filter][1] is installed
 and active on the Moodle site, the `{mlan xx}` annotation is used, where `xx` is the iso code of
 the selected language. If the [multilang2 filter][1] is not installed, the language tags are
-transformed into the standard Moodle annotation is used. These are span elements that look like
+transformed into the standard Moodle annotation. These are span elements that look like
 `<span class="multilang" lang="xx" dir="ltr">`, where `xx` contains the iso code of the language
 and the `dir` attribute annotates whether this is a left to right language or vice versa.
+
+Note: for the moment the `dir="ltr"` attribute is not included in the code because
+it breaks the Moodle multilanguage filter.
 
 When loading a text, both annotations are read and translated into marked language tags in the
 WYSIWYG mode. If mixed annotations are used in the text, these are preserved upon
@@ -109,6 +113,13 @@ The languages are ordered alphabetically when using the installed languages or t
 provided iso codes is preserved.
 
 ## Version History
+
+### 1.2
+- Removal of the attribute `dir` e.g. `dir="ltr"` for language direction because it
+  breaks the standard multilanguage filter in Moodle.
+- Support for Moodle 4.4 and PHP 8.3.
+- Corrections of content and typos in README.
+- Maturity changed to STABLE.
 
 ### 1.1
 - Fix finally [There are some issues with the latest version #6](https://github.com/bfh/moodle-tiny_multilang2/issues/6)
@@ -171,4 +182,4 @@ provided a comprehensive [pull request](https://github.com/bfh/moodle-tiny_multi
 
 Initial release
 
-[1]: <https://github.com/iarenaza/moodle-filter_multilang2> "Mutlilang v2 Filter Plugin"
+[1]: <https://moodle.org/plugins/filter_multilang2> "Multilang v2 Filter Plugin"

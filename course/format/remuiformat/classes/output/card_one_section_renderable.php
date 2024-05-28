@@ -31,7 +31,7 @@ use stdClass;
 use html_writer;
 use context_course;
 use core_completion\progress;
-require_once($CFG->dirroot.'/course/format/renderer.php');
+// require_once($CFG->dirroot.'/course/format/renderer.php');
 require_once($CFG->dirroot.'/course/format/remuiformat/classes/mod_stats.php');
 require_once($CFG->dirroot.'/course/format/remuiformat/classes/course_format_data_common_trait.php');
 require_once($CFG->dirroot.'/course/format/remuiformat/lib.php');
@@ -291,7 +291,7 @@ class format_remuiformat_card_one_section implements renderable, templatable {
                         $mod,
                         $displayoptions
                     );
-                    $activitydetails->fullcontent = format_text($activitydetails->fullcontent, FORMAT_HTML, array('trusted' => true));
+                    $activitydetails->fullcontent = format_text($activitydetails->fullcontent, FORMAT_HTML);
                 }
 
                 $activitydetails->completed = $completiondata->completionstate;
