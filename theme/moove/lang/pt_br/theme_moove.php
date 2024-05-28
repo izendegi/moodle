@@ -201,6 +201,7 @@ $string['active'] = 'Ativa';
 $string['invalid'] = 'Licença inválida';
 $string['expired'] = 'Expirada';
 
+$string['_msg'] = 'Não foi possível se conectar ao site pluginstore para validar sua licença. Verifique seu firewall ou qualquer outro bloqueio em seu servidor.';
 $string['active_msg'] = 'Licença ativa';
 $string['invalid_msg'] = 'Chave de licença inválida';
 $string['expired_msg'] = 'Licença expirada';
@@ -210,6 +211,7 @@ $string['alreadyregistered_msg'] = 'Licença já registrada para outro site';
 $string['moove:viewreports'] = 'Ver relatórios do Moove';
 $string['report_graphs'] = 'Moove - Relatórios Gráficos';
 $string['report_period'] = 'Moove - Relatórios por Período';
+$string['report_onlineusers'] = 'Moove - Usuários online';
 
 $string['seeperiodreport'] = 'Ver Informações do relatório por período';
 $string['totalusers'] = 'Usuários';
@@ -234,6 +236,11 @@ $string['enrolmentsbycourse'] = 'Inscrições por Curso';
 $string['conclusionsbycourse'] = 'Conclusões por Curso';
 $string['shortname'] = 'Nome Curto';
 $string['qtd'] = 'Quantidade';
+$string['siteactivity'] = 'Atividade no site';
+$string['starttime'] = 'Date e hora de início';
+$string['endtime'] = 'Data e hora de fim';
+$string['onlineusers_error'] = 'Erro!';
+$string['onlineusers_error_desc'] = 'Você não pode escolher um período maior do que uma hora.';
 
 $string['hvpcss'] = 'H5P CSS';
 $string['hvpcss_desc'] = 'CSS personalizado que será aplicado nas atividades H5P';

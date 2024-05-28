@@ -505,9 +505,12 @@ if ($ADMIN->fulltree) {
     }
 }
 
-// Just a link to course report.
+// Moove reports links.
 $ADMIN->add('reports', new admin_externalpage('reportmoovegraphs', get_string('report_graphs', 'theme_moove'),
-    "$CFG->wwwroot/theme/moove/reportindex.php", 'theme/moove:viewreports'));
+    "$CFG->wwwroot/theme/moove/reports/index.php", 'theme/moove:viewreports'));
 
 $ADMIN->add('reports', new admin_externalpage('reportmooveperiod', get_string('report_period', 'theme_moove'),
-    "$CFG->wwwroot/theme/moove/reportperiod.php", 'theme/moove:viewreports'));
+    "$CFG->wwwroot/theme/moove/reports/period.php", 'theme/moove:viewreports'));
+
+$ADMIN->add('reports', new admin_externalpage('reportmooveonlineusers', get_string('report_onlineusers', 'theme_moove'),
+    "$CFG->wwwroot/theme/moove/reports/onlineusers.php", 'theme/moove:viewreports'));

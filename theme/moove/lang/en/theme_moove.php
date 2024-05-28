@@ -211,6 +211,7 @@ $string['alreadyregistered_msg'] = 'This license is already registered for anoth
 $string['moove:viewreports'] = 'See moove reports';
 $string['report_graphs'] = 'Moove - Graphic reports';
 $string['report_period'] = 'Moove - Reports by period';
+$string['report_onlineusers'] = 'Moove - Online users';
 
 $string['seeperiodreport'] = 'See informations report by period';
 $string['totalusers'] = 'Users';
@@ -235,6 +236,11 @@ $string['enrolmentsbycourse'] = 'Enrolments by course';
 $string['conclusionsbycourse'] = 'Conclusions by course';
 $string['shortname'] = 'Short name';
 $string['qtd'] = 'Quantity';
+$string['siteactivity'] = 'Site acitivity';
+$string['starttime'] = 'Start datetime';
+$string['endtime'] = 'End datetime';
+$string['onlineusers_error'] = 'Error!';
+$string['onlineusers_error_desc'] = 'You can not choose a time interval bigger than an hour.';
 
 $string['hvpcss'] = 'H5P CSS';
 $string['hvpcss_desc'] = 'Custom CSS code to be applied on H5P activities';

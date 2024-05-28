@@ -1,10 +1,10 @@
 moodle-tiny_fontcolor
 ========================
 
-![Release](https://img.shields.io/badge/Release-0.4-blue.svg)
-[![Moodle Plugin CI](https://github.com/bfh/moodle-tiny_fontcolor/workflows/Moodle%20Plugin%20CI/badge.svg?branch=master)](https://github.com/bfh/moodle-tiny_fontcolor/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amaster)
-[![PHP Support](https://img.shields.io/badge/php-7.4--8.2-blue)](https://github.com/bfh/moodle-tiny_fontcolor/action)
-[![Moodle Support](https://img.shields.io/badge/Moodle-4.1+-orange)](https://github.com/bfh/moodle-tiny_fontcolor/actions)
+![Release](https://img.shields.io/badge/Release-0.5-blue.svg)
+[![Moodle Plugin CI](https://github.com/bfh/moodle-tiny_fontcolor/workflows/Moodle%20Plugin%20CI/badge.svg?branch=main)](https://github.com/bfh/moodle-tiny_fontcolor/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amain)
+[![PHP Support](https://img.shields.io/badge/php-7.4--8.3-blue)](https://github.com/bfh/moodle-tiny_fontcolor/action)
+[![Moodle Support](https://img.shields.io/badge/Moodle-4.1--4.4-orange)](https://github.com/bfh/moodle-tiny_fontcolor/actions)
 [![License GPL-3.0](https://img.shields.io/github/license/bfh/moodle-tiny_fontcolor?color=lightgrey)](https://github.com/bfh/moodle-tiny_fontcolor/blob/main/LICENSE)
 [![GitHub contributors](https://img.shields.io/github/contributors/bfh/moodle-tiny_fontcolor)](https://github.com/bfh/moodle-tiny_fontcolor/graphs/contributors)
 
@@ -23,7 +23,47 @@ The color name can be an arbitrary string e.g. Red or Dark Green or whatever you
 your color. The name can be also the "corporate name" e.g. that is used in any style guides
 of the corporate identity at your institution.
 
+### Colorscheme
+
+If you want a predefined color scheme, then you may add the json from
+the file `colorscheme.json` into the settings `textcolors` and/or `backgroundcolors`
+in the plugin settings. This can be done by e.g.
+
+```
+UPDATE config_plugins
+SET value = '<json_string>'
+WHERE plugin = 'tiny_fontcolor' AND name = 'textcolors';
+```
+
+### Multilanguage support
+
+Color names may also use language tags for the color names. Text filters
+are applied. For example setting black and white with German and English
+labels would look like this:
+
+```
+[
+    {
+        "name": "<span class=\"multilang\" lang=\"de\">Schwarz</span><span class=\"multilang\" lang=\"en\">Black</span>",
+        "value": "#000000"
+    },
+    {
+        "name": "<span class=\"multilang\" lang=\"de\">Weiss</span><span class=\"multilang\" lang=\"en\">White</span>",
+        "value": "#ffffff"
+    }
+]
+```
+
+The value of the `name` property can be copied as it is, in the admin settings area.
+
+The name of the color is used as a tooltip in the editor when hovering
+over the appropriate color square.
+
 ## Version History
+
+### 0.5
+- Add support for Moodle 4.4 and PHP 8.3.
+- Add json for a comprehensive color scheme (thanks to Joseph Rézeau).
 
 ### 0.4
 - Add CI stack for Moodle 4.3
