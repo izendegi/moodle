@@ -48,19 +48,17 @@ class header implements \renderable, \templatable {
      * @param \format_onetopic $format Course format instance.
      */
     public function __construct(\format_onetopic $format) {
-        global $COURSE;
-
         $this->format = $format;
     }
 
     /**
      * Export this data so it can be used as the context for a mustache template (core/inplace_editable).
      *
-     * @param renderer_base $output typically, the renderer that's calling this function
+     * @param \renderer_base $output typically, the renderer that's calling this function
      * @return stdClass data context for a mustache template
      */
     public function export_for_template(\renderer_base $output) {
-        global $COURSE, $PAGE, $CFG, $OUTPUT;
+        global $PAGE, $CFG, $OUTPUT;
 
         $format = $this->format;
         $course = $this->format->get_course();
@@ -69,10 +67,7 @@ class header implements \renderable, \templatable {
         $course->realcoursedisplay = property_exists($course, 'coursedisplay') ? $course->coursedisplay : false;
 
         $firstsection = ($course->realcoursedisplay == COURSE_DISPLAY_MULTIPAGE) ? 1 : 0;
-        $currentsection = $this->format->get_section_number();
-
-        $coursecontext = \context_course::instance($course->id);
-        $canviewhidden = has_capability('moodle/course:viewhiddensections', $coursecontext);
+        $currentsection = $this->format->get_sectionnum();
 
         $tabslist = [];
         $secondtabslist = null;
@@ -113,7 +108,6 @@ class header implements \renderable, \templatable {
             'format' => $this->format->get_format(),
             'templatetopic' => $course->templatetopic,
             'withicons' => $course->templatetopic_icons,
-            'canviewhidden' => $canviewhidden,
             'hastopictabs' => $hastopictabs,
             'tabs' => $tabslist,
             'hassecondrow' => $hassecondrow,
@@ -154,7 +148,8 @@ class header implements \renderable, \templatable {
         ];
 
         // Include course format js module.
-        $PAGE->requires->js('/course/format/topics/format.js');
+        $PAGE->requires->js_call_amd('format_topics/mutations', 'init');
+        $PAGE->requires->js_call_amd('format_topics/section', 'init');
         $PAGE->requires->js('/course/format/onetopic/format.js');
         $PAGE->requires->yui_module('moodle-core-notification-dialogue', 'M.course.format.dialogueinit');
         $PAGE->requires->js_call_amd('format_onetopic/main', 'init', $params);
@@ -170,42 +165,43 @@ class header implements \renderable, \templatable {
      * @return \format_onetopic\tabs an object with tabs information
      */
     private function get_tabs(course_modinfo $modinfo, \renderer_base $output): \format_onetopic\tabs {
-        global $PAGE;
+        global $section;
+
+        if ($section && $section > 0) {
+            $displaysection = $section;
+        } else {
+            $displaysection = $this->format->get_sectionnum();
+        }
+
+        if ($displaysection === null) {
+            $displaysection = 0;
+        }
 
         $course = $this->format->get_course();
         $sections = $modinfo->get_section_info_all();
         $numsections = count($sections);
-        $displaysection = $this->format->get_section_number();
         $enablecustomstyles = get_config('format_onetopic', 'enablecustomstyles');
 
-        // Can we view the section in question?
-        $context = \context_course::instance($course->id);
-        $canviewhidden = has_capability('moodle/course:viewhiddensections', $context);
-
         // Init custom tabs.
-        $section = 0;
+        $localsection = 0;
 
         $tabs = new \format_onetopic\tabs();
         $selectedparent = null;
         $parenttab = null;
         $firstsection = ($course->realcoursedisplay == COURSE_DISPLAY_MULTIPAGE) ? 1 : 0;
 
-        while ($section < $numsections) {
+        while ($localsection < $numsections) {
             $inactivetab = false;
 
-            if ($course->realcoursedisplay == COURSE_DISPLAY_MULTIPAGE && $section == 0) {
-                $section++;
+            if ($course->realcoursedisplay == COURSE_DISPLAY_MULTIPAGE && $localsection == 0) {
+                $localsection++;
                 continue;
             }
 
-            $thissection = $sections[$section];
+            $thissection = $sections[$localsection];
 
-            $showsection = true;
-            if (!$thissection->visible || !$thissection->available) {
-                $showsection = $canviewhidden || !($course->hiddensections == 1);
-            }
-
-            if ($showsection) {
+            // Can we view the section in question?
+            if ($thissection->uservisible || $course->hiddensections != 1) {
 
                 $formatoptions = course_get_format($course)->get_format_options($thissection);
 
@@ -234,26 +230,26 @@ class header implements \renderable, \templatable {
                         }
                     }
 
-                    if (isset($formatoptions['level']) && $section > $firstsection) {
+                    if (isset($formatoptions['level']) && $localsection > $firstsection) {
                         $level = $formatoptions['level'];
                     }
                 }
 
-                if ($section == 0) {
+                if ($localsection == 0) {
                     $url = new \moodle_url('/course/view.php', ['id' => $course->id, 'section' => 0]);
                 } else {
-                    $url = course_get_url($course, $section);
+                    $url = course_get_url($course, $localsection);
                 }
 
-                $specialclass = 'tab_position_' . $section . ' tab_level_' . $level;
-                if ($course->marker == $section) {
+                $specialclass = 'tab_position_' . $localsection . ' tab_level_' . $level;
+                if ($course->marker == $localsection) {
                     $specialclass .= ' marker ';
                 }
 
                 if (!$thissection->visible || !$thissection->available) {
                     $specialclass .= ' dimmed disabled ';
 
-                    if (!$canviewhidden) {
+                    if (!$thissection->uservisible) {
                         $inactivetab = true;
                     }
                 }
@@ -261,7 +257,6 @@ class header implements \renderable, \templatable {
                 // Check if display available message is required.
                 $availablemessage = null;
                 if ($course->hiddensections == 2) {
-                    $sectiontpl = new content_base\section($this->format, $thissection);
                     $availabilityclass = $this->format->get_output_classname('content\\section\\availability');
                     $availability = new $availabilityclass($this->format, $thissection);
                     $availabledata = $availability->export_for_template($output);
@@ -271,11 +266,11 @@ class header implements \renderable, \templatable {
                     }
                 }
 
-                $newtab = new \format_onetopic\singletab($section, $sectionname, $url, $title,
+                $newtab = new \format_onetopic\singletab($localsection, $sectionname, $url, $title,
                                         $availablemessage, $customstyles, $specialclass);
                 $newtab->active = !$inactivetab;
 
-                if ($displaysection == $section) {
+                if ($displaysection == $localsection) {
                     $newtab->selected = true;
                 }
 
@@ -296,7 +291,7 @@ class header implements \renderable, \templatable {
                                                     $parenttab->customstyles,
                                                     $specialclasstmp);
 
-                            $prevsectionindex = $section - 1;
+                            $prevsectionindex = $localsection - 1;
                             do {
                                 $parentsection = $sections[$prevsectionindex];
                                 $parentformatoptions = course_get_format($course)->get_format_options($parentsection);
@@ -304,7 +299,7 @@ class header implements \renderable, \templatable {
                             } while ($parentformatoptions['level'] == 1 && $prevsectionindex >= $firstsection);
 
                             if ($parentformatoptions['firsttabtext']) {
-                                $indextab->content = $parentformatoptions['firsttabtext'];
+                                $indextab->content = format_text($parentformatoptions['firsttabtext'], true, $course->id);
                             } else {
                                 $indextab->content = get_string('index', 'format_onetopic');
                             }
@@ -323,7 +318,7 @@ class header implements \renderable, \templatable {
                         // Load subtabs.
                         $parenttab->add_child($newtab);
 
-                        if ($displaysection == $section) {
+                        if ($displaysection == $localsection) {
                             $selectedparent = $parenttab;
                             $parenttab->selected = true;
                         }
@@ -335,7 +330,7 @@ class header implements \renderable, \templatable {
 
             }
 
-            $section++;
+            $localsection++;
         }
 
         if ($this->format->show_editor()) {
@@ -360,7 +355,7 @@ class header implements \renderable, \templatable {
                 $selectedsubtabs = $selectedparent ? $tabs->get_tab($selectedparent->index) : null;
                 $showsubtabs = $selectedsubtabs && $selectedsubtabs->has_childs();
 
-                if ($showsubtabs) {
+                if ($showsubtabs && $selectedparent) {
                     // Increase number of sections in child tabs.
                     $paramstotabs['aschild'] = 1;
                     $url = new \moodle_url('/course/format/onetopic/changenumsections.php', $paramstotabs);

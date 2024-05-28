@@ -75,11 +75,11 @@ a {
     bottom: 0;
     z-index: 3000;
     padding: 10% 0;
-    background-color: $white;
+    background-color: #fff;
 
     .text {
         text-align: center;
-        color: $primary;
+        color: $brand-primary;
     }
 
     .loader {
@@ -93,7 +93,7 @@ a {
             bottom: 0;
             width: 10px;
             height: 50%;
-            background: $primary;
+            background: $brand-primary;
             transform-origin: center bottom;
             box-shadow: 1px 1px 0 rgba(0, 0, 0, .2);
 
@@ -113,7 +113,7 @@ a {
             left: 0;
             width: 10px;
             height: 10px;
-            background: $primary;
+            background: $brand-primary;
             border-radius: 50%;
             animation: ball 4s infinite;
         }
@@ -121,13 +121,13 @@ a {
 
     .btn-continue {
         margin-top: 1rem;
-        color: $primary;
+        color: $brand-primary;
         padding: 1rem;
         position: absolute;
         bottom: 0;
 
         a {
-            color: $primary;
+            color: $brand-primary;
             text-decoration: underline;
         }
     }
@@ -209,6 +209,7 @@ a {
             transform: scale(1, .2);
         }
     }
+
     @keyframes barUp2 {
         0% {
             transform: scale(1, .4);
@@ -226,6 +227,7 @@ a {
             transform: scale(1, .4);
         }
     }
+
     @keyframes barUp3 {
         0% {
             transform: scale(1, .6);
@@ -234,6 +236,7 @@ a {
             transform: scale(1, .6);
         }
     }
+
     @keyframes barUp4 {
         0% {
             transform: scale(1, .8);
@@ -251,6 +254,7 @@ a {
             transform: scale(1, .8);
         }
     }
+
     @keyframes barUp5 {
         0% {
             transform: scale(1, 1);

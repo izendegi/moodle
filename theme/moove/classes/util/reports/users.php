@@ -24,6 +24,8 @@
 
 namespace theme_moove\util\reports;
 
+use core\chart_line;
+
 defined('MOODLE_INTERNAL') || die();
 
 /**
@@ -101,5 +103,75 @@ class users {
         $chart->set_labels(array_keys($data));
 
         return $chart;
+    }
+
+    /**
+     * Returns online users graph
+     *
+     * @return chart_line
+     * @throws \dml_exception
+     */
+    public function get_onlineusers_chart($starttime, $endtime) {
+        list($all, $unique) = $this->get_log_access_by_minute($starttime, $endtime);
+
+        if (is_null($all) || is_null($unique)) {
+            return null;
+        }
+
+        $chart = new \core\chart_line();
+        $chart->set_smooth(true);
+        $chart->add_series(new \core\chart_series('Total actions', array_values($all)));
+        $chart->add_series(new \core\chart_series('Unique users', array_values($unique)));
+        $chart->set_labels(array_keys($all));
+
+        return $chart;
+    }
+
+    /**
+     * Get last 60 minutes access logs
+     *
+     * @return array[]|false
+     * @throws \dml_exception
+     */
+    public function get_log_access_by_minute(\DateTime $starttime, \DateTime $endtime) {
+        global $DB;
+
+        $sql = 'SELECT id, userid, MINUTE(FROM_UNIXTIME(timecreated)) as minute
+                FROM {logstore_standard_log}
+                WHERE timecreated > :starttime AND timecreated < :endtime';
+
+        $records = $DB->get_records_sql($sql, [
+            'starttime' => $starttime->getTimestamp(),
+            'endtime' => $endtime->getTimestamp()
+        ]);
+
+        if (!$records) {
+            return false;
+        }
+
+        $all = [];
+        $users = [];
+        $unique = [];
+        foreach ($records as $record) {
+            $all[$record->minute] = isset($all[$record->minute]) ? ($all[$record->minute] + 1) : 1;
+
+            if (!isset($users[$record->minute])) {
+                $users[$record->minute][] = $record->userid;
+
+                continue;
+            }
+
+            if (array_search($record->userid, $users[$record->minute]) !== false) {
+                continue;
+            }
+
+            array_push($users[$record->minute], $record->userid);
+        }
+
+        foreach ($users as $key => $user) {
+            $unique[$key] = count($user);
+        }
+
+        return [$all, $unique];
     }
 }

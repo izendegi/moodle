@@ -53,8 +53,6 @@ $course->coursedisplay = COURSE_DISPLAY_MULTIPAGE;
 
 $renderer = $PAGE->get_renderer('format_onetopic');
 
-$section = $displaysection;
-
 $disableajax = optional_param('onetopic_da', -1, PARAM_INT);
 
 if (!isset($USER->onetopic_da)) {
@@ -69,8 +67,8 @@ if ($disableajax !== -1) {
     }
 }
 
-if (!empty($displaysection)) {
-    $format->set_section_number($displaysection);
+if (!is_null($displaysection)) {
+    $format->set_sectionnum($displaysection);
 }
 
 $outputclass = $format->get_output_classname('content');
