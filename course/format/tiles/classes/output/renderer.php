@@ -33,8 +33,7 @@ class renderer extends section_renderer {
      */
     public function render_content() {
         $format = course_get_format($this->page->course->id);
-        $course = $format->get_course();
-        $sectionnumber = $format->get_sectionnum();
+        $displaysection = optional_param('section', 0, PARAM_INT);
         if ($this->page->user_is_editing()) {
             // If user is editing, we render the page the new way.
             // We will use this for non editing as well in a later version, but not yet.
@@ -43,26 +42,24 @@ class renderer extends section_renderer {
             $displayoptions = [];
             $contentoutput = new $contentclass(
                 $format,
-                $sectionnumber,
+                $displaysection,
                 null,
                 $displayoptions
             );
             $data = $contentoutput->export_for_template($this);
         } else {
             // If user not editing, for now we render the page the old way.
-            if (self::display_multiple_section_page((bool)$sectionnumber, false)) {
+            $course = $format->get_course();
+            if (self::display_multiple_section_page($displaysection, false)) {
                 $template = 'format_tiles/multi_section_page';
                 $templateable = new \format_tiles\output\course_output($course, false, null, $this);
                 $data = $templateable->export_for_template($this);
             } else {
                 $template = 'format_tiles/single_section_page';
-                $templateable = new \format_tiles\output\course_output($course, false, $sectionnumber, $this);
+                $templateable = new \format_tiles\output\course_output($course, false, $displaysection, $this);
                 $data = $templateable->export_for_template($this);
             }
         }
-        // We init JS here and not in format.php.
-        // This is because in Moodle 4.4+ we may be in this function via section.php and not format.php.
-        \format_tiles\local\util::init_js($course, $this->page->context->id, $sectionnumber);
 
         echo $this->render_from_template($template, $data);
     }
@@ -117,13 +114,13 @@ class renderer extends section_renderer {
     /**
      * Should we display a multiple section page or not?
      * I.e. do we display all tiles on screen or just one open section?
-     * @param bool $displaysection the param to say if we are displaying one sec and if so which.
+     * @param int $displaysection the param to say if we are displaying one sec and if so which.
      * @param bool $isediting are we editing or not.
      * @return bool
      * @throws \coding_exception
      * @throws \dml_exception
      */
-    private function display_multiple_section_page(bool $displaysection, bool $isediting): bool {
+    private function display_multiple_section_page(int $displaysection, bool $isediting): bool {
         global $SESSION;
         // We display the multi section page if the user is not requesting a specific single section.
         // We also display it if user is requesting a specific section (URL &section=xx) with JS enabled.
@@ -145,39 +142,11 @@ class renderer extends section_renderer {
         }
 
         // Otherwise, even if URL requests single, we may show multiple in certain situations.
-        if (\format_tiles\local\util::using_js_nav() && isset($SESSION->format_tiles_jssuccessfullyused)) {
+        if (\format_tiles\util::using_js_nav() && isset($SESSION->format_tiles_jssuccessfullyused)) {
             if (!$isediting && get_config('format_tiles', 'usejsnavforsinglesection')) {
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * In Moodle 4.5 we may have sub-sections.
-     * We override this here and use existing local code for subtiles pending full refactoring.
-     * @param \renderable $widget
-     * @return bool|string
-     * @throws \coding_exception
-     * @throws \dml_exception
-     * @throws \moodle_exception
-     */
-    public function render_delegatedsection($widget) {
-        $parentdata = $widget->export_for_template($this);
-        $sectionnum = $parentdata->num;
-        $templateable = new \format_tiles\output\course_output(
-            $this->page->course, true, $sectionnum
-        );
-        $data = $templateable->export_for_template($this);
-        $template = 'format_tiles/course_modules_subsection';
-
-        // If subtiles are not being used we can use core widget data and template.
-        $usecore = !$data['useSubtiles'] || $this->page->user_is_editing();
-        if ($usecore) {
-            $data = $parentdata;
-            $template = 'format_tiles/local/content/delegatedsection';
-        }
-
-        return $this->render_from_template($template, $data);
     }
 }

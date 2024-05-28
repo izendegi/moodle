@@ -39,7 +39,7 @@
     }
 }}
 
-<li id="section-{{{index}}}" class="card section {{#isdelegatedsection}}delegated-section{{/isdelegatedsection}} {{#islistsummarysection}}list-summary-section{{/islistsummarysection}} clearfix " role="region"
+<li id="section-{{{index}}}" class="card section clearfix " role="region"
    aria-labelledby="section-{{index}} .sectionname a:not(.quickeditlink)">
    <div class="content card-block  remui-list-content-border"
       aria-labelledby="section-{{index}} .sectionname a:not(.quickeditlink)">
@@ -66,8 +66,7 @@
                </div>
             </h3>
             {{#showsectionpageurlbtn}}
-             {{! previously it was sectionpageurl changed to singlepageurl }}
-               <a href="{{{singlepageurl}}}" class="btn btn-icon section_goto d-flex align-items-center justify-content-center icon-no-margin" title="{{#str}}gotosection, course, {{title}}{{/str}}">
+               <a href="{{{sectionpageurl}}}" class="btn btn-icon d-flex align-items-center justify-content-center icon-no-margin" title="{{#str}}gotosection, course, {{title}}{{/str}}">
                         <span class="dir-rtl-hide">
                            {{#pix}}t/right, moodle{{/pix}}
                         </span>

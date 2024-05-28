@@ -21,7 +21,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 namespace format_tiles;
-use format_tiles\local\modal_helper;
 
 /**
  * Event observers supported by this format.
@@ -37,10 +36,12 @@ class observer {
      * @throws \dml_exception
      */
     public static function course_deleted(\core\event\course_deleted $event) {
+        global $DB;
         $courseid = $event->objectid;
-        \format_tiles\local\tile_photo::delete_files_from_ids($courseid, -1);
-        \format_tiles\local\format_option::unset_all_course($courseid);
-        modal_helper::clear_cache_modal_cmids($courseid);
+        $DB->delete_records("user_preferences", ["name" => 'format_tiles_stopjsnav_' . $courseid]);
+        \format_tiles\tile_photo::delete_files_from_ids($courseid);
+        \format_tiles\format_option::unset_all_course($courseid);
+        self::clear_cache_modal_cmids($courseid);
     }
 
     /**
@@ -48,21 +49,21 @@ class observer {
      * @param \core\event\course_section_deleted $event
      */
     public static function course_section_deleted(\core\event\course_section_deleted $event) {
-        \format_tiles\local\tile_photo::delete_files_from_ids($event->courseid, $event->objectid);
-        \format_tiles\local\format_option::unset_multiple_types(
+        \format_tiles\tile_photo::delete_files_from_ids($event->courseid, $event->objectid);
+        \format_tiles\format_option::unset_multiple_types(
             $event->courseid,
             $event->objectid,
-            [\format_tiles\local\format_option::OPTION_SECTION_PHOTO, \format_tiles\local\format_option::OPTION_SECTION_ICON]
+            [\format_tiles\format_option::OPTION_SECTION_PHOTO, \format_tiles\format_option::OPTION_SECTION_ICON]
         );
     }
 
     /**
-     * When a course module is deleted, invalidate modalcmids cache for course.
+     * When a course module is deleted, delete its photo if it has one.
      * @param \core\event\course_module_deleted $event
      */
     public static function course_module_deleted(\core\event\course_module_deleted $event) {
-        if (modal_helper::mod_uses_cm_modal_cache($event->other['modulename'])) {
-            modal_helper::clear_cache_modal_cmids($event->courseid, $event->other['modulename']);
+        if (in_array($event->other['modulename'], ['resource', 'page'])) {
+            self::clear_cache_modal_cmids($event->courseid);
         }
 
     }
@@ -72,8 +73,8 @@ class observer {
      * @param \core\event\course_module_created $event
      */
     public static function course_module_created(\core\event\course_module_created $event) {
-        if (modal_helper::mod_uses_cm_modal_cache($event->other['modulename'])) {
-            modal_helper::clear_cache_modal_cmids($event->courseid, $event->other['modulename']);
+        if (in_array($event->other['modulename'], ['resource', 'page'])) {
+            self::clear_cache_modal_cmids($event->courseid);
         }
     }
 
@@ -82,8 +83,8 @@ class observer {
      * @param \core\event\course_module_updated $event
      */
     public static function course_module_updated(\core\event\course_module_updated $event) {
-        if (modal_helper::mod_uses_cm_modal_cache($event->other['modulename'])) {
-            modal_helper::clear_cache_modal_cmids($event->courseid, $event->other['modulename']);
+        if (in_array($event->other['modulename'], ['resource', 'page', 'url'])) {
+            self::clear_cache_modal_cmids($event->courseid);
         }
     }
 
@@ -96,18 +97,20 @@ class observer {
         if ($event->other['type'] == 'course') {
             $istilescourse = $DB->record_exists('course', ['id' => $event->objectid, 'format' => 'tiles']);
             if ($istilescourse) {
-                \format_tiles\local\format_option::delete_legacy_format_options($event->objectid);
+                \format_tiles\format_option::delete_legacy_format_options($event->objectid);
             }
         }
     }
 
     /**
-     * When a course is restored, the existing course content may be selected to be deleted.
-     * @param \core\event\course_restored $event
+     * Clear the cache of resource modal IDs for a given course.
+     * @param int $courseid
      * @return void
+     * @throws \coding_exception
+     * @throws \dml_exception
      */
-    public static function course_restored(\core\event\course_restored $event) {
-        modal_helper::clear_cache_modal_cmids($event->courseid);
+    private static function clear_cache_modal_cmids(int $courseid) {
+        $cache = \cache::make('format_tiles', 'modalcmids');
+        $cache->delete($courseid);
     }
-
 }

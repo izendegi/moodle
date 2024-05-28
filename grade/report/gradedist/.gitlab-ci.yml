@@ -5,6 +5,7 @@ cache:
 variables:
   CI_BUILD_DIR: "$CI_PROJECT_DIR"
   COMPOSER_HOME: "$CI_PROJECT_DIR/.composer/cache"
+
   POSTGRES_USER: "postgres"
   POSTGRES_HOST_AUTH_METHOD: "trust"
 

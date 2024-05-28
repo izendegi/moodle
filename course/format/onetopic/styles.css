@@ -2,7 +2,6 @@
 
 .format-onetopic ul.onetopic {
     padding: 0;
-    margin-bottom: 0;
 }
 
 .format-onetopic .format_onetopic-tabs .nav-link {
@@ -34,35 +33,6 @@
 
 .format-onetopic ul.nav-tabs li a span.iconhelp i {
     margin: 0;
-}
-
-.format-onetopic .onetopic-tab-body {
-    padding-top: 10px;
-    padding-bottom: 10px;
-}
-
-.format-onetopic .onetopic-withsectionbg .course-section,
-.format-onetopic .onetopic-withsubsectionbg .course-section {
-    margin-top: 0;
-    background: #fffb;
-    padding: 0 0.75rem;
-    border-radius: 5px;
-}
-
-.format-onetopic .onetopic-withsectionbg ul.section .activity-item,
-.format-onetopic .onetopic-withsectionbg .content .summarytext {
-    background-color: transparent;
-    padding-left: 0;
-    padding-right: 0;
-}
-
-.format-onetopic .onetopic-withsubsectionbg {
-    margin: 0 10px;
-    padding: 10px 0;
-}
-
-.format-onetopic .onetopic-tab-body-secondrow {
-    padding-top: 10px;
 }
 
 /* Its a subtabs bar */
@@ -123,13 +93,9 @@
     position: relative;
     max-width: 100%;
     height: 40px;
-    margin: 0 auto;
+    margin: 0 auto 20px;
     overflow-x: hidden;
     overflow-y: hidden;
-}
-
-.format-onetopic .onelinetabs .onetopic-tab-body {
-    padding-top: 20px;
 }
 
 .format-onetopic .onelinetabs .tabs-wrapper.hasscroll {
@@ -210,9 +176,9 @@
 
 /* Template styles */
 .format-onetopic .onetopic .cmnameinline .activityiconcontainer {
-    padding-left: 0.2rem;
-    padding-right: 0;
-    display: inline;
+    width: auto;
+    height: auto;
+    padding: 0.2rem;
 }
 
 .format-onetopic .activityinsummarytpl .description .course-description-item {
@@ -234,22 +200,6 @@
     display: block;
 }
 
-.format-onetopic .modal-body .activity-info .completion-dropdown a[role="button"].btn,
-.format-onetopic .modal-body .activity-info .completion-dropdown button.btn {
-    color: #1d2125;
-    background-color: #fff;
-    border-color: #ced4da;
-    min-height: 32px;
-    font-weight: bold;
-    border-radius: 0.5rem;
-}
-
-.format-onetopic .modal-body .activity-info .completion-dropdown a[role="button"].btn:hover,
-.format-onetopic .modal-body .activity-info .completion-dropdown button.btn:hover {
-    color: #fff;
-    background-color: #6a737b;
-    border-color: #b1bbc4;
-}
 /* End of template styles */
 
 /* Completion */
@@ -290,11 +240,6 @@
     flex-direction: row-reverse;
     padding-left: 10px;
     text-align: right;
-}
-
-.format-onetopic .course-section .description .section_availability > .availabilityinfo {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
 }
 
 /* The jump list if exist */
@@ -351,79 +296,6 @@
 
 #onetopic-styleswindow .buttons-box {
     text-align: center;
-}
-
-#page-course-editsection.format-onetopic #onetopic-tabstyles {
-    border: 1px solid #dee2e6;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-#onetopic-styleswindow .onetopic-selecticon .listicons:not(.hidden) {
-    overflow: auto;
-    padding: 10px;
-    position: absolute;
-    left: 5px;
-    right: 5px;
-    bottom: 10px;
-    top: 10px;
-    border-radius: 5px;
-    background-color: #fff;
-    display: flex;
-    flex-wrap: wrap;
-}
-
-#onetopic-styleswindow .onetopic-selecticon .listicons span {
-    cursor: pointer;
-    padding: 5px;
-    border: 1px solid #dee2e6;
-    display: inline-block;
-    margin: 1px;
-}
-
-#onetopic-styleswindow .onetopic-selecticon .listicons span:hover {
-    transform: scale(2);
-    border-radius: 2px;
-    box-shadow: 2px 2px 4px 1px #ccc;
-    background-color: #fff;
-}
-
-#onetopic-styleswindow .onetopic-selecticon .listicons span i {
-    font-size: 15px;
-    margin: 0;
-}
-
-#onetopic-styleswindow .onetopic-selecticon .iconselected {
-    padding: 5px;
-    border: 1px solid #333;
-    border-radius: 5px;
-    margin-right: 10px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-#onetopic-styleswindow .onetopic-selecticon .iconselected i {
-    font-size: 20px;
-    margin: 0;
-}
-
-.format-onetopic .format_onetopic-tabs .nav-link span.tabicon span i {
-    margin: 0;
-    font-size: inherit;
-}
-
-.format-onetopic .format_onetopic-tabs .nav-link:not(:hover) span.tabicon span.tabicon-hover,
-.format-onetopic .format_onetopic-tabs .nav-link:hover span.tabicon span.tabicon-default,
-.format-onetopic .format_onetopic-tabs .nav-link:hover span.tabicon span.tabicon-active {
-    display: none;
-}
-
-.format-onetopic .format_onetopic-tabs .nav-link:hover span.tabicon span.tabicon-hover,
-.format-onetopic .format_onetopic-tabs .nav-link:hover span.tabicon span.tabicon-hover {
-    display: inline-block;
 }
 
 /* The slide navigation is only available to wide screens */

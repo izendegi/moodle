@@ -47,7 +47,7 @@
     <div class="d-block d-sm-none">{{>format_tiles/above_tiles_buttons}}</div>
     <div class="row">
         <div class="col-sm-11">{{> format_tiles/section_zero}}</div>
-        <div class="col-sm-1 d-none d-sm-block">
+        <div class="col-sm-1 d-none d-sm-block" id="buttonhidesec0">
             {{! on sm and larger devices, show buttons to right of sec zero }}
             {{>format_tiles/above_tiles_buttons}}
         </div>
@@ -75,7 +75,7 @@
                     </div>
                 </div>
             {{/has_filter_buttons}}
-            <div id="tiles-overall-progress-outer" class="ml-auto mr-1 mb-2 pt-1 d-none d-sm-block{{#overall_progress_indicator.isComplete}} is-complete{{/overall_progress_indicator.isComplete}}">
+            <div id="tiles-overall-progress-outer" class="ml-auto mr-1 mb-2 pt-1 d-none d-sm-block">
                 {{#overall_progress_indicator}}
                     {{> format_tiles/progress}}
                 {{/overall_progress_indicator}}

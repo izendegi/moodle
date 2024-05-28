@@ -107,7 +107,7 @@ if (!$data) { // Display the form.
         }
 
         $lastcroninterval = get_config('tool_task', 'lastcroninterval');
-        $expectedfrequency = isset($CFG->expectedcronfrequency) ? $CFG->expectedcronfrequency : MINSECS;
+        $expectedfrequency = $CFG->expectedcronfrequency ?? MINSECS;
         $croninfrequent = !$cronoverdue && ($lastcroninterval > ($expectedfrequency + MINSECS)
                 || $lastcron < time() - $expectedfrequency);
         if ($croninfrequent) {
@@ -192,22 +192,14 @@ if (!$data) { // Display the form.
     $messagehtml = get_string('message', 'local_' . $pluginname, $a);
     $messagetext = html_to_text($messagehtml);
 
-    if ($CFG->branch >= 404) {
-        $fromsender = get_string('fromsender');
-        $torecipient = get_string('torecipient');
-    } else {
-        $fromsender = get_string('from');
-        $torecipient = get_string('to');
-    }
-
     ob_end_flush();
     ob_implicit_flush(true);
     echo '<h2 class="alert-heading">' . get_string('testing', 'local_' . $pluginname) . '</h2>';
-    echo '<p>' . $fromsender . ' : ' . $fromemail->email . '<br>
+    echo '<p>' . get_string('from') . ' : ' . $fromemail->email . '<br>
         &#129095; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &#129095; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &#129095;<br>
         ' . get_string('server', 'local_' . $pluginname, (empty($CFG->smtphosts) ? 'PHPMailer' : $CFG->smtphosts)) . '<br>
         &#129095; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &#129095; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &#129095;<br>
-        ' . $torecipient . ' : ' . $toemail->email . '</p>';
+        ' . get_string('to') . ' : ' . $toemail->email . '</p>';
     ob_implicit_flush(false);
 
     // Manage Moodle SMTP debugging display.
@@ -284,8 +276,7 @@ if (!$data) { // Display the form.
 
                 // Split the host and the port.
                 $host = explode(':', $host . ':25'); // Set default port to 25 in case none was specified.
-                $host = $host[0];
-                $port = $host[1];
+                [$host, $port] = $host;
                 $port = (int)$port;
 
                 // Check for DNS record lookup failure. Skip if host is an IP address.

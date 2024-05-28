@@ -26,7 +26,6 @@ namespace mod_zoom;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot . '/mod/zoom/lib.php');
 require_once($CFG->dirroot . '/mod/zoom/locallib.php');
 require_once($CFG->libdir . '/filelib.php');
 
@@ -101,7 +100,7 @@ class webservice {
      * Zoom group to protect from licenses redefining
      * @var array
      */
-    protected $protectedgroups;
+    protected $protectedgroup;
 
     /**
      * Maximum limit of paid users
@@ -157,7 +156,7 @@ class webservice {
             if (!empty($config->utmost)) {
                 $this->recyclelicenses = $config->utmost;
                 $this->instanceusers = !empty($config->instanceusers);
-                $this->protectedgroups = !empty($config->protectedgroups) ? explode(',', $config->protectedgroups) : [];
+                $this->protectedgroup = $config->protectedgrp;
             }
 
             if ($this->recyclelicenses) {
@@ -468,24 +467,12 @@ class webservice {
         $userslist = $this->list_users();
 
         foreach ($userslist as $user) {
-            // Skip Basic user accounts.
-            if ($user->type == ZOOM_USER_TYPE_BASIC) {
-                continue;
-            }
-
-            // Skip the users of protected groups.
-            if (!empty(array_intersect($this->protectedgroups, $user->group_ids ?? []))) {
-                continue;
-            }
-
-            // We need the login time.
-            if (!isset($user->last_login_time)) {
-                continue;
-            }
-
-            // Count the user only if we're including all users or if the user is on this instance.
-            if (!$this->instanceusers || core_user::get_user_by_email($user->email)) {
-                $usertimes[$user->id] = strtotime($user->last_login_time);
+            if ($user->type != ZOOM_USER_TYPE_BASIC && isset($user->last_login_time)
+                && !in_array($this->protectedgroup,$user->group_ids ?? array(),true)) { // needle: 'PROTECTED' zoom group
+                // Count the user if we're including all users or if the user is on this instance.
+                if (!$this->instanceusers || core_user::get_user_by_email($user->email)) {
+                    $usertimes[$user->id] = strtotime($user->last_login_time);
+                }
             }
         }
 
@@ -499,25 +486,10 @@ class webservice {
     /**
      * Get a list of Zoom groups
      *
-     * @return array Group information.
+     * @return stdClass The call's result in JSON format.
      */
     public function get_groups() {
-        $groups = [];
-
-        // Classic: group:read:admin.
-        // Granular: group:read:list_groups:admin.
-        // Not essential scope, execute only if scope has been granted.
-        if ($this->has_scope(['group:read:list_groups:admin', 'group:read:admin'])) {
-            try {
-                $response = $this->make_call('/groups');
-                $groups = $response->groups ?? [];
-            } catch (moodle_exception $error) {
-                // Only available for Paid accounts, so ignore error.
-                $response = '';
-            }
-        }
-
-        return $groups;
+        return $this->make_call('/groups');
     }
 
     /**
@@ -630,32 +602,20 @@ class webservice {
      * database fields to the appropriate API request fields.
      *
      * @param stdClass $zoom The zoom meeting to format.
-     * @param ?int $cmid The cmid if available.
      * @return array The formatted meetings for the meeting.
      */
-    private function database_to_api($zoom, $cmid) {
+    private function database_to_api($zoom) {
         global $CFG;
 
-        $options = [];
-        if (!empty($cmid)) {
-            $options['context'] = \context_module::instance($cmid);
-        }
-
         $data = [
-            // Process the meeting topic with proper filter.
-            'topic' => zoom_apply_filter_on_meeting_name($zoom->name, $options),
+            'topic' => $zoom->name,
             'settings' => [
                 'host_video' => (bool) ($zoom->option_host_video),
                 'audio' => $zoom->option_audio,
             ],
         ];
         if (isset($zoom->intro)) {
-            // Process the description text with proper filter and then convert to plain text.
-            $data['agenda'] = substr(content_to_text(format_text(
-                $zoom->intro,
-                FORMAT_MOODLE,
-                $options
-            ), false), 0, 2000);
+            $data['agenda'] = content_to_text($zoom->intro, FORMAT_MOODLE);
         }
 
         if (isset($CFG->timezone) && !empty($CFG->timezone)) {
@@ -682,9 +642,6 @@ class webservice {
 
         if (isset($zoom->registration)) {
             $data['settings']['approval_type'] = $zoom->registration;
-            if ($zoom->registration != ZOOM_REGISTRATION_OFF) {
-                $data['settings']['use_pmi'] = false;
-            }
         }
 
         if (!empty($zoom->webinar)) {
@@ -810,17 +767,13 @@ class webservice {
             if ($this->paid_user_limit_reached()) {
                 $leastrecentlyactivepaiduserid = $this->get_least_recently_active_paid_user_id();
                 // Changes least_recently_active_user to a basic user so we can use their license.
-                if ($leastrecentlyactivepaiduserid) {
-                    $this->make_call("users/$leastrecentlyactivepaiduserid", ['type' => ZOOM_USER_TYPE_BASIC], 'patch');
-                } 
+                $this->make_call("users/$leastrecentlyactivepaiduserid", ['type' => ZOOM_USER_TYPE_BASIC], 'patch');
             }
 
             // Changes current user to pro so they can make a meeting.
             // Classic: user:write:admin.
             // Granular: user:update:user:admin.
-            if (!$this->paid_user_limit_reached() || $leastrecentlyactivepaiduserid) {
-                $this->make_call("users/$zoomuserid", ['type' => ZOOM_USER_TYPE_PRO], 'patch');
-            }
+            $this->make_call("users/$zoomuserid", ['type' => ZOOM_USER_TYPE_PRO], 'patch');
         }
     }
 
@@ -829,10 +782,9 @@ class webservice {
      * Take a $zoom object as returned from the Moodle form and respond with an object that can be saved to the database.
      *
      * @param stdClass $zoom The meeting to create.
-     * @param ?int $cmid The cmid if available.
      * @return stdClass The call response.
      */
-    public function create_meeting($zoom, $cmid) {
+    public function create_meeting($zoom) {
         // Provide license if needed.
         $this->provide_license($zoom->host_id);
 
@@ -841,23 +793,22 @@ class webservice {
         // Classic: webinar:write:admin.
         // Granular: webinar:write:webinar:admin.
         $url = "users/$zoom->host_id/" . (!empty($zoom->webinar) ? 'webinars' : 'meetings');
-        return $this->make_call($url, $this->database_to_api($zoom, $cmid), 'post');
+        return $this->make_call($url, $this->database_to_api($zoom), 'post');
     }
 
     /**
      * Update a meeting/webinar on Zoom.
      *
      * @param stdClass $zoom The meeting to update.
-     * @param ?int $cmid The cmid if available.
      * @return void
      */
-    public function update_meeting($zoom, $cmid) {
+    public function update_meeting($zoom) {
         // Classic: meeting:write:admin.
         // Granular: meeting:update:meeting:admin.
         // Classic: webinar:write:admin.
         // Granular: webinar:update:webinar:admin.
         $url = ($zoom->webinar ? 'webinars/' : 'meetings/') . $zoom->meeting_id;
-        $this->make_call($url, $this->database_to_api($zoom, $cmid), 'patch');
+        $this->make_call($url, $this->database_to_api($zoom), 'patch');
     }
 
     /**
@@ -1136,7 +1087,7 @@ class webservice {
                     $recordinginfo->meetinguuid = $response->uuid;
                     $recordinginfo->url = $url;
                     $recordinginfo->filetype = $recording->file_type;
-                    $recordinginfo->recordingtype = $recording->recording_type ?? 'null';
+                    $recordinginfo->recordingtype = $recording->recording_type;
                     $recordinginfo->passcode = $response->password;
                     $recordinginfo->recordingstart = strtotime($recording->recording_start);
 
@@ -1186,7 +1137,7 @@ class webservice {
                         $recordinginfo->meetinguuid = $meeting->uuid;
                         $recordinginfo->url = $url;
                         $recordinginfo->filetype = $recording->file_type;
-                        $recordinginfo->recordingtype = $recording->recording_type ?? 'null';
+                        $recordinginfo->recordingtype = $recording->recording_type;
                         $recordinginfo->recordingstart = strtotime($recording->recording_start);
 
                         $recordings[$recording->id] = $recordinginfo;
@@ -1351,18 +1302,5 @@ class webservice {
         $url = 'meetings/' . $this->encode_uuid($meetinguuid) . '/recordings/settings';
         $response = $this->make_call($url);
         return $response;
-    }
-
-    /**
-     * Returns whether or not the current user is permitted to create a meeting/webinar that requires registration.
-     * @return boolean
-     */
-    public function is_user_permitted_to_require_registration() {
-        global $USER;
-        $zoomuser = zoom_get_user(zoom_get_api_identifier($USER));
-        if ($zoomuser && $zoomuser->type == ZOOM_USER_TYPE_PRO) {
-            return true;
-        }
-        return false;
     }
 }

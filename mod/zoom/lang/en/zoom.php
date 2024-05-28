@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+
 /**
  * English strings for zoom.
  *
@@ -102,7 +103,7 @@ $string['downloadical'] = 'Download iCal';
 $string['downloadical_desc'] = 'With this setting, you can control if a link to download an iCal file for the meeting will be shown on the activity instance overview page or not. This setting only affects the possibility to download an iCal file for third-party calendar tools. Regardless of this setting, the Zoom meeting activity will add a calendar entry into the Moodle calendar as soon as a meeting start date is set.';
 $string['downloadical_disable'] = 'Disable download iCal link';
 $string['downloadical_enable'] = 'Enable download iCal link';
-$string['duration'] = 'Duration';
+$string['duration'] = 'Duration (minutes)';
 $string['encryptiontype'] = 'Encryption type';
 $string['encryptiontype_alwaysshow'] = 'Always show encryption type chooser regardless if the user can use end-to-end encryption or not';
 $string['encryptiontype_desc'] = 'With this setting, you can control if the option to choose end-to-end encryption over enhanced encryption is shown to users in the activity instance settings or not. This setting only affects the Moodle activity instance settings. Even if you decide to always show the option, the user will still need end-to-end encryption in Zoom to finally enable end-to-end encryption.';
@@ -124,7 +125,6 @@ $string['err_invalid_password'] = 'Passcode contains invalid characters.';
 $string['err_long_timeframe'] = 'Requested time frame too long, showing results of latest month in range.';
 $string['err_password'] = 'Passcode may only contain the following characters: [a-z A-Z 0-9 @ - _ *]. Max of 10 characters.';
 $string['err_password_required'] = 'Passcode is required.';
-$string['err_registration'] = 'The current user is not permitted to create a meeting/webinar that requires registration.';
 $string['err_repeat_monthly_interval'] = 'Max interval for monthly meeting is 3 months';
 $string['err_repeat_weekly_interval'] = 'Max interval for weekly meeting is 12 weeks';
 $string['err_start_time_past'] = 'The start date cannot be in the past.';
@@ -320,8 +320,8 @@ $string['privacy:metadata:zoom_meeting_participants:name'] = 'The name of the pa
 $string['privacy:metadata:zoom_meeting_participants:user_email'] = 'The email of the participant';
 $string['privacy:metadata:zoom_meeting_view'] = 'The database table to track users that view the meeting recordings';
 $string['privacy:metadata:zoom_meeting_view:userid'] = 'The id of the user that viewed the recording';
-$string['protectedgroups'] = 'Protect groups';
-$string['protectedgroups_desc'] = 'Select Zoom groups to protect member users from license redefining';
+$string['protectedgrp'] = 'Protect group';
+$string['protectedgrp_desc'] = 'Select a Zoom group to protect member users from license redefining';
 $string['recording'] = 'Recording';
 $string['recordingadd'] = 'Add Recording';
 $string['recordingdate'] = 'Recording Date';

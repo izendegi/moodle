@@ -110,7 +110,7 @@ class format_remuiformat_card_one_section implements renderable, templatable {
      * @return stdClass|array
      */
     public function export_for_template(renderer_base $output) {
-        global $PAGE, $USER, $CFG;
+        global $PAGE, $USER;
         unset($output);
         $export = new \stdClass();
         $modinfo = get_fast_modinfo($this->course);
@@ -159,18 +159,7 @@ class format_remuiformat_card_one_section implements renderable, templatable {
         }
 
         // Title with section navigation links.
-
-        $allsectinswithoutdelegated = $modinfo->get_section_info_all();
-        if ($CFG->branch >= '405') {
-            $allsectinswithoutdelegated = $modinfo->get_listed_section_info_all();
-        }
-
-        if ($CFG->branch >= '405' && $currentsection->component === "mod_subsection") {
-            $sectionnavlinks = array('previous' => '', 'next' => '');
-        } else {
-            $sectionnavlinks = $renderer->get_nav_links($this->course, $allsectinswithoutdelegated, $this->displaysection);
-        }
-
+        $sectionnavlinks = $renderer->get_nav_links($this->course, $modinfo->get_section_info_all(), $this->displaysection);
         $export->leftnav = $sectionnavlinks['previous'];
         $export->rightnav = $sectionnavlinks['next'];
         $export->leftside = $renderer->section_left_content($currentsection, $this->course, false);
@@ -230,8 +219,6 @@ class format_remuiformat_card_one_section implements renderable, templatable {
             progress::get_course_progress_percentage($this->course),
             $imgurl
         );
-        $export->subsectionjs = $export->headerdata['subsectionjs'];
-        $export->sectionreturn = $export->headerdata['sectionreturn'];
         $PAGE->requires->js_call_amd('format_remuiformat/format_card', 'init');
         return $export;
     }
@@ -252,19 +239,6 @@ class format_remuiformat_card_one_section implements renderable, templatable {
             foreach ($modinfo->sections[$section->section] as $modnumber) {
                 $mod = $modinfo->cms[$modnumber];
 
-                if($mod->modname == 'subsection') {
-                    $delegatesectiondata = $modinfo->get_section_info_by_id($mod->customdata['sectionid']);
-                    $sectiondata = $this->courseformatdatacommontrait->get_single_section_generated_data($this->course,$delegatesectiondata);
-                    if ($sectiondata !== null) {
-                        $sectiondata->isdelegatedsection = true;
-                    }else{
-                        $count++;
-                        continue;
-                    }
-                    $output[] = $sectiondata;
-                    $count++;
-                    continue;
-                }
                 $context = \context_module::instance($mod->id);
                 if (!$mod->is_visible_on_course_page()) {
                     continue;
@@ -308,7 +282,7 @@ class format_remuiformat_card_one_section implements renderable, templatable {
                     $this->courseformatdatacommontrait->course_section_cm_text($mod, $displayoptions),
                     $this->settings
                 );
-                $activitydetails->summary = format_text( $activitydetails->summary, FORMAT_HTML,array('noclean'=>true));
+                $activitydetails->summary = format_text( $activitydetails->summary, FORMAT_HTML, array('trusted' => true));
                 // In case of label activity send full text of cm to open in modal.
                 if (array_search($mod->modname, array('label', 'folder')) !== false) {
                     $activitydetails->viewurl = $mod->modname.'_'.$mod->id;
@@ -317,7 +291,7 @@ class format_remuiformat_card_one_section implements renderable, templatable {
                         $mod,
                         $displayoptions
                     );
-                    $activitydetails->fullcontent = format_text($activitydetails->fullcontent, FORMAT_HTML,array('noclean'=>true));
+                    $activitydetails->fullcontent = format_text($activitydetails->fullcontent, FORMAT_HTML);
                 }
 
                 $activitydetails->completed = $completiondata->completionstate;

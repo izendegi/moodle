@@ -24,9 +24,6 @@
 
 namespace report_advancedgrading;
 
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->dirroot . '/grade/grading/form/lib.php');
 /**
  * Logic to process data for assignments using the rubric range grading method
  *
@@ -79,12 +76,10 @@ class rubric_ranges {
         $sql = "SELECT grf.id as grfid,
                         cm.course, asg.name as assignment,asg.grade as gradeoutof,
                         criteria.description, level.score,
-                        level.definition, grf.remark, grf.grade as grade_rub_range, grf.criterionid,
+                        level.definition, grf.remark, grf.criterionid,
                         stu.id AS userid, stu.idnumber AS idnumber,
                         stu.firstname, stu.lastname, stu.username,
-                        stu.username, stu.email, rubm.username AS graderusername,
-                        rubm.firstname AS graderfirstname, rubm.lastname AS graderlastname,
-                        rubm.email AS graderemail,
+                        stu.username, stu.email, rubm.username AS grader,
                         ag.timemodified AS modified,
                         ctx.instanceid, ag.grade, asg.blindmarking, assign_comment.commenttext as overallfeedback
                     FROM {assign} asg
@@ -101,10 +96,9 @@ class rubric_ranges {
                     JOIN {user} rubm ON rubm.id = ag.grader
                     JOIN {gradingform_rubric_ranges_f} grf ON (grf.instanceid = gin.id)
                     AND (grf.criterionid = criteria.id) AND (grf.levelid = level.id)
-                WHERE cm.id = :assignid AND gin.status = :instancestatus AND stu.deleted = 0
+                WHERE cm.id = :assignid
                 ORDER BY lastname ASC, firstname ASC, userid ASC, criteria.sortorder ASC";
-        $data = $DB->get_records_sql($sql, ['assignid' => $cm->id,
-                'instancestatus' => \gradingform_instance::INSTANCE_STATUS_ACTIVE]);
+        $data = $DB->get_records_sql($sql, ['assignid' => $cm->id]);
         $data = set_blindmarking($data, $assign, $cm);
         return $data;
     }

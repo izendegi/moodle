@@ -1,6 +1,6 @@
 # COURSE FORMAT Onetopic
 
-Package tested in: moodle 4.4+ and 4.5+.
+Package tested in: moodle 4.4+.
 
 ## QUICK INSTALL
 Download zip package, extract the onetopic folder and upload this folder into course/format/.
@@ -15,21 +15,6 @@ Download zip package, extract the onetopic folder and upload this folder into co
 * Fix: the topics bar is not refresh when change (move a section in boost sections bar) or delete a section.
 
 ## IN VERSION
-
-### 2024050905:
-* New tab styles editor when editing each section.
-* Select icon by tab and tab state.
-* New background option by section.
-* Compatibility with moodle 4.5
-* Do not show new subsections in tabs (Moodle 4.5). In the future these subsections become second-level tabs.
-
-### 2024050904:
-* New "sectionname" parameter to navigate to a tab directly using its name.
-* New default course settings in site level.
-* The courseindex option has been removed from the tab view option. Courses that had it set will continue to work until the option is overridden. It is being removed because there is no way to customize its behavior from the course format and some serious UX bugs are occurring.
-
-### 2024050903:
-* Fixed Load previously browsed section when section is not specified in URL.
 
 ### 2024050901:
 * Compatibility with moodle 4.4

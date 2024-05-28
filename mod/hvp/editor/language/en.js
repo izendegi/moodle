@@ -63,8 +63,6 @@ H5PEditor.language.core = {
   numberField: 'number field',
   orderItemUp: 'Order item up',
   orderItemDown: 'Order item down',
-  expandAllContent: 'Expand all content',
-  collapseAllContent: 'Collapse all content',
   removeItem: 'Remove item',
   hubPanelLabel: 'Select content type',
   importantInstructions: 'Important instructions',

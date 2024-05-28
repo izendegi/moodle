@@ -19,28 +19,22 @@
  *
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  *
- * @package   local_commander
+ * @package   moodle-local_commander
  * @copyright 26/04/2024 Mfreak.nl | LdesignMedia.nl - Luuk Verhoeven
  * @author    Luuk Verhoeven
  **/
 
 namespace local_commander\hook;
 
-defined('MOODLE_INTERNAL') || die;
-
-global $CFG;
-require_once($CFG->dirroot. '/local/commander/lib.php');
-
 use context_course;
 use context_system;
-use core_plugin_manager;
 
 /**
  * Class before_http_headers.
  *
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  *
- * @package   local_commander
+ * @package   moodle-local_commander
  * @copyright 26/04/2024 Mfreak.nl | LdesignMedia.nl - Luuk Verhoeven
  * @author    Luuk Verhoeven
  **/
@@ -51,20 +45,13 @@ class before_http_headers {
      */
     public static function callback(): void {
 
-        global $COURSE, $PAGE , $CFG;
+        global $COURSE, $PAGE;
 
         if (isloggedin() === false) {
             return;
         }
 
         $context = empty($COURSE->id) ? context_system::instance() : context_course::instance($COURSE->id);
-
-        // Check if the plugin is installed.
-        $plugininfo = core_plugin_manager::instance()->get_plugin_info('local_commander');
-        if (empty($plugininfo->versiondb)) {
-            return;
-        }
-
         if (!has_capability('local/commander:display', $context)) {
             return;
         }

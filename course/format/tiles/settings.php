@@ -285,6 +285,12 @@ if ($ADMIN->fulltree) {
     $default = 1;
     $page->add(new admin_setting_configcheckbox($name, $title, $description, $default));
 
+    $name = 'format_tiles/subtileiconcolourbackground';
+    $title = get_string('subtileiconcolourbackground', 'format_tiles');
+    $description = get_string('subtileiconcolourbackground_desc', 'format_tiles');
+    $default = 0;
+    $page->add(new admin_setting_configcheckbox($name, $title, $description, $default));
+
     $name = 'format_tiles/showoverallprogress';
     $title = get_string('showoverallprogress', 'format_tiles');
     $description = get_string('showoverallprogress_desc', 'format_tiles');

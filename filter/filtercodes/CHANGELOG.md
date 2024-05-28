@@ -1,43 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [2.6.1] 2024-10-11
-### Update
-- Fix-308: Fixed compatibility issue with PHP 8.3.
-
-## [2.6.0] 2024-10-07
-### Added
-- New {menulanguages} tag.
-- New {keyboard}...{/keyboard} tag.
-- New {menuwishlist} tag.
-- New {sitelogourl} tag.
-- New {ifprofile shortname is "value"}...{/ifprofile} tag.
-- New {ifprofile shortname is ""}...{/ifprofile} tag.
-- New {ifprofile shortname not "value"}...{/ifprofile} tag.
-- New {ifprofile shortname not ""}...{/ifprofile} tag. Similar to {ifprofile_field_shortname} tag but can't be nested.
-- New {ifprofile shortname contains "value"}...{/ifprofile} tag.
-- New {ifprofile shortname in "value"}...{/ifprofile} tag.
-- New {rawurlencode}...{/rawurlencode} tag.
-- New {ifgrouping groupingid}...{/ifgrouping} tag.
-- New {ifnotgrouping groupingid}...{/ifnotgrouping} tag.
-- New {mygroupings} tag.
-- New {ifnotincohort} tag.
-### Updated
-- Fixed bug with ifactivitycompleted and ifnotactivitycompleted if activity does not exist.
-- Fixed issue with %7Bcoursemoduleid%7D leaving % symbol behind.
-- Fixed issue when {coursesummary} is used in a block.
-- Link to External LTI now only available in Moodle 4.3+.
-- Addressed compatibility issue with mod_hvp that prevents link to current theme settings from working.
-- Refactoring in preparations for Moodle 4.5.
-- Added more documentation to README.md.
-- Fixed links and updated table of contents in README.md.
-- The {thisurl_enc} tag is now compliant with RFC 3986.
-- {categories0} tag now shows hidden categories if role has moodle/category:viewhiddencategories.
-- {categories0menu} tag now shows hidden categories if role has moodle/category:viewhiddencategories.
-- Fixed a couple of PHP 5.6 compatibility issues. Note that unit tests are still only compatible with PHP 7.1 and later.
-- Fix-302: {qrcode} and {urlencode} not processed after replacement tags.
-- Fixed compatibility issue with Moodle LMS 4.5.
-
 ## [2.5.1] 2024-05-01
 ### Updated
 - {iftheme} tag now works even when at the beginning of a string.
@@ -67,7 +30,7 @@ All notable changes to this project will be documented in this file.
 - References to PHP and Moodle versions in bug reports.
 - Removed support for Travis integration.
 - Copyright notice to include 2024.
-- Fixed compatibility issue with Moodle LMS 4.4.
+- Fixed compatibility issue with Moodle LMS 4.4
 
 ## [2.4.3] 2023-11-20
 ### Added

@@ -1,27 +1,5 @@
 ### Releases ###
 
-#### v5.2.5 ####
-
-- Bugfix: Validation for registration #622 (thanks @paulandm)
-- Code quality: Check Moodle 4.5; skip Moodle 4.2 #631
-- Code quality: Remove legacy reference to local_mobile service #632
-
-#### v5.2.4 ####
-
-- Bugfix: Apply Moodle filters to the Zoom topic and description #615 (thanks @behanw)
-- Bugfix: Temporarily use string 'null' when `recording_type` is null #620 (thanks @smangancap)
-- Accessibility: Migrate Bootstrap `.label` to `.badge` (Bootstrap 3 -> 4/5) #608 (thanks @sgrandh3)
-- Accessibility: Add table headers and IDs to activity details sections and rows #612 (thanks @a-kempka)
-- Code quality: Check Moodle 4.4 and PHP 8.3 #611
-
-#### v5.2.3 ####
-
-- Bugfix: Duration language string was incorrectly specifying units #250 (thanks @abias)
-- Bugfix: Stop using deprecated core-course-module-description for mobile app v4.4.0 #602 (thanks @dpalou)
-- Code quality: Align with moodle-cs v3.4.9 #605
-- Regression: `recordingtype` column was too small for some type strings #605 (thanks @samwitzig, @acquaalta)
-  - Introduced in v5.2.1 when fixing recording type language strings.
-
 #### v5.2.2 ####
 
 - Bugfix: Keep recordings even if the API errors #593 (thanks @LGPoly, @mjleblanc)

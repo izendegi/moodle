@@ -28,9 +28,11 @@ class before_http_headers {
     /**
      * Moodle native lib/navigationlib.php calls this hook allowing us to override UI.
      *
-     * @param \core\hook\output\before_http_headers $unused
+     * @param \core\hook\output\before_http_headers $hook
      */
-    public static function callback(\core\hook\output\before_http_headers $unused): void {
+    public static function callback(\core\hook\output\before_http_headers $hook): void {
+        $renderer = $hook->renderer;
+
         global $PAGE;
         $PAGE->requires->css('/course/format/onetopic/styles.php');
     }

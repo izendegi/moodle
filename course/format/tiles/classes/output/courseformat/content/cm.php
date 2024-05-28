@@ -24,6 +24,7 @@
 
 namespace format_tiles\output\courseformat\content;
 
+use core_courseformat\base as course_format;
 use core_courseformat\output\local\content\cm as core_cm;
 
 /**
@@ -44,22 +45,46 @@ class cm extends core_cm {
      * @return bool if the cm has format data
      */
     protected function add_format_data(\stdClass &$data, array $haspartials, \renderer_base $output): bool {
-
-        $parentadded = parent::add_format_data($data, $haspartials, $output);
-        $data->cmtitle = $this->mod->get_formatted_name();
-
-        // See also the higher level section where moodle release info is added e.g. ismoodle42minus.
-        // I.e. format_tiles\output\courseformat\content\section.
-        // However we can't rely on that here.
-        // The cm templates inherit from that in edit view, but not when we use fragment API to get a cm list.
-        $moodlerelease = \format_tiles\local\util::get_moodle_release();
+        $moodlerelease = \format_tiles\util::get_moodle_release();
         $data->ismoodle42minus = $moodlerelease <= 4.2;
         $data->ismoodle41minus = $moodlerelease <= 4.1;
         $data->ismoodle44 = $moodlerelease === 4.4;
         $data->ismoodle40 = $moodlerelease === 4.0;
         $data->modcontextid = $this->mod->context->id;
-        $data->cmtitle = $this->mod->get_formatted_name();
-        $childadded = true; // We did add some data above.
-        return $parentadded || $childadded;
+        return parent::add_format_data($data, $haspartials, $output);
+    }
+
+
+    /**
+     * Add course editor attributes to the data structure.
+     * We override this so we can use local control menu class.
+     *
+     * @param \stdClass $data the current cm data reference
+     * @param \renderer_base $output typically, the renderer that's calling this function
+     * @return bool if the cm has editor data
+     */
+    protected function add_editor_data(\stdClass &$data, \renderer_base $output): bool {
+
+        parent::add_editor_data($data, $output);
+
+        if (!$this->format->show_editor()) {
+            return false;
+        }
+        $returnsection = $this->format->get_sectionnum();
+        // Edit actions.
+        $sectioninfo = get_fast_modinfo($this->mod->course)->get_section_info($this->mod->sectionnum);
+        $controlmenu = new \format_tiles\output\courseformat\content\cm\controlmenu (
+            $this->format,
+            $sectioninfo,
+            $this->mod,
+            $this->displayoptions
+        );
+
+        $data->controlmenu = $controlmenu->export_for_template($output);
+        if (!$this->format->supports_components()) {
+            // Add the legacy YUI move link.
+            $data->moveicon = course_get_cm_move($this->mod, $returnsection);
+        }
+        return true;
     }
 }

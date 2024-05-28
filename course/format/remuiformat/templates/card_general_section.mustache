@@ -79,7 +79,7 @@
         <div class="section-details">
             {{#showgeneralsectionintrodata}}
             <div class="generaldetails content d-flex flex-column">
-                <h2 class="section-title pt-0 p-t-0 m-0">{{{title}}}</h2>
+                <h2 class="section-title pt-0 p-t-0 m-0">{{ title }}</h2>
                 <div class='generalsectioninfo'>
                     {{{availability}}}
                     {{#fullsummary}}
@@ -96,69 +96,64 @@
         </div>
         {{#activityexists}}
         <div class="activities-wrapper d-flex flex-column">
-            <h4 class="activitieshead m-0 d-none">{{#str}} generalactivities, format_remuiformat{{/str}}</h4>
-            <ul class="general-section-activities justify-content-start text-center ">
+            <h4 class="activitieshead m-0">{{#str}} generalactivities, format_remuiformat{{/str}}</h4>
+            <ul class="general-section-activities justify-content-start text-center">
                 {{#activities}}
-                    {{^isdelegatedsection}}
-                        <li class="activity d-flex flex-column justify-content-between  list-unstyled {{{modulename}}} modtype_{{{modulename}}}"
-                            id="module-{{id}}">
-                            <div class="generalsecactivitiescontent d-flex flex-column justify-content-between w-100 p-0 h-100">
-                                {{#editing}}
-                                {{{leftside}}}
-                                {{/editing}}
-                                {{! <div> }}
-                                    <div class="activityinstance p-0 m-0 d-flex h-100 flex-column">
-                                        <div class="title-activity-container text-break w-100 text-left ">
-                                            {{{title}}}
-                                        </div>
-                                        {{#modhiddenfromstudents}}
-                                        <div data-region="sectionbadges" class="sectionbadges d-flex align-items-center">
-                                            {{!> core_courseformat/local/content/section/badges }}
-                                            {{>format_remuiformat/edwbadges}}
-                                        </div>
-                                        {{/modhiddenfromstudents}}
-                                        {{#modstealth}}
-                                        <div class=" d-flex align-items-center">
-                                            <span
-                                                class="badge badge-pill badge-warning">{{#str}}hiddenoncoursepage{{/str}}</span>
-                                        </div>
-                                        {{/modstealth}}
-                                        {{#summary}}
-                                        <div class="contentafterlink">
-                                            {{{summary}}}
-                                        </div>
-                                        {{/summary}}
-                                    </div>
-                                    <div class="p-0 action-availstatus-wrapper">
-                                        {{#hasopenduedata}}
-                                        <div class="description text-left">
-                                            <div data-region="activity-dates" class="activity-dates small course-description-item">
-                                                <div class="description-inner">
-                                                    {{#opendue}}
-                                                    <div>
-                                                        <strong>{{label}}</strong> {{timestamp}}
-                                                    </div>
-                                                    {{/opendue}}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {{/hasopenduedata}}
-                                        {{{availstatus}}}
-
-                                        {{#completion}}
-                                        <div class="actions">
-                                            {{{completion}}}
-                                        </div>
-                                        {{/completion}}
-                                    </div>
-                                    {{!
-                                </div> }}
+                <li class="activity d-flex flex-column justify-content-between  list-unstyled {{{modulename}}} modtype_{{{modulename}}}"
+                    id="module-{{id}}">
+                    <div class="generalsecactivitiescontent d-flex flex-column justify-content-between w-100 p-0 h-100">
+                        {{#editing}}
+                        {{{leftside}}}
+                        {{/editing}}
+                        {{! <div> }}
+                            <div class="activityinstance p-0 m-0 d-flex h-100 flex-column">
+                                <div class="title-activity-container text-break w-100 text-left ">
+                                    {{{title}}}
+                                </div>
+                                {{#modhiddenfromstudents}}
+                                <div data-region="sectionbadges" class="sectionbadges d-flex align-items-center">
+                                    {{!> core_courseformat/local/content/section/badges }}
+                                    {{>format_remuiformat/edwbadges}}
+                                </div>
+                                {{/modhiddenfromstudents}}
+                                {{#modstealth}}
+                                <div class=" d-flex align-items-center">
+                                    <span
+                                        class="badge badge-pill badge-warning">{{#str}}hiddenoncoursepage{{/str}}</span>
+                                </div>
+                                {{/modstealth}}
+                                {{#summary}}
+                                <div class="contentafterlink">
+                                    {{{summary}}}
+                                </div>
+                                {{/summary}}
                             </div>
-                        </li>
-                    {{/isdelegatedsection}}
-                    {{#isdelegatedsection}}
-                        {{>format_remuiformat/card_section_summary}}
-                    {{/isdelegatedsection}}
+                            <div class="p-0 action-availstatus-wrapper">
+                                {{#hasopenduedata}}
+                                <div class="description text-left">
+                                    <div data-region="activity-dates" class="activity-dates small course-description-item">
+                                        <div class="description-inner">
+                                            {{#opendue}}
+                                            <div>
+                                                <strong>{{label}}</strong> {{timestamp}}
+                                            </div>
+                                            {{/opendue}}
+                                        </div>
+                                    </div>
+                                </div>
+                                {{/hasopenduedata}}
+                                {{{availstatus}}}
+
+                                {{#completion}}
+                                <div class="actions">
+                                    {{{completion}}}
+                                </div>
+                                {{/completion}}
+                            </div>
+                            {{!
+                        </div> }}
+                    </div>
+                </li>
                 {{/activities}}
             </ul>
         </div>

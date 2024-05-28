@@ -19,7 +19,7 @@
  *
  * @since 2.4
  * @package format_onetopic
- * @copyright 2012 David Herney - cirano
+ * @copyright 2012 David Herney Bernal - cirano
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -27,7 +27,6 @@ $string['aboutresource'] = 'About the resource';
 $string['asbrother'] = 'Same level that the previous tab';
 $string['aschild'] = 'Child of previous tab';
 $string['asprincipal'] = 'Normal, as a first level tab';
-$string['backgroundpickerinvalid'] = 'Invalid background value';
 $string['bgcolor'] = 'Background color';
 $string['bgcolor_help'] = 'Used to change the tab background color. The value can be a color in a CSS valid representation, for example: <ul><li>Hexadecimal: #ffffff</li><li>RGB: rgb(0,255,0)</li><li>Name: green</li></ul>';
 $string['cantcreatesection'] = 'Error creating a new topic';
@@ -75,9 +74,18 @@ $string['cssweightbold'] = 'Bold';
 $string['cssweightlighter'] = 'Lighter';
 $string['currentsection'] = 'This topic';
 $string['defaultscope'] = 'Default scope';
-$string['defaultscope_help'] = 'Default scope used to define the pages on which the tab menu is printed. The SCORM Player scope require the Modules scope.';
+$string['defaultscope_help'] = 'Default scope used to define the pages on which the tab menu is printed.';
 $string['defaultsectionsnavigation'] = 'Default value to sections navigation';
 $string['defaultsectionsnavigation_help'] = 'Default value used in courses to define the "Uses sections navigation" feature. This can be overwrite for each course.';
+$string['disable'] = 'Disable';
+$string['disableajax'] = 'Asynchronous edit actions';
+$string['disableajax_help'] = 'Use this action in order to move resources between topic tabs. It only disables the asynchronous actions in current session, it is not permanently.';
+$string['duplicate'] = 'Duplicate';
+$string['duplicate_confirm'] = 'Are you sure you want to duplicate the current topic? The task can take a while depending on the amount of resources.';
+$string['duplicatesection'] = 'Duplicate current topic';
+$string['duplicatesection_help'] = 'Used to duplicate the resources of current topic in a new topic';
+$string['duplicating'] = 'Duplicating';
+$string['enable'] = 'Enable';
 $string['enableanchorposition'] = 'Enable anchor position';
 $string['enableanchorposition_help'] = 'Use an anchor to navigate to the top of tabs when click in a tab.';
 $string['enablecustomstyles'] = 'Enable custom styles';
@@ -105,8 +113,10 @@ $string['page-course-view-topics-x'] = 'Any course page in onetopic format';
 $string['plugin_description'] = 'Course sections are displayed separately in tabs.';
 $string['pluginname'] = 'Onetopic format';
 $string['privacy:metadata'] = 'The Onetopic format plugin does not store any personal data.';
+$string['progress_counter'] = 'Duplicating activities ({$a->current}/{$a->size})';
+$string['progress_full'] = 'Duplicating topic';
+$string['rebuild_course_cache'] = 'Rebuild course cache';
 $string['scope_mod'] = 'Modules';
-$string['scope_scorm'] = 'SCORM Player';
 $string['sectionname'] = 'Topic';
 $string['sectionsnavigation_both'] = 'At top and bottom section';
 $string['sectionsnavigation_bottom'] = 'Only at the bottom';
@@ -114,29 +124,18 @@ $string['sectionsnavigation_not'] = 'Not use';
 $string['sectionsnavigation_sitelevel'] = 'Use the default site value';
 $string['sectionsnavigation_slides'] = 'Like slides';
 $string['sectionsnavigation_support'] = 'Only if theme not support the "uses course index" feature';
-$string['selectcolor'] = 'Select color';
-$string['setcolor'] = 'Set color';
-$string['settingsheaderdefault'] = 'Default course settings';
-$string['settingsheaderstyles'] = 'Default tabs styles';
+$string['settingsheaderstyles'] = 'Styles';
 $string['showfromothers'] = 'Show topic';
 $string['subtopictoright'] = 'Move to right as subtopic';
-$string['tabicon'] = 'Icon';
-$string['tabiconselect'] = 'Select icon';
 $string['tablabelactive'] = 'Active tab';
 $string['tablabeldefault'] = 'Default tab {$a}';
 $string['tablabeldisabled'] = 'Disabled';
 $string['tablabelhighlighted'] = 'Highlighted';
 $string['tablabelparent'] = 'Parent tab';
-$string['tabsectionbackground'] = 'Section content background';
-$string['tabsectionbackground_help'] = 'Used to change the background of the section content. The value can be a color in a CSS valid representation, for example: <ul><li>Hexadecimal: #ffffff</li><li>RGB: rgb(0,255,0)</li><li>Name: green</li></ul>
-It can also be a URL attribute and other CSS background options.';
 $string['tabstylebuttons_help'] = 'Click on each button to configure the appearance of the tab in each of its possible states.';
 $string['tabstyleclear'] = 'Clear styles';
 $string['tabstyles'] = 'Tab styles';
 $string['tabstyles_help'] = 'Set the styles for the differents tab states.';
-$string['tabstylesdisplay'] = 'Show/hide tab style options';
-$string['tabstylesdisplay_help'] = 'The styles that are edited apply only to the tab in this section and to the child tabs when applicable. The entire bar is shown as an example of the different states that the tab can go through, but they will all be on the tab itself.';
-$string['tabstyleserrorjsoninvalid'] = 'Invalid JSON format';
 $string['tabstylesetactive'] = 'Set Active';
 $string['tabstylesetchildindex'] = 'Set Child index';
 $string['tabstylesetchilds'] = 'Set Childs';
@@ -163,26 +162,8 @@ $string['templetetopic_list'] = 'Yes, use the summary as template, list the reso
 $string['templetetopic_not'] = 'No, display as default';
 $string['templetetopic_single'] = 'Yes, use the summary as template';
 $string['usecourseindexsite'] = 'Use the default site value';
-$string['useoldstylescontrol'] = 'Use legacy styles control';
-$string['useoldstylescontrol_help'] = 'Use legacy style controls. This option is only available for compatibility with older versions of the plugin and will be removed in the future in favor of using only the new style editor.';
 $string['usescourseindex'] = 'Uses course index';
 $string['usescourseindex_help'] = 'Use the <em>course index</em> bar to navigate through the sections and resources';
 $string['usessectionsnavigation'] = 'Uses sections navigation';
 $string['usessectionsnavigation_help'] = 'Show buttons for navigate to next or previous section.';
-
-// Deprecated since Moodle 4.0.
-$string['disable'] = 'Disable';
-$string['disableajax'] = 'Asynchronous edit actions';
-$string['disableajax_help'] = 'Use this action in order to move resources between topic tabs. It only disables the asynchronous actions in current session, it is not permanently.';
-$string['enable'] = 'Enable';
 $string['utilities'] = 'Tabs edition utilities';
-
-// Deprecated since Moodle 4.3.
-$string['duplicate'] = 'Duplicate';
-$string['duplicate_confirm'] = 'Are you sure you want to duplicate the current topic? The task can take a while depending on the amount of resources.';
-$string['duplicatesection'] = 'Duplicate current topic';
-$string['duplicatesection_help'] = 'Used to duplicate the resources of current topic in a new topic';
-$string['duplicating'] = 'Duplicating';
-$string['progress_counter'] = 'Duplicating activities ({$a->current}/{$a->size})';
-$string['progress_full'] = 'Duplicating topic';
-$string['rebuild_course_cache'] = 'Rebuild course cache';

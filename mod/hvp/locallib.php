@@ -116,18 +116,12 @@ function hvp_get_core_assets($context) {
     // Add core stylesheets.
     foreach (\H5PCore::$styles as $style) {
         $settings['core']['styles'][] = $relpath . $style . $cachebuster;
-        // Only add stylesheets to page if not on a completion page.
-        if (!\hvp_check_completion_pages($PAGE->pagetype)) {
-            $PAGE->requires->css(new moodle_url($liburl . $style . $cachebuster));
-        }
+        $PAGE->requires->css(new moodle_url($liburl . $style . $cachebuster));
     }
     // Add core JavaScript.
     foreach (\H5PCore::$scripts as $script) {
         $settings['core']['scripts'][] = $relpath . $script . $cachebuster;
-        // Only add scripts to page if not on a completion page.
-        if (!\hvp_check_completion_pages($PAGE->pagetype)) {
-            $PAGE->requires->js(new moodle_url($liburl . $script . $cachebuster), true);
-        }
+        $PAGE->requires->js(new moodle_url($liburl . $script . $cachebuster), true);
     }
 
     return $settings;
@@ -203,7 +197,9 @@ function hvp_add_editor_assets($id = null, $mformid = null) {
     $editorajaxtoken = \H5PCore::createToken('editorajax');
 
     $interface = \mod_hvp\framework::instance('interface');
-    $enablecontenthub = ($interface->getOption('hub_is_enabled', null) ? $interface->getOption('h5p_search_content_hub', null) : "0") === "1";
+    $siteuuid = $interface->getOption('site_uuid', null);
+    $secret   = $interface->getOption('hub_secret', null);
+    $enablecontenthub = !empty($siteuuid) && !empty($secret);
 
     $settings['editor'] = array(
       'filesPath' => $filespathbase . 'editor',
@@ -721,25 +717,6 @@ function hvp_create_hub_export_url($cmid, $content) {
  *
  * @return string
  */
-
 function hvp_base64_encode($string) {
     return str_replace('=', '', strtr(base64_encode($string), '+/', '-_'));
 }
-
-/**
- * Check if the given page type is a completion page.
- * Use this function to avoid loading H5P assets on completion pages.
- *
- * @param string $pageType
- * @return bool
- */
-function hvp_check_completion_pages($pageType) {
-    $completionpagetypes = [
-        'course-defaultcompletion' => 'Edit completion default settings (Moodle >= 4.3)',
-        'course-editbulkcompletion' => 'Edit completion settings in bulk for a single course',
-        'course-editdefaultcompletion' => 'Edit completion default settings (Moodle < 4.3)',
-    ];
-
-    return array_key_exists($pageType, $completionpagetypes);
-}
-

@@ -65,8 +65,6 @@ H5PEditor.language.core = {
   numberField: 'numbriväli',
   orderItemUp: 'Tõsta objekt ülespoole',
   orderItemDown: 'Liiguta objekt allapoole',
-  expandAllContent: 'Expand all content',
-  collapseAllContent: 'Collapse all content',
   removeItem: 'Eemalda objekt',
   hubPanelLabel: 'Vali sisu tüüp',
   importantInstructions: 'Olulised juhised',
