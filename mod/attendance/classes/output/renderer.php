@@ -800,7 +800,7 @@ class renderer extends plugin_renderer_base {
             $row->cells[] = html_writer::empty_tag('input', $attribs);
             // Select all radio buttons of the same status.
             $this->page->requires->js_amd_inline("
-                require(['jquery', 'core_user/repository], function($, UserRepository) {
+                require(['jquery', 'core_user/repository'], function($, UserRepository) {
                     $('#radiocheckstatus".$st->id."').click(function(e) {
                         if ($('select[name=\"setallstatus-select\"] option:selected').val() == 'all') {
                             $('#attendancetakeform').find('.st".$st->id."').prop('checked', true);
@@ -873,7 +873,7 @@ class renderer extends plugin_renderer_base {
                                               'title' => get_string('setallstatusesto', 'attendance', $st->description)));
             // JS to select all radios of this status and prevent default behaviour of # link.
             $this->page->requires->js_amd_inline("
-                 require(['jquery', 'core_user/repository], function($, UserRepository) {
+                 require(['jquery', 'core_user/repository'], function($, UserRepository) {
                      $('#checkstatus".$st->id."').click(function(e) {
                          if ($('select[name=\"setallstatus-select\"] option:selected').val() == 'unselected') {
                              $('#attendancetakeform').find('input:indeterminate.st".$st->id."').prop('checked', true);
@@ -1147,10 +1147,13 @@ class renderer extends plugin_renderer_base {
      * @return string
      */
     private function construct_user_data(user_data $userdata) {
-        global $USER;
+        global $USER, $COURSE;
         $o = '';
         if ($USER->id <> $userdata->user->id) {
-            $o = html_writer::tag('h2', fullname($userdata->user));
+            $userlink = html_writer::link(new \moodle_url('/user/view.php',
+                ['id' => $userdata->user->id, 'course' => $COURSE->id]), fullname($userdata->user));
+
+            $o = html_writer::tag('h2', $userlink);
         }
 
         if ($userdata->pageparams->mode == mod_attendance_view_page_params::MODE_THIS_COURSE) {
