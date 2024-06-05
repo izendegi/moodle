@@ -46,11 +46,11 @@
         "restricted": 0
         }
 }}
-<li class="tile{{#hidden}} tile-hidden{{/hidden}}{{#restrictionlock}} tile-restricted{{/restrictionlock}}{{#isactive}} current{{/isactive}}{{#userclickable}} tile-clickable{{/userclickable}}{{#progress.isComplete}} is-complete{{/progress.isComplete}} {{extraclasses}}"
-    id="tile-{{tileid}}" data-section="{{tileid}}" data-true-sectionid="{{secid}}" {{#hastilephoto}}{{{phototileinlinestyle}}}{{/hastilephoto}}>
+<li class="tile{{#hidden}} tile-hidden{{/hidden}}{{#restricted}} tile-restricted{{/restricted}}{{#isactive}} current{{/isactive}}{{#userclickable}} tile-clickable{{/userclickable}}{{#progress.isComplete}} is-complete{{/progress.isComplete}} {{extraclasses}}"
+    id="tile-{{tileid}}" data-section="{{tileid}}" data-true-sectionid="{{secid}}" tabindex="2" {{#hastilephoto}}{{{phototileinlinestyle}}}{{/hastilephoto}}>
     {{^hastilephoto}}<div class="tile-bg"></div>{{/hastilephoto}}
     <a class="tile-link"{{#userclickable}} href="{{{config.wwwroot}}}/course/view.php?id={{courseid}}&section={{tileid}}"{{/userclickable}}
-       data-section="{{tileid}}" id="sectionlink-{{tileid}}" aria-label="{{tilearialabel}}">
+       data-section="{{tileid}}" id="sectionlink-{{tileid}}">
 
         {{^hastilephoto}}
             <div class="tile-content" id="tilecontent-{{tileid}}">
@@ -59,8 +59,7 @@
                         {{#editing}}data-toggle="tooltip" data-placement="left"
                          data-original-title="{{^allowphototiles}}{{#str}}picknewicon, format_tiles{{/str}}{{/allowphototiles}}{{#allowphototiles}}{{#str}}picknewiconphoto, format_tiles{{/str}}{{/allowphototiles}}"
                         {{/editing}}>
-                        {{#tilenumber}}{{>format_tiles/tilenumber}}{{/tilenumber}}
-                        {{^tilenumber}}{{>format_tiles/tileicon}}{{/tilenumber}}
+                        {{>format_tiles/tileicon}}
                     </div>
                     <div class="tiletopright" id="tiletopright-{{tileid}}" aria-hidden="true">
                         {{>format_tiles/progress_spacer}}
@@ -74,7 +73,7 @@
                         data-toggle="tooltip" data-html="true" data-original-title="{{activity_summary}}"
                     {{/usetooltips}}{{/activity_summary}}{{/ismobile}}>
                     <div class="tile-textinner{{titleclass}}" id="tileTextin-{{tileid}}">
-                        {{#title}}<h3{{^title}} title="{{{tilearialabel}}}"{{/title}}>{{{title}}}</h3>{{/title}}
+                      {{#title}}<h3>{{{title}}}</h3>{{/title}}
                     </div>
                     {{#availabilitymessage}}
                         {{>format_tiles/availability_info}}
