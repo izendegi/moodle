@@ -40,8 +40,8 @@ class icon_set {
      * @var array
      */
     private $fontawesometileicons = [
-        'fa-address-book-o',
         'fa-asterisk',
+        'fa-address-book-o',
         'fa-balance-scale',
         'fa-bar-chart',
         'fa-bell-o',
@@ -248,22 +248,26 @@ class icon_set {
             'format_tiles:check' => 'fa-check',
             'format_tiles:chevron-left' => 'fa-chevron-left',
             'format_tiles:chevron-right' => 'fa-chevron-right',
+            'format_tiles:circle-play' => 'fa-circle-play',
             'format_tiles:clone' => 'fa-clone',
             'format_tiles:close' => 'fa-close',
             'format_tiles:cloud-download' => 'fa-cloud-download',
             'format_tiles:cloud-upload' => 'fa-cloud-upload',
-            'format_tiles:completion-check' => 'fa-check',
-            'format_tiles:completion-fail' => 'fa-times',
-            'format_tiles:eye-slash' => 'fa-eye-slash',
             'format_tiles:filter' => 'fa-filter',
+            'format_tiles:eye-slash' => 'fa-eye-slash',
             'format_tiles:home' => 'fa-home',
             'format_tiles:image' => 'fa-image',
             'format_tiles:lock' => 'fa-lock',
+            'format_tiles:star-o' => 'fa-star-o',
             'format_tiles:pencil' => 'fa-pencil',
             'format_tiles:random' => 'fa-random',
-            'format_tiles:sort' => 'fa-sort',
+            'format_tiles:star' => 'fa-star',
             'format_tiles:toggle-off' => 'fa-toggle-off',
             'format_tiles:toggle-on' => 'fa-toggle-on',
+            'format_tiles:completion-check' => 'fa-check',
+            'format_tiles:completion-fail' => 'fa-times',
+            'format_tiles:ellipsis-h' => 'fa-ellipsis-h',
+            'format_tiles:plus-circle' => 'fa-plus-circle',
         ];
 
         $tileicons = [];

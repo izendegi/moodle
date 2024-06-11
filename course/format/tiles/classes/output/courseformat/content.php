@@ -26,6 +26,7 @@ namespace format_tiles\output\courseformat;
 
 
 use core_courseformat\output\local\content as content_base;
+use format_tiles\local\dynamic_styles;
 
 /**
  * Format tiles class to render course content.
@@ -45,6 +46,7 @@ class content extends content_base {
     public function export_for_template(\renderer_base $output) {
         global $PAGE, $DB, $USER;
         $isediting = $PAGE->user_is_editing();
+        $course = $this->format->get_course();
 
         $data = parent::export_for_template($output);
         $data->editoradvice = [];

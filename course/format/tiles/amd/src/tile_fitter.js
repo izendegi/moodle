@@ -35,7 +35,6 @@ define(["jquery", "core/ajax"], function ($, ajax) {
         TILE: ".tile",
         TILEID: "#tile-",
         TILE_COLLAPSED: ".tile-collapsed",
-        TILES_OUTER: ".format-tiles.jsenabled #format-tiles-multi-section-page",
         TILES: ".format-tiles.jsenabled ul.tiles",
         ACTIVITY: ".activity",
         SPACER: ".spacer",
@@ -48,9 +47,6 @@ define(["jquery", "core/ajax"], function ($, ajax) {
     // Used to store a delayed AJAX request so we can replace it if user sets again within one second or two.
     var timeoutBeforeResizeAjax = null;
 
-    // If we are in non JS nav mode, we may be on a single section page i.e/. &section=xx.
-    const isSectionPage = $(Selector.TILES).length === 0;
-
     /**
      * If we have a single tile on the last row it looks odd.
      * We might want to shrink the tile window down a little to even it out.
@@ -59,22 +55,17 @@ define(["jquery", "core/ajax"], function ($, ajax) {
      * @return {Promise}
      */
     var resizeTilesDivWidth = function() {
-        const winWidth = $(window).width();
+        var winWidth = $(window).width();
         // Create a new Deferred.
-        const dfd = new $.Deferred();
-        if (isSectionPage) {
-            // No tile fitting on single section page.
-            dfd.resolve();
-        }
-        const tiles = $(Selector.TILES);
-        const tilesOuter = $(Selector.TILES_OUTER);
-        const TILE_WIDTHS = {
+        var dfd = new $.Deferred();
+        var tiles = $(Selector.TILES);
+        var TILE_WIDTHS = {
             standard: 260,
             min: 225,
             mobileMin: 160
         };
         try {
-            var tilesParentWidth = tilesOuter.parent().innerWidth();
+            var tilesParentWidth = tiles.parent().innerWidth();
             var firstTile = $(tiles.find(Selector.TILE)[0]);
             // Get the width of one tile.
             var oneTileWidth = firstTile.width()
@@ -149,23 +140,19 @@ define(["jquery", "core/ajax"], function ($, ajax) {
             }
 
             // If we already have the desired width, nothing to do here so skip it.
-            // We use the width on the outer element tilesOuter so as to restrict width of section zero as well.
-            var existingWidth = parseInt(tilesOuter.css("max-width").replace("px", ""));
-            if (Math.abs(resizeWidth - existingWidth) < 50) {
-                // Nothing to do.
+            var existingWidth = parseInt(tiles.css("max-width").replace("px", ""));
+            if (Math.abs(resizeWidth - existingWidth) < 100) {
                 dfd.resolve();
             } else {
                 // We set session width at the server so that next time it is rendered with PHP, it has the correct width already.
                 var resizeTime = 500;
-                const openSection = $(Selector.OPEN_SECTION);
-                openSection.css('display', 'none');
-                tilesOuter.css("max-width", winWidth).animate({"max-width": resizeWidth}, resizeTime, "swing",
+                tiles.css("max-width", winWidth).animate({"max-width": resizeWidth}, resizeTime, "swing",
                     function() {
-                        dfd.resolve();
-                        $(Selector.CONTENT_SECTIONS).css({"max-width": resizeWidth});
-                        if (openSection) {
-                            openSection.css('display', 'block');
-                        }
+                        setTimeout(function() {
+                            // Wait additional time before confirm resolved to allow resize to complete else re-org is too early.
+                            dfd.resolve();
+                        }, resizeTime + 100);
+                        $(Selector.CONTENT_SECTIONS).animate({"max-width": resizeWidth}, resizeTime, "swing");
                     }
                 );
             }
@@ -181,10 +168,10 @@ define(["jquery", "core/ajax"], function ($, ajax) {
                     methodname: "format_tiles_set_session_width",
                     args: {courseid: courseId, width: Math.floor(resizeWidth)}
                 }]);
-            }, 1000);
+            }, 3000);
         } catch (err) {
             // Unset widths as something went wrong.
-            tilesOuter.css("max-width", winWidth).animate({"max-width": "100%"}, 500, "swing");
+            tiles.css("max-width", winWidth).animate({"max-width": "100%"}, 500, "swing");
             ajax.call([{
                 methodname: "format_tiles_set_session_width",
                 args: {courseid: courseId, width: 0}
@@ -291,9 +278,10 @@ define(["jquery", "core/ajax"], function ($, ajax) {
          * Re-organise the sections so that they are in the correct order
          * e.g. content section 3 is on the row below tile 3, so that
          * when tile 3 is clicked, content section 3 opens directly under it
+         * @param {boolean} delayBefore should we delay before doing the re-org?
          * @return {Promise}
          */
-        runReOrg: function () {
+        runReOrg: function (delayBefore) {
             // Create a new Deferred.
             var dfd = new $.Deferred();
             if (reOrgLocked === true) {
@@ -301,17 +289,29 @@ define(["jquery", "core/ajax"], function ($, ajax) {
                 dfd.reject("Re-org locked");
             }
             reOrgLocked = true;
+            var action = function() {
+                organiser.moveContentSectionsToPlaces(
+                    organiser.getContentSectionPositions(),
+                    [
+                        function() {
+                            $("body").removeClass("modal-open");
+                            dfd.resolve("Finished organising tiles");
+                            reOrgLocked = false;
+                        }
+                    ]
+                );
+            };
 
-            organiser.moveContentSectionsToPlaces(
-                organiser.getContentSectionPositions(),
-                [
-                    function() {
-                        $("body").removeClass("modal-open");
-                        dfd.resolve("Finished organising tiles");
-                        reOrgLocked = false;
-                    }
-                ]
-            );
+            if (delayBefore === true) {
+                // We want to allow a delay before we start the re-org. This allows any page animation going on to end.
+                setTimeout(function() {
+                    action();
+                    dfd.resolve("Re-org complete");
+                }, 1000);
+            } else {
+                action();
+                dfd.resolve("Re-org complete");
+            }
             return dfd.promise();
         }
     };
@@ -322,8 +322,8 @@ define(["jquery", "core/ajax"], function ($, ajax) {
      * On initial page load, we need to unhide the tiles.  They will have been hidden from PHP if we are using JS.
      * This is to cover the initial setting up of div width (i.e. allow us time to get screen width and set up).
      */
-    const unHideTiles = function() {
-        $(Selector.TILES_OUTER).animate({opacity: "1"}, "fast");
+    var unHideTiles = function() {
+        $(Selector.TILES).animate({opacity: "1"}, "fast");
         $(Selector.SECTION_ZERO).animate({opacity: "1"}, "fast");
         $("#page-loading-icon").fadeOut(500).remove();
     };
@@ -332,38 +332,45 @@ define(["jquery", "core/ajax"], function ($, ajax) {
         init: function(courseIdInit, sectionOpen, fitTilesToWidth, isEditing) {
             courseId = courseIdInit;
             $(document).ready(function() {
-                if (!isSectionPage) {
-                    // When we first load the page we want to move the tile contents divs.
-                    // Put them in the correct rows according to which row of tiles they relate to.
-                    // Only then do we re-open the last section the user had open.
-                    var organiseAndRevealTiles = function () {
-                        organiser.runReOrg().done(function() {
-                            if (sectionOpen && $(Selector.OPEN_SECTION).length === 0) {
-                                // Now open the tile user was on previously (if any).
-                                $(Selector.TILEID + sectionOpen).click();
-                            }
-                            unHideTiles();
-                        });
-                    };
-                    if (fitTilesToWidth && !isEditing) {
-                        // If we have a single tile on the last row it looks odd so resize window.
-                        resizeTilesDivWidth().done(function() {
-                            organiseAndRevealTiles();
-                        }).fail(function() {
-                            // If resize is rejected e.g. as screen is to narrow e.g. mobile.
-                            organiseAndRevealTiles();
-                        });
-                    } else {
+                if ($(Selector.TILES).css("opacity") === "1") {
+                    organiser.runReOrg(false).done(function() {
+                        if (sectionOpen !== 0) {
+                            // Tiles are already visible so open the tile user was on previously (if any).
+                            $(Selector.TILEID + sectionOpen).click();
+                        }
+                    });
+                }
+
+                // When we first load the page we want to move the tile contents divs.
+                // Put them in the correct rows according to which row of tiles they relate to.
+                // Only then do we re-open the last section the user had open.
+                var organiseAndRevealTiles = function () {
+                    organiser.runReOrg(false).done(function() {
+                        if (sectionOpen !== 0 && $(Selector.OPEN_SECTION).length === 0) {
+                            // Now open the tile user was on previously (if any).
+                            $(Selector.TILEID + sectionOpen).click();
+                        }
+                        unHideTiles();
+                    });
+                };
+                if (fitTilesToWidth && !isEditing) {
+                    // If we have a single tile on the last row it looks odd so resize window.
+                    resizeTilesDivWidth().done(function() {
                         organiseAndRevealTiles();
-                    }
+                    }).fail(function() {
+                        // If resize is rejected e.g. as screen is to narrow e.g. mobile.
+                        organiseAndRevealTiles();
+                    });
+                } else {
+                    organiseAndRevealTiles();
                 }
             });
         },
         resizeTilesDivWidth: function() {
             return resizeTilesDivWidth();
         },
-        runReOrg: function () {
-            return organiser.runReOrg();
+        runReOrg: function (delayBefore) {
+            return organiser.runReOrg(delayBefore);
         }
     };
 });

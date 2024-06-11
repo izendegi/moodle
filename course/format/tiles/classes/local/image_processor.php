@@ -49,8 +49,7 @@ class image_processor {
      * @return \stored_file|bool
      * @throws \required_capability_exception
      */
-    public static function adjust_and_copy_file(\stored_file $tempfile, string $newfilename,
-                                                \context $context, int $itemid, int $width, int $height) {
+    public static function adjust_and_copy_file($tempfile, $newfilename, $context, $itemid, $width, $height) {
         require_capability('moodle/course:update', $context);
         $newfilename = str_replace(' ', '_', $newfilename);
         $storedfilerecord = self::stored_file_record($context->id, $itemid, $newfilename);
@@ -66,6 +65,19 @@ class image_processor {
 
             $data = self::process_image($tmpfilepath, $width, $height, $mime);
             if (!empty($data)) {
+                // If a file exists with the same details (e.g. teacher uploading new file with same name), delete it.
+                $existingfile = $fs->get_file(
+                    $storedfilerecord['contextid'],
+                    $storedfilerecord['component'],
+                    $storedfilerecord['filearea'],
+                    $storedfilerecord['itemid'],
+                    $storedfilerecord['filepath'],
+                    $storedfilerecord['filename']
+                );
+                if ($existingfile) {
+                    debugging('Deleted old photo' . $existingfile->get_id(), DEBUG_DEVELOPER);
+                    $existingfile->delete();
+                }
                 // Create new file.
                 $newfile = $fs->create_file_from_string($storedfilerecord, $data);
                 unlink($tmpfilepath);
@@ -100,7 +112,7 @@ class image_processor {
      * @param string $mime The mime type.
      * @return string|bool false if a problem occurs or the image data.
      */
-    private static function process_image(string $filepath, int $requestedwidth, int $requestedheight, string $mime) {
+    private static function process_image($filepath, $requestedwidth, $requestedheight, $mime) {
         $imagecontainerbgcolour = ['r' => 255, 'g' => 255, 'b' => 255];
         if (empty($filepath) || empty($requestedwidth) || empty($requestedheight)) {
             return false;
