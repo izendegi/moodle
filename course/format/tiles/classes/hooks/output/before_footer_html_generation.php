@@ -38,15 +38,15 @@ class before_footer_html_generation {
         }
         try {
             $editing = $PAGE->user_is_editing();
-
-            $allowedpagetypes = ['course-view-tiles', 'section-view-tiles', 'course-view-section-tiles'];
-            $oncourseviewpage = in_array($PAGE->pagetype, $allowedpagetypes);
+            $courseviewpagetypes = ['course-view-tiles', 'section-view-tiles'];
+            $oncourseviewpage = in_array($PAGE->pagetype, $courseviewpagetypes);
 
             // On a mod/view.php page we may need JS to ensure that any clicks on course index menu launch modals where appropriate.
             $modviewpageneedsjs = false;
-            $allowedmodals = \format_tiles\local\modal_helper::allowed_modal_modules();
+            $allowedmodals = null;
 
             if (get_config('format_tiles', 'usecourseindex')) {
+                $allowedmodals = \format_tiles\local\util::allowed_modal_modules();
                 if (!empty($allowedmodals['resources'] || !empty($allowedmodals['modules']))) {
                     // On /mod/xxx/view.php or course/view.php page passing in cmid, may need to launch modal JS.
                     // This is because the course index needs the JS.  So get details.
@@ -57,6 +57,8 @@ class before_footer_html_generation {
             }
 
             if (($oncourseviewpage && !$editing) || $modviewpageneedsjs) {
+                $allowedmodals = $allowedmodals === null ? \format_tiles\local\util::allowed_modal_modules() : $allowedmodals;
+
                 // Course module modals.
                 $launchmodalcmid = null;
                 if (!empty($allowedmodals['resources'] || !empty($allowedmodals['modules']))) {
@@ -65,8 +67,7 @@ class before_footer_html_generation {
                     if ($launchmodalcmid) {
                         // Need to check if this cm allowed a modal.
                         $modalallowed =
-                            \format_tiles\local\util::get_course_mod_info($PAGE->course->id, $launchmodalcmid)->modalallowed
-                                ?? false;
+                            \format_tiles\local\util::get_course_mod_info($PAGE->course->id, $launchmodalcmid)->modalallowed ?? false;
                         if (!$modalallowed) {
                             $launchmodalcmid = null;
                         }
@@ -74,7 +75,7 @@ class before_footer_html_generation {
                 }
                 $PAGE->requires->js_call_amd(
                     'format_tiles/course_mod_modal', 'init',
-                [$PAGE->course->id, false, $PAGE->pagetype, $launchmodalcmid, \format_tiles\local\util::using_js_nav()]
+                    [$PAGE->course->id, false, $PAGE->pagetype, $launchmodalcmid]
                 );
             }
 
@@ -82,7 +83,7 @@ class before_footer_html_generation {
             // Avoid doing so if the header has not been printed.
             // (The caveat is because some plugins e.g. mod/customcert/view.php when sending a PDF file may trigger this function).
             if ($PAGE->state === \moodle_page::STATE_IN_BODY) {
-                $jsconfig = \format_tiles\local\util::get_js_config_data($PAGE->course->id, $allowedmodals ?? []);
+                $jsconfig = \format_tiles\output\course_output::get_js_config_data($PAGE->course->id, $allowedmodals ?? []);
                 $renderer = $PAGE->get_renderer('format_tiles');
                 $hook->add_html($renderer->render_from_template('format_tiles/js-config', ['tiles_js_config' => $jsconfig]));
             }
