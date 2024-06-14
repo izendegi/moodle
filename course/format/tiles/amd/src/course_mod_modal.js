@@ -373,8 +373,8 @@ define(["jquery", "core/modal_factory", "core/config", "core/templates", "core/n
                     tilesConfig = $('#format-tiles-js-config').data();
                     const courseIndex = $('nav#courseindex');
 
-                    if (pageType === 'course-view-tiles') {
-                        // We are on the main tiles page.
+                    if (['course-view-tiles', 'section-view-tiles'].includes(pageType)) {
+                        // We are on a main tiles page, /course/view.php or /course/section.php in Moodle 4.4+.
                         // If any link in the course index on the left is clicked, check if it needs a modal.
                         // If it does, launch the modal instead of following the link.
                         // This isn't ideal but saves plugin re-implementing / maintaining large volume of course index code.
