@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace format_tiles\local\hooks\output;
+namespace format_tiles\hooks\output;
 
 /**
  * Allows plugins to add any elements to the page before footer.
@@ -38,7 +38,8 @@ class before_footer_html_generation {
         }
         try {
             $editing = $PAGE->user_is_editing();
-            $oncourseviewpage = $PAGE->pagetype == 'course-view-tiles';
+            $courseviewpagetypes = ['course-view-tiles', 'section-view-tiles'];
+            $oncourseviewpage = in_array($PAGE->pagetype, $courseviewpagetypes);
 
             // On a mod/view.php page we may need JS to ensure that any clicks on course index menu launch modals where appropriate.
             $modviewpageneedsjs = false;
@@ -90,6 +91,5 @@ class before_footer_html_generation {
         } catch (\Exception $e) {
             debugging("Could not prepare format_tiles footer data: " . $e->getMessage(), DEBUG_DEVELOPER);
         }
-        return;
     }
 }
