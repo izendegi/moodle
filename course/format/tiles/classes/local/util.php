@@ -262,4 +262,58 @@ class util {
         }
         return $palette;
     }
+
+    /**
+     * Include AMD module required for tiles course.
+     * @param \stdClass $course
+     * @param int $contextid
+     * @param int|null $displaysection
+     * @return void
+     * @throws \coding_exception
+     * @throws \dml_exception
+     */
+    public static function init_js($course, int $contextid, $displaysection) {
+        global $USER, $SESSION, $PAGE;
+        if ($PAGE->user_allowed_editing()) {
+            $SESSION->editing_last_edited_section = $course->id . "-" . $displaysection;
+        }
+
+        $usejsnav = self::using_js_nav();
+        $jssectionnum = $displaysection ?? optional_param('expand', 0, PARAM_INT);
+
+        if (!$PAGE->user_is_editing()) {
+            // Initialise the main JS module for non editing users.
+            $jsparams = [
+                'courseId' => $course->id,
+                'useJSNav' => $usejsnav, // See also lib.php page_set_course().
+                'isMobile' => \core_useragent::get_device_type() == \core_useragent::DEVICETYPE_MOBILE ? 1 : 0,
+                'jsSectionNum' => $jssectionnum,
+                'displayFilterBar' => $course->displayfilterbar,
+                'assumeDataStoreContent' => get_config('format_tiles', 'assumedatastoreconsent'),
+                'reOpenLastSection' => get_config('format_tiles', 'reopenlastsection'),
+                'userId' => $USER->id,
+                'fitTilesToWidth' => get_config('format_tiles', 'fittilestowidth')
+                    && !optional_param("skipcheck", 0, PARAM_INT)
+                    && !isset($SESSION->format_tiles_skip_width_check)
+                    && $usejsnav,
+                'enablecompletion' => $course->enablecompletion,
+                'usesubtiles' => get_config('format_tiles', 'allowsubtilesview') && $course->courseusesubtiles,
+            ];
+            $PAGE->requires->js_call_amd(
+                'format_tiles/course', 'init', array_merge($jsparams, ['courseContextId' => $contextid])
+            );
+        } else {
+            // Initialise JS for when editing mode is on.
+            $editparams = [
+                'courseId' => $course->id,
+                'pageType' => $PAGE->pagetype,
+                'allowPhotoTiles' => get_config('format_tiles', 'allowphototiles'),
+                'documentationurl' => get_config('format_tiles', 'documentationurl'),
+            ];
+            $PAGE->requires->js_call_amd('format_tiles/edit_icon_picker', 'init', $editparams);
+        }
+        if ($course->enablecompletion) {
+            $PAGE->requires->js_call_amd('format_tiles/completion', 'init', [$course->id]);
+        }
+    }
 }
