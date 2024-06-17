@@ -30,26 +30,7 @@ namespace format_tiles\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class util {
-    /**
-     * Which course modules is the site administrator allowing to be displayed in a modal?
-     * @return array the permitted modules including resource types e.g. page, pdf, HTML
-     * @throws \dml_exception
-     */
-    public static function allowed_modal_modules() {
-        $devicetype = \core_useragent::get_device_type();
-        if ($devicetype != \core_useragent::DEVICETYPE_TABLET && $devicetype != \core_useragent::DEVICETYPE_MOBILE
-            && !(\core_useragent::is_ie())) {
-            // JS navigation and modals in Internet Explorer are not supported by this plugin so we disable modals here.
-            $resources = get_config('format_tiles', 'modalresources');
-            $modules = get_config('format_tiles', 'modalmodules');
-            return [
-                'resources' => $resources ? explode(",", $resources) : [],
-                'modules' => $modules ? explode(",", $modules) : [],
-            ];
-        } else {
-            return ['resources' => [], 'modules' => []];
-        }
-    }
+
 
     /**
      * Get information about a particular course module including whether modal is allowed.
@@ -78,13 +59,8 @@ class util {
             $completiondata = $completioninfo
                 && $completioninfo->is_enabled($cm) != COMPLETION_TRACKING_NONE ? $completioninfo->get_data($cm) : null;
 
-            $allowedmodmodals = self::allowed_modal_modules();
             $resourcetype = $isresource ? self::get_mod_resource_icon_name($cm->context->id) : '';
-
-            $modalallowed = ($resourcetype && in_array($resourcetype, $allowedmodmodals['resources']))
-                || in_array(
-                    $cmrecord->modname, $allowedmodmodals['resources']) || in_array($cmrecord->modname, $allowedmodmodals['modules']
-                );
+            $modalallowed = \format_tiles\local\modal_helper::is_allowed_modal($cmrecord->modname, $resourcetype);
 
             $pluginfileurl = $isresource ? \format_tiles\output\course_output::plugin_file_url($cm) : '';
             if ($modalallowed && $cmrecord->modname === 'url') {
@@ -316,4 +292,40 @@ class util {
             $PAGE->requires->js_call_amd('format_tiles/completion', 'init', [$course->id]);
         }
     }
+
+    /**
+     * Get config data to be provided to JavaScript client side.
+     * @param int $courseid
+     * @return array
+     * @throws \dml_exception
+     */
+    public static function get_js_config_data(int $courseid) {
+        global $DB;
+
+        $jsconfigvalues = [];
+
+        // If we are using the course index, JS needs to know which PDFs and HTML files in course launch in modals.
+        if (get_config('format_tiles', 'usecourseindex')) {
+            $allowedmodals = \format_tiles\local\modal_helper::allowed_modal_modules();
+            $modnames = array_merge($allowedmodals['modules'] ?? [], $allowedmodals['resources'] ?? []);
+            $jsconfigvalues['modalAllowedModNames'] = json_encode($modnames);
+            $jsconfigvalues['modalAllowedCmids'] = json_encode(
+                \format_tiles\local\modal_helper::get_modal_allowed_cmids($courseid, $modnames)
+            );
+        }
+
+        $jsconfigvalues['defaultcourseicon'] = $DB->get_field(
+            'course_format_options', 'value',
+            ['courseid' => $courseid, 'format' => 'tiles', 'sectionid' => 0, 'name' => 'defaulttileicon']
+        );
+
+        $data = [];
+        foreach ($jsconfigvalues as $k => $v) {
+            $data[] = ['key' => $k, 'value' => $v];
+        }
+
+        return $data;
+    }
+
+
 }

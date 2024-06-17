@@ -49,7 +49,8 @@ class image_processor {
      * @return \stored_file|bool
      * @throws \required_capability_exception
      */
-    public static function adjust_and_copy_file(\stored_file $tempfile, string $newfilename, \context $context, int $itemid, int $width, int $height) {
+    public static function adjust_and_copy_file(\stored_file $tempfile, string $newfilename,
+                                                \context $context, int $itemid, int $width, int $height) {
         require_capability('moodle/course:update', $context);
         $newfilename = str_replace(' ', '_', $newfilename);
         $storedfilerecord = self::stored_file_record($context->id, $itemid, $newfilename);
