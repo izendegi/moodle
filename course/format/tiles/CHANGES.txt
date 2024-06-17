@@ -455,3 +455,9 @@ Other
 - Refactor JS init and remove some redundant editor JS
 - Avoid imprecision warning on image upload
 - Course index modals work on section.php page
+
+4.4.0.8 (2024061402)
+=====================
+- Support for section.php on Moodle 4.4
+- Move some helper methods and minor refactor
+- Fix modals non JS navigation mode
