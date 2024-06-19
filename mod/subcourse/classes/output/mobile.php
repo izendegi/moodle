@@ -80,8 +80,8 @@ class mobile {
 
         // Pre-format some of the texts for the mobile app.
         $subcourse->name = \core_external\util::format_string($subcourse->name, $context);
-        [$subcourse->intro, $subcourse->introformat] = \core_external\util::format_text($subcourse->intro, $subcourse->introformat, $context,
-            'mod_subcourse', 'intro');
+        [$subcourse->intro, $subcourse->introformat] = \core_external\util::format_text($subcourse->intro, $subcourse->introformat,
+                                                                                        $context, 'mod_subcourse', 'intro');
 
         $data = [
             'cmid' => $cm->id,

@@ -23,8 +23,6 @@
 
 namespace mod_subcourse;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Unit tests for the methods provided by the {@see \mod_subcourse\output\mobile} class.
  *
