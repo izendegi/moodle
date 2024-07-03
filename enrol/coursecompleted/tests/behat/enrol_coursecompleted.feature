@@ -26,11 +26,6 @@ Feature: Enrolment on course completion
     And the following config values are set as admin:
       | enableasyncbackup | 0 |
     And I log in as "admin"
-    And I navigate to "Plugins > Enrolments > Manage enrol plugins" in site administration
-    And I click on "Disable" "link" in the "Guest access" "table_row"
-    And I click on "Disable" "link" in the "Self enrolment" "table_row"
-    And I click on "Disable" "link" in the "Cohort sync" "table_row"
-    And I click on "Enable" "link" in the "Course completed enrolment" "table_row"
     And I navigate to "Location > Location settings" in site administration
     And I set the field "Default timezone" to "Europe/Brussels"
     And I am on "Course 1" course homepage
@@ -52,10 +47,8 @@ Feature: Enrolment on course completion
     And I click on "Course completion" "link" in the "region-main" "region"
     And I follow "Click to mark user complete"
     And I log out
-    And I log in as "admin"
+    And I wait "1" seconds
     And I run the scheduled task "core\task\completion_regular_task"
-    And I run all adhoc tasks
-    And I log out
     When I am on the "C1" "Course" page logged in as "user1"
     Then I should not see "You will be enrolled in this course when"
     And I should see "Page A"
@@ -81,7 +74,6 @@ Feature: Enrolment on course completion
     And I follow "Click to mark user complete"
     And I wait "1" seconds
     And I run the scheduled task "core\task\completion_regular_task"
-    And I run all adhoc tasks
     And I am on "Course 2" course homepage
     Then I navigate to course participants
     # The user enrolment only starts in 2030
@@ -101,7 +93,6 @@ Feature: Enrolment on course completion
     And I follow "Click to mark user complete"
     And I wait "1" seconds
     And I run the scheduled task "core\task\completion_regular_task"
-    And I run all adhoc tasks
     And I am on "Course 2" course homepage
     When I navigate to course participants
     # The user enrolment only starts in 2030
@@ -110,7 +101,8 @@ Feature: Enrolment on course completion
     And I log in as "guest"
     And I am on course index
     And I follow "Course 2"
-    But I should see "You will be enrolled in this course when you complete course"
+    # The user enrolment only starts in 2030
+    But I should not see "You will be enrolled in this course when you complete course"
 
   Scenario: Manage enrolled users
     Given I set the following fields to these values:
@@ -123,10 +115,8 @@ Feature: Enrolment on course completion
     And I click on "Course completion" "link" in the "region-main" "region"
     And I follow "Click to mark user complete"
     And I log out
-    And I log in as "admin"
+    And I wait "1" seconds
     And I run the scheduled task "core\task\completion_regular_task"
-    And I run all adhoc tasks
-    And I log out
     And I am on the "C2" "Course" page logged in as "teacher1"
     And I navigate to course participants
     And I should see "Username 1" in the "participants" "table"
@@ -138,7 +128,7 @@ Feature: Enrolment on course completion
     And I click on "//a[@data-action='unenrol']" "xpath_element" in the "teacher1" "table_row"
     And I click on "Unenrol" "button" in the "Unenrol" "dialogue"
     And I am on the "Course 2" "enrolment methods" page
-    And I wait until the page is ready
+    # And I wait until the page is ready
     When I click on "[aria-label='Enrol users']" "css_element" in the "tr.lastrow" "css_element"
     Then I should see "Username 1"
     And I press "Enrol users"
@@ -162,9 +152,9 @@ Feature: Enrolment on course completion
     And I click on "Course completion" "link" in the "region-main" "region"
     And I follow "Click to mark user complete"
     And I log out
-    And I log in as "admin"
+    And I wait "1" seconds
     And I run the scheduled task "core\task\completion_regular_task"
-    And I run all adhoc tasks
+    And I log in as "admin"
     And I am on "Course 2" course homepage
     And I navigate to course participants
     And I click on "Select all" "checkbox"
@@ -184,10 +174,9 @@ Feature: Enrolment on course completion
     And I click on "Course completion" "link" in the "region-main" "region"
     And I follow "Click to mark user complete"
     And I log out
-    And I log in as "admin"
+    And I wait "1" seconds
     And I run the scheduled task "core\task\completion_regular_task"
-    And I run all adhoc tasks
-    And I am on "Course 2" course homepage
+    And I am on the "C2" "Course" page logged in as "admin"
     And I navigate to course participants
     When I click on "Select 'Username 1'" "checkbox"
     And I set the field "With selected users..." to "Edit selected enrolments on course completion"

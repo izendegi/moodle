@@ -18,40 +18,48 @@
  * coursecompleted enrolment plugin other tests.
  *
  * @package   enrol_coursecompleted
- * @copyright 2017 eWallah (www.eWallah.net)
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace enrol_coursecompleted;
 
-defined('MOODLE_INTERNAL') || die();
+use advanced_testcase;
+use context_course;
+use stdClass;
 
-global $CFG;
-require_once($CFG->libdir . '/formslib.php');
-require_once($CFG->libdir . '/grouplib.php');
-require_once($CFG->dirroot . '/group/lib.php');
 
 /**
  * coursecompleted enrolment plugin other tests.
  *
  * @package   enrol_coursecompleted
- * @copyright 2017 eWallah (www.eWallah.net)
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \enrol_coursecompleted_plugin
  */
-final class other_test extends \advanced_testcase {
+final class other_test extends advanced_testcase {
+
+    /**
+     * Setup to ensure that forms and locallib are loaded.
+     */
+    public static function setUpBeforeClass(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/formslib.php');
+        require_once($CFG->libdir . '/grouplib.php');
+        require_once($CFG->dirroot . '/group/lib.php');
+        parent::setUpBeforeClass();
+    }
+
     /**
      * Tests initial setup.
      */
     protected function setUp(): void {
         global $CFG;
+        parent::setUp();
         $CFG->enablecompletion = true;
         $this->resetAfterTest(true);
-        $enabled = enrol_get_plugins(true);
-        $enabled['coursecompleted'] = true;
-        set_config('enrol_plugins_enabled', implode(',', array_keys($enabled)));
     }
 
     /**
@@ -78,12 +86,24 @@ final class other_test extends \advanced_testcase {
     }
 
     /**
+     * Test install and uninstall.
+     * @coversNothing
+     */
+    public function test_install_uninstall(): void {
+        global $CFG;
+        include($CFG->dirroot . '/enrol/coursecompleted/db/install.php');
+        include($CFG->dirroot . '/enrol/coursecompleted/db/uninstall.php');
+        $this->assertTrue(xmldb_enrol_coursecompleted_install());
+        $this->assertTrue(xmldb_enrol_coursecompleted_uninstall());
+    }
+
+    /**
      * Test invalid instance.
      * @covers \enrol_coursecompleted_plugin
      */
     public function test_invalid_instance(): void {
         $plugin = enrol_get_plugin('coursecompleted');
-        $tst = new \stdClass();
+        $tst = new stdClass();
         $tst->enrol = 'wrong';
         $this->expectException('moodle_exception');
         $this->expectExceptionMessage('invalid enrol instance!');
@@ -94,9 +114,10 @@ final class other_test extends \advanced_testcase {
      * Test disabled.
      * @covers \enrol_coursecompleted_plugin
      * @covers \enrol_coursecompleted\observer
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_disabled(): void {
-        global $CFG;
+        global $CFG, $DB;
         require_once($CFG->libdir . '/completionlib.php');
         $generator = $this->getDataGenerator();
         $course1 = $generator->create_course(['enablecompletion' => 1]);
@@ -105,62 +126,135 @@ final class other_test extends \advanced_testcase {
         $this->setAdminUser();
 
         $student1 = $generator->create_and_enrol($course1, 'student')->id;
-        $student2 = $generator->create_and_enrol($course1, 'student')->id;
-        $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => 5, 'enrolstartdate' => time() + 66666666]);
+        $generator->create_and_enrol($course1, 'student');
+        $generator->create_and_enrol($course2, 'student');
+        $generator->create_and_enrol($course2, 'teacher');
+        $generator->create_and_enrol($course1, 'teacher');
+        $plugin->add_instance(
+            $course1,
+            [
+                'roleid' => 5,
+                'customint1' => $course2->id,
+                'customint4' => time() + 66666666,
+                'enrolstartdate' => time() + 66666666,
+            ]
+        );
+        $observer = new observer();
         $compevent = \core\event\course_completed::create(
             [
                 'objectid' => $course2->id,
                 'relateduserid' => $student1,
-                'context' => \context_course::instance($course2->id),
+                'context' => context_course::instance($course2->id),
                 'courseid' => $course2->id,
                 'other' => ['relateduserid' => $student1],
             ]
         );
-        $observer = new observer();
-
+        $sqllike = $DB->sql_like('customdata', ':customdata');
+        $instance = $DB->get_record('enrol', ['courseid' => $course1->id, 'enrol' => 'coursecompleted'], '*', MUST_EXIST);
+        $params = ['component' => 'enrol_coursecompleted', 'customdata' => '{"id":"' . $instance->id . '"%'];
+        $plugin->update_status($instance, ENROL_INSTANCE_DISABLED);
         $observer->enroluser($compevent);
-        $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => 5, 'enrolenddate' => time() - 66666666]);
-        $compevent = \core\event\course_completed::create(
-            [
-                'objectid' => $course2->id,
-                'relateduserid' => $student2,
-                'context' => \context_course::instance($course2->id),
-                'courseid' => $course2->id,
-                'other' => ['relateduserid' => $student2],
-            ]
-        );
-        $observer = new observer();
+        $this->assertEquals(5, $DB->count_records('user_enrolments', []));
+        $plugin->update_status($instance, ENROL_INSTANCE_ENABLED);
         $observer->enroluser($compevent);
+        $this->assertEquals(5, $DB->count_records('user_enrolments', []));
+        $this->assertEquals(1, $DB->count_records_select('task_adhoc', "component = :component AND $sqllike", $params));
+        $data = new stdClass();
+        $data->status = ENROL_INSTANCE_DISABLED;
+        $plugin->update_instance($instance, $data);
+        $this->assertEquals(0, $DB->count_records_select('task_adhoc', "component = :component AND $sqllike", $params));
+        $data->status = ENROL_INSTANCE_ENABLED;
+        $plugin->update_instance($instance, $data);
+        delete_course($course1, false);
+        delete_course($course2, false);
+        $this->assertEquals(0, $DB->count_records('user_enrolments', []));
+        $this->assertEquals(0, $DB->count_records_select('task_adhoc', "component = :component AND $sqllike", $params));
     }
 
     /**
-     * Test static enrol from past.
+     * Create dependend courses.
+     * @param stdClass $course
+     * @return stdClass course
+     */
+    private function create_dep($course): stdClass {
+        $generator = $this->getDataGenerator();
+        $plugin = enrol_get_plugin('coursecompleted');
+        $manual = enrol_get_plugin('manual');
+        $self = enrol_get_plugin('self');
+        $newcourse = $generator->create_course(['enablecompletion' => 1]);
+        $plugin->add_instance($course, ['customint1' => $newcourse->id, 'roleid' => 5]);
+        $manual->add_instance($course, ['customint1' => $newcourse->id, 'roleid' => 5]);
+        $self->add_instance($course, ['customint1' => $newcourse->id, 'roleid' => 5]);
+        return $newcourse;
+    }
+
+    /**
+     * Test complex path.
      * @covers \enrol_coursecompleted_plugin
      */
-    public function test_static_past(): void {
-        global $CFG;
-        require_once($CFG->libdir . '/completionlib.php');
+    public function test_complex_path(): void {
+        global $DB;
         $generator = $this->getDataGenerator();
+        $plugin = enrol_get_plugin('coursecompleted');
+        $manual = enrol_get_plugin('manual');
         $course1 = $generator->create_course(['enablecompletion' => 1]);
         $course2 = $generator->create_course(['enablecompletion' => 1]);
-        $studentid = $generator->create_and_enrol($course1, 'student')->id;
+        $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => 5]);
+        $instance = $DB->get_record('enrol', ['courseid' => $course1->id, 'enrol' => 'coursecompleted'], '*', MUST_EXIST);
+        $course3 = $generator->create_course(['enablecompletion' => 1]);
+        $course4 = $generator->create_course(['enablecompletion' => 1]);
+        $course5 = $generator->create_course(['enablecompletion' => 1]);
+        $course6 = $generator->create_course(['enablecompletion' => 1]);
+        $course7 = $generator->create_course(['enablecompletion' => 1]);
+        $course8 = $generator->create_course(['enablecompletion' => 1]);
+        $course9 = $generator->create_course(['enablecompletion' => 1]);
+        $course10 = $generator->create_course(['enablecompletion' => 1]);
+        $course11 = $generator->create_course(['enablecompletion' => 1]);
+        $course12 = $generator->create_course(['enablecompletion' => 1]);
+        $course13 = $generator->create_course(['enablecompletion' => 1]);
+        $course14 = $generator->create_course(['enablecompletion' => 1]);
+        $course15 = $this->create_dep($course14);
+        $this->create_dep($course15);
+        $plugin->add_instance($course2, ['customint1' => $course3->id, 'roleid' => 5]);
+        $plugin->add_instance($course3, ['customint1' => $course4->id, 'roleid' => 5]);
+        $plugin->add_instance($course4, ['customint1' => $course5->id, 'roleid' => 5]);
+        $plugin->add_instance($course5, ['customint1' => $course6->id, 'roleid' => 5]);
+        $plugin->add_instance($course6, ['customint1' => $course7->id, 'roleid' => 5]);
+        $plugin->add_instance($course7, ['customint1' => $course8->id, 'roleid' => 5]);
+        $plugin->add_instance($course8, ['customint1' => $course9->id, 'roleid' => 5]);
+        $plugin->add_instance($course9, ['customint1' => $course10->id, 'roleid' => 5]);
+        $plugin->add_instance($course10, ['customint1' => $course11->id, 'roleid' => 5]);
+        $plugin->add_instance($course11, ['customint1' => $course12->id, 'roleid' => 5]);
+        $plugin->add_instance($course12, ['customint1' => $course1->id, 'roleid' => 5]);
+        $plugin->add_instance($course14, ['customint1' => $course13->id, 'roleid' => 5]);
+        $plugin->add_instance($course13, ['customint1' => $course14->id, 'roleid' => 5]);
 
-        $plugin = enrol_get_plugin('coursecompleted');
-        $this->setAdminUser();
-        $ccompletion = new \completion_completion(['course' => $course1->id, 'userid' => $studentid]);
-        $ccompletion->mark_complete(time());
-        $ccompletion = new \completion_completion(['course' => $course2->id, 'userid' => $studentid]);
-        $ccompletion->mark_complete(time());
-        mark_user_dirty($studentid);
-        $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => 5, 'enrolperiod' => 300000]);
-        \enrol_coursecompleted_plugin::enrol_past($course1->id);
-        \enrol_coursecompleted_plugin::enrol_past($course2->id);
+        $manual->add_instance($course1, ['customint1' => $course14->id, 'roleid' => 5]);
+        $manual->add_instance($course2, ['customint1' => $course1->id, 'roleid' => 5]);
+        $manual->add_instance($course3, ['customint1' => $course2->id, 'roleid' => 5]);
+        $manual->add_instance($course4, ['customint1' => $course3->id, 'roleid' => 5]);
+        $manual->add_instance($course5, ['customint1' => $course4->id, 'roleid' => 5]);
+        $manual->add_instance($course6, ['customint1' => $course5->id, 'roleid' => 5]);
+        $manual->add_instance($course7, ['customint1' => $course6->id, 'roleid' => 5]);
+        $manual->add_instance($course8, ['customint1' => $course7->id, 'roleid' => 5]);
+        $manual->add_instance($course9, ['customint1' => $course8->id, 'roleid' => 5]);
+        $manual->add_instance($course10, ['customint1' => $course9->id, 'roleid' => 5]);
+        $manual->add_instance($course11, ['customint1' => $course10->id, 'roleid' => 5]);
+        $manual->add_instance($course12, ['customint1' => $course11->id, 'roleid' => 5]);
+        $manual->add_instance($course14, ['customint1' => $course1->id, 'roleid' => 5]);
+        $manual->add_instance($course13, ['customint1' => $course14->id, 'roleid' => 5]);
+        $path = \phpunit_util::call_internal_method($plugin, 'build_course_path', [$instance], '\enrol_coursecompleted_plugin');
+        $this->assertCount(10, $path);
+        $instance = $DB->get_record('enrol', ['courseid' => $course5->id, 'enrol' => 'coursecompleted'], '*', MUST_EXIST);
+        $path = \phpunit_util::call_internal_method($plugin, 'build_course_path', [$instance], '\enrol_coursecompleted_plugin');
+        $this->assertCount(10, $path);
     }
 
     /**
      * Test invalid role.
      * @covers \enrol_coursecompleted_plugin
      * @covers \enrol_coursecompleted\observer
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_invalid_role(): void {
         global $DB;
@@ -171,13 +265,14 @@ final class other_test extends \advanced_testcase {
         $this->setAdminUser();
         $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => 9999]);
         $instance = $DB->get_record('enrol', ['courseid' => $course1->id, 'enrol' => 'coursecompleted'], '*', MUST_EXIST);
-        $this->assertCount(2, $plugin->build_course_path($instance));
+        $path = \phpunit_util::call_internal_method($plugin, 'build_course_path', [$instance], '\enrol_coursecompleted_plugin');
+        $this->assertCount(2, $path);
         $studentid = $generator->create_and_enrol($course2, 'student')->id;
         $compevent = \core\event\course_completed::create(
             [
                 'objectid' => $course2->id,
                 'relateduserid' => $studentid,
-                'context' => \context_course::instance($course2->id),
+                'context' => context_course::instance($course2->id),
                 'courseid' => $course2->id,
                 'other' => ['relateduserid' => $studentid],
             ]
@@ -190,6 +285,7 @@ final class other_test extends \advanced_testcase {
     /**
      * Test group member.
      * @covers \enrol_coursecompleted\observer
+     * @covers \enrol_coursecompleted\hook_listener
      * @covers \enrol_coursecompleted_plugin
      */
     public function test_groups_child(): void {
@@ -197,7 +293,7 @@ final class other_test extends \advanced_testcase {
         $generator = $this->getDataGenerator();
         $plugin = enrol_get_plugin('coursecompleted');
         $course1 = $generator->create_course(['shortname' => 'B1', 'enablecompletion' => 1]);
-        $data = new \stdClass();
+        $data = new stdClass();
         $data->courseid = $course1->id;
         $data->idnumber = $course1->id . 'A';
         $data->name = 'A group';
@@ -213,7 +309,8 @@ final class other_test extends \advanced_testcase {
         $this->setAdminUser();
         $plugin->add_instance($course1, ['customint1' => $course2->id, 'roleid' => $studentrole->id]);
         $instance = $DB->get_record('enrol', ['courseid' => $course1->id, 'enrol' => 'coursecompleted'], '*', MUST_EXIST);
-        $this->assertCount(2, $plugin->build_course_path($instance));
+        $path = \phpunit_util::call_internal_method($plugin, 'build_course_path', [$instance], '\enrol_coursecompleted_plugin');
+        $this->assertCount(2, $path);
         $studentid = $generator->create_and_enrol($course2)->id;
         groups_add_member($groupid2, $studentid);
         rebuild_course_cache($course2->id, true);
@@ -221,7 +318,7 @@ final class other_test extends \advanced_testcase {
             [
                 'objectid' => $course2->id,
                 'relateduserid' => $studentid,
-                'context' => \context_course::instance($course2->id),
+                'context' => context_course::instance($course2->id),
                 'courseid' => $course2->id,
                 'other' => ['relateduserid' => $studentid],
             ]
@@ -232,6 +329,12 @@ final class other_test extends \advanced_testcase {
         rebuild_course_cache($course1->id, true);
         rebuild_course_cache($course2->id, true);
         $this->assertTrue(groups_is_member($groupid1, $studentid));
+        // Manually dispatch hook.
+        $hook = new \core_enrol\hook\after_enrol_instance_status_updated(
+            enrolinstance: $instance,
+            newstatus: ENROL_INSTANCE_DISABLED,
+        );
+        \core\di::get(\core\hook\manager::class)->dispatch($hook);
     }
 
     /**
@@ -239,7 +342,7 @@ final class other_test extends \advanced_testcase {
      * @covers \enrol_coursecompleted\task\process_expirations
      */
     public function test_task(): void {
-        $task = new \enrol_coursecompleted\task\process_expirations();
+        $task = new task\process_expirations();
         $this->assertEquals('Course completed enrolment expiry task', $task->get_name());
         ob_start();
         $task->execute();
@@ -249,99 +352,67 @@ final class other_test extends \advanced_testcase {
     }
 
     /**
-     * Test adhoc sending of welcome messages.
-     * @covers \enrol_coursecompleted\task\send_welcome
+     * Test welcome sending of welcome messages.
+     * @covers \enrol_coursecompleted\hook_listener
+     * @covers \enrol_coursecompleted\task\process_future
      */
-    public function test_adhoc_email_welcome_message(): void {
+    public function test_email_welcome_message(): void {
         global $DB;
         $generator = $this->getDataGenerator();
-        $sink = $this->redirectEmails();
+        $messagesink = $this->redirectMessages();
         $plugin = enrol_get_plugin('coursecompleted');
-        $studentid = $generator->create_user()->id;
-        $course = $generator->create_course(['shortname' => 'B0', 'enablecompletion' => 1]);
-        $courseid1 = $generator->create_course(['shortname' => 'B1', 'enablecompletion' => 1])->id;
-        $courseid2 = $generator->create_course(['shortname' => 'B2', 'enablecompletion' => 1])->id;
-        $courseid3 = $generator->create_course(['shortname' => 'B3', 'enablecompletion' => 1])->id;
-        $courseid4 = $generator->create_course(['shortname' => 'B4', 'enablecompletion' => 1])->id;
-        $plugin->add_instance($course, ['customint1' => $courseid1, 'roleid' => 5, 'customint2' => 0]);
-        $i2 = $plugin->add_instance($course, ['customint1' => $courseid2, 'roleid' => 5, 'customint2' => 1]);
-        $i3 = $plugin->add_instance($course, ['customint1' => $courseid3, 'customtext1' => 'boe', 'customint2' => 1]);
-        $i4 = $plugin->add_instance(
-            $course,
-            ['customint1' => $courseid4, 'customtext1' => '{$a->fullname} <b>boe</b>
-<a>another line</a>', 'customint2' => 1]
-        );
-        $compevent = \core\event\course_completed::create(
+        $student = $generator->create_user();
+        $course1 = $generator->create_course(['shortname' => 'B1', 'enablecompletion' => 1]);
+        $course2 = $generator->create_course(['shortname' => 'B2', 'enablecompletion' => 1]);
+        $course3 = $generator->create_course(['shortname' => 'B3', 'enablecompletion' => 1]);
+        $plugin->add_instance(
+            $course1,
             [
-                'objectid' => $courseid1,
-                'relateduserid' => $studentid,
-                'context' => \context_course::instance($courseid1),
-                'courseid' => $courseid1,
-                'other' => ['relateduserid' => $studentid],
+                'roleid' => 5,
+                'customint1' => $course2->id,
+                'customint2' => ENROL_SEND_EMAIL_FROM_NOREPLY,
+                'customtext1' => 'boe',
             ]
         );
-        $observer = new observer();
-        $observer->enroluser($compevent);
-        $adhock = new \enrol_coursecompleted\task\send_welcome();
-        $adhock->set_custom_data(
-            ['userid' => $studentid, 'enrolid' => $i2, 'courseid' => $course->id, 'completedid' => $courseid2]
+        $plugin->add_instance(
+            $course2,
+            [
+                'customint1' => $course3->id,
+                'roleid' => 5,
+                'customint2' => ENROL_SEND_EMAIL_FROM_NOREPLY,
+            ]
         );
-        $adhock->set_component('enrol_coursecompleted');
-        $adhock->execute();
-        \core\task\manager::queue_adhoc_task($adhock);
-        $adhock->set_custom_data(
-            ['userid' => $studentid, 'enrolid' => $i3, 'courseid' => $course->id, 'completedid' => $courseid3]
+        $plugin->add_instance(
+            $course3,
+            [
+                'customint1' => $course1->id,
+                'roleid' => 5,
+                'customint2' => ENROL_SEND_EMAIL_FROM_COURSE_CONTACT,
+                'customtext1' => '
+{$a->fullname} <b>boe</b>
+<a>another line</a>',
+            ]
         );
-        \core\task\manager::queue_adhoc_task($adhock);
-        $adhock->set_custom_data(
-            ['userid' => $studentid, 'enrolid' => $i4, 'courseid' => $course->id, 'completedid' => $courseid4]
-        );
-        \core\task\manager::queue_adhoc_task($adhock);
-        $this->assertCount(3, $DB->get_records('task_adhoc', ['component' => 'enrol_coursecompleted']));
-        \phpunit_util::run_all_adhoc_tasks();
-        $messages = $sink->get_messages();
-        $this->assertCount(4, $messages);
-        $sink->close();
-        foreach ($messages as $message) {
-            $this->assertStringNotContainsString('{a->', $message->header);
-            $this->assertStringNotContainsString('{a->', $message->body);
+        $instances = $DB->get_records('enrol', ['enrol' => 'coursecompleted']);
+        $this->assertCount(3, $instances);
+        $this->assertEquals(0, $DB->count_records('user_enrolments', []));
+        foreach ($instances as $instance) {
+            $adhock = new task\process_future();
+            $adhock->set_userid($student->id);
+            $adhock->set_custom_data($instance);
+            $adhock->set_component('enrol_coursecompleted');
+            \core\task\manager::queue_adhoc_task($adhock);
+            $path = \phpunit_util::call_internal_method($plugin, 'build_course_path', [$instance], '\enrol_coursecompleted_plugin');
+            $this->assertCount(3, $path);
         }
-        $this->assertCount(0, $DB->get_records('task_adhoc', ['component' => 'enrol_coursecompleted']));
-    }
-
-    /**
-     * Test access.
-     * @covers \enrol_coursecompleted_plugin
-     */
-    public function test_access(): void {
-        global $CFG;
-        $CFG->enablecompletion = true;
-        $this->resetAfterTest(true);
-        $enabled = enrol_get_plugins(true);
-        $enabled['coursecompleted'] = true;
-        set_config('enrol_plugins_enabled', implode(',', array_keys($enabled)));
-        $generator = $this->getDataGenerator();
-        $course = $generator->create_course(['enablecompletion' => 1]);
-        $student = $generator->create_and_enrol($course, 'student');
-        $editor = $generator->create_and_enrol($course, 'editingteacher');
-        $this->setAdminUser();
-        $context = \context_course::instance($course->id);
-        $this->assertTrue(has_capability('enrol/coursecompleted:config', $context));
-        $this->assertTrue(has_capability('enrol/coursecompleted:enrolpast', $context));
-        $this->assertTrue(has_capability('enrol/coursecompleted:manage', $context));
-        $this->assertTrue(has_capability('enrol/coursecompleted:unenrol', $context));
-        $this->assertTrue(has_capability('enrol/coursecompleted:unenrolself', $context));
-        $this->setUser($student);
-        $this->assertFalse(has_capability('enrol/coursecompleted:config', $context));
-        $this->assertFalse(has_capability('enrol/coursecompleted:enrolpast', $context));
-        $this->assertFalse(has_capability('enrol/coursecompleted:manage', $context));
-        $this->assertFalse(has_capability('enrol/coursecompleted:unenrol', $context));
-        $this->assertFalse(has_capability('enrol/coursecompleted:unenrolself', $context));
-        $this->setUser($editor);
-        $this->assertTrue(has_capability('enrol/coursecompleted:config', $context));
-        $this->assertFalse(has_capability('enrol/coursecompleted:enrolpast', $context));
-        $this->assertTrue(has_capability('enrol/coursecompleted:manage', $context));
-        $this->assertTrue(has_capability('enrol/coursecompleted:unenrol', $context));
-        $this->assertFalse(has_capability('enrol/coursecompleted:unenrolself', $context));
+        \phpunit_util::run_all_adhoc_tasks();
+        $this->assertEquals(3, $DB->count_records('user_enrolments', []));
+        $messages = $messagesink->get_messages_by_component_and_type(
+            'moodle',
+            'enrolcoursewelcomemessage',
+        );
+        // We have no course contact => only 2 messages sent.
+        $this->assertCount(2, $messages);
+        $messagesink->close();
     }
 }
