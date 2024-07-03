@@ -18,7 +18,7 @@
  * A bulk operation for the coursecompleted enrolment plugin to delete selected users enrolments.
  *
  * @package   enrol_coursecompleted
- * @copyright 2020 eWallah (www.eWallah.net)
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -36,7 +36,7 @@ require_once($CFG->dirroot . '/enrol/locallib.php');
  * A bulk operation for the coursecompleted enrolment plugin to delete selected users enrolments.
  *
  * @package   enrol_coursecompleted
- * @copyright 2020 eWallah (www.eWallah.net)
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -88,14 +88,10 @@ class bulkdelete extends \enrol_bulk_enrolment_operation {
         if (!has_capability("enrol/coursecompleted:unenrol", $manager->get_context())) {
             return false;
         }
-
         foreach ($users as $user) {
             foreach ($user->enrolments as $enrolment) {
                 $plugin = $enrolment->enrolmentplugin;
-                $instance = $enrolment->enrolmentinstance;
-                if ($plugin->allow_unenrol_user($instance, $enrolment)) {
-                    $plugin->unenrol_user($instance, $user->id);
-                }
+                $plugin->unenrol_user($enrolment->enrolmentinstance, $user->id);
             }
         }
         return true;

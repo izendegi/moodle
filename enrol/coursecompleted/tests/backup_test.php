@@ -18,7 +18,7 @@
  * coursecompleted enrolment plugin tests.
  *
  * @package   enrol_coursecompleted
- * @copyright 2017 eWallah (www.eWallah.net)
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -32,7 +32,7 @@ use stdClass;
  * coursecompleted enrolment plugin tests.
  *
  * @package   enrol_coursecompleted
- * @copyright 2017 eWallah (www.eWallah.net)
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \enrol_coursecompleted_plugin
@@ -52,12 +52,10 @@ final class backup_test extends advanced_testcase {
      */
     protected function setUp(): void {
         global $CFG, $DB;
+        parent::setUp();
 
         $CFG->enablecompletion = true;
         $this->resetAfterTest(true);
-        $enabled = enrol_get_plugins(true);
-        $enabled['coursecompleted'] = true;
-        set_config('enrol_plugins_enabled', implode(',', array_keys($enabled)));
         $generator = $this->getDataGenerator();
         $this->course1 = $generator->create_course(['shortname' => 'A1', 'enablecompletion' => 1]);
         $this->course2 = $generator->create_course(['shortname' => 'A2', 'enablecompletion' => 1]);
@@ -83,7 +81,6 @@ final class backup_test extends advanced_testcase {
 
         $ccompletion = new \completion_completion(['course' => $this->course1->id, 'userid' => $this->student->id]);
         $ccompletion->mark_complete(time());
-        $this->runAdhocTasks();
         $bc = new \backup_controller(
             \backup::TYPE_1COURSE,
             $this->course2->id,

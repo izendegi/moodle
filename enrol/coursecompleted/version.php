@@ -18,7 +18,7 @@
  * Course completed enrol plugin version specification.
  *
  * @package   enrol_coursecompleted
- * @copyright 2017 eWallah (www.eWallah.net)
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -26,9 +26,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'enrol_coursecompleted';
-
-$plugin->requires = 2023042400;
+$plugin->requires = 2024042200;
 $plugin->maturity = MATURITY_STABLE;
-$plugin->supported = [402, 404];
-$plugin->release = 'v4.2.4';
-$plugin->version = 2024041900;
+$plugin->supported = [404, 404];
+$plugin->release = 'v4.4.3';
+$plugin->version = 2024070200;
