@@ -109,7 +109,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 $name = $formatter->format_string(get_course($item)->fullname, context: context_course::instance($item));
                 $data[] =
                     [
-                        'first' => ($i === 1),
+                        'first' => ($i == 1),
                         'course' => ($item == $instance->courseid),
                         'title' => $name,
                         'href' => new moodle_url('/course/view.php', ['id' => $item]),
@@ -118,6 +118,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 $i++;
             }
         }
+        $hasdata = count($data) >= 2;
         $name = $formatter->format_string(
             get_course($instance->customint1)->fullname,
             context: context_course::instance($instance->customint1)
@@ -126,7 +127,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
             [
                 'coursetitle' => $name,
                 'courseurl' => new moodle_url('/course/view.php', ['id' => $instance->customint1]),
-                'hasdata' => count($data) >= 2,
+                'hasdata' => $hasdata,
                 'items' => $data,
             ];
         $str = $OUTPUT->render_from_template('enrol_coursecompleted/learnpath', $rdata);
@@ -233,13 +234,13 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 context_course::instance($instance->customint1, IGNORE_MISSING) &&
                 context_course::instance($instance->courseid, IGNORE_MISSING)
             ) {
-                $timestart = time();
+                $timestart = 0;
                 $timeend = 0;
                 if (isset($instance->customint4) && $instance->customint4 > 0) {
                     $timestart = $instance->customint4;
                 }
                 if (isset($instance->enrolperiod) && $instance->enrolperiod > 0) {
-                    $timeend = $timestart + $instance->enrolperiod;
+                    $timeend = max(time(), $timestart) + $instance->enrolperiod;
                 }
                 parent::enrol_user($instance, $userid, $roleid, $timestart, $timeend, $status, $recovergrades);
             } else {
@@ -351,7 +352,6 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
      * @return bool
      */
     public function edit_instance_form($instance, \MoodleQuickForm $mform, $context) {
-        $plugin = 'enrol_coursecompleted';
         $options = [ENROL_INSTANCE_ENABLED => get_string('yes'), ENROL_INSTANCE_DISABLED => get_string('no')];
         $mform->addElement('select', 'status', get_string('enabled', 'admin'), $options);
         $mform->setDefault('status', $this->get_config('status'));
@@ -371,44 +371,41 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
         $mform->setDefault('roleid', $this->get_config('roleid'));
 
         $arr = ['optional' => true, 'defaulttime' => $start];
-        $mform->addElement('date_time_selector', 'customint4', get_string('enroldate', $plugin), $arr);
-        $mform->addHelpButton('customint4', 'enroldate', $plugin);
+        $mform->addElement('date_time_selector', 'customint4', get_string('enroldate', 'enrol_coursecompleted'), $arr);
+        $mform->addHelpButton('customint4', 'enroldate', 'enrol_coursecompleted');
 
         $arr = ['optional' => true, 'defaultunit' => 86400];
-        $mform->addElement('duration', 'enrolperiod', get_string('enrolperiod', $plugin), $arr);
+        $mform->addElement('duration', 'enrolperiod', get_string('enrolperiod', 'enrol_coursecompleted'), $arr);
         $mform->setDefault('enrolperiod', $this->get_config('enrolperiod'));
-        $mform->addHelpButton('enrolperiod', 'enrolperiod', $plugin);
+        $mform->addHelpButton('enrolperiod', 'enrolperiod', 'enrol_coursecompleted');
 
         $conditions = ['onlywithcompletion' => true, 'multiple' => false, 'includefrontpage' => false];
         $mform->addElement('course', 'customint1', get_string('course'), $conditions);
         $mform->addRule('customint1', get_string('required'), 'required', null, 'client');
-        $mform->addHelpButton('customint1', 'compcourse', $plugin);
+        $mform->addHelpButton('customint1', 'compcourse', 'enrol_coursecompleted');
 
-        $mform->addElement('advcheckbox', 'customint5', get_string('unenrol', 'enrol'), get_string('tryunenrol', $plugin));
-        $mform->addHelpButton('customint5', 'tryunenrol', $plugin);
-        $mform->setDefault('customint5', $this->get_config('tryunenrol'));
-
-        $mform->addElement('advcheckbox', 'customint3', get_string('groups'), get_string('group', $plugin));
-        $mform->addHelpButton('customint3', 'group', $plugin);
+        $mform->addElement('advcheckbox', 'customint3', get_string('groups'), get_string('group', 'enrol_coursecompleted'));
+        $mform->addHelpButton('customint3', 'group', 'enrol_coursecompleted');
         $mform->setDefault('customint3', $this->get_config('keepgroup'));
 
         $options = self::email_options();
         $mform->addElement('select', 'customint2', get_string('categoryemail', 'admin'), $options);
 
-        $mform->addHelpButton('customint2', 'welcome', $plugin);
+        $mform->addHelpButton('customint2', 'welcome', 'enrol_coursecompleted');
         $mform->setDefault('customint2', $this->get_config('welcome'));
 
         $arr = ['cols' => '60', 'rows' => '8'];
-        $mform->addElement('textarea', 'customtext1', get_string('customwelcome', $plugin), $arr);
-        $mform->addHelpButton('customtext1', 'customwelcome', $plugin);
-        $mform->disabledIf('customtext1', 'customint2', 'eq', 0);
+        $mform->addElement('textarea', 'customtext1', get_string('customwelcome', 'enrol_coursecompleted'), $arr);
+        $mform->addHelpButton('customtext1', 'customwelcome', 'enrol_coursecompleted');
+        $mform->disabledIf('customtext1', 'customint2', 'notchecked');
 
         $arr = ['optional' => true, 'defaulttime' => $start];
-        $mform->addElement('date_time_selector', 'enrolstartdate', get_string('enrolstartdate', $plugin), $arr);
-        $mform->addHelpButton('enrolstartdate', 'enrolstartdate', $plugin);
+        $mform->addElement('date_time_selector', 'enrolstartdate', get_string('enrolstartdate', 'enrol_coursecompleted'), $arr);
+        $mform->addHelpButton('enrolstartdate', 'enrolstartdate', 'enrol_coursecompleted');
 
-        $arr['defaulttime'] = $start + get_config('moodlecourse', 'courseduration');
-        $mform->addElement('date_time_selector', 'enrolenddate', get_string('enrolenddate', $plugin), $arr);
+        $duration = intval(get_config('moodlecourse', 'courseduration')) ?? YEARSECS;
+        $arr['defaulttime'] = $start + $duration;
+        $mform->addElement('date_time_selector', 'enrolenddate', get_string('enrolenddate', 'enrol_coursecompleted'), $arr);
         $mform->addHelpButton('enrolenddate', 'enrolenddate', 'enrol_coursecompleted');
     }
 
@@ -467,7 +464,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
         $errors = [];
         if (!empty($data['enrolenddate'])) {
             // Minimum duration of a course is one hour.
-            if ($data['enrolenddate'] <= $data['enrolstartdate'] + HOURSECS) {
+            if ($data['enrolenddate'] < $data['enrolstartdate'] + 3600) {
                 $errors['enrolenddate'] = get_string('enrolenddaterror', 'enrol_fee');
             }
         }

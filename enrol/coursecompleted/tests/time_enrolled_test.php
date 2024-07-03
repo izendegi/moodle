@@ -35,7 +35,7 @@ use context_course;
  * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * #[CoversClass(enrol_coursecompleted_plugin)]
+ * @coversDefaultClass \enrol_coursecompleted_plugin
  */
 final class time_enrolled_test extends advanced_testcase {
     /**
@@ -51,7 +51,7 @@ final class time_enrolled_test extends advanced_testcase {
 
     /**
      * Test if adhoc.
-     * #[CoversClass(enrol_coursecompleted\task\process_future)]
+     * @covers \enrol_coursecompleted\task\process_future
      */
     public function test_adhoc_task(): void {
         global $DB;
@@ -85,9 +85,9 @@ final class time_enrolled_test extends advanced_testcase {
 
     /**
      * Test if user is enrolled for a specific time after completing a course.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
-     * #[CoversClass(enrol_coursecompleted\observer)]
-     * #[CoversClass(enrol_coursecompleted\task\process_future)]
+     * @covers \enrol_coursecompleted_plugin
+     * @covers \enrol_coursecompleted\observer
+     * @covers \enrol_coursecompleted\task\process_future
      */
     public function test_time_enrolled(): void {
         global $DB, $PAGE;
@@ -138,10 +138,10 @@ final class time_enrolled_test extends advanced_testcase {
         $this->assertTrue(is_enrolled(context_course::instance($course2->id), $student->id));
         $this->assertCount(1, $manager1->get_user_enrolments($student->id));
         $ueinstance = $DB->get_record('user_enrolments', ['enrolid' => $id1, 'userid' => $student->id]);
-        $this->assertNotEquals(0, $ueinstance->timestart);
+        $this->assertEquals(0, $ueinstance->timestart);
         $this->assertEquals(0, $ueinstance->timeend);
         $ueinstance = $DB->get_record('user_enrolments', ['enrolid' => $id2, 'userid' => $student->id]);
-        $this->assertNotEquals(0, $ueinstance->timestart);
+        $this->assertEquals(0, $ueinstance->timestart);
         $this->assertGreaterThan(time(), $ueinstance->timeend);
         sleep(1);
         $trace = new \null_progress_trace();
@@ -192,7 +192,7 @@ final class time_enrolled_test extends advanced_testcase {
     /**
      * Test enrol time variation.
      *
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      * @dataProvider enroltime_provider
      * @param array $input
      * @param bool $isenrolled

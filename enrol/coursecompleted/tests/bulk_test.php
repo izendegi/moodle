@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Coursecompleted enrolment plugin bulk tests.
+ * coursecompleted enrolment plugin bulk tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
@@ -31,13 +31,13 @@ use moodle_url;
 use stdClass;
 
 /**
- * Coursecompleted enrolment plugin bulk tests.
+ * coursecompleted enrolment plugin bulk tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * #[CoversClass(enrol_coursecompleted)]
+ * @coversDefaultClass \enrol_coursecompleted
  */
 final class bulk_test extends \advanced_testcase {
 
@@ -89,8 +89,8 @@ final class bulk_test extends \advanced_testcase {
 
     /**
      * Test bulk delete.
-     * #[CoversClass(enrol_coursecompleted\bulkdelete)]
-     * #[CoversClass(enrol_coursecompleted\form\bulkdelete)]
+     * @covers \enrol_coursecompleted\bulkdelete
+     * @covers \enrol_coursecompleted\form\bulkdelete
      */
     public function test_bulk_delete(): void {
         $plugin = enrol_get_plugin('coursecompleted');
@@ -130,8 +130,8 @@ final class bulk_test extends \advanced_testcase {
 
     /**
      * Test bulk delete.
-     * #[CoversClass(enrol_coursecompleted\bulkdelete)]
-     * #[CoversClass(enrol_coursecompleted\form\bulkdelete)]
+     * @covers \enrol_coursecompleted\bulkdelete
+     * @covers \enrol_coursecompleted\form\bulkdelete
      */
     public function test_bulk_delete2(): void {
         $this->setAdminUser();
@@ -158,8 +158,8 @@ final class bulk_test extends \advanced_testcase {
 
     /**
      * Test bulk edit.
-     * #[CoversClass(enrol_coursecompleted\bulkedit)]
-     * #[CoversClass(enrol_coursecompleted\form\bulkedit)]
+     * @covers \enrol_coursecompleted\bulkedit
+     * @covers \enrol_coursecompleted\form\bulkedit
      */
     public function test_bulk_edit(): void {
         $this->assertTrue(user_has_role_assignment($this->student->id, 5, context_course::instance($this->course2->id)->id));

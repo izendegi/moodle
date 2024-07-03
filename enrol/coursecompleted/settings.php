@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Coursecompleted access plugin settings and presets.
+ * coursecompleted access plugin settings and presets.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
@@ -31,15 +31,15 @@ if ($ADMIN->fulltree) {
 
     $settings->add(
         new admin_setting_heading(
-            $plugin . '_settings',
+            'enrol_coursecompleted_settings',
             '',
-            get_string('pluginname_desc', $plugin)
+            get_string('pluginname_desc', $plugin),
         )
     );
 
     $settings->add(
         new admin_setting_heading(
-            $plugin . '_defaults',
+            'enrol_coursecompleted_defaults',
             get_string('enrolinstancedefaults', 'admin'),
             get_string('enrolinstancedefaults_desc', 'admin'),
         )
@@ -47,7 +47,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(
         new admin_setting_configcheckbox(
-            "$plugin/defaultenrol",
+            'enrol_coursecompleted/defaultenrol',
             get_string('defaultenrol', 'enrol'),
             get_string('defaultenrol_desc', 'enrol'),
             0
@@ -67,74 +67,64 @@ if ($ADMIN->fulltree) {
 
         $settings->add(
             new admin_setting_configselect(
-                name: "$plugin/expiredaction",
+                name: 'enrol_coursecompleted/expiredaction',
                 visiblename: get_string(
                     identifier: 'expiredaction',
-                    component: 'enrol_fee'
+                    component: 'enrol_fee',
                 ),
                 description: get_string(
                     identifier: 'expiredaction_help',
-                    component: 'enrol_fee'
+                    component: 'enrol_fee',
                 ),
                 defaultsetting: ENROL_EXT_REMOVED_SUSPENDNOROLES,
-                choices: $roptions
+                choices: $roptions,
             )
         );
 
         $settings->add(
             new admin_setting_configselect(
-                name: "$plugin/roleid",
+                name: 'enrol_coursecompleted/roleid',
                 visiblename: get_string(
                     identifier: 'defaultrole',
-                    component: $plugin
+                    component: $plugin,
                 ),
                 description: get_string(
                     identifier: 'defaultrole_desc',
-                    component: $plugin
+                    component: $plugin,
                 ),
                 defaultsetting: $student->id,
-                choices: $options
+                choices: $options,
             )
         );
     }
 
     $settings->add(
         new admin_setting_configduration(
-            "$plugin/enrolperiod",
+            'enrol_coursecompleted/enrolperiod',
             get_string('enrolperiod', 'enrol_fee'),
             get_string('enrolperiod_desc', 'enrol_fee'),
-            0
+            0,
         )
     );
-
-    $settings->add(
-        new admin_setting_configcheckbox(
-            "$plugin/tryunenrol",
-            get_string('tryunenrol', $plugin),
-            get_string('tryunenrol_help', $plugin),
-            0
-        )
-    );
-
     $settings->add(
         new admin_setting_configselect(
-            name: "$plugin/welcome",
+            name: 'enrol_coursecompleted/welcome',
             visiblename: get_string(
                 identifier: 'welcome',
-                component: $plugin
+                component: $plugin,
             ),
             description: get_string(
                 identifier: 'welcome_help',
-                component: $plugin
+                component: $plugin,
             ),
             defaultsetting: ENROL_SEND_EMAIL_FROM_COURSE_CONTACT,
-            choices: enrol_coursecompleted_plugin::email_options()
+            choices: enrol_coursecompleted_plugin::email_options(),
         )
     );
 
     $settings->add(
         new admin_setting_configcheckbox(
-            "$plugin/svglearnpath",
+            'enrol_coursecompleted/svglearnpath',
             get_string('svglearnpath', $plugin),
             get_string('svglearnpath_help', $plugin),
             1
@@ -143,7 +133,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(
         new admin_setting_configcheckbox(
-            "$plugin/keepgroup",
+            'enrol_coursecompleted/keepgroup',
             get_string('keepgroup', $plugin),
             get_string('keepgroup_help', $plugin),
             1

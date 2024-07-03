@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Coursecompleted enrolment plugin hook tests.
+ * coursecompleted enrolment plugin hook tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
@@ -28,7 +28,7 @@ namespace enrol_coursecompleted;
 use stdClass;
 
 /**
- * Coursecompleted enrolment plugin hook tests.
+ * coursecompleted enrolment plugin hook tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
@@ -97,7 +97,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test disabled.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_disabled(): void {
         $sink = $this->redirectMessages();
@@ -109,7 +109,6 @@ final class hook_test extends \advanced_testcase {
                 'customint1' => $this->course2->id,
                 'customint2' => ENROL_DO_NOT_SEND_EMAIL,
                 'customint4' => time() + 20,
-                'customint5' => 1,
             ]
         );
         $this->event->trigger();
@@ -120,7 +119,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test enabled.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_enabled(): void {
         $sink = $this->redirectMessages();
@@ -145,7 +144,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test custommessage.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_custommessage(): void {
         $sink = $this->redirectMessages();
@@ -171,7 +170,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test enabled no messages.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_enabled_nomessages(): void {
         $sink = $this->redirectMessages();
@@ -194,7 +193,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test enabled later messages.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_later_messages(): void {
         global $DB;
@@ -205,7 +204,7 @@ final class hook_test extends \advanced_testcase {
                 'roleid' => 5,
                 'customint1' => $this->course2->id,
                 'customint2' => ENROL_SEND_EMAIL_FROM_COURSE_CONTACT,
-                'customint4' => time() + 666666,
+                'customint4' => time() + 66666666,
             ]
         );
         $this->event->trigger();
@@ -219,7 +218,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test role.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_role(): void {
         $this->plugin->add_instance(
@@ -235,58 +234,9 @@ final class hook_test extends \advanced_testcase {
         $this->assertTrue(user_has_role_assignment($this->student->id, 6, $context->id));
     }
 
-
-    /**
-     * Test unenrol.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
-     */
-    public function test_unenrol(): void {
-        $context = \context_course::instance($this->course2->id);
-        $this->assertTrue(user_has_role_assignment($this->student->id, 5, $context->id));
-
-        $this->plugin->add_instance(
-            $this->course1,
-            [
-                'status' => ENROL_INSTANCE_ENABLED,
-                'roleid' => 5,
-                'customint1' => $this->course2->id,
-                'customint5' => 1,
-            ]
-        );
-        $this->event->trigger();
-        $context = \context_course::instance($this->course1->id);
-        $this->assertTrue(user_has_role_assignment($this->student->id, 5, $context->id));
-        $context = \context_course::instance($this->course2->id);
-        $this->assertFalse(user_has_role_assignment($this->student->id, 5, $context->id));
-    }
-
-    /**
-     * Test not unenrol.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
-     */
-    public function test_not_unenrol(): void {
-        $context = \context_course::instance($this->course2->id);
-        $this->assertTrue(user_has_role_assignment($this->student->id, 5, $context->id));
-
-        $this->plugin->add_instance(
-            $this->course1,
-            [
-                'status' => ENROL_INSTANCE_ENABLED,
-                'roleid' => 5,
-                'customint1' => $this->course2->id,
-                'customint5' => 0,
-            ]
-        );
-        $this->event->trigger();
-        $context = \context_course::instance($this->course1->id);
-        $this->assertTrue(user_has_role_assignment($this->student->id, 5, $context->id));
-        $context = \context_course::instance($this->course2->id);
-        $this->assertTrue(user_has_role_assignment($this->student->id, 5, $context->id));
-    }
-
     /**
      * Test group.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_group(): void {
         [$groupid1, $groupid2] = $this->create_groups();
@@ -301,26 +251,6 @@ final class hook_test extends \advanced_testcase {
         );
         $this->event->trigger();
         $this->assertTrue(groups_is_member($groupid1, $this->student->id));
-        $this->assertTrue(groups_is_member($groupid2, $this->student->id));
-    }
-
-    /**
-     * Test not group.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
-     */
-    public function test_not_group(): void {
-        [$groupid1, $groupid2] = $this->create_groups();
-        $this->plugin->add_instance(
-            $this->course1,
-            [
-                'status' => ENROL_INSTANCE_ENABLED,
-                'roleid' => 5,
-                'customint1' => $this->course2->id,
-                'customint3' => false,
-            ]
-        );
-        $this->event->trigger();
-        $this->assertFalse(groups_is_member($groupid1, $this->student->id));
         $this->assertTrue(groups_is_member($groupid2, $this->student->id));
     }
 
@@ -355,7 +285,7 @@ final class hook_test extends \advanced_testcase {
     }
     /**
      * Test non group.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_non_group(): void {
         [$groupid1, $groupid2] = $this->create_groups();
@@ -375,7 +305,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test delete.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_delete(): void {
         global $DB;
@@ -387,21 +317,11 @@ final class hook_test extends \advanced_testcase {
                 'customint1' => $this->course2->id,
             ]
         );
-        $this->plugin->add_instance(
-            $this->course1,
-            [
-                'status' => ENROL_INSTANCE_ENABLED,
-                'roleid' => 5,
-                'customint1' => $this->course1->id,
-            ]
-        );
         $this->event->trigger();
-        $DB->set_field('enrol', 'customint1', $this->course1->id, ['enrol' => 'guest']);
-        $this->assertEquals(2, $DB->count_records('enrol', ['enrol' => 'coursecompleted']));
+        $this->assertEquals(1, $DB->count_records('enrol', ['enrol' => 'coursecompleted']));
         $this->assertEquals(4, $DB->count_records('course', []));
         delete_course($this->course1, false);
         $this->assertEquals(3, $DB->count_records('course', []));
-        $this->assertEquals(0, $DB->count_records('enrol', ['enrol' => 'coursecompleted']));
         delete_course($this->course2, false);
         $this->assertEquals(2, $DB->count_records('course', []));
         $this->assertEquals(0, $DB->count_records('enrol', ['enrol' => 'coursecompleted']));
@@ -409,7 +329,7 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test future delete.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
+     * @covers \enrol_coursecompleted\hook_listener
      */
     public function test_future_delete(): void {
         global $DB;
@@ -424,7 +344,6 @@ final class hook_test extends \advanced_testcase {
             ]
         );
         $this->event->trigger();
-        $DB->set_field('enrol', 'customint1', $this->course2->id, ['enrol' => 'guest']);
         $this->assertEquals(1, $DB->count_records('enrol', ['enrol' => 'coursecompleted']));
         $recs = $DB->get_records('task_adhoc', ['component' => 'enrol_coursecompleted']);
         $this->assertEquals(1, count($recs));
@@ -440,7 +359,7 @@ final class hook_test extends \advanced_testcase {
         $this->assertEquals(3, $DB->count_records('course', []));
         delete_course($this->course1, false);
         $this->assertEquals(2, $DB->count_records('course', []));
-        $this->assertGreaterThan(2, $DB->count_records('enrol', []));
+        $this->assertEquals(3, $DB->count_records('enrol', []));
         $this->assertEquals(1, $DB->count_records('user_enrolments', []));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'enrol_coursecompleted']));
     }

@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Coursecompleted enrolment manager tests.
+ * coursecompleted enrolment manager tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
@@ -31,13 +31,13 @@ use moodle_exception;
 use stdClass;
 
 /**
- * Coursecompleted enrolment manager tests.
+ * coursecompleted enrolment manager tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * #[CoversClass(enrol_coursecompleted_plugin)]
+ * @coversDefaultClass \enrol_coursecompleted_plugin
  */
 final class manager_test extends advanced_testcase {
     /** @var stdClass Instance. */
@@ -71,7 +71,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test missing enrolid param.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_manager_empty_param(): void {
         global $CFG;
@@ -83,7 +83,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test manager without permission.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_manager_without_permission(): void {
         global $CFG;
@@ -97,7 +97,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test manager wrong permission.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_manager_wrong_permission(): void {
         global $CFG, $DB;
@@ -119,9 +119,9 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test manager bare.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
-     * #[CoversClass(enrol_coursecompleted\form\bulkedit)]
-     * #[CoversClass(enrol_coursecompleted\form\bulkdelete)]
+     * @covers \enrol_coursecompleted_plugin
+     * @covers \enrol_coursecompleted\form\bulkedit
+     * @covers \enrol_coursecompleted\form\bulkdelete
      */
     public function test_manager_bare(): void {
         global $CFG;
@@ -135,7 +135,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test manager old users.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_manager_old_users(): void {
         global $CFG, $DB;
@@ -159,7 +159,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test submit manager oldusers.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_manager_submit(): void {
         global $CFG, $DB;
@@ -186,7 +186,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Tests settings.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_enrol_courescompleted_settings(): void {
         global $ADMIN, $CFG;
@@ -197,7 +197,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test settings page.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_settings_page(): void {
         global $CFG, $OUTPUT, $PAGE;
@@ -224,7 +224,7 @@ final class manager_test extends advanced_testcase {
 
     /**
      * Test access.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
+     * @covers \enrol_coursecompleted_plugin
      */
     public function test_access(): void {
         $generator = $this->getDataGenerator();
