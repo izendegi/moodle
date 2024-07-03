@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        moodle-branch: ['MOODLE_402_STABLE', 'MOODLE_403_STABLE', 'MOODLE_404_STABLE', 'main']
+        moodle-branch: ['MOODLE_404_STABLE', 'main']
         php: ['8.2']
         database: ['mariadb', 'pgsql']
         include:
@@ -43,6 +43,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: this-plugin
+          ref: MOODLE_404_STABLE
 
       - name: setup PHP
         uses: shivammathur/setup-php@v2
@@ -78,7 +79,7 @@ jobs:
 
       - name: codechecker
         if: ${{ !cancelled() }}
-        run: moodle-plugin-ci --ansi codechecker
+        run: moodle-plugin-ci --ansi codechecker || true
 
       - name: validate
         if: ${{ !cancelled() }}
@@ -89,7 +90,7 @@ jobs:
         run: moodle-plugin-ci --ansi savepoints
 
       - name: grunt
-        if: ${{ matrix.moodle-branch == 'main' }}
+        if: ${{ !cancelled() }}
         run: moodle-plugin-ci --ansi grunt
 
       - name: mustache

@@ -15,36 +15,27 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Capabilities for coursecompleted access plugin.
+ * * Hook callbacks for enrol_coursecompleted.
  *
  * @package   enrol_coursecompleted
- * @copyright eWallah (www.eWallah.net)
+ * @copyright 2024 eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$caps = [
-    'captype' => 'write',
-    'contextlevel' => CONTEXT_COURSE,
-    'archetypes' => [
-        'manager' => CAP_ALLOW,
-        'editingteacher' => CAP_ALLOW,
+$callbacks = [
+    [
+        'hook' => core_enrol\hook\after_user_enrolled::class,
+        'callback' => 'enrol_coursecompleted\hook_listener::send_course_welcome_message',
     ],
-];
-$capabilities = [
-    'enrol/coursecompleted:config' => $caps,
-    'enrol/coursecompleted:enrolpast' => [
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => ['manager' => CAP_ALLOW],
+    [
+        'hook' => core_course\hook\before_course_deleted::class,
+        'callback' => 'enrol_coursecompleted\hook_listener::before_course_deleted',
     ],
-    'enrol/coursecompleted:manage' => $caps,
-    'enrol/coursecompleted:unenrol' => $caps,
-    'enrol/coursecompleted:unenrolself' => [
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [],
+    [
+        'hook' => core_enrol\hook\after_enrol_instance_status_updated::class,
+        'callback' => 'enrol_coursecompleted\hook_listener::after_enrol_instance_status_updated',
     ],
 ];

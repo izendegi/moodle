@@ -6,18 +6,24 @@ Course completed enrolment handles the enrolment of users upon completion of a c
 
 ## Enrolment on course completed
 
-* With this plugin it is possible to create a chain of courses.  The moment a student completes a course, he/she
-  is automatically enrolled in one or more courses. But it can also be used to give a user another role when he/she
-  completes the course.
+* With this plugin it is possible to create a chain of courses.  The moment a student completes a course, the person
+  is automatically enrolled in one or more courses. But it can also be used to give a user another role after completing
+  the course.
 * Administrators can also enrol users who completed past courses.
 * Administrators can bulk modify and delete users (works only when 1 instance is installed [MDL-66652](https://tracker.moodle.org/browse/MDL-66652)).
 * When a user is part of a group in the first course, the user will also be part of the group with the same name in the second course.
 * When you want to enrol all users only after a particular date, configure this date as part of the course completion.
 * When you want that this plugin only works for a limited period, configure enrolment start and end date. Before and after this date, this plugin will do nothing.
+* Now you can also enrol a user in the future (the welcome message will also be sent only the moment the user is enrolled).
+
+## Warning
+
+This plugin is 100% open source and has NOT been tested in Moodle Workplace, Totara, or any other proprietary software system.
+As long as the latter do not reward plugin developers, you can use this plugin only in 100% open source environments.
 
 ## Course completion
 
-Check the global documentation about course completion: https://docs.moodle.org/403/en/Course_completion
+Check the global documentation about course completion: https://docs.moodle.org/404/en/Course_completion
 
 ## Installation:
 
@@ -26,7 +32,7 @@ Check the global documentation about course completion: https://docs.moodle.org/
 
 ## Requirements
 
-This plugin requires Moodle 4.2+
+This plugin requires Moodle 4.4+
 
 ## Troubleshooting
 
@@ -34,12 +40,20 @@ This plugin requires Moodle 4.2+
  2. Make sure "Enable completion tracking" is set to "yes" in the course settings.
  3. Goto "Administration" > "Course administration" > "Course completion", and configure the the conditions required for course completion. Note: you must set some conditions, you cannot just set the "completion requirements" option at the top. Save.
  4. Goto "Administration" > "Course administration". Make sure you can now "Course completion" listed under "reports". If you cannot see this report then course completion has not been set correctly.
- 5. Make sure the enrolment start date < now AND enrolment end date > now.
- 6. Start enrolling
+ 5. Make sure the enrolment start date is disabled or < now AND enrolment end date is disabled or > now.
+ 6. Check the Adhod tasks ("Server > Tasks > Ad hoc tasks" in site administration) and detect postponed enrolments.
 
 ## Theme support
 
 This plugin is developed and tested on Moodle Core's Boost theme and Boost child themes, including Moodle Core's Classic theme.
+
+## Database support
+
+This plugin is developed and tested using
+
+* MYSQL
+* MariaDB
+* PostgreSQL
 
 ## Plugin repositories
 
@@ -69,10 +83,11 @@ Stable
 
 [![Build Status](https://github.com/ewallah/moodle-enrol_coursecompleted/workflows/Tests/badge.svg)](https://github.com/ewallah/moodle-enrol_coursecompleted/actions)
 [![Coverage Status](https://coveralls.io/repos/github/ewallah/moodle-enrol_coursecompleted/badge.svg?branch=main)](https://coveralls.io/github/ewallah/moodle-enrol_coursecompleted?branch=main)
+![Mutation score](https://badgen.net/badge/Mutation%20Score%20Indicator/85)
 
 ## Copyright
 
-2024 eWallah.net
+eWallah.net
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
