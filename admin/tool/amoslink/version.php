@@ -24,8 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024062500;
+$plugin->version   = 2024070100;
 $plugin->requires  = 2020061516;
 $plugin->component = 'tool_amoslink';
-$plugin->release = '0.1.1';
+$plugin->release = '0.1.2';
 $plugin->maturity = MATURITY_STABLE;
