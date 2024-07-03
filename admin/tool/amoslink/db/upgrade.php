@@ -36,5 +36,9 @@ function xmldb_tool_amoslink_upgrade($oldversion) {
     if ($oldversion < 2024062500) {
         upgrade_plugin_savepoint(true, 2024062500, 'tool', 'amoslink');
     }
+    if ($oldversion < 2024070100) {
+        // Checks for PHP 8 function str_contains, and use a polyfill for PHP 7.
+        upgrade_plugin_savepoint(true, 2024070100, 'tool', 'amoslink');
+    }
     return true;
 }

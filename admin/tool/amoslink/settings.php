@@ -37,12 +37,21 @@ if ($hassiteconfig) {
             if ($plugin->is_standard()) {
                 continue;
             }
-            // If plugin is an activity, delete prefix _mod.
-            if (str_contains($plugin->component, 'mod_')) {
-                $finalname = substr($plugin->component, 4);
-            } else {
-                $finalname = $plugin->component;
+            // Function str_contains only exists in PHP 8.
+            //Check if function exists. If not, use polyfill.
+            if (!function_exists('str_contains')) {
+                function str_contains(string $haystack, string $needle): bool {
+                    return '' === $needle || false !== strpos($haystack, $needle);
+                }
             }
+            // If plugin is an activity, delete prefix _mod.
+            $checkformod = str_contains($plugin->component, 'mod_');
+            if ($checkformod == 1)
+                {
+                    $finalname = substr($plugin->component, 4);
+                } else {
+                    $finalname = $plugin->component;
+                }
             // Create a string of all plugins separated by comma.
             $pluginstring .= $finalname.",";
         }
