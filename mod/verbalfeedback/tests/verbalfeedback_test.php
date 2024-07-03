@@ -39,7 +39,7 @@ require_once($CFG->dirroot . '/mod/verbalfeedback/lib.php');
  * @copyright  2021 Luca Bösch <luca.boesch@bfh.ch>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class verbalfeedback_test extends \advanced_testcase {
+class verbalfeedback_test extends \advanced_testcase {
 
     /**
      * @var core_course_category Course category used for testing
@@ -94,10 +94,8 @@ final class verbalfeedback_test extends \advanced_testcase {
         $this->create_and_enrol_users();
     }
 
-    /**
-     * Creating 10 students and 1 teacher.
-     */
-    protected function create_and_enrol_users(): void {
+    /** Creating 10 students and 1 teacher. */
+    protected function create_and_enrol_users() {
         $this->students = [];
         for ($i = 0; $i < 10; $i++) {
             $this->students[] = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
@@ -111,7 +109,7 @@ final class verbalfeedback_test extends \advanced_testcase {
      *
      * @covers \mod_verbalfeedback\model\instance
      */
-    public function test_verbalfeedback(): void {
+    public function test_verbalfeedback() {
         $this->resetAfterTest();
         $this->assertEquals('Verbal feedback 1', $this->verbalfeedback->name);
     }
@@ -123,7 +121,7 @@ final class verbalfeedback_test extends \advanced_testcase {
      * @throws coding_exception
      * @throws dml_exception
      */
-    public function test_verbalfeedback_get_user_grade(): void {
+    public function test_verbalfeedback_get_user_grade() {
         $this->resetAfterTest();
         $this->assertEquals([], verbalfeedback_get_user_grades($this->verbalfeedback));
     }

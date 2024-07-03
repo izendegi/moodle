@@ -44,7 +44,7 @@ class template_criterion_repository {
      * Gets the category templates
      * @return array<int, template_criterion>.
      */
-    public function get_all(): array {
+    public function get_all() : array {
         global $DB;
         $results = [];
 
@@ -94,7 +94,7 @@ class template_criterion_repository {
      * @param int $id The criteria template id.
      * @return template_criterion|null The template criterion.
      */
-    public function get_by_id(int $id): ?template_criterion {
+    public function get_by_id(int $id) : ?template_criterion {
         static $all = null;
 
         if ($all === null || PHPUNIT_TEST) {
@@ -109,7 +109,7 @@ class template_criterion_repository {
      * @param int $id the template category id.
      * @return array<int, parametrized_template_criterion>.
      */
-    public function get_by_template_category_id(int $id): array {
+    public function get_by_template_category_id(int $id) : array {
         global $DB;
         $results = [];
         $dboparamcriteria = $DB->get_records(tables::PARAMETRIZED_TEMPLATE_CRITERION_TABLE, ['categoryid' => $id]);
@@ -243,23 +243,23 @@ class template_criterion_repository {
             $dbosubratings = $DB->get_records(tables::TEMPLATE_SUBRATINGS_TABLE, ['criterionid' => $id]);
             foreach ($dbosubratings as $dbosubrating) {
                 $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
-                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_TITLE), ], );
+                'type' => localized_string_type::TEMPLATE_SUBRATING_TITLE, ], );
                 $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
-                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION), ], );
+                'type' => localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION, ], );
                 $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
-                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE), ], );
+                'type' => localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE, ], );
                 $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
-                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_NEGATIVE), ], );
+                'type' => localized_string_type::TEMPLATE_SUBRATING_NEGATIVE, ], );
                 $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
-                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_POSITIVE), ], );
+                'type' => localized_string_type::TEMPLATE_SUBRATING_POSITIVE, ], );
                 $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
-                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE), ], );
+                'type' => localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE, ], );
             }
             $DB->delete_records(tables::TEMPLATE_SUBRATINGS_TABLE, ['criterionid' => $id]);
 
             // Delete localized strings.
             $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $id,
-            'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_CRITERION), ], );
+            'type' => localized_string_type::TEMPLATE_CRITERION, ], );
 
             // Delete criterion.
             $DB->delete_records(tables::TEMPLATE_CRITERION_TABLE, ['id' => $id]);
@@ -285,34 +285,35 @@ class template_criterion_repository {
 
     /**
      * Get all localized strings for a type, hashed by foreignkey, cached in memory for speed.
-     *
+     * @TODO - evaluate this for memory usage.
      * @param string $type
-     * @param int $foreignkey
      * @return array<localized_string[]>
      * @throws \dml_exception
      */
-    private function get_all_localized_strings_for_type(string $type, int $foreignkey): array {
+    private function get_all_localized_strings_for_type(string $type) : array {
         global $DB;
 
         static $strings = [];
 
-        $typeid = localized_string_type::str2id($type);
-        $cachekey = $typeid . '~~' . $foreignkey;
-
-        if (array_key_exists($cachekey, $strings) && !PHPUNIT_TEST) {
+        if (isset($strings[$type]) && !PHPUNIT_TEST) {
             // We already have this cached, so return it.
-            return $strings[$cachekey];
+            return $strings[$type];
         }
 
-        $strings[$cachekey] = [];
+        $strings[$type] = [];
 
-        $rs = $DB->get_recordset(tables::LOCALIZED_STRING_TABLE, ['typeid' => $typeid, 'foreignkey' => $foreignkey]);
+        $rs = $DB->get_recordset(tables::LOCALIZED_STRING_TABLE, ['type' => $type]);
         foreach ($rs as $row) {
-            $strings[$cachekey][$row->id] = db_localized_string::to_localized_string($row);
+            $type = $row->type;
+            $key = $row->foreignkey;
+            if (!isset($strings[$type][$key])) {
+                $strings[$type][$key] = [];
+            }
+            $strings[$type][$key][$row->id] = db_localized_string::to_localized_string($row);
         }
         $rs->close();
 
-        return $strings[$cachekey];
+        return $strings[$type];
     }
 
     /**
@@ -323,17 +324,18 @@ class template_criterion_repository {
      * @return array Localized strings
      * @throws \dml_exception
      */
-    private function get_localized_strings(int $foreignkey, string $type): array {
+    private function get_localized_strings(int $foreignkey, string $type) : array {
         if (!localized_string_type::exists($type)) {
             throw new \Exception("Unknown localized string type.");
         }
 
-        $allstrings = $this->get_all_localized_strings_for_type($type, $foreignkey);
-        if (empty($allstrings)) {
-            throw new \coding_exception("Couldn't find localized strings by type '$type' and foreignkey '$foreignkey'");
+        $allstrings = $this->get_all_localized_strings_for_type($type);
+        $localizedstrings = $allstrings[$foreignkey] ?? null;
+        if (!$localizedstrings) {
+            throw new coding_exception("Couldn't find localized strings by type '$type' and foreignkey '$foreignkey'");
         }
 
-        return $allstrings;
+        return $localizedstrings;
     }
 
     /**

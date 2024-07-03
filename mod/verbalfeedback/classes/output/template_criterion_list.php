@@ -39,12 +39,12 @@ use stdClass;
  */
 class template_criterion_list implements renderable, templatable {
     /**
-     * @var array $templatecriteria The template criteria data
+     * @var array
      */
     protected $templatecriteria = [];
 
     /**
-     * @var string $newtemplatecriterionurl The url to create a new template criterion
+     * @var
      */
     protected $newtemplatecriterionurl;
 
@@ -88,19 +88,19 @@ class template_criterion_list implements renderable, templatable {
  */
 class template_criterion_view_model {
     /**
-     * @var int The criterion id
+     * @var int
      */
     public $id;
     /**
-     * @var string The criterion text
+     * @var
      */
     public $text;
     /**
-     * @var string The edit url
+     * @var string
      */
     public $editurl;
     /**
-     * @var string The delete url
+     * @var
      */
     public $deleteurl;
 

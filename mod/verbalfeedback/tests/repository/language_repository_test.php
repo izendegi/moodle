@@ -36,7 +36,7 @@ use mod_verbalfeedback\repository\tables;
 /**
  * Verbal feedback language repository test class
  */
-final class language_repository_test extends \advanced_testcase {
+class language_repository_test extends \advanced_testcase {
 
     /** @var language_repository A language repository */
     protected $repo;
@@ -95,7 +95,7 @@ final class language_repository_test extends \advanced_testcase {
      * @throws coding_exception
      * @throws dml_exception
      */
-    public function test_get_all(): void {
+    public function test_get_all() {
         global $DB;
         $this->resetAfterTest();
 
@@ -136,7 +136,7 @@ final class language_repository_test extends \advanced_testcase {
      *
      * @covers \mod_verbalfeedback\repository\language_repository::get_by_id
      */
-    public function test_get_by_id(): void {
+    public function test_get_by_id() {
         $this->resetAfterTest();
 
         $language = new language(null, 'en');
@@ -155,7 +155,7 @@ final class language_repository_test extends \advanced_testcase {
      * @throws coding_exception
      * @throws dml_exception
      */
-    public function test_delete_by_id(): void {
+    public function test_delete_by_id() {
         global $DB;
         $this->resetAfterTest();
         $languages = [

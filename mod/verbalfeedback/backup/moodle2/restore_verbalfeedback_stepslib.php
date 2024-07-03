@@ -22,7 +22,6 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_verbalfeedback\repository\model\localized_string_type;
 use mod_verbalfeedback\repository\tables;
 
 /**
@@ -33,13 +32,6 @@ use mod_verbalfeedback\repository\tables;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class restore_verbalfeedback_activity_structure_step extends restore_activity_structure_step {
-
-    /**
-     * The instance id when the item is newly inserted.
-     *
-     * @var int
-     */
-    private $instanceid;
 
     /**
      * Function that will return the structure to be processed by this restore_step.
@@ -116,9 +108,9 @@ class restore_verbalfeedback_activity_structure_step extends restore_activity_st
         }
 
         // Insert the verbal feedback record.
-        $this->instanceid = $DB->insert_record(tables::INSTANCE_TABLE, $data);
+        $newitemid = $DB->insert_record(tables::INSTANCE_TABLE, $data);
         // Immediately after inserting "activity" record, call this.
-        $this->apply_activity_instance($this->instanceid);
+        $this->apply_activity_instance($newitemid);
     }
 
     /**
@@ -334,8 +326,8 @@ class restore_verbalfeedback_activity_structure_step extends restore_activity_st
 
         $data = (object) $data;
         $data->foreignkey = $this->get_mappingid($foreigenkeymapping, $data->foreignkey);
+
         $data->languageid = $this->get_mappingid('language', $data->languageid);
-        $data->instanceid = $this->instanceid;
         $DB->insert_record('verbalfeedback_local_string', $data);
     }
 }

@@ -30,23 +30,23 @@ use mod_verbalfeedback\model\instance_criterion;
  */
 class db_instance_criterion {
     /**
-     * @var int The id
+     * @var
      */
     public $id;
     /**
-     * @var int The parametrized template criterion id
+     * @var
      */
     public $paramtemplatecriterionid;
     /**
-     * @var int The category id
+     * @var
      */
     public $categoryid;
     /**
-     * @var int The position
+     * @var
      */
     public $position;
     /**
-     * @var float The weight
+     * @var
      */
     public $weight;
 
@@ -73,7 +73,7 @@ class db_instance_criterion {
      * @param object $dbo The database object
      * @return instance_criterion
      */
-    public static function to_instance_criterion($dbo): instance_criterion {
+    public static function to_instance_criterion($dbo) : instance_criterion {
         $criterion = new instance_criterion();
         if (isset($dbo->id)) {
             $criterion->set_id($dbo->id);

@@ -23,6 +23,8 @@
  */
 
 use mod_verbalfeedback\forms\template_criterion_delete_form;
+
+use mod_verbalfeedback\model\template\template_criterion;
 use mod_verbalfeedback\repository\template_criterion_repository;
 
 require_once(__DIR__ . '/../../config.php');

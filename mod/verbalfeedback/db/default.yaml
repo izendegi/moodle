@@ -5938,7 +5938,7 @@ categories:
       - text: "Gorputz-hizkuntza"
         language: *lang_eu
       - text: "Lenguaje corporal"
-        language: *lang_es
+        language: *lang_en
     criteria:
       - position: 1
         weight: 1
@@ -5953,8 +5953,8 @@ categories:
 templates:
   - &template1
     id: null
-    name: "{mlang eu}Txantiloi lehenetsia{mlang}{mlang es}Plantilla predeterminada{mlang}{mlang other}Default template{mlang}"
-    description: "{mlang eu}Txantiloi lehenetsia{mlang}{mlang es}La plantilla predeterminada{mlang}{mlang other}The default template{mlang}."
+    name: "Default template"
+    description: "The default template."
     categories:
       - position: 1
         weight: 0.2

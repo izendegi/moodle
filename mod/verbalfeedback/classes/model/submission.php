@@ -78,7 +78,7 @@ class submission {
      *
      * @return int The id.
      */
-    public function get_id(): int {
+    public function get_id() : int {
         return $this->id;
     }
 
@@ -96,9 +96,11 @@ class submission {
      *
      * @return int The instance id.
      */
-    public function get_instance_id(): int {
+    public function get_instance_id() : int {
         return $this->instanceid;
     }
+
+
 
     /**
      * Sets the user id of the responding user.
@@ -114,7 +116,7 @@ class submission {
      *
      * @return int The id of the responding user.
      */
-    public function get_from_user_id(): int {
+    public function get_from_user_id() : int {
         return $this->fromuserid;
     }
 
@@ -132,7 +134,7 @@ class submission {
      *
      * @return int The id of the rated user.
      */
-    public function get_to_user_id(): int {
+    public function get_to_user_id() : int {
         return $this->touserid;
     }
 
@@ -150,7 +152,7 @@ class submission {
      *
      * @return int The status.
      */
-    public function get_status(): int {
+    public function get_status() : int {
         return $this->status;
     }
 
@@ -168,7 +170,7 @@ class submission {
      *
      * @return string The remarks.
      */
-    public function get_remarks(): string {
+    public function get_remarks() : string {
         return $this->remarks;
     }
 
@@ -177,7 +179,7 @@ class submission {
      *
      * @return array<int, response> The responses.
      */
-    public function get_responses(): array {
+    public function get_responses() : array {
         return $this->responses;
     }
 

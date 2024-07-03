@@ -258,14 +258,7 @@
         saveandreturn, mod_verbalfeedback{{/str}}</button>
 </div>
 {{#js}}
-    require([
-        'mod_verbalfeedback/questionnaire',
-        'jquery',
-        'core/yui',
-        'core/templates',
-        'core/notification',
-        'core/str'
-    ], function(Questionnaire) {
+    require(['mod_verbalfeedback/questionnaire', 'jquery', 'core/yui', 'core/templates', 'core/notification', 'core/str'], function(Questionnaire, $) {
         new Questionnaire();
     });
 {{/js}}

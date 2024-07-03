@@ -44,7 +44,7 @@ use mod_verbalfeedback\repository\template_repository;
 /**
  * A PHPunit test class to test data import
  */
-final class import_data_test extends \advanced_testcase {
+class import_data_test extends \advanced_testcase {
 
     /**
      * Tests data import
@@ -64,7 +64,7 @@ final class import_data_test extends \advanced_testcase {
         $templaterepo = new template_repository();
 
         // Test dallgoot/yaml.
-        $importdata = helper::parseyamlfile('./mod/verbalfeedback/db/default.yaml');
+        $importdata = helper::parseYamlFile('./mod/verbalfeedback/db/default.yaml');
         foreach ($importdata->languages as $yamllang) {
             if ($yamllang->id == null) {
                 $lang = new language(null, $yamllang->language);

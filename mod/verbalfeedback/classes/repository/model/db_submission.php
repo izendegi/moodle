@@ -30,11 +30,11 @@ use mod_verbalfeedback\model\submission;
  */
 class db_submission {
     /**
-     * @var int The id of the submission
+     * @var int
      */
     public $id = 0;
     /**
-     * @var int The id of the instance
+     * @var
      */
     public $instanceid;
     /** @var int The rating user */
@@ -42,11 +42,11 @@ class db_submission {
     /** @var int The id of the rated user */
     public $touserid;
     /**
-     * @var int The status of the submission
+     * @var
      */
     public $status;
     /**
-     * @var string The remarks
+     * @var
      */
     public $remarks;
 
@@ -73,7 +73,7 @@ class db_submission {
      * @param object $dbo The database object
      * @return submission
      */
-    public static function to_submission($dbo): submission {
+    public static function to_submission($dbo) : submission {
         $submission = new submission();
         if (isset($dbo->id)) {
             $submission->set_id($dbo->id);
