@@ -15,13 +15,22 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package mod_wooclap
- * @copyright  2018 CBlue sprl
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Defines message providers (types of message sent) for the 360-degree feedback module.
+ *
+ * @package   mod_threesixo
+ * @copyright 2024 Jun Pataleta
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die;
+defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2024070400;
-$plugin->requires = 2016112900;
-$plugin->component = 'mod_wooclap';
+$messageproviders = [
+    // Notify participants that their feedback to another user contains invalid responses.
+    'invalidresponses' => [
+        'defaults' => [
+            'airnotifier' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+        ],
+    ],
+];
