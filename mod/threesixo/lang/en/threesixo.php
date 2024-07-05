@@ -58,6 +58,8 @@ $string['errorcannotprovidefeedbacktouser'] = 'You cannot provide feedback for t
 $string['errorcannotupdateitem'] = 'Cannot update the 360° feedback item.';
 $string['erroritemnotfound'] = 'The 360° feedback item was not found.';
 $string['errorinvalidstatus'] = 'Invalid status';
+$string['errorinvaliditem'] = 'Invalid item';
+$string['errorinvalidratingvalue'] = 'Invalid rating response value: {$a}';
 $string['errornocaptoedititems'] = 'Sorry, but you don\'t have the capability to edit 360° feedback items.';
 $string['errornotenrolled'] = 'You need to be enrolled in this course in order to be able to participate in this 360° feedback activity.';
 $string['errornotingroup'] = 'You need to be in a group in order to be able to participate in this 360° feedback activity. Please contact your course administrator.';
@@ -97,6 +99,15 @@ $string['moveitemup'] = 'Move item up';
 $string['name'] = 'Name';
 $string['noitemsyet'] = 'The 360° feedback activity doesn\'t have items yet. Add items by clicking on "Edit 360° feedback items".';
 $string['notapplicableabbr'] = 'N/A';
+$string['notifyinvalidresponses'] = '<p>Hi, {$a->respondent}!</p>
+<p>Invalid ratings have been detected for the feedback that you provided for {$a->recipient} in the 360° feedback activity "{$a->threesixo}" in the course "{$a->course}".</p>
+<p>Because of this, your feedback submission has been reset from "Completed" to "In progress".</p>
+<p>Please review your <a href="{$a->url}" target="_blank">feedback submission for {$a->recipient}</a>.</p>';
+$string['notifyinvalidresponsesanon'] = '<p>Hi, {$a->respondent}!</p>
+<p>Invalid ratings have been detected for the feedback that were provided to {$a->recipient} in the anonymous 360° feedback activity "{$a->threesixo}" in the course "{$a->course}".</p>
+<p>Because of this, your feedback submission has been reset from "Completed" to "In progress".</p>
+<p>Kindly provide a new <a href="{$a->url}" target="_blank">feedback submission for {$a->recipient}</a>.</p>';
+$string['notifyinvalidresponsessubject'] = '360° feedback: Your feedback submission has been reset';
 $string['numrespondents'] = 'Number of respondents';
 $string['openafterclose'] = 'You have specified an open date after the close date';
 $string['participants'] = 'Participants';
