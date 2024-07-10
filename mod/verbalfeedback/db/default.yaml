@@ -5953,8 +5953,8 @@ categories:
 templates:
   - &template1
     id: null
-    name: "Default template"
-    description: "The default template."
+    name: "{mlang eu}Txantiloi lehenetsia{mlang}{mlang es}Plantilla predeterminada{mlang}{mlang other}Default template{mlang}"
+    description: "{mlang eu}Txantiloi lehenetsia{mlang}{mlang es}La plantilla predeterminada{mlang}{mlang other}The default template{mlang}."
     categories:
       - position: 1
         weight: 0.2
