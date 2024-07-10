@@ -74,7 +74,6 @@ class upload_image_form extends moodleform {
                         [
                             'delete' => 1,
                             'sectionid' => $instance['sectionid'],
-                            'sesskey' => sesskey(),
                         ]
                     ),
                     get_string('deleteimage', 'format_tiles'),
