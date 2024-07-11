@@ -18,7 +18,7 @@
  * Version details
  *
  * @package   report_growth
- * @copyright 2020 eWallah
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -29,5 +29,5 @@ $plugin->component = 'report_growth';
 $plugin->requires = 2023042400;
 $plugin->maturity = MATURITY_STABLE;
 $plugin->supported = [402, 404];
-$plugin->release = 'v4.4.1';
-$plugin->version = 2024042100;
+$plugin->release = 'v4.4.2';
+$plugin->version = 2024071000;
