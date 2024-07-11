@@ -767,28 +767,22 @@ function reengagement_get_startusers($reengagement) {
               FROM {user} u
               JOIN ($esql) je ON je.id = u.id
              WHERE u.deleted = 0
+             AND u.confirmed = 1
              AND u.id NOT IN ($alreadycompletionsql)
              AND u.id NOT IN ($alreadyripsql)";
 
-    $startusers = $DB->get_records_sql($sql, $params);
-    foreach ($startusers as $startcandidate) {
-        $modinfo = get_fast_modinfo($reengagement->courseid, $startcandidate->id);
-        $cm = $modinfo->get_cm($reengagement->cmid);
-        $ainfomod = new \core_availability\info_module($cm);
-        $information = '';
-        if (empty($startcandidate->confirmed)) {
-            // Exclude unconfirmed users. Typically this shouldn't happen, but if an unconfirmed user
-            // has been enrolled to a course we shouldn't e-mail them about activities they can't access yet.
-            unset($startusers[$startcandidate->id]);
-            continue;
-        }
-        // Exclude users who can't see this activity.
-        if (!$ainfomod->is_available($information, false, $startcandidate->id, $modinfo)) {
-            unset($startusers[$startcandidate->id]);
-        }
-    }
+    // Load modinfo once per course and cache it to avoid multiple calls to get_fast_modinfo.
+    $modinfo = get_fast_modinfo($reengagement->courseid);
+    $cm = $modinfo->get_cm($reengagement->cmid);
+    $ainfomod = new \core_availability\info_module($cm);
+    $information = '';
 
-    return $startusers;
+    $startusers = $DB->get_records_sql($sql, $params);
+    $startcandidates = array_filter($startusers, function ($startcandidate) use ($ainfomod, $information, $modinfo) {
+        return $ainfomod->is_available($information, false, $startcandidate->id, $modinfo);
+    });
+
+    return $startcandidates;
 }
 
 
