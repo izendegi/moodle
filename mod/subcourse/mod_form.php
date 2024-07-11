@@ -171,14 +171,14 @@ class mod_subcourse_mod_form extends moodleform_mod {
      * @return array List of added element names, or names of wrapping group elements.
      */
     public function add_completion_rules() {
-
         $mform = $this->_form;
+        $completionfieldname = 'completioncourse' . $this->get_suffix();
 
-        $mform->addElement('advcheckbox', 'completioncourse', get_string('completioncourse', 'mod_subcourse'),
+        $mform->addElement('advcheckbox', $completionfieldname, get_string('completioncourse', 'mod_subcourse'),
             get_string('completioncourse_text', 'mod_subcourse'));
-        $mform->addHelpButton('completioncourse', 'completioncourse', 'mod_subcourse');
+        $mform->addHelpButton($completionfieldname, 'completioncourse', 'mod_subcourse');
 
-        return ['completioncourse'];
+        return [$completionfieldname];
     }
 
     /**
@@ -188,6 +188,7 @@ class mod_subcourse_mod_form extends moodleform_mod {
      * @return bool True if one or more rules is enabled, false if none are.
      */
     public function completion_rule_enabled($data) {
-        return (!empty($data['completioncourse']));
+        $completionfieldname = 'completioncourse' . $this->get_suffix();
+        return (!empty($data[$completionfieldname]));
     }
 }
