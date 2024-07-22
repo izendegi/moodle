@@ -25,12 +25,10 @@
 namespace format_onetopic\output\courseformat\content\section;
 
 use context_course;
-use core\output\named_templatable;
 use core_courseformat\base as course_format;
 use core_courseformat\output\local\courseformat_named_templatable;
 use core_courseformat\output\local\content\cm as cm_base;
 use core_courseformat\output\local\content\section\summary as summary_base;
-use renderable;
 use section_info;
 use stdClass;
 
@@ -51,7 +49,7 @@ class summary extends summary_base {
     /** @var section_info the course section class */
     private $section;
 
-    /** @var renderer_base the renderer output class */
+    /** @var \renderer_base the renderer output class */
     private $output;
 
     /** @var string Text to search */
@@ -103,11 +101,12 @@ class summary extends summary_base {
         $course = $this->format->get_course();
         $context = context_course::instance($section->course);
 
+        $summarytext = $section->summary;
         if ($course->templatetopic != \format_onetopic::TEMPLATETOPIC_NOT) {
-            $section->summary = $this->replace_resources($section);
+            $summarytext = $this->replace_resources($section);
         }
 
-        $summarytext = file_rewrite_pluginfile_urls($section->summary, 'pluginfile.php',
+        $summarytext = file_rewrite_pluginfile_urls($summarytext, 'pluginfile.php',
             $context->id, 'course', 'section', $section->id);
 
         $options = new stdClass();
@@ -185,9 +184,17 @@ class summary extends summary_base {
                 $cmdata->uniqueid = 'cm_' . $mod->id . '_' . time() . '_' . rand(0, 1000);
                 $cmdata->singlename = $instancename;
 
-                $cmdata->showinlinehelp = $cmdata->activityinfo->hascompletion
-                                            || $cmdata->activityinfo->hasdates
-                                            || !empty($cmdata->altcontent);
+                $cmdata->hascompletion = isset($cmdata->completion) && $cmdata->completion;
+
+                $hasavailability = isset($cmdata->modavailability) ? $cmdata->modavailability->hasmodavailability : false;
+
+                $cmdata->showinlinehelp = false;
+                if ($cmdata->hascompletion
+                        || (isset($cmdata->hasdates) && $cmdata->hasdates)
+                        || $hasavailability) {
+                    $cmdata->showinlinehelp = true;
+                }
+
                 $url = $mod->url;
                 if (empty($url)) {
                     // If there is content but NO link (like label), then don't display it.
@@ -231,6 +238,10 @@ class summary extends summary_base {
 
                 if ($newsummary != $summary) {
                     $this->format->tplcmsused[] = $modnumber;
+                }
+
+                if ($cmdata->showinlinehelp) {
+                    $newsummary .= $renderer->render_from_template('format_onetopic/courseformat/content/cm/cmhelpinfo', $cmdata);
                 }
 
                 $summary = $newsummary;
