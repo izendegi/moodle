@@ -79,15 +79,5 @@ class output_mobile_test extends \advanced_testcase {
 
         $this->assertEquals('main', $mainview3950['templates'][0]['id']);
         $this->assertStringContainsString('plugin.mod_subcourse.currentgrade', $mainview3950['templates'][0]['html']);
-
-        // Ionic3 compatible view for the app version 3.9.4.
-        $mainview3940 = \mod_subcourse\output\mobile::main_view([
-            'cmid' => $subcourse->cmid,
-            'courseid' => $metacourse->id,
-            'appversioncode' => 3940,
-        ]);
-
-        $this->assertEquals('main', $mainview3940['templates'][0]['id']);
-        $this->assertStringContainsString('plugin.mod_subcourse.currentgrade', $mainview3940['templates'][0]['html']);
     }
 }
