@@ -39,7 +39,7 @@ class observer {
         global $DB;
         $courseid = $event->objectid;
         $DB->delete_records("user_preferences", ["name" => 'format_tiles_stopjsnav_' . $courseid]);
-        \format_tiles\local\tile_photo::delete_files_from_ids($courseid);
+        \format_tiles\local\tile_photo::delete_files_from_ids($courseid, -1);
         \format_tiles\local\format_option::unset_all_course($courseid);
         self::clear_cache_modal_cmids($courseid);
     }
