@@ -38,7 +38,7 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
         var reopenLastVisitedSection = false;
         var courseId;
         var courseContextId;
-        var resizeLocked = false;
+        let resizeTimeout;
         var enableCompletion;
         var reorgSectionsDisabledUntil = 0;
 
@@ -62,7 +62,6 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
             ABOVE_TILES: "#abovetiles",
             INSTANCE_NAME: ".instancename",
             SPACER: ".spacer",
-            SECTION_MOVEABLE: ".moveablesection",
             SECTION_ID: "#section-",
             SECTION_TITLE: ".sectiontitle",
             SECTION_MAIN: ".section.main",
@@ -424,11 +423,10 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
          * Finally we re-open the section.
          * This is to ensure that the content bearing section is on the row under the tile clicked.
          * It is run at page load and again if window is re-sized etc.
-         * @param {boolean} delayBefore do we want a delay before we re-org.  This allows e.g. browser resizing to complete.
          * @param {boolean} fitTilesToScreenWidth whether we need to resize the tiles window while tiles are closed.
          * @returns {Promise}
          */
-        var reOrgSections = function (delayBefore, fitTilesToScreenWidth) {
+        var reOrgSections = function (fitTilesToScreenWidth) {
             var dfd = new $.Deferred();
             if (reorgSectionsDisabledUntil > Date.now()) {
                 dfd.resolve();
@@ -436,38 +434,20 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
             const disableDurationMilliSeconds = 1000;
             reorgSectionsDisabledUntil = Date.now() + disableDurationMilliSeconds;
 
-            var openedSection = $(".moveablesection:visible");
-            var openedSectionNum = 0;
-            if (openedSection.length > 0) {
-                openedSectionNum = openedSection.data("section");
-                cancelTileSelections(0);
-            }
-            var reOrgFunc = function(delayBefore) {
-                tileFitter.runReOrg(delayBefore)
+            var reOrgFunc = function() {
+                tileFitter.runReOrg()
                     .done(function(result) {
-                        if (openedSectionNum !== 0) {
-                            expandSection(openedSection, openedSectionNum);
-                        }
                         dfd.resolve(result);
                     })
                     .fail(function(result) {
-                        if (openedSectionNum !== 0) {
-                            expandSection(openedSection, openedSectionNum);
-                        }
                         dfd.reject(result);
                     });
             };
 
             if (fitTilesToScreenWidth) {
-                setTimeout(function() {
-                    tileFitter.resizeTilesDivWidth(courseId).done(function() {
-                        reOrgFunc(false);
-                    }, delayBefore);
-                });
-
-            } else {
-                reOrgFunc(delayBefore);
+                tileFitter.resizeTilesDivWidth(courseId);
             }
+            reOrgFunc();
             return dfd.promise();
         };
 
@@ -654,8 +634,6 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                     if (openTile !== 0) {
                         tileFitter.init(courseId, openTile, fitTilesToWidth, false);
                     } else {
-                        // Set focus to the first tile (not section zero).
-                        $(Selector.TILEID + "1").focus();
                         tileFitter.init(courseId, null, fitTilesToWidth, false);
                     }
 
@@ -712,14 +690,14 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                         const resizeObserver = new ResizeObserver(() => {
                             // On iOS resize events are triggered often on scroll because the address bar hides itself.
                             // Avoid this using observedElementWidth here.
-                            if (resizeLocked || observedElementWidth === widthObservedElement.outerWidth()) {
+                            if (observedElementWidth === widthObservedElement.outerWidth()) {
                                 return;
                             }
-                            resizeLocked = true;
 
                             // We wait for a short time before doing anything, as user may still be dragging window size change.
                             // We don't want to react to say 20 resize events happening over a single drag.
-                            setTimeout(function() {
+                            clearTimeout(resizeTimeout);
+                            resizeTimeout = setTimeout(function() {
 
                                 if (reorgSectionsDisabledUntil > Date.now()) {
                                     // We wait until inside our timeout for this as we may be responding to a fullscreen event.
@@ -748,10 +726,9 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                                 if (resizeRequired) {
                                     // Set global for comparison next time.
                                     observedElementWidth = widthObservedElement.outerWidth();
-                                    reOrgSections(true, fitTilesToWidth);
+                                    reOrgSections(fitTilesToWidth);
                                 }
-                                resizeLocked = false;
-                            }, 600);
+                            }, 100);
                         });
 
                         resizeObserver.observe(document.getElementById('page-content'));
@@ -868,7 +845,7 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                         if (useJavascriptNav) {
                             pageContent.on(Event.CLICK, Selector.FILTER_BUTTON, function () {
                                 cancelTileSelections(0);
-                                reOrgSections(true, false);
+                                reOrgSections(false);
                             });
                         }
 

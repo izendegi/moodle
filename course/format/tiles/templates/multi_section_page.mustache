@@ -52,8 +52,15 @@
         "course_activity_clipboard": ""
     }
 }}
-
-<div id="format-tiles-multi-section-page">
+{{#showinitialpageloadingicon}}
+    <a id="page-loading-icon" href="{{config.wwwroot}}/course/view.php?id={{courseid}}&skipcheck=1">
+    <div class="text-center mt-5">
+        {{> format_tiles/loading}}
+        <div class="text-center" style="text-decoration: none;"><small>{{#str}}clickiffailstoload, format_tiles{{/str}}</small></div>
+    </div>
+    </a>
+{{/showinitialpageloadingicon}}
+<div id="format-tiles-multi-section-page" class="m-auto">
     {{^jsnavuserenabled}}
         <div id="jswarning" class="alert alert-secondary d-inline-block">
             {{#str}}jsdeactivated, format_tiles{{/str}}
@@ -83,15 +90,6 @@
     {{^from_ajax}}
         {{> format_tiles/above_tiles}}
     {{/from_ajax}}
-
-    {{#showinitialpageloadingicon}}
-        <a id="page-loading-icon" href="{{config.wwwroot}}/course/view.php?id={{courseid}}&skipcheck=1">
-        <div class="text-center mt-5">
-            {{> format_tiles/loading}}
-            <div class="text-center" style="text-decoration: none;"><small>{{#str}}clickiffailstoload, format_tiles{{/str}}</small></div>
-        </div>
-        </a>
-    {{/showinitialpageloadingicon}}
 
     <ul class="tiles {{ulextraclasses}}" id="multi_section_tiles">
         {{#tiles}}
