@@ -258,7 +258,6 @@ class icon_set {
             'format_tiles:home' => 'fa-home',
             'format_tiles:image' => 'fa-image',
             'format_tiles:lock' => 'fa-lock',
-            'format_tiles:star-o' => 'fa-star-o',
             'format_tiles:pencil' => 'fa-pencil',
             'format_tiles:random' => 'fa-random',
             'format_tiles:toggle-off' => 'fa-toggle-off',
