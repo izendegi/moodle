@@ -178,18 +178,22 @@ class external extends external_api {
      * @throws stored_file_creation_exception
      */
     private static function set_tile_photo($data, $context): array {
-        $optiontype = \format_tiles\local\format_option::OPTION_SECTION_ICON;
-        $elementid = $data['sectionid'];
+        $sectionid = $data['sectionid'];
 
         if (!$data['image']) {
+            // If image is empty we are trying to delete the photo.
             $tilephoto = new tile_photo(
                 $context,
-                $context->contextlevel === CONTEXT_COURSE ? $elementid : 0
+                $context->contextlevel === CONTEXT_COURSE ? $sectionid : 0
             );
             $tilephoto->clear();
+            // Delete all files associated with this section.
+            \format_tiles\local\tile_photo::delete_files_from_ids($data['courseid'], $sectionid);
 
-            // If there is an icon attached to this element, clear it (as here we are setting a photo).
-            \format_tiles\local\format_option::unset($data['courseid'], $optiontype, $elementid);
+            // If there is an icon attached to this element, clear it (as in this function we are setting a photo).
+            \format_tiles\local\format_option::unset(
+                $data['courseid'], \format_tiles\local\format_option::OPTION_SECTION_ICON, $sectionid
+            );
 
             return ['status' => true, 'imageurl' => ''];
         }
@@ -231,7 +235,9 @@ class external extends external_api {
         $file = $tilephoto->set_file_from_stored_file($sourcefile, $data['image']);
         if ($file) {
             // If there is an icon attached to this element, clear it (as here we are setting a photo).
-            \format_tiles\local\format_option::unset($data['courseid'], $optiontype, $elementid);
+            \format_tiles\local\format_option::unset(
+                $data['courseid'], \format_tiles\local\format_option::OPTION_SECTION_ICON, $sectionid
+            );
             return ['status' => true, 'imageurl' => $tilephoto->get_image_url()];
         } else {
             return ['status' => false, 'imageurl' => ''];
@@ -255,7 +261,7 @@ class external extends external_api {
 
         // An icon for a single section or cm - use custom Tiles format options.
         $optiontype = \format_tiles\local\format_option::OPTION_SECTION_ICON;
-        $elementid = $data['sectionid'];
+        $sectionid = $data['sectionid'];
 
         // We are dealing with a tile icon for one particular section, so check if user has picked the course default.
         $defaulticonthiscourse = $DB->get_field(
@@ -265,18 +271,22 @@ class external extends external_api {
         if ($data['image'] == $defaulticonthiscourse) {
             // Using default icon for a tile do don't store anything in database = default.
             // Unset any icon.
-            format_option::unset($data['courseid'], format_option::OPTION_SECTION_ICON, $elementid);
+            format_option::unset($data['courseid'], format_option::OPTION_SECTION_ICON, $sectionid);
             // Also unset any photo.
-            format_option::unset($data['courseid'], format_option::OPTION_SECTION_PHOTO, $elementid);
+            format_option::unset($data['courseid'], format_option::OPTION_SECTION_PHOTO, $sectionid);
+            // Delete any related photo files.
+            \format_tiles\local\tile_photo::delete_files_from_ids($data['courseid'], $sectionid);
             return true;
         } else {
-            $result = format_option::set($data['courseid'], $optiontype, $elementid, $data['image']);
+            $result = format_option::set($data['courseid'], $optiontype, $sectionid, $data['image']);
         }
 
         if ($result) {
             // If there is a photo attached to this element, clear it (as here we are setting an icon).
             $tilephoto = new tile_photo($context, $data['sectionid']);
             $tilephoto->clear();
+            // Delete any related photo files.
+            \format_tiles\local\tile_photo::delete_files_from_ids($data['courseid'], $sectionid);
         }
         return $result;
     }
