@@ -366,7 +366,6 @@ class Soap extends \SoapClient
      * @return mixed|string
      * @throws TurnitinSDKException
      */
-
     #[\ReturnTypeWillChange]
     public function __doRequest($request, $location, $action, $version, $one_way = null)
     {
