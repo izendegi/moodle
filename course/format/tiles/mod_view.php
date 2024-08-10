@@ -31,7 +31,7 @@ $forcedownload = optional_param('forcedownload', false, PARAM_BOOL);
 
 list($course, $cm) = get_course_and_cm_from_cmid($cmid);
 // This will also check that cm is user visible.
-require_course_login($course, true, $cm);
+require_course_login($course, false, $cm);
 
 // Only doing this for mod_resource and URL.
 $modnames = ['resource', 'url'];
@@ -39,7 +39,7 @@ if (!in_array($cm->modname, $modnames)) {
     throw new invalid_parameter_exception("Invalid module");
 }
 
-if ($course->format !== 'tiles' || !\format_tiles\local\modal_helper::cm_has_modal($course->id, $cm->id)) {
+if (!\format_tiles\local\modal_helper::cm_has_modal($course->id, $cm->id)) {
     throw new invalid_parameter_exception("Course module has no modal");
 }
 
@@ -51,25 +51,24 @@ $modobject = $DB->get_record($cm->modname, ['id' => $cm->instance], '*', MUST_EX
 
 if ($cm->modname === 'resource') {
     $fs = get_file_storage();
-    // We show the file with the highest sort order, like on mod/resource/view.php.
     $files = $fs->get_area_files(
         $context->id, 'mod_resource', 'content', 0,
-        'sortorder DESC, id ASC', false, 0, 0, 10
+        'sortorder', false, 0, 0, 10
     );
     if (!empty($files)) {
         $allowedmimetypes = ['application/pdf', 'text/html'];
         require_once("$CFG->dirroot/mod/resource/lib.php");
         foreach ($files as $file) {
             if (in_array($file->get_mimetype(), $allowedmimetypes) && $file->get_filesize() > 0 && $file->get_filename() !== '.') {
-                require_once("$CFG->dirroot/lib/filelib.php");
                 resource_view($modobject, $course, $cm, $context);
-                // We cannot just redirect to pluginfile.php as Safari will not follow that within an <object> tag.
-                // So instead we use file_pluginfile() which will still delegate serving the file to resource_pluginfile().
-                // Capability/login was already checked above but resource_pluginfile() will also check it.
-                $relativepath = "/$context->id/mod_resource/content/$modobject->revision"
-                    . $file->get_filepath() . $file->get_filename();
-                file_pluginfile($relativepath, $forcedownload);
-                die();
+                $url = new moodle_url(
+                    "/pluginfile.php/$context->id/mod_resource/content/$modobject->revision"
+                    . $file->get_filepath() . rawurlencode($file->get_filename())
+                );
+                if ($forcedownload) {
+                    $url->param('forcedownload', 1);
+                }
+                redirect($url);
             }
         }
     }
@@ -78,7 +77,7 @@ if ($cm->modname === 'resource') {
     url_view($modobject, $course, $cm, $context);
     $redirecturl = $modobject->externalurl;
 
-    // If the URL is a YouTube video etc, it may need converting into an embed URL.
+    // If the URL is a youtube video, it may need converting into an embed URL.
     $modifiedurl = !optional_param('noembed', false, PARAM_BOOL)
         ? \format_tiles\output\course_output::check_modify_embedded_url($redirecturl)
         : null;
