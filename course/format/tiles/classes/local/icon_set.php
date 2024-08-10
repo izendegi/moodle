@@ -248,7 +248,6 @@ class icon_set {
             'format_tiles:check' => 'fa-check',
             'format_tiles:chevron-left' => 'fa-chevron-left',
             'format_tiles:chevron-right' => 'fa-chevron-right',
-            'format_tiles:circle-play' => 'fa-circle-play',
             'format_tiles:clone' => 'fa-clone',
             'format_tiles:close' => 'fa-close',
             'format_tiles:cloud-download' => 'fa-cloud-download',

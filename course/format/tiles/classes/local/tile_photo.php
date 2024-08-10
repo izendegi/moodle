@@ -332,7 +332,6 @@ class tile_photo {
 
     /**
      * Clear the data associated with this tile_photo object.
-     * @throws \dml_exception
      */
     public function clear() {
         $this->delete_stored_file();
@@ -526,7 +525,7 @@ class tile_photo {
         if (isset($pathinfo['extension'])) {
             $newfilename .= '.' . $pathinfo['extension'];
         }
-        return $newfilename;
+        return $newfilename ?? '';
     }
 }
 

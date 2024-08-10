@@ -48,6 +48,9 @@ define(["jquery", "core/ajax"], function ($, ajax) {
     // Used to store a delayed AJAX request so we can replace it if user sets again within one second or two.
     var timeoutBeforeResizeAjax = null;
 
+    // If we are in non JS nav mode, we may be on a single section page i.e/. &section=xx.
+    const isSectionPage = $(Selector.TILES).length === 0;
+
     /**
      * If we have a single tile on the last row it looks odd.
      * We might want to shrink the tile window down a little to even it out.
@@ -59,6 +62,10 @@ define(["jquery", "core/ajax"], function ($, ajax) {
         const winWidth = $(window).width();
         // Create a new Deferred.
         const dfd = new $.Deferred();
+        if (isSectionPage) {
+            // No tile fitting on single section page.
+            dfd.resolve();
+        }
         const tiles = $(Selector.TILES);
         const tilesOuter = $(Selector.TILES_OUTER);
         const TILE_WIDTHS = {
@@ -325,45 +332,38 @@ define(["jquery", "core/ajax"], function ($, ajax) {
         init: function(courseIdInit, sectionOpen, fitTilesToWidth, isEditing) {
             courseId = courseIdInit;
             $(document).ready(function() {
-                if ($(Selector.TILES).css("opacity") === "1") {
-                    organiser.runReOrg(false).done(function() {
-                        if (sectionOpen !== 0) {
-                            // Tiles are already visible so open the tile user was on previously (if any).
-                            $(Selector.TILEID + sectionOpen).click();
-                        }
-                    });
-                }
-
-                // When we first load the page we want to move the tile contents divs.
-                // Put them in the correct rows according to which row of tiles they relate to.
-                // Only then do we re-open the last section the user had open.
-                var organiseAndRevealTiles = function () {
-                    organiser.runReOrg(false).done(function() {
-                        if (sectionOpen !== 0 && $(Selector.OPEN_SECTION).length === 0) {
-                            // Now open the tile user was on previously (if any).
-                            $(Selector.TILEID + sectionOpen).click();
-                        }
-                        unHideTiles();
-                    });
-                };
-                if (fitTilesToWidth && !isEditing) {
-                    // If we have a single tile on the last row it looks odd so resize window.
-                    resizeTilesDivWidth().done(function() {
+                if (!isSectionPage) {
+                    // When we first load the page we want to move the tile contents divs.
+                    // Put them in the correct rows according to which row of tiles they relate to.
+                    // Only then do we re-open the last section the user had open.
+                    var organiseAndRevealTiles = function () {
+                        organiser.runReOrg().done(function() {
+                            if (sectionOpen && $(Selector.OPEN_SECTION).length === 0) {
+                                // Now open the tile user was on previously (if any).
+                                $(Selector.TILEID + sectionOpen).click();
+                            }
+                            unHideTiles();
+                        });
+                    };
+                    if (fitTilesToWidth && !isEditing) {
+                        // If we have a single tile on the last row it looks odd so resize window.
+                        resizeTilesDivWidth().done(function() {
+                            organiseAndRevealTiles();
+                        }).fail(function() {
+                            // If resize is rejected e.g. as screen is to narrow e.g. mobile.
+                            organiseAndRevealTiles();
+                        });
+                    } else {
                         organiseAndRevealTiles();
-                    }).fail(function() {
-                        // If resize is rejected e.g. as screen is to narrow e.g. mobile.
-                        organiseAndRevealTiles();
-                    });
-                } else {
-                    organiseAndRevealTiles();
+                    }
                 }
             });
         },
         resizeTilesDivWidth: function() {
             return resizeTilesDivWidth();
         },
-        runReOrg: function (delayBefore) {
-            return organiser.runReOrg(delayBefore);
+        runReOrg: function () {
+            return organiser.runReOrg();
         }
     };
 });

@@ -60,7 +60,7 @@
     </div>
     </a>
 {{/showinitialpageloadingicon}}
-<div id="format-tiles-multi-section-page" class="m-auto">
+<div id="format-tiles-multi-section-page" class="m-auto {{outerextraclasses}}">
     {{^jsnavuserenabled}}
         <div id="jswarning" class="alert alert-secondary d-inline-block">
             {{#str}}jsdeactivated, format_tiles{{/str}}
@@ -91,7 +91,7 @@
         {{> format_tiles/above_tiles}}
     {{/from_ajax}}
 
-    <ul class="tiles {{ulextraclasses}}" id="multi_section_tiles">
+    <ul class="tiles" id="multi_section_tiles">
         {{#tiles}}
             {{^editing}}
                 {{> format_tiles/multi_section_tile}}
@@ -113,7 +113,7 @@
 
             {{!moveable sections for JS to add content to and move around (one relating to each tile)}}
             {{#tiles}}
-                <li class="section main moveablesection" style="display: none;" id="section-{{tileid}}"
+                <li class="section course-section main moveablesection" style="display: none;" id="section-{{tileid}}"
                     data-section="{{tileid}}" data-sectionid="{{secid}}"></li>
             {{/tiles}}
         {{/editing}}
