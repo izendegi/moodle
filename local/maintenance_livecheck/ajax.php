@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 /**
  * Local plugin "Maintenance mode (live check)" - AJAX processing
  *
@@ -25,11 +24,10 @@
 
 define('AJAX_SCRIPT', true);
 
-// @codingStandardsIgnoreStart
+// phpcs:disable moodle.Files.RequireLogin.Missing
 // Let codechecker ignore the next line because otherwise it would complain about a missing login check
 // after requiring config.php which is really not needed.
 require(__DIR__ . '/../../config.php');
-// @codingStandardsIgnoreEnd
 
 global $CFG;
 
