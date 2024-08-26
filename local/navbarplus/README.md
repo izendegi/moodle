@@ -1,7 +1,7 @@
 moodle-local_navbarplus
 ========================
 
-[![Moodle Plugin CI](https://github.com/moodle-an-hochschulen/moodle-local_navbarplus/workflows/Moodle%20Plugin%20CI/badge.svg?branch=master)](https://github.com/moodle-an-hochschulen/moodle-local_navbarplus/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amaster)
+[![Moodle Plugin CI](https://github.com/moodle-an-hochschulen/moodle-local_navbarplus/workflows/Moodle%20Plugin%20CI/badge.svg?branch=main)](https://github.com/moodle-an-hochschulen/moodle-local_navbarplus/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amain)
 
 Moodle plugin which enhances the functionality of Moodle's page header navbar.
 
@@ -9,7 +9,7 @@ Moodle plugin which enhances the functionality of Moodle's page header navbar.
 Requirements
 ------------
 
-This plugin requires Moodle 4.3+
+This plugin requires Moodle 4.4+
 
 
 Motivation for this plugin
@@ -89,6 +89,12 @@ Capabilities
 ------------
 
 This plugin does not add any additional capabilities.
+
+
+Scheduled Tasks
+---------------
+
+This plugin does not add any additional scheduled tasks.
 
 
 How this plugin works / Pitfalls
