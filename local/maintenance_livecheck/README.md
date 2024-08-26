@@ -1,7 +1,7 @@
 moodle-local_maintenance_livecheck
 ==================================
 
-[![Moodle Plugin CI](https://github.com/moodle-an-hochschulen/moodle-local_maintenance_livecheck/workflows/Moodle%20Plugin%20CI/badge.svg?branch=master)](https://github.com/moodle-an-hochschulen/moodle-local_maintenance_livecheck/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amaster)
+[![Moodle Plugin CI](https://github.com/moodle-an-hochschulen/moodle-local_maintenance_livecheck/workflows/Moodle%20Plugin%20CI/badge.svg?branch=main)](https://github.com/moodle-an-hochschulen/moodle-local_maintenance_livecheck/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amain)
 
 Moodle plugin which shows the Moodle maintenance announcement even if there is no full page load
 
@@ -9,7 +9,7 @@ Moodle plugin which shows the Moodle maintenance announcement even if there is n
 Requirements
 ------------
 
-This plugin requires Moodle 4.3+
+This plugin requires Moodle 4.4+
 
 
 Motivation for this plugin
@@ -58,6 +58,12 @@ Capabilities
 ------------
 
 This plugin does not add any additional capabilities.
+
+
+Scheduled Tasks
+---------------
+
+This plugin does not add any additional scheduled tasks.
 
 
 How this plugin works
