@@ -858,6 +858,12 @@ class format_tiles extends core_courseformat\base {
                 if (!$existingstoppref) {
                     // Did not already have it disabled.
                     set_user_preference('format_tiles_stopjsnav', 1);
+                    $reenablelink = html_writer::link(
+                        new moodle_url('/course/view.php', ['id' => $page->course->id, 'stopjsnav' => 1]),
+                        get_string('reactivate', 'format_tiles'),
+                        ['class' => 'btn btn-secondary ml-3']
+                    );
+                    \core\notification::warning(get_string('jsdeactivated', 'format_tiles') . $reenablelink);
                 } else {
                     // User previously disabled it, but now is re-enabling.
                     unset_user_preference('format_tiles_stopjsnav');
@@ -1019,7 +1025,7 @@ function format_tiles_output_fragment_get_cm_content(array $args): string {
         }
         try {
             // Issue #153 avoid multiple glossary auto link JS onclick events.
-            $PAGE->requires->set_one_time_item_created('filter_glossary_autolinker');
+            $PAGE->requires->should_create_one_time_item_now('filter_glossary_autolinker');
 
         } catch (\Exception $e) {
             debugging('Could not set glossary autolink created', DEBUG_DEVELOPER);
