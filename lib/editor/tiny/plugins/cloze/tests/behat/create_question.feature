@@ -28,8 +28,10 @@ Feature: Test the cloze question editor string compilation after creating the qu
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[1]//input[contains(@class, 'tiny_cloze_feedback')]" to "That is correct"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[2]//input[contains(@class, 'tiny_cloze_answer')]" to "dog"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[2]//input[contains(@class, 'tiny_cloze_feedback')]" to "That is not correct"
+    And I set the field with xpath "//form[@name='tiny_cloze_form']//li[2]//select[contains(@class, 'tiny_cloze_fraction')]" to "Incorrect"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[3]//input[contains(@class, 'tiny_cloze_answer')]" to "mouse"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[3]//input[contains(@class, 'tiny_cloze_feedback')]" to "That is totally wrong"
+    And I set the field with xpath "//form[@name='tiny_cloze_form']//li[3]//select[contains(@class, 'tiny_cloze_fraction')]" to "Incorrect"
     When I click on "Insert question" "button"
     #From 4.3 onwards this works:
     #And I click on the "View > Source code" menu item for the "Question text" TinyMCE editor
@@ -103,7 +105,9 @@ Feature: Test the cloze question editor string compilation after creating the qu
     And I click on "Select question type" "button"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[1]//input[contains(@class, 'tiny_cloze_answer')]" to "cat"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[2]//input[contains(@class, 'tiny_cloze_answer')]" to "dog"
+    And I set the field with xpath "//form[@name='tiny_cloze_form']//li[2]//select[contains(@class, 'tiny_cloze_fraction')]" to "Incorrect"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[3]//input[contains(@class, 'tiny_cloze_answer')]" to "mouse"
+    And I set the field with xpath "//form[@name='tiny_cloze_form']//li[3]//select[contains(@class, 'tiny_cloze_fraction')]" to "Incorrect"
     And I click on "//form[@name='tiny_cloze_form']//li[3]//a[contains(@class, 'tiny_cloze_up')]" "xpath"
     And I click on "//form[@name='tiny_cloze_form']//li[1]//a[contains(@class, 'tiny_cloze_down')]" "xpath"
     When I click on "Insert question" "button"
@@ -126,7 +130,9 @@ Feature: Test the cloze question editor string compilation after creating the qu
     And I click on "Select question type" "button"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[1]//input[contains(@class, 'tiny_cloze_answer')]" to "cat"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[2]//input[contains(@class, 'tiny_cloze_answer')]" to "dog"
+    And I set the field with xpath "//form[@name='tiny_cloze_form']//li[2]//select[contains(@class, 'tiny_cloze_fraction')]" to "Incorrect"
     And I set the field with xpath "//form[@name='tiny_cloze_form']//li[3]//input[contains(@class, 'tiny_cloze_answer')]" to "mouse"
+    And I set the field with xpath "//form[@name='tiny_cloze_form']//li[3]//select[contains(@class, 'tiny_cloze_fraction')]" to "Incorrect"
     And I click on "//form[@name='tiny_cloze_form']//li[2]//a[contains(@class, 'tiny_cloze_delete')]" "xpath"
     When I click on "Insert question" "button"
     #And I click on the "View > Source code" menu item for the "Question text" TinyMCE editor

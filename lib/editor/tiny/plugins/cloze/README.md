@@ -1,7 +1,7 @@
 Moodle Tiny editor Cloze question type button
 =============================================
 
-![Release](https://img.shields.io/badge/Release-1.6-blue.svg)
+![Release](https://img.shields.io/badge/Release-1.7-blue.svg)
 [![Moodle Plugin 
 CI](https://github.com/srobotta/moodle-tiny_cloze/workflows/Moodle%20Plugin%20CI/badge.svg?branch=main)](https://github.com/srobotta/moodle-tiny_cloze/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amain)
 ![Supported](https://img.shields.io/badge/Moodle-4.1+-orange.svg)
@@ -102,6 +102,14 @@ is not supported here. For more information please check out the Moodle document
 at https://docs.moodle.org/en/Multi-language_content_filter.
 
 ## History
+
+### v1.7
+- When creating blanks for possible answers, the default grade is now "Correct" instead
+of the previous "Incorrect".
+- When a text is selected, the content is taken for the first answer field. This restores
+a behaviour that the original cloze plugin for Atto contained.
+- Wider input fields for answer and feedback in modal dialogue
+(thanks to [Joseph Rézeau](https://github.com/rezeau)).
 
 ### v1.6
 - Add Support for Moodle 4.4 and PHP 8.3.
