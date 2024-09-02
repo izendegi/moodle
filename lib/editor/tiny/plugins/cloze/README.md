@@ -1,7 +1,7 @@
 Moodle Tiny editor Cloze question type button
 =============================================
 
-![Release](https://img.shields.io/badge/Release-1.7-blue.svg)
+![Release](https://img.shields.io/badge/Release-1.8-blue.svg)
 [![Moodle Plugin 
 CI](https://github.com/srobotta/moodle-tiny_cloze/workflows/Moodle%20Plugin%20CI/badge.svg?branch=main)](https://github.com/srobotta/moodle-tiny_cloze/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3Amain)
 ![Supported](https://img.shields.io/badge/Moodle-4.1+-orange.svg)
@@ -102,6 +102,12 @@ is not supported here. For more information please check out the Moodle document
 at https://docs.moodle.org/en/Multi-language_content_filter.
 
 ## History
+
+### v1.8
+- Empty response field are automatically ignored when the question otherwise can be created
+from the remaining filled response fields.
+- When creating a new question, by default the first answer is marked as correct, all
+subsequent answer options are marked as incorrect.
 
 ### v1.7
 - When creating blanks for possible answers, the default grade is now "Correct" instead
