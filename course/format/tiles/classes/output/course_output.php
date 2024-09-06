@@ -921,7 +921,11 @@ class course_output implements \renderable, \templatable {
                 $iconclass = 'nofilter';
             }
 
-            $moduleobject['icon'] = ['url' => $modiconurl, 'label' => $mod->name, 'iconclass' => $iconclass];
+            $moduleobject['icon'] = [
+                'url' => $modiconurl,
+                'label' => $moduleobject['activityname'],
+                'iconclass' => $iconclass,
+            ];
             $moduleobject['tileicon'] = false; // Template is shared with top level tile, so avoiding inheriting parent icon.
             $moduleobject['purpose'] = plugin_supports('mod', $mod->modname, FEATURE_MOD_PURPOSE, MOD_PURPOSE_OTHER);
         }
@@ -1048,10 +1052,14 @@ class course_output implements \renderable, \templatable {
                         $moduleobject['completionstring'] = get_string('complete-y-auto', 'format_tiles');
                         break;
                     case COMPLETION_COMPLETE_PASS:
-                        $moduleobject['completionstring'] = get_string('completion-pass', 'core_completion', $mod->name);
+                        $moduleobject['completionstring'] = get_string(
+                            'completion-pass', 'core_completion', $moduleobject['activityname']
+                        );
                         break;
                     case COMPLETION_COMPLETE_FAIL:
-                        $moduleobject['completionstring'] = get_string('completion-fail', 'core_completion', $mod->name);
+                        $moduleobject['completionstring'] = get_string(
+                            'completion-fail', 'core_completion', $moduleobject['activityname']
+                        );
                         $moduleobject['isfail'] = 1;
                         break;
                 }
