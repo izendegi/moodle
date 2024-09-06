@@ -107,8 +107,9 @@ class format_tiles extends core_courseformat\base {
      * Returns the default section name for the topics course format.
      *
      * If the section number is 0, it will use the string with key = section0name from the course format's lang file.
-     * If the section number is not 0, the base implementation of format_base::get_default_section_name which uses
+     * If the section number is not 0, the base implementation of base::get_default_section_name which uses
      * the string with the key = 'sectionname' from the course format's lang file + the section number will be used.
+     * @see \core_courseformat\base::get_default_section_name()
      *
      * @param stdClass $section Section object from database or just field course_sections section
      * @return string The default value for the section name.
@@ -119,7 +120,7 @@ class format_tiles extends core_courseformat\base {
             // Return the general section.
             return get_string('section0name', 'format_tiles');
         } else {
-            // Use format_base::get_default_section_name implementation which will display the section name in "Topic n" format.
+            // Use core_courseformat\base::get_default_section_name which will display section name in "Topic n" format.
             return parent::get_default_section_name($section);
         }
     }
@@ -467,12 +468,12 @@ class format_tiles extends core_courseformat\base {
     /**
      * Definitions of the additional options that this course format uses for section
      *
-     * See {@see format_base::course_format_options()} for return array definition.
+     * See course_format::course_format_options() for return array definition.
      *
      * Additionally section format options may have property 'cache' set to true
-     * if this option needs to be cached in {@see get_fast_modinfo()}. The 'cache' property
-     * is recommended to be set only for fields used in {@see format_base::get_section_name()},
-     * {@see format_base::extend_course_navigation()} and {@see format_base::get_view_url()}
+     * if this option needs to be cached in get_fast_modinfo(). The 'cache' property
+     * is recommended to be set only for fields used in course_format::get_section_name(),
+     * course_format::extend_course_navigation() and course_format::get_view_url()
      *
      * For better performance cached options are recommended to have 'cachedefault' property
      * Unlike 'default', 'cachedefault' should be static and not access get_config().
@@ -488,8 +489,6 @@ class format_tiles extends core_courseformat\base {
      *
      * @param bool $foreditform
      * @return array
-     * @throws coding_exception
-     * @throws moodle_exception
      */
     public function section_format_options($foreditform = false) {
         $course = $this->get_course();
