@@ -536,3 +536,10 @@ Other
 4.4.0.20 (2024082441)
 =====================
 - Correct mustache template example typos
+
+4.4.0.21 (2024090540)
+=====================
+- Fix issue #219 filters not applying to non-subtile headings
+- Fix issue #221 unit test provider bug
+- Fix issue #222 safari PDF modal not displaying
+- Add behat test for filtering for tile names, activity names and content
