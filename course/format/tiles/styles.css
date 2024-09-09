@@ -15,8 +15,8 @@
     transition: border-top-color 0s;
 }
 .format-tiles .tile-bg,
-.format-tiles li.section:not(#section-0).tilestyle-1 .course-section-header,
-.format-tiles li.section:not(#section-0).tilestyle-2 .course-section-header {
+.format-tiles li.section:not(#section-0).tilestyle-1 .course-section-header.tile-bar-heading,
+.format-tiles li.section:not(#section-0).tilestyle-2 .course-section-header.tile-bar-heading {
     background-color: var(--format-tiles-colour-05);
 }
 .format-tiles ul.tiles .tile-clickable.tilestyle-1:hover,
@@ -507,7 +507,7 @@
     top: 3px;
     height: 24px;
 }
-.format-tiles li.section.current:not(#section-0) .course-section-header {
+.format-tiles li.section.current:not(#section-0) .course-section-header.tile-bar-heading {
     border-top-color: red;
 }
 .format-tiles.path-course-view li.activity > div:not(.activity-item).completioncheckbox {
@@ -1786,20 +1786,20 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     opacity: 1;
 }
 
-.format-tiles li.section:not(#section-0) .course-section-header {
+.format-tiles li.section:not(#section-0) .course-section-header.tile-bar-heading {
     margin-right: 5px;
     background-color: #3584c917;
     border-top: 3px solid rgba(53, 132, 201, 0.37);
     width: 100%;
     padding: 10px;
 }
-.format-tiles li.section:not(#section-0).hidden .course-section-header,
-.format-tiles li.section:not(#section-0).restricted .course-section-header {
+.format-tiles li.section:not(#section-0).hidden .course-section-header.tile-bar-heading,
+.format-tiles li.section:not(#section-0).restricted .course-section-header.tile-bar-heading {
     background-color: #efefef;
     border-top-color: #cdcdcd;
 }
-.format-tiles li.section:not(#section-0).hidden .course-section-header  .tilebarphoto,
-.format-tiles li.section:not(#section-0).restricted .course-section-header .tilebarphoto {
+.format-tiles li.section:not(#section-0).hidden .course-section-header.tile-bar-heading .tilebarphoto,
+.format-tiles li.section:not(#section-0).restricted .course-section-header.tile-bar-heading .tilebarphoto {
     filter: grayscale(1);
 }
 .format-tiles .tiles-editor-image {
