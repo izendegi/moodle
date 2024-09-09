@@ -563,7 +563,8 @@ class course_output implements \renderable, \templatable {
             $isphototile = $allowedphototiles && in_array($section->id, $phototileids);
             $showsection = $section->uservisible ||
                 ($section->visible && !$section->available && !empty($section->availableinfo));
-            if ($sectionnum != 0 && $showsection) {
+            $isdelegated = $this->moodlerelease >= 4.5 && ($section->is_delegated() ?? false);
+            if ($sectionnum != 0 && $showsection && !$isdelegated) {
                 if ($uselinebreakfilter) {
                     $title = $this->apply_linebreak_filter($this->truncate_title(get_section_name($this->course, $sectionnum)));
                 } else {
@@ -592,6 +593,7 @@ class course_output implements \renderable, \templatable {
                     'progress' => false,
                     'isactive' => $this->course->marker == $section->section,
                     'extraclasses' => "tilestyle-$tilestyle ",
+                    'isdelegated' => $isdelegated
                 ];
 
                 // If photo tile backgrounds are allowed by site admin, prepare them for this tile.
