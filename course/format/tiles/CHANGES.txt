@@ -543,3 +543,8 @@ Other
 - Fix issue #221 unit test provider bug
 - Fix issue #222 safari PDF modal not displaying
 - Add behat test for filtering for tile names, activity names and content
+
+4.4.0.22 (2024090741)
+=====================
+- Fix previous merge error causing sub-tile spacing issue
+- Preparatory work for upcoming Moodle 4.5 around delegated sections / activity chooser button refactor (MDL-81765)
