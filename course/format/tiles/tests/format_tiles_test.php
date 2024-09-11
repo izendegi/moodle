@@ -342,9 +342,11 @@ final class format_tiles_test extends \advanced_testcase {
 
         // Add a text file to the PDF existing resource activity.
         $pdfcmcontext = \context_module::instance($instance->cmid);
-        $filerecord = ['component' => $component, 'filearea' => $filearea,
+        $filerecord = [
+            'component' => $component, 'filearea' => $filearea,
             'contextid' => $pdfcmcontext->id, 'itemid' => 0,
-            'filename' => basename('test.txt'), 'filepath' => '/'];
+            'filename' => basename('test.txt'), 'filepath' => '/',
+        ];
         $fs = get_file_storage();
         $fs->create_file_from_pathname($filerecord, $textfilepath);
 
@@ -354,9 +356,11 @@ final class format_tiles_test extends \advanced_testcase {
         );
 
         // Add another PDF to make sure code is not confused by having multiple PDFs.
-        $filerecord = ['component' => $component, 'filearea' => $filearea,
+        $filerecord = [
+            'component' => $component, 'filearea' => $filearea,
             'contextid' => $pdfcmcontext->id, 'itemid' => 0,
-            'filename' => basename('test2.pdf'), 'filepath' => '/'];
+            'filename' => basename('test2.pdf'), 'filepath' => '/',
+        ];
         $fs = get_file_storage();
         $fs->create_file_from_pathname($filerecord, $pdffilepath);
 

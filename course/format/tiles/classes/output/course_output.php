@@ -186,7 +186,10 @@ class course_output implements \renderable, \templatable {
             }
         }
         $data = $this->get_basic_data();
-        $data = $this->append_section_zero_data($data, $output);
+        if (!$this->sectionnum) {
+            $data = $this->append_section_zero_data($data, $output);
+        }
+
         // We have assembled the "common data" needed for both single and multiple section pages.
         // Now we can go off and get the specific data for the single or multiple page as required.
         if ($this->sectionnum !== null) {
@@ -256,6 +259,7 @@ class course_output implements \renderable, \templatable {
                 'icon' => 'exclamation-triangle', 'class' => 'warning',
             ];
         }
+        $data['singlesectionnum'] = $this->sectionnum;
         return $data;
     }
 
@@ -474,6 +478,7 @@ class course_output implements \renderable, \templatable {
         if ($this->canviewhidden) {
             $data['availabilitymessage'] = self::temp_section_availability_message($thissection);
         }
+        $data['isdelegatedsection'] = $this->moodlerelease >= 4.5 && ($thissection->is_delegated() ?? false);
         return $data;
     }
 
@@ -593,7 +598,7 @@ class course_output implements \renderable, \templatable {
                     'progress' => false,
                     'isactive' => $this->course->marker == $section->section,
                     'extraclasses' => "tilestyle-$tilestyle ",
-                    'isdelegated' => $isdelegated
+                    'isdelegated' => $isdelegated,
                 ];
 
                 // If photo tile backgrounds are allowed by site admin, prepare them for this tile.
@@ -768,7 +773,7 @@ class course_output implements \renderable, \templatable {
 
     /**
      * Gets the data (context) to be used with the activityinstance template
-     * @param object $section the section object we want content for
+     * @param \section_info $section the section object we want content for
      * @param \renderer_base $output
      * @see \cm_info for full detail of $mod instance variables
      * @see \core_completion\manager::get_activities() which covers similar ground
@@ -818,7 +823,7 @@ class course_output implements \renderable, \templatable {
     /**
      * Assemble and return the data to render a single course module.
      * @param \cm_info $mod
-     * @param object $section
+     * @param \section_info $section
      * @param bool $previouswaslabel
      * @param bool $isfirst
      * @param \renderer_base $output
@@ -997,8 +1002,7 @@ class course_output implements \renderable, \templatable {
                     rebuild_course_cache($mod->course, true);
                 }
             }
-        }
-        if ($mod->modname == 'url') {
+        } else if ($mod->modname == 'url') {
             $externalurl = $DB->get_field('url', 'externalurl', ['id' => $mod->instance]);
             $modifiedvideourl = self::check_modify_embedded_url($externalurl);
 
@@ -1016,6 +1020,8 @@ class course_output implements \renderable, \templatable {
             }
         }
 
+        $moduleobject['issubsection'] = $mod->modname == 'subsection';
+
         if (
             ($mod->modname === 'url' || $mod->modname === 'resource')
             && $this->devicetype != \core_useragent::DEVICETYPE_TABLET
@@ -1026,7 +1032,8 @@ class course_output implements \renderable, \templatable {
         }
 
         // Now completion information for the individual course module.
-        $completion = $mod->completion && $this->completioninfo && $this->completioninfo->is_enabled($mod) && $mod->available;
+        $completion = $mod->completion && $this->completioninfo && $this->completioninfo->is_enabled($mod)
+            && $mod->available && $mod->modname !== 'subsection';
         if ($completion) {
             // Add completion icon to the course module if appropriate.
             $moduleobject['hascompletion'] = true;
@@ -1079,7 +1086,7 @@ class course_output implements \renderable, \templatable {
         $visiblesectionnums = [];
         $currentsectionarrayindex = -1;
         foreach ($this->modinfo->get_section_info_all() as $section) {
-            if ($section->section == 0) {
+            if ($section->section == 0 || ($this->moodlerelease >= 4.5 && $section->is_delegated())) {
                 continue;
             }
             if ($section->uservisible) {
