@@ -277,7 +277,7 @@
 .format-tiles #section-0 .addresourcemodchooser {
     position: relative;
 }
-.format-tiles .course-content ul li.section.main {
+.format-tiles .course-content ul li.section.main:not(.delegated-section) {
     width: calc(100% - 15px);
     background-color: white;
     /* stop 'dot' background image in essential theme*/
@@ -285,7 +285,7 @@
     margin-top: 10px;
     padding-top: 12px;
 }
-.format-tiles .course-content ul li.section.main:target {
+.format-tiles .course-content ul li.section.main:not(.delegated-section):target {
     padding-top: 0;
     margin-top: 30px;
 }
@@ -938,7 +938,7 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     margin-bottom: 10px;
 }
 
-.format-tiles .tiles .section.main {
+.format-tiles .tiles .section.main:not(.delegated-section) {
     /* stylelint-disable-next-line declaration-no-important */
     border: 0 !important;
     /* We use important here as core-course-dragdrop is not replacing this.originalstyle correctly. */
@@ -1792,6 +1792,9 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     border-top: 3px solid rgba(53, 132, 201, 0.37);
     width: 100%;
     padding: 10px;
+}
+.format-tiles li.section:not(#section-0) .course-section-header.tile-bar-heading .course-section-header {
+    width: 100%;
 }
 .format-tiles li.section:not(#section-0).hidden .course-section-header.tile-bar-heading,
 .format-tiles li.section:not(#section-0).restricted .course-section-header.tile-bar-heading {
