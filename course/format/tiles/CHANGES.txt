@@ -548,3 +548,12 @@ Other
 =====================
 - Fix previous merge error causing sub-tile spacing issue
 - Preparatory work for upcoming Moodle 4.5 around delegated sections / activity chooser button refactor (MDL-81765)
+
+4.4.0.23 (2024090840)
+=====================
+- Further preparatory work for upcoming Moodle 4.5 around delegated sections (implement for sub-tiles courses)
+
+4.4.0.24 (2024091140)
+=====================
+- Fix issue with ampersand display on sub-tile title
+- Change format name to "Tiles" not "Tiles format" (consistent with core)
