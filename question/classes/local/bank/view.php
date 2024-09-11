@@ -244,8 +244,7 @@ class view {
                 $params['filter']['category'] = [
                     'jointype' => category_condition::JOINTYPE_DEFAULT,
                     'values' => [$category->id],
-                    'filteroptions' => ['includesubcategories' =>
-                        get_user_preferences('qbank_managecategories_includesubcategories_filter_default', false)],
+                    'filteroptions' => ['includesubcategories' => false],
                 ];
             }
             $params['filter']['hidden'] = [
@@ -1167,7 +1166,7 @@ class view {
                                             ['id' => $categoryid],
                                             '*', MUST_EXIST);
                 $catcontext = \context::instance_by_id($category->contextid);
-                $this->pagevars['cat'] = "$categoryid,{$category->contextid}";
+                $this->pagevars['cat'] = "$categoryid,\{$category->contextid}";
                 $this->set_pagevars($this->pagevars);
             }
         }
