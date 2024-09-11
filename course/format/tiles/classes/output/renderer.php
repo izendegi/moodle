@@ -167,4 +167,32 @@ class renderer extends section_renderer {
         }
         return false;
     }
+
+    /**
+     * In Moodle 4.5 we may have sub-sections.
+     * We override this here and use existing local code for subtiles pending full refactoring.
+     * @param $widget
+     * @return bool|string
+     * @throws \coding_exception
+     * @throws \dml_exception
+     * @throws \moodle_exception
+     */
+    public function render_delegatedsection($widget) {
+        $parentdata = $widget->export_for_template($this);
+        $sectionnum = $parentdata->num;
+        $templateable = new \format_tiles\output\course_output(
+            $this->page->course, true, $sectionnum
+        );
+        $data = $templateable->export_for_template($this);
+        $template = 'format_tiles/course_modules_subsection';
+
+        // If subtiles are not being used we can use core widget data and template.
+        $usecore = !$data['useSubtiles'] || $this->page->user_is_editing();
+        if ($usecore) {
+            $data = $parentdata;
+            $template = 'format_tiles/local/content/delegatedsection';
+        }
+
+        return $this->render_from_template($template, $data);
+    }
 }
