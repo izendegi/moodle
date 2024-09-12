@@ -45,7 +45,7 @@ class extras {
      * @throws \coding_exception
      * @throws \moodle_exception
      */
-    public static function get_mypublic_headerbuttons($context, $user) {
+    public static function get_mypublic_headerbuttons($context, $courseid, $user) {
         global $USER, $CFG;
 
         $headerbuttons = [];
@@ -59,29 +59,57 @@ class extras {
             $headerbuttons = [
                 [
                     'title' => get_string('sendmessage', 'core_message'),
-                    'url' => new \moodle_url('/message/index.php', array('id' => $user->id)),
+                    'url' => new \moodle_url('/message/index.php', ['id' => $user->id]),
                     'icon' => 'fa fa-comment-o',
-                    'class' => 'btn-header btn btn-sm btn-success'
+                    'class' => 'btn-header btn btn-sm btn-success',
                 ],
                 [
                     'title' => get_string($contacttitle, 'theme_moove'),
                     'url' => new \moodle_url('/message/index.php', [
-                            'user1' => $USER->id,
-                            'user2' => $user->id,
-                            $contacturlaction => $user->id,
-                            'sesskey' => sesskey()]
-                    ),
+                        'user1' => $USER->id,
+                        'user2' => $user->id,
+                        $contacturlaction => $user->id,
+                        'sesskey' => sesskey(),
+                    ]),
                     'icon' => $contactimage,
                     'class' => 'btn-header btn btn-sm btn-dark ajax-contact-button',
                     'linkattributes' => \core_message\helper::togglecontact_link_params($user, $iscontact),
-                ]
+                ],
             ];
 
             \core_message\helper::togglecontact_requirejs();
             \core_message\helper::messageuser_requirejs();
         }
 
+        array_push($headerbuttons, self::get_local_mail_mypublic_headerbuttons($courseid, $user->id));
+
         return $headerbuttons;
+    }
+
+    /**
+     * Returns local_mail plugin button.
+     *
+     * @param $courseid
+     * @param $userid
+     * @return array
+     * @throws \coding_exception
+     * @throws \moodle_exception
+     */
+    public static function get_local_mail_mypublic_headerbuttons($courseid, $userid) {
+        global $CFG;
+
+        if ($courseid == 1 || !file_exists($CFG->dirroot . '/local/mail/lib.php')) {
+            return [];
+        }
+
+        return [
+            'title' => get_string('sendmail', 'local_mail'),
+            'url' => new \moodle_url('/local/mail/create.php', [
+                'course' => $courseid, 'recipients' => $userid, 'role' => 'to', 'sesskey' => sesskey()
+            ]),
+            'icon' => 'fa fa-fw fa-envelope-o',
+            'class' => 'btn-header btn btn-sm btn-primary',
+        ];
     }
 
     /**
