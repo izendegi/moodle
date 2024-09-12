@@ -239,7 +239,7 @@ class settings {
                 ];
             }
 
-            if (count($templatecontext['faq'])) {
+            if (!empty($templatecontext['faq'])) {
                 $templatecontext['faqenabled'] = true;
             }
         }
