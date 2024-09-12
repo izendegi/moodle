@@ -109,8 +109,7 @@
             </div>
         {{/maintenance}}
         {{#error}}
-            <a href="#" id="loginerrormessage" class="sr-only">{{error}}</a>
-            <div class="alert alert-danger" role="alert">{{error}}</div>
+            <div id="loginerrormessage" class="alert alert-danger" role="alert">{{error}}</div>
         {{/error}}
         {{#info}}
             <a href="#" id="logininfomessage" class="sr-only">{{info}}</a>
@@ -235,21 +234,32 @@
 {{#js}}
     {{^error}}
         {{#autofocusform}}
-            var userNameField = document.getElementById('username');
-            if (userNameField.value.length == 0) {
-                userNameField.focus();
-            } else {
-                document.getElementById('password').focus();
-            }
+            require(['core_form/events'], function(FormEvent) {
+                function autoFocus() {
+                    const userNameField = document.getElementById('username');
+                    if (userNameField.value.length == 0) {
+                        userNameField.focus();
+                    } else {
+                        document.getElementById('password').focus();
+                    }
+                }
+                autoFocus();
+                window.addEventListener(FormEvent.eventTypes.fieldStructureChanged, autoFocus);
+            });
         {{/autofocusform}}
     {{/error}}
     {{#error}}
         document.getElementById('loginerrormessage').focus();
     {{/error}}
-    require(['core_form/submit'], function(Submit) {
-        Submit.init("loginbtn");
-        {{#canloginasguest}}
-            Submit.init("loginguestbtn");
-        {{/canloginasguest}}
-    });
+    {{#togglepassword}}
+        require(['core/togglesensitive'], function(ToggleSensitive) {
+            ToggleSensitive.init("password", {{smallscreensonly}});
+        });
+    {{/togglepassword}}
+        require(['core_form/submit'], function(Submit) {
+            Submit.init("loginbtn");
+            {{#canloginasguest}}
+                Submit.init("loginguestbtn");
+            {{/canloginasguest}}
+        });
 {{/js}}
