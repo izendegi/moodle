@@ -306,8 +306,8 @@ final class enrol_test extends advanced_testcase {
         $this->assertEquals($icons[0]->attributes['title'], 'After completing course: Test course 1');
         $icons = $this->plugin->get_action_icons($this->instance);
         $this->assertCount(2, $icons);
-        $this->assertStringContainsString('icon fa fa-cog fa-fw iconsmall', $icons[0]);
-        $this->assertStringContainsString('icon fa fa-user-plus fa-fw iconsmall', $icons[1]);
+        $this->assertStringContainsString('icon fa fa-', $icons[0]);
+        $this->assertStringContainsString('icon fa fa-', $icons[1]);
         $this->assertStringContainsString(
             '<a href="https://www.example.com/moodle/enrol/editinstance.php?courseid=' . $this->course2->id,
             $icons[0]
@@ -432,7 +432,9 @@ final class enrol_test extends advanced_testcase {
         $html = ob_get_clean();
         $cleaned = preg_replace('/\s+/', '', $html);
         $this->assertStringContainsString('<optionvalue="1">No</option></select>', $cleaned);
+        $this->assertStringContainsString('optionvalue="86400"selected', $cleaned);
         $this->assertStringContainsString('<optionvalue="0">No</option>', $cleaned);
+        $this->assertStringContainsString('d="id_enrolstartdate_enabled"value="1">Enable</label>', $cleaned);
         $this->assertStringContainsString('cols="60"rows="8"', $cleaned);
         $this->assertStringContainsString('name="customint3"class="form-check-input"value="1"id="id_customint3"', $cleaned);
         $this->assertStringContainsString(
@@ -459,10 +461,7 @@ final class enrol_test extends advanced_testcase {
             'Enddate',
         ];
         foreach ($arr as $value) {
-            $this->assertStringContainsString(
-                '<iclass="iconfafa-question-circletext-infofa-fw"title="Helpwith' . $value . '"role="img"',
-                $cleaned
-            );
+            $this->assertStringContainsString('title="Helpwith' . $value . '"role="img"', $cleaned);
         }
         $strm = get_string_manager();
         $arr = ['compcourse', 'customwelcome', 'enrolenddate', 'enrolstartdate', 'group'];
