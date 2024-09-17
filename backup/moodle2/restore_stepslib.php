@@ -5079,6 +5079,13 @@ class restore_create_categories_and_questions extends restore_structure_step {
             'idnumber' => $data->idnumber ?? null,
         ];
 
+        $this->latestqbe = (object) [
+            'id' => $data->id,
+            'questioncategoryid' => $data->category,
+            'ownerid' => $data->createdby,
+            'idnumber' => $data->idnumber ?? null,
+        ];
+
         $this->latestversion = (object) [
             'id' => $data->id,
             'version' => 1,
