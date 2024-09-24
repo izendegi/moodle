@@ -1166,7 +1166,7 @@ class view {
                                             ['id' => $categoryid],
                                             '*', MUST_EXIST);
                 $catcontext = \context::instance_by_id($category->contextid);
-                $this->pagevars['cat'] = "$categoryid,\{$category->contextid}";
+                $this->pagevars['cat'] = "$categoryid,$category->contextid";
                 $this->set_pagevars($this->pagevars);
             }
         }
