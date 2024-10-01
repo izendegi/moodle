@@ -121,11 +121,12 @@ class primary implements renderable, templatable {
 
         $custommenuitems = $CFG->custommenuitems;
 
-        // Filter custom menu items without applying auto-linking filters.
-        $skipfilters = ['activitynames', 'data', 'glossary', 'sectionnames', 'bookchapters', 'urltolink'];
-        $filteroptions = ['originalformat' => FORMAT_HTML, 'noclean' => true];
-        $filtermanager = filter_manager::instance();
-        $custommenuitems = $filtermanager->filter_text($custommenuitems, \context_system::instance(), $filteroptions, $skipfilters);
+        // If filtering of the primary custom menu is enabled, apply only the string filters.
+        if (!empty($CFG->navfilter && !empty($CFG->stringfilters))) {
+            // Apply filters that are enabled for Content and Headings.
+            $filtermanager = filter_manager::instance();
+            $custommenuitems = $filtermanager->filter_string($custommenuitems, \context_system::instance());
+        }
 
         $currentlang = current_language();
         $custommenunodes = custom_menu::convert_text_to_menu_nodes($custommenuitems, $currentlang);

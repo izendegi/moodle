@@ -3928,12 +3928,12 @@ EOD;
             $custommenuitems = $CFG->custommenuitems;
         }
 
-        // Filter custom menu items without applying auto-linking filters.
-        $context = \context_system::instance();
-        $skipfilters = ['activitynames', 'data', 'glossary', 'sectionnames', 'bookchapters', 'urltolink'];
-        $filteroptions = ['originalformat' => FORMAT_HTML, 'noclean' => true];
-        $filtermanager = filter_manager::instance();
-        $custommenuitems = $filtermanager->filter_text($custommenuitems, $context, $filteroptions, $skipfilters);
+        // If filtering of the primary custom menu is enabled, apply only the string filters.
+        if (!empty($CFG->navfilter && !empty($CFG->stringfilters))) {
+            // Apply filters that are enabled for Content and Headings.
+            $filtermanager = filter_manager::instance();
+            $custommenuitems = $filtermanager->filter_string($custommenuitems, \context_system::instance());
+        }
 
         $custommenu = new custom_menu($custommenuitems, current_language());
         return $this->render_custom_menu($custommenu);
@@ -3951,13 +3951,12 @@ EOD;
             $custommenuitems = $CFG->custommenuitems;
         }
 
-        // Filter custom menu items without applying auto-linking filters.
-        $context = \context_system::instance();
-        $skipfilters = ['activitynames', 'data', 'glossary', 'sectionnames', 'bookchapters', 'urltolink'];
-        $filteroptions = ['originalformat' => FORMAT_HTML, 'noclean' => true];
-        $filtermanager = filter_manager::instance();
-
-        $custommenuitems = $filtermanager->filter_text($custommenuitems, $context, $filteroptions, $skipfilters);
+        // If filtering of the primary custom menu is enabled, apply only the string filters.
+        if (!empty($CFG->navfilter && !empty($CFG->stringfilters))) {
+            // Apply filters that are enabled for Content and Headings.
+            $filtermanager = filter_manager::instance();
+            $custommenuitems = $filtermanager->filter_string($custommenuitems, \context_system::instance());
+        }
 
         $custommenu = new custom_menu($custommenuitems, current_language());
         $langs = get_string_manager()->get_list_of_translations();
@@ -3973,7 +3972,7 @@ EOD;
             }
             $this->language = $custommenu->add($currentlang, new moodle_url('#'), $strlang, 10000);
             foreach ($langs as $langtype => $langname) {
-                $this->language->add($langname, new moodle_url($this->page->url, ['lang' => $langtype]), $langname);
+                $this->language->add($langname, new moodle_url($this->page->url, array('lang' => $langtype)), $langname);
             }
         }
 
