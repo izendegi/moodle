@@ -18,7 +18,7 @@
  * Front-end class.
  *
  * @package   availability_relativedate
- * @copyright 2022 eWallah.net
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -33,7 +33,7 @@ use stdClass;
  * Front-end class.
  *
  * @package   availability_relativedate
- * @copyright 2022 eWallah.net
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -44,13 +44,13 @@ class frontend extends \core_availability\frontend {
      * Default returns no parameters.
      *
      * @param stdClass $course Course object
-     * @param cm_info $cm Course-module currently being edited (null if none)
-     * @param section_info $section Section currently being edited (null if none)
+     * @param cm_info|null $cm Course-module currently being edited (null if none)
+     * @param section_info|null $section Section currently being edited (null if none)
      * @return array Array of parameters for the JavaScript function
      */
-    protected function get_javascript_init_params($course, cm_info $cm = null, section_info $section = null) {
+    protected function get_javascript_init_params($course, ?cm_info $cm = null, ?section_info $section = null) {
         global $DB;
-        $optionsdwm = self::convert_associative_array_for_js(condition::options_dwm(), 'field', 'display');
+        $optionsdwm = self::convert_associative_array_for_js(condition::options_dwm(2), 'field', 'display');
         $optionsstart = [
             ['field' => 1, 'display' => condition::options_start(1)],
             ['field' => 6, 'display' => condition::options_start(6)],
@@ -64,23 +64,18 @@ class frontend extends \core_availability\frontend {
             $optionsstart[] = ['field' => 4, 'display' => condition::options_start(4)];
         }
         $activitysel = [];
-        if ($course->enablecompletion != 0) {
-            $currentcmid = $cm ? $cm->id : 0;
+        if ($course->enablecompletion) {
             $modinfo = get_fast_modinfo($course);
-            $context = \context_course::instance($course->id);
             $str = get_string('section');
             $s = [];
             $enabled = false;
             // Gets only sections with content.
-            foreach ($modinfo->get_sections() as $sectionnum => $section) {
+            foreach ($modinfo->get_sections() as $sectionnum => $cursection) {
                 $name = $modinfo->get_section_info($sectionnum)->name;
-                if (empty($name)) {
-                    $name = $str . ' ' . $sectionnum;
-                }
-                $s['name'] = format_string($name, true, ['context' => $context]);
+                $s['name'] = empty($name) ? "$str $sectionnum" : format_string($name);
                 $s['coursemodules'] = [];
-                foreach ($section as $cmid) {
-                    if ($currentcmid == $cmid) {
+                foreach ($cursection as $cmid) {
+                    if ($cm && $cm->id === $cmid) {
                         continue;
                     }
                     $module = $modinfo->get_cm($cmid);
@@ -89,10 +84,10 @@ class frontend extends \core_availability\frontend {
                         $compused = $module->completion > 0;
                         $s['coursemodules'][] = [
                             'id' => $cmid,
-                            'name' => format_string($module->name, true, ['context' => $context]),
+                            'name' => format_string($module->name),
                             'completionenabled' => $compused,
                         ];
-                        $enabled = $enabled || $compused;
+                        $enabled = $compused ? true : $enabled;
                     }
                 }
                 $activitysel[] = $s;
