@@ -24,8 +24,8 @@ Check the global documentation about conditional availability conditions:
 
 ## Warning
 
-The Moodle Mobile app relies on the user profile language and/or course language to show or
-hide a resource: the language selected in the app does NOT prevail.
+* This plugin is 100% open source and has NOT been tested in Moodle Workplace, Totara, or any other proprietary software system. As long as the latter do not reward plugin developers, you can use this plugin only in 100% open source environments.
+* The Moodle Mobile app relies on the user profile language and/or course language to show or hide a resource: the language selected in the app does NOT prevail.
 
 ## Requirements
 
@@ -68,10 +68,11 @@ This plugin is maintained for the latest major releases of Moodle.
 
 [![Build Status](https://github.com/ewallah/moodle-availability_language/workflows/Tests/badge.svg)](https://github.com/ewallah/moodle-availability_language/actions)
 [![Coverage Status](https://coveralls.io/repos/github/ewallah/moodle-availability_language/badge.svg?branch=main)](https://coveralls.io/github/ewallah/moodle-availability_language?branch=main)
+![Mutation score](https://badgen.net/badge/Mutation%20Score%20Indicator/96?color=orange)
 
 ## Copyright
 
-2023 eWallah.net
+eWallah.net
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
