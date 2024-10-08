@@ -18,7 +18,7 @@
  * Version info.
  *
  * @package   availability_language
- * @copyright 2022 eWallah.net
+ * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -26,8 +26,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'availability_language';
-$plugin->requires = 2023042400;
+$plugin->requires = 2023100900;
 $plugin->maturity = MATURITY_STABLE;
-$plugin->supported = [402, 404];
-$plugin->release = 'v4.4.2';
-$plugin->version = 2024042001;
+$plugin->supported = [403, 405];
+$plugin->release = 'v4.4.3';
+$plugin->version = 2024100700;
