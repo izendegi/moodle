@@ -1,3 +1,14 @@
+## v4.4.5 (2024-10-07)
+
+* version update
+* unenrol when plugin is suppporting self unenrolment
+
+## v4.4.4 (2024-10-06)
+
+* version update
+* MOODLE_405_STABLE
+* readme
+
 ## v4.4.3 (2024-07-02)
 
 * version update
