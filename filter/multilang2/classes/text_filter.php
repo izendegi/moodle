@@ -30,12 +30,9 @@
  * The way the filter works is as follows:
  *
  *    - look for multilang blocks in the text.
- *    - if there exist texts in the currently active language, print them.
- *    - else, if there exist texts in the parent language(s) of the
- *      currently active language, unless the parent language is 'en',
- *      print them (default "parent language behaviour", this is now
- *      configurable)
- *    - else, if there exist texts in the language 'other', print them.
+ *    - if there exists texts in the currently active language, print them.
+ *    - else, if there exists texts in the current parent language, print them.
+ *    - else, if there exists texts in the language 'other', print them.
  *    - else, don't print any text inside the lang block (this is a change
  *      from previous filter versions behaviour!!!!)
  *
@@ -60,9 +57,9 @@
 namespace filter_multilang2;
 
 if (class_exists('\core_filters\text_filter')) {
-    class_alias('\core_filters\text_filter', 'filter_multilang2_base_text_filter');
+    class_alias('\core_filters\text_filter', 'base_text_filter');
 } else {
-    class_alias('\moodle_text_filter', 'filter_multilang2_base_text_filter');
+    class_alias('\moodle_text_filter', 'base_text_filter');
 }
 
 /**
@@ -73,17 +70,12 @@ if (class_exists('\core_filters\text_filter')) {
  *             2015 onwards Iñaki Arenaza & Mondragon Unibertsitata
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class text_filter extends \filter_multilang2_base_text_filter {
+class text_filter extends \base_text_filter {
 
     /**
      * @var array Cache of parent language(s) of a given language
      */
     protected static $parentcache;
-
-    /**
-     * @var object An instance of the string_manager class.
-     */
-    protected static $stringmanager;
 
     /**
      * @var string The langauge we are currently using to filter multilang blocks.
@@ -98,19 +90,6 @@ class text_filter extends \filter_multilang2_base_text_filter {
      *           exists).
      */
     protected $replacementdone;
-
-    /**
-     * @var string What parent languages behaviour is configured for the plugin.
-     */
-    protected $parentlangbehaviour;
-
-    /**
-     * Constructor - Make sure we use the configured parent languages behaviour.
-     */
-    public function __construct() {
-        $this->parentlangbehaviour = get_config('filter_multilang2', 'parentlangbehaviour');
-        self::$stringmanager = get_string_manager();
-    }
 
     /**
      * Filter text before changing format to HTML.
@@ -163,21 +142,6 @@ class text_filter extends \filter_multilang2_base_text_filter {
     }
 
     /**
-     * Reset the parent languages cache.
-     *
-     * We need to reset the parent languages cache every time we
-     * switch from one parent languages behaviour to another. Because
-     * different behaviours may build different parent languages
-     * hierarchies.
-     *
-     * Specially useful (but not only) for unit tests.
-     *
-     */
-    public static function reset_parentcache(): void {
-        self::$parentcache = ['other' => []];
-    }
-
-    /**
      * This function filters the received text based on the language
      * tags embedded in the text, and the current user language or
      * 'other', if present.
@@ -199,24 +163,13 @@ class text_filter extends \filter_multilang2_base_text_filter {
         }
 
         if (!isset(self::$parentcache)) {
-            self::reset_parentcache();
+            self::$parentcache['other'] = [];
         }
 
         $this->replacementdone = false;
         $currlang = current_language();
-        if ($this->parentlangbehaviour === 'never') {
-            self::reset_parentcache();
-        } else if (!array_key_exists($currlang, self::$parentcache)) {
-            $parentlangs = self::$stringmanager->get_language_dependencies($currlang);
-            if ($this->parentlangbehaviour === 'include_en') {
-                if (count($parentlangs) > 0) {
-                    $realrootisen = self::$stringmanager->get_string('parentlanguage', 'langconfig',
-                                                                     null, $parentlangs[0]);
-                    if ($realrootisen === 'en') {
-                        $parentlangs = array_merge(['en'], $parentlangs);
-                    }
-                }
-            }
+        if (!array_key_exists($currlang, self::$parentcache)) {
+            $parentlangs = get_string_manager()->get_language_dependencies($currlang);
             self::$parentcache[$currlang] = $parentlangs;
         }
 
@@ -277,11 +230,7 @@ class text_filter extends \filter_multilang2_base_text_filter {
          */
         $blocklangs = explode(',', str_replace(' ', '', str_replace('-', '_', strtolower($langblock[1]))));
         $blocktext = $langblock[2];
-        if ($this->parentlangbehaviour === 'never') {
-            $parentlangs = [];
-        } else {
-            $parentlangs = self::$parentcache[$replacelang];
-        }
+        $parentlangs = self::$parentcache[$replacelang];
         foreach ($blocklangs as $blocklang) {
             /* We don't check for empty values of $blocklang as they simply don't
              * match any language and they don't produce any errors or warnings.

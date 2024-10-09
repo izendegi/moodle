@@ -15,16 +15,13 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * A Moodle text filter to enable multilingual content.
+ * Filter main class.
  *
  * @package    filter_multilang2
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
  * @copyright  Gaetan Frenoy <gaetan@frenoy.net>
  * @copyright  2004 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
  * @copyright  2015 onwards Iñaki Arenaza & Mondragon Unibertsitatea
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-// The actual implementation is under classes/text_filter.php
-// This file is just a workaround to make the filter work
-// in Moodle versions below 4.5.
+
 class_alias(\filter_multilang2\text_filter::class, \filter_multilang2::class);
