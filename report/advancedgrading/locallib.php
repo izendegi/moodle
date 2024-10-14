@@ -186,7 +186,7 @@ function init(array $data): array {
         $criteriatable = 'gradingform_' . $data['grademethod'] . '_criteria';
     }
     $data['criteriarecord'] = $DB->get_records_menu($criteriatable,
-     ['definitionid' => (int) $data['gradingdefinition']->definitionid], null, 'id, description');
+     ['definitionid' => (int) $data['gradingdefinition']->definitionid], 'sortorder', 'id, description');
     $data = header_fields($data, $data['criteriarecord'], $data['course'], $data['cm'], $data['gradingdefinition']);
     $data['definition'] = get_grading_definition($data['cm']->instance);
     $data['formaction'] = 'action='.$data['grademethod'] .'.php?id='.$data['courseid'].'&modid='.$data['modid'];
@@ -241,7 +241,7 @@ function get_grades(array $data, array $dbrecords): array {
         $data['criterion'][$grade->criterionid] = $grade->description;
         $g[$grade->userid][$grade->criterionid] = [
             'userid' => $grade->userid,
-            'score' => number_format($grade->score, 2),
+            'score' => number_format($grade->grade_rub_range ?? $grade->score, 2),
             'definition' => $grade->definition ?? "",
             'feedback' => $grade->remark
         ];
@@ -253,7 +253,7 @@ function get_grades(array $data, array $dbrecords): array {
 
         $gi = [
             'overallfeedback' => $grade->overallfeedback,
-            'grader' => $grade->grader,
+            'grader' => gradedbydata($grade),
             'timegraded' => $grade->modified,
             'grade' => $formattedgrade
         ];
@@ -417,4 +417,20 @@ function output_header(string $filename, string$filetype) : bool {
     $filename = $filename . "." . $filetype;
     header('Content-Disposition: attachment;filename="' . $filename);
     return true;
+}
+
+/**
+ * Return the data for the graded by column following the config.
+ *
+ * @param array $gradedata
+ * @return string The corresponding data from the settings.
+ */
+function gradedbydata($gradedata): string {
+    $graderprofileconfig = trim(get_config('report_advancedgrading', 'profilefieldsgradeby'));
+    $gradedbyfields = empty($graderprofileconfig) ? [] : explode(',', $graderprofileconfig);
+    $fielddata = [];
+    foreach ($gradedbyfields as $field) {
+        $fielddata[] = $gradedata->$field;
+    }
+    return implode(' - ', $fielddata);
 }
