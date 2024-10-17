@@ -9,6 +9,7 @@
 
 .tiny_cloze img {
     cursor: pointer;
+    width: 0.8rem;
 }
 
 .tiny_cloze .error {
