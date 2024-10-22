@@ -344,7 +344,7 @@ class api {
         }
 
         // Get SCORM time track records related to this user.
-        if (str_contains($CFG->release, '4.3')) {
+        if (str_contains($CFG->release, '4.3') or str_contains($CFG->release, '4.4')) {
             foreach ($scormsids as $scormid) {
                 $attempts = $DB->get_records('scorm_attempt', ['userid' => $userid, 'scormid' => $scormid], '', 'attempt');
                 $scoes = $DB->get_records('scorm_scoes', ['scorm' => $scormid], 'sortorder, id');
