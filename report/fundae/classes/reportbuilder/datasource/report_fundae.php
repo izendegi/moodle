@@ -117,7 +117,7 @@ class report_fundae extends datasource {
      */
     public function get_default_columns(): array {
         global $CFG;
-        if (str_contains($CFG->release, '4.3')) {
+        if (str_contains($CFG->release, '4.3') || str_contains($CFG->release, '4.4')) {
             if (file_exists($CFG->dirroot . '/mod/zoom/locallib.php')) {
                 return [
                     'fundae_user:fullnamewithpicture',
