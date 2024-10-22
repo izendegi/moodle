@@ -44,7 +44,7 @@ require_once $CFG->dirroot. '/report/fundae/locallib.php';
 if (file_exists($CFG->dirroot . '/mod/zoom/locallib.php')) {
     require_once($CFG->dirroot . '/mod/zoom/locallib.php');
 }
-if (str_contains($CFG->release, '4.3')) {
+if (str_contains($CFG->release, '4.3') || str_contains($CFG->release, '4.4')) {
     require_once $CFG->dirroot . '/mod/scorm/locallib.php';
 }
 
@@ -344,7 +344,7 @@ class api {
         }
 
         // Get SCORM time track records related to this user.
-        if (str_contains($CFG->release, '4.3') or str_contains($CFG->release, '4.4')) {
+        if (str_contains($CFG->release, '4.3') || str_contains($CFG->release, '4.4')) {
             foreach ($scormsids as $scormid) {
                 $attempts = $DB->get_records('scorm_attempt', ['userid' => $userid, 'scormid' => $scormid], '', 'attempt');
                 $scoes = $DB->get_records('scorm_scoes', ['scorm' => $scormid], 'sortorder, id');
