@@ -1,0 +1,25 @@
+== 1.0.2 ==
+Added thirdpartylibs.xml, readme_moodle.txt and upgrade.txt files
+
+== 1.1.0 ==
+Added string lang for 'privacy:metadata'
+Updated dependency @codemirror/lang-html to 6.4.9
+Added the dependency htmlfy that allows code formatting
+Supported versions of Moodle from 4.1 to 4.4
+
+== 1.1.1 ==
+Merged pull request - revert bootstrap tooltips. Fix issue tooltips not hidding on toggle fullscreen
+Move cm6pro dependency as a /amd/src module. Avoid defining requirejs paths manually
+Disable modal close on backdrop clicks
+Updated helplinktext
+
+== 1.1.2 ==
+Fix Issue #10: Wrong area target to insert htmlcode
+Get focus on editor when opened
+
+== 1.1.3 ==
+Fix Issue #12: Missing Language string
+Override style imposed by body.tox-fullscreen on modal-header
+Updated htmlfy dependency to 0.3.2
+Option to auto prettify html code when editor opens
+Enable codeMirror plugin @replit/codemirror-indentation-markers
