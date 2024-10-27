@@ -311,6 +311,10 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                         });
                     });
                 }
+
+                // Issue 123 workaround.
+                // If (as yet) hidden modals are contained in added markup, move to body (parent li.section has low z-index).
+                contentArea.find('.modal.fade').appendTo('body');
             }, 1000);
 
             $(document).trigger('format-tiles-section-content-changed', {

@@ -283,6 +283,7 @@ class util {
                 'pageType' => $PAGE->pagetype,
                 'allowPhotoTiles' => get_config('format_tiles', 'allowphototiles'),
                 'documentationurl' => get_config('format_tiles', 'documentationurl'),
+                'maxnumbericons' => self::get_icon_picker_max_number_icons(),
             ];
             $PAGE->requires->js_call_amd('format_tiles/edit_icon_picker', 'init', $editparams);
         }
@@ -323,5 +324,27 @@ class util {
         }
 
         return $data;
+    }
+
+
+    /**
+     * Tile numbers have icon names in format number_1, number_2 etc up to number_99.
+     * (UI cannot handle greater than 2 chars).
+     * @param string $iconname
+     * @return int|null null if not a number icon.
+     */
+    public static function get_tile_number_from_icon_name(string $iconname): ?int {
+        if (preg_match('/^number_[\d]{1,2}$/', $iconname)) {
+            return filter_var($iconname, FILTER_SANITIZE_NUMBER_INT);
+        }
+        return null;
+    }
+
+    /**
+     * The number of number icons to offer to editing teacher in icon picker.
+     * @return int
+     */
+    public static function get_icon_picker_max_number_icons() {
+        return 20;
     }
 }
