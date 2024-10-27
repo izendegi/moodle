@@ -37,6 +37,7 @@ Feature: When tile and activity titles are shown, symbols like "&" are displayed
     And I wait until the page is ready
     And I click on tile "1"
     And I wait until the page is ready
+    And I wait "1" seconds
     And I should see "Page with & symbol"
     And I should see "Label content with & symbol"
     And I should not see "Page with &amp; symbol"
@@ -50,6 +51,7 @@ Feature: When tile and activity titles are shown, symbols like "&" are displayed
     And I wait until the page is ready
     And I click on tile "1"
     And I wait until the page is ready
+    And I wait "1" seconds
     And I should see "Page with & symbol"
     And I should see "Label content with & symbol"
     And I should not see "Page with &amp; symbol"

@@ -76,7 +76,7 @@
 - Improve mobile CSS
 - Overall progress indicator to show even when filter bar is hidden
 - Cooperate better with Snap theme
-- Re-initialise media player when loading content via AJAX
+- Re-initialise media player when loadin content via AJAX
 - Add icons to JS and data pref menu options
 - Use formatted text for cm description
 - Dim hidden label in non subtiles mode
@@ -557,3 +557,28 @@ Other
 =====================
 - Fix issue with ampersand display on sub-tile title
 - Change format name to "Tiles" not "Tiles format" (consistent with core)
+
+4.4.0.25 (2024100940)
+=====================
+- Improve tile number icons
+    - add new tab to icon picker for tile numbers with numbers up to 20
+    - tile numbers now shown as styled HTML not images
+- In non JS navigation mode, do not expand page width in single section view
+- Improve tile progress title and simplify progress indicators
+- Hide tooltip for empty course activity summary
+- Lambda theme - unset extra wide tile from Lambda developer, as it restricts number of tiles per row
+- Improve progress indicators
+- Fix issue 123 mod_unilabel modals behind backdrop
+- Fix issue 222 Safari PDF modals
+- Fix issue 223 custom certificate monologo
+- Fix issue 226 stop page modal when pop up set
+
+4.4.0.27 (2024100942)
+=====================
+- Reserve space for right scroll bar on tiles main screen
+    (avoid layout change in Chrome when tiles open/close and scrollbar appears/disappears)
+- Mobile sub-tile layout adjustment
+- Fix missing section link in breadcrumb in activity
+- Fix new number picker button titles
+- Remove jquery from behat tests
+- Remove redundant local icons for resource subtiles in Moodle 4.3+
