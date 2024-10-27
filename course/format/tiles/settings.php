@@ -24,8 +24,6 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-require_once($CFG->dirroot . '/course/format/tiles/lib.php');
-
 if ($ADMIN->fulltree) {
     $settings = null; // We add our own settings pages and do not want the standard settings link.
 
@@ -37,14 +35,20 @@ if ($ADMIN->fulltree) {
     $page = new admin_settingpage('format_tiles/tab-colours', get_string('colours', 'format_tiles'));
 
     $page->add(
-        new admin_setting_heading('followthemecolour', get_string('followthemecolour', 'format_tiles'),
-            get_string('followthemecolour_desc', 'format_tiles'))
+        new admin_setting_heading('other', get_string('other', 'format_tiles'), '')
     );
 
     $name = 'format_tiles/followthemecolour';
     $title = get_string('followthemecolour', 'format_tiles');
     $default = 0;
-    $page->add(new admin_setting_configcheckbox($name, $title, '', $default));
+    $description = get_string('followthemecolour_desc', 'format_tiles');
+    $page->add(new admin_setting_configcheckbox($name, $title, $description, $default));
+
+    $name = 'format_tiles/subtileiconcolourbackground';
+    $title = get_string('subtileiconcolourbackground', 'format_tiles');
+    $description = get_string('subtileiconcolourbackground_desc', 'format_tiles');
+    $default = 0;
+    $page->add(new admin_setting_configcheckbox($name, $title, $description, $default));
 
     $brandcolourdefaults = [
         '#1670CC' => get_string('colourblue', 'format_tiles'),
@@ -279,12 +283,6 @@ if ($ADMIN->fulltree) {
     $title = get_string('allowsubtilesview', 'format_tiles');
     $description = get_string('allowsubtilesview_desc', 'format_tiles');
     $default = 1;
-    $page->add(new admin_setting_configcheckbox($name, $title, $description, $default));
-
-    $name = 'format_tiles/subtileiconcolourbackground';
-    $title = get_string('subtileiconcolourbackground', 'format_tiles');
-    $description = get_string('subtileiconcolourbackground_desc', 'format_tiles');
-    $default = 0;
     $page->add(new admin_setting_configcheckbox($name, $title, $description, $default));
 
     $name = 'format_tiles/showoverallprogress';

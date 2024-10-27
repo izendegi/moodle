@@ -171,7 +171,7 @@ class renderer extends section_renderer {
     /**
      * In Moodle 4.5 we may have sub-sections.
      * We override this here and use existing local code for subtiles pending full refactoring.
-     * @param $widget
+     * @param \renderable $widget
      * @return bool|string
      * @throws \coding_exception
      * @throws \dml_exception
