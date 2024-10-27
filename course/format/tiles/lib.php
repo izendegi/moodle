@@ -94,12 +94,12 @@ class format_tiles extends core_courseformat\base {
     public function get_section_name($section) {
         global $PAGE;
         $section = $this->get_section($section);
-        if ((string)$section->name !== '') {
+        if (trim((string)$section->name) != '') {
             return format_string($section->name, true, ['context' => context_course::instance($this->courseid)]);
         } else if ($section->section == 0) {
-            return $PAGE->user_is_editing() ? get_string('section0name', 'format_tiles') : '';
+            return $PAGE->user_is_editing() ? self::get_default_section_name($section) : '';
         } else {
-            return get_string('sectionname', 'format_tiles') . ' ' . $section->section;
+            return self::get_default_section_name($section);
         }
     }
 
@@ -282,24 +282,31 @@ class format_tiles extends core_courseformat\base {
      * @return null|moodle_url
      */
     public function get_view_url($section, $options = []) {
-        // MDL-79986 introduced new /course/section.php page which we want to avoid  using JS nav.
-        if (get_config('format_tiles', 'usejavascriptnav')) {
-            if (!get_user_preferences('format_tiles_stopjsnav')) {
-                if (array_key_exists('sr', $options)) {
-                    $sectionno = $options['sr'];
-                } else if (is_object($section)) {
-                    $sectionno = $section->section;
-                } else {
-                    $sectionno = $section;
-                }
-                if ((!empty($options['navigation']) || array_key_exists('sr', $options)) && $sectionno !== null) {
-                    // Display section on separate page.
-                    $sectioninfo = $this->get_section($sectionno);
-                    return new moodle_url(
-                        '/course/view.php',
-                        ['id' => $sectioninfo->course, 'section' => $sectioninfo->sectionnum]
-                    );
-                }
+        global $PAGE;
+        if (array_key_exists('sr', $options)) {
+            $sectionno = $options['sr'];
+        } else if (is_object($section)) {
+            $sectionno = $section->section;
+        } else {
+            $sectionno = $section;
+        }
+
+        // MDL-79986 introduced new /course/section.php page.
+        // We want to avoid this in breadcrumb if using JS nav (e.g. on activity page breadcrumb when viewing Quiz).
+        // However if we are already on section page (e.g. editing) we return core URL, otherwise we get no breadcrumb at all.
+        $alreadyonsectionpage = $PAGE->pagelayout == 'course'
+            && in_array($PAGE->pagetype, ['section-view-tiles', 'course-view-section-tiles'])
+            && $PAGE->url->compare(new moodle_url('/course/section.php'), URL_MATCH_BASE);
+        if ($alreadyonsectionpage) {
+            return \core_courseformat\base::get_view_url($section, $options);
+        } else if (\format_tiles\local\util::using_js_nav()) {
+            if ((!empty($options['navigation']) || array_key_exists('sr', $options)) && $sectionno !== null) {
+                // Display section on course view page, not separate section.php page.
+                $sectioninfo = $this->get_section($sectionno);
+                return new moodle_url(
+                    '/course/view.php',
+                    ['id' => $sectioninfo->course, 'section' => $sectioninfo->sectionnum]
+                );
             }
         }
         return \core_courseformat\base::get_view_url($section, $options);
@@ -874,6 +881,15 @@ class format_tiles extends core_courseformat\base {
                 unset($SESSION->format_tiles_jssuccessfullyused);
             }
         }
+        // On a single section page in non JS mode, do not remove core limited page width.
+        if ($page->pagetype == 'course-view' && $page->state <= $page::STATE_BEFORE_HEADER) {
+            $requiresbodyclass = (optional_param('section', 0, PARAM_INT)
+                || optional_param('singlesec', 0, PARAM_INT))
+                && !\format_tiles\local\util::using_js_nav();
+            if ($requiresbodyclass) {
+                $page->add_body_class("format-tiles-single-sec");
+            }
+        }
     }
 
     /**
@@ -952,6 +968,9 @@ function format_tiles_pluginfile($course, $cm, $context, $filearea, $args, $forc
     $filepath = '/' . $args[1] .'/';
     $filename = $args[2];
     $file = $fs->get_file($context->id, $fileapiparams['component'], $filearea, $sectionid, $filepath, $filename);
+    if (!$file) {
+        send_file_not_found();
+    }
     send_stored_file($file, 86400, 0, $forcedownload, $options);
 }
 

@@ -49,7 +49,7 @@ class dynamic_styles {
         require_once("$CFG->dirroot/course/format/lib.php");
         // Only need dynamic CSS if we are on /course/view.php or /course/section.php.
         // (Will only be using /course/section.php in Moodle 4.4+ and if not using JS nav).
-        $allowedpagetypes = ['course-view-tiles', 'section-view-tiles'];
+        $allowedpagetypes = ['course-view-tiles', 'section-view-tiles', 'course-view-section-tiles'];
         if (!in_array($PAGE->pagetype, $allowedpagetypes)) {
             return '';
         }
