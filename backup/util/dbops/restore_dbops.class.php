@@ -682,8 +682,9 @@ abstract class restore_dbops {
                                                                  WHERE qc.id = ?', array($matchcat->id));
 
                     foreach ($questions as $question) {
-                        if (isset($questioncache[$question->stamp." ".$question->version])) {
-                            $matchqid = $questioncache[$question->stamp." ".$question->version];
+                        $cacheid = $question->stamp . '-' . $question->timemodified;
+                        if (isset($questioncache[$cacheid])) {
+                            $matchqid = $questioncache[$cacheid];
                         } else {
                             $matchqid = false;
                         }
