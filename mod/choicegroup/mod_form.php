@@ -156,7 +156,7 @@ class mod_choicegroup_mod_form extends moodleform_mod {
             '</label><span class="helptooltip"><a href="' . $CFG->wwwroot .
             '/help.php?component=choicegroup&amp;identifier=choicegroupoptions&amp;lang=' . current_language() .
             '" title="' . get_string('choicegroupoptions_help', 'choicegroup') .
-            '" aria-haspopup="true" target="_blank"><img src="' . $CFG->wwwroot . '/theme/image.php?theme='
+            '" aria-haspopup="true" target="_blank"><img height="24px" width="24px" src="' . $CFG->wwwroot . '/theme/image.php?theme='
             . $PAGE->theme->name . '&component=core&image=help" alt="' .
             get_string('choicegroupoptions_help', 'choicegroup') .
             '" class="iconhelp"></a></span></div><div class="felement fselect">
@@ -287,8 +287,11 @@ class mod_choicegroup_mod_form extends moodleform_mod {
      * @return void
      */
     public function data_preprocessing(&$defaultvalues) {
-        global $DB;
-        $this->js_call();
+        global $PAGE;
+
+        if ($PAGE->pagetype != 'course-defaultcompletion') {
+            $this->js_call();
+        }
 
         if (empty($defaultvalues['timeopen'])) {
             $defaultvalues['timerestrict'] = 0;
