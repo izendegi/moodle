@@ -27,6 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 $ADMIN->add('editoratto', new admin_category('atto_fontfamily', new lang_string('pluginname', 'atto_fontfamily')));
 
 $settings = new admin_settingpage('atto_fontfamily_settings', new lang_string('settings', 'atto_fontfamily'));
+
 if ($ADMIN->fulltree) {
     $default = 'Arial=Arial, Helvetica, sans-serif;
 Times=Times New Roman, Times, serif;
