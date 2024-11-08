@@ -1156,6 +1156,22 @@ class view {
             }
         }
 
+        // ecastro ULPGC
+        global $DB;
+        if(isset($this->pagevars['filter']['category'])) {
+            $filteredcatid = $this->pagevars['filter']['category']['values'][0];
+            if($filteredcatid != $categoryid) {
+                $categoryid = $filteredcatid;
+                $category = $DB->get_record('question_categories',
+                                            ['id' => $categoryid],
+                                            '*', MUST_EXIST);
+                $catcontext = \context::instance_by_id($category->contextid);
+                $this->pagevars['cat'] = "$categoryid,{$category->contextid}";
+                $this->set_pagevars($this->pagevars);
+            }
+        }
+        // ecastro ULPGC
+
         echo \html_writer::start_tag(
             'div',
             [
