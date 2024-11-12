@@ -316,7 +316,7 @@ class mod_reengagement_mod_form extends moodleform_mod {
             unset($fromform->emailperiodcount);
             // Some special handling for the wysiwyg editor field.
             $fromform->emailcontentformat = $fromform->emailcontent['format'];
-            $fromform->emailcontent = $fromform->emailcontent['text'];
+            $fromform->emailcontent = $fromform->emailcontent['text'] ?? '';
             if ($istotara) {
                 $fromform->emailcontentmanagerformat = $fromform->emailcontentmanager['format'];
                 $fromform->emailcontentmanager = $fromform->emailcontentmanager['text'];
