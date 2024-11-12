@@ -295,9 +295,7 @@ class reengagement_participants extends \core_user\table\participants {
         $this->pagesize($pagesize, $total);
 
         $sort = $this->get_sql_sort();
-        if ($sort) {
-            $sort = 'ORDER BY ' . $sort;
-        }
+
         $rawdata = $psearch->get_participants($twhere, $tparams, $sort, $this->get_page_start(), $this->get_page_size());
 
         $this->rawdata = [];
