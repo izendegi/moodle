@@ -31,7 +31,6 @@ require_once($CFG->dirroot.'/mod/helixmedia/lib.php');
 require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
 require_once($CFG->libdir.'/externallib.php');
 
-
 use context_module;
 use mod_helixmedia_external;
 
