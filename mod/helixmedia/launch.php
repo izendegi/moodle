@@ -56,6 +56,7 @@ if ($c === false) {
         foreach ($USER->currentcourseaccess as $key => $time) {
             if ($time > $lastime) {
                 $c = $key;
+                $lastime = $time;
             }
         }
     } else {
