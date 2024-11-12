@@ -65,11 +65,11 @@ function getQuestionTypeOptions(selectedId) {
         }
         const questionType = {
             typeVal: key,
-            typeName: questionTypes[key]
+            typeName: questionTypes[key],
         };
 
-        if (typeof selectedId !== 'undefined' && key === selectedId) {
-            questionType.selected = true;
+        if (typeof selectedId !== 'undefined') {
+            questionType.selected = parseInt(key) === parseInt(selectedId);
         }
 
         questionTypeOptions.push(questionType);
@@ -99,172 +99,173 @@ function checkQuestions(questions) {
  *
  * @param {String} dialogueTitle
  * @param {Object} bodyTemplate
+ * @param {HTMLElement} trigger
  */
-function renderInputDialogue(dialogueTitle, bodyTemplate) {
+const renderInputDialogue = async(dialogueTitle, bodyTemplate, trigger) => {
     const pendingPromise = new Pending('mod_threesixo/question_input');
-    ModalFactory.create({
+    const modal = await ModalFactory.create({
         type: ModalFactory.types.SAVE_CANCEL,
         title: dialogueTitle,
         body: bodyTemplate,
         large: true
-    }).then(function(modal) {
-        // Display the dialogue.
-        modal.show();
+    });
+    // Display the dialogue.
+    modal.show();
 
-        modal.getRoot().on(ModalEvents.bodyRendered, function() {
-            // Focus on the question text area.
-            const questionInput = document.getElementById("question-input");
-            if (questionInput) {
-                questionInput.focus();
-            }
-        });
+    modal.getRoot().on(ModalEvents.bodyRendered, function() {
+        // Focus on the question text area.
+        const questionInput = document.getElementById("question-input");
+        if (questionInput) {
+            questionInput.focus();
+        }
+    });
 
-        // On hide handler.
-        modal.getRoot().on(ModalEvents.hidden, function() {
-            // Just destroy the modal.
-            modal.destroy();
-        });
+    // On hide handler.
+    modal.getRoot().on(ModalEvents.hidden, function() {
+        // Just destroy the modal.
+        modal.destroy();
+        trigger.removeAttribute('disabled');
+    });
 
-        // On save handler.
-        modal.getRoot().on(ModalEvents.save, () => {
-            const questionInput = document.getElementById("question-input");
-            const question = questionInput.value.trim();
-            // Validate the entered question. Prevent saving if passing an empty question string.
-            if (!question) {
-                question.value = '';
-                const form = questionInput.form;
-                form.classList.add('was-validated');
-                questionInput.classList.add('is-invalid');
-                questionInput.focus();
-                return false;
-            }
-            const qtype = document.getElementById("question-type-select").value;
-            const threesixtyid = document.getElementById("threesixtyid").value;
+    // On save handler.
+    modal.getRoot().on(ModalEvents.save, () => {
+        const questionInput = document.getElementById("question-input");
+        const question = questionInput.value.trim();
+        // Validate the entered question. Prevent saving if passing an empty question string.
+        if (!question) {
+            question.value = '';
+            const form = questionInput.form;
+            form.classList.add('was-validated');
+            questionInput.classList.add('is-invalid');
+            questionInput.focus();
+            return false;
+        }
+        const qtype = document.getElementById("question-type-select").value;
+        const threesixtyid = document.getElementById("threesixtyid").value;
 
-            const data = {
-                question: question,
-                type: qtype,
-                threesixtyid: threesixtyid,
-            };
+        const data = {
+            question: question,
+            type: qtype,
+            threesixtyid: threesixtyid,
+        };
 
-            let method = 'mod_threesixo_add_question';
-            const questionId = document.getElementById("question-id").value;
-            if (questionId) {
-                method = 'mod_threesixo_update_question';
-                data.id = questionId;
-            }
+        let method = 'mod_threesixo_add_question';
+        const questionId = document.getElementById("question-id").value;
+        if (questionId) {
+            method = 'mod_threesixo_update_question';
+            data.id = questionId;
+        }
 
-            // Refresh the list of questions through AJAX.
-            const promises = ajax.call([
-                {methodname: method, args: data}
-            ]);
-            return promises[0].then(function() {
-                return refreshQuestionsList();
-            }).catch(notification.exception);
-        });
-        return true;
-    }).then(() => {
-        return pendingPromise.resolve();
-    }).catch(notification.exception);
-}
+        // Refresh the list of questions through AJAX.
+        const promises = ajax.call([
+            {methodname: method, args: data}
+        ]);
+        return promises[0].then(function() {
+            return refreshQuestionsList();
+        }).catch(notification.exception);
+    });
+
+    pendingPromise.resolve();
+};
 
 /**
  * Function that displays the input dialogue.
  *
  * @param {Number} threesixtyId The 360 instance ID.
  * @param {Number} questionId The question ID.
+ * @param {HTMLElement} trigger The element that triggered the dialogue.
  */
-const displayInputDialogue = function(threesixtyId, questionId) {
-    getString('addanewquestion', 'mod_threesixo').then(function(title) {
-        const data = {
-            threesixtyid: threesixtyId
-        };
+const displayInputDialogue = async(threesixtyId, questionId, trigger) => {
+    trigger.setAttribute('disabled', 'disabled');
+    const dialogueTitle = await getString('addanewquestion', 'mod_threesixo');
+    const data = {
+        threesixtyid: threesixtyId
+    };
 
-        if (questionId) {
-            data.questionid = questionId;
-            for (const i in questions) {
-                const question = questions[i];
-                if (question.id === questionId) {
-                    data.question = question.question;
-                    data.type = question.type;
-                    break;
-                }
+    if (questionId) {
+        data.questionid = questionId;
+        for (const i in questions) {
+            const question = questions[i];
+            if (question.id === questionId) {
+                data.question = question.question;
+                data.type = question.type;
+                break;
             }
         }
+    }
 
-        data.questionTypes = getQuestionTypeOptions(data.type);
-        const body = templates.render('mod_threesixo/item_edit', data);
-        return renderInputDialogue(title, body);
-    }).catch(notification.exception);
+    data.questionTypes = getQuestionTypeOptions(data.type);
+    const body = await templates.render('mod_threesixo/item_edit', data);
+    await renderInputDialogue(dialogueTitle, body, trigger);
 };
 
 /**
  * Displays the question bank dialogue.
+ *
  * @param {string} title
  * @param {Promise} questionBankTemplate
  */
-function displayQuestionBankDialogue(title, questionBankTemplate) {
+const displayQuestionBankDialogue = async(title, questionBankTemplate) => {
     const pendingPromise = new Pending('mod_threesixo/question_bank');
 
-    ModalFactory.create({
+    const modal = await ModalFactory.create({
         type: ModalFactory.types.SAVE_CANCEL,
         title: title,
         body: questionBankTemplate,
         large: true
-    }).then(function(modal) {
-        const modalRoot = modal.getRoot();
+    });
+    const modalRoot = modal.getRoot();
 
-        // On hide handler.
-        modalRoot.on(ModalEvents.hidden, function() {
-            // Empty modal contents when it's hidden.
-            modal.destroy();
+    // On hide handler.
+    modalRoot.on(ModalEvents.hidden, function() {
+        // Empty modal contents when it's hidden.
+        modal.destroy();
+    });
+
+    modalRoot.on(ModalEvents.save, function() {
+        let changed = false;
+        // Check if the new selected questions exist in the old selected questions.
+        selectedQuestionsOld.forEach(questionId => {
+            if (selectedQuestions.indexOf(questionId) === -1) {
+                changed = true;
+            }
         });
-
-        modalRoot.on(ModalEvents.save, function() {
-            let changed = false;
-            // Check if the new selected questions exist in the old selected questions.
-            selectedQuestionsOld.forEach(questionId => {
-                if (selectedQuestions.indexOf(questionId) === -1) {
+        // Conversely, if the newly selected items seem to have not changed,
+        // check if the old selected questions exist in the new selected questions.
+        if (!changed) {
+            selectedQuestions.forEach(questionId => {
+                if (selectedQuestionsOld.indexOf(questionId) === -1) {
                     changed = true;
                 }
             });
-            // Conversely, if the newly selected items seem to have not changed,
-            // check if the old selected questions exist in the new selected questions.
-            if (!changed) {
-                selectedQuestions.forEach(questionId => {
-                    if (selectedQuestionsOld.indexOf(questionId) === -1) {
-                        changed = true;
-                    }
-                });
-            }
+        }
 
-            if (changed) {
-                const data = {
-                    threesixtyid: threeSixtyId,
-                    questionids: selectedQuestions
-                };
+        if (changed) {
+            const data = {
+                threesixtyid: threeSixtyId,
+                questionids: selectedQuestions
+            };
 
-                // Save the selected questions.
-                const promises = ajax.call([
-                    {methodname: 'mod_threesixo_set_items', args: data}
-                ]);
-                // Refresh the list of questions through AJAX.
-                promises[0].then(function() {
-                    return notifyItemsUpdated(threeSixtyId);
-                }).catch(notification.exception);
-            } else {
-                // Nothing changed in the selection, but it's possible that the question texts have been updated.
-                // So better to refresh the list as well.
-                notifyItemsUpdated(threeSixtyId);
-            }
-        });
+            // Save the selected questions.
+            const promises = ajax.call([
+                {methodname: 'mod_threesixo_set_items', args: data}
+            ]);
+            // Refresh the list of questions through AJAX.
+            promises[0].then(function() {
+                return notifyItemsUpdated(threeSixtyId);
+            }).catch(notification.exception);
+        } else {
+            // Nothing changed in the selection, but it's possible that the question texts have been updated.
+            // So better to refresh the list as well.
+            notifyItemsUpdated(threeSixtyId);
+        }
+    });
 
-        // Display the dialogue.
-        return modal.show();
-    }).then(() => {
-        return pendingPromise.resolve();
-    }).catch(notification.exception);
-}
+    // Display the dialogue.
+    modal.show();
+
+    pendingPromise.resolve();
+};
 
 /**
  * Adds/removes a question from the array of selected questions depending on its selection state.
@@ -292,7 +293,7 @@ const updateItemSelection = (questionId, isSelected) => {
  * Binds the event listeners to question items such as edit, delete, checking.
  */
 const registerEvents = function() {
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async(e) => {
         if (e.target.closest(SELECTORS.PICK_ALL)) {
             const questionCheckboxes = document.querySelectorAll(SELECTORS.QUESTION_CHECKBOX);
             questionCheckboxes.forEach(checkbox => {
@@ -310,20 +311,20 @@ const registerEvents = function() {
             const editQuestionButton = e.target.closest(SELECTORS.EDIT_QUESTION);
             const threesixtyId = parseInt(editQuestionButton.dataset.threesixtyid);
             const questionId = parseInt(editQuestionButton.dataset.questionid);
-            displayInputDialogue(threesixtyId, questionId);
+            await displayInputDialogue(threesixtyId, questionId, editQuestionButton);
         } else if (e.target.closest(SELECTORS.DELETE_QUESTION)) {
             e.preventDefault();
 
             const deleteButton = e.target.closest(SELECTORS.DELETE_QUESTION);
-            const threesixtyId = deleteButton.dataset.threesixtyid;
-            const questionId = deleteButton.dataset.questionid;
-            handleDeletion(questionId, threesixtyId);
+            const threesixtyId = parseInt(deleteButton.dataset.threesixtyid);
+            const questionId = parseInt(deleteButton.dataset.questionid);
+            await handleDeletion(questionId, threesixtyId);
         } else if (e.target.closest(SELECTORS.ADD_QUESTION)) {
             e.preventDefault();
 
             const addButton = e.target.closest(SELECTORS.ADD_QUESTION);
-            const id = addButton.dataset.threesixtyid;
-            displayInputDialogue(id, null);
+            const id = parseInt(addButton.dataset.threesixtyid);
+            await displayInputDialogue(id, null, addButton);
         }
     });
 };
@@ -362,70 +363,64 @@ function refreshQuestionsList() {
  * @param {Number} questionId The question ID.
  * @param {Number} threesixtyId The 360 instance ID.
  */
-function handleDeletion(questionId, threesixtyId) {
-    getString('deletequestion', 'mod_threesixo').then(function(title) {
-        return ModalFactory.create({
-            title: title,
-            body: getString('confirmquestiondeletion', 'mod_threesixo'),
-            type: ModalFactory.types.SAVE_CANCEL
-        });
-    }).then(function(modal) {
-        modal.getRoot().on(ModalEvents.save, function() {
-            // Get list of questions through AJAX.
-            const promises = ajax.call([
-                {
-                    methodname: 'mod_threesixo_delete_question',
-                    args: {
-                        id: questionId,
-                        threesixtyid: threesixtyId,
-                    }
+const handleDeletion = async(questionId, threesixtyId) => {
+    const delTitle = await getString('deletequestion', 'mod_threesixo');
+    const modal = await ModalFactory.create({
+        title: delTitle,
+        body: getString('confirmquestiondeletion', 'mod_threesixo'),
+        type: ModalFactory.types.SAVE_CANCEL
+    });
+
+    modal.getRoot().on(ModalEvents.save, function() {
+        // Get list of questions through AJAX.
+        const promises = ajax.call([
+            {
+                methodname: 'mod_threesixo_delete_question',
+                args: {
+                    id: questionId,
+                    threesixtyid: threesixtyId,
                 }
-            ]);
-            promises[0].then(function() {
-                return refreshQuestionsList();
-            }).catch(notification.exception);
-        });
+            }
+        ]);
+        promises[0].then(function() {
+            return refreshQuestionsList();
+        }).catch(notification.exception);
+    });
 
-        modal.getRoot().on(ModalEvents.hidden, () => {
-            modal.destroy();
-        });
+    modal.getRoot().on(ModalEvents.hidden, () => {
+        modal.destroy();
+    });
 
-        return modal.show();
-    }).catch(notification.exception);
-}
-
+    return modal.show();
+};
 
 /**
  * Create the context and render the question  bank template.
  */
-function renderQuestionBank() {
+const renderQuestionBank = async() => {
     // Template context.
     const context = {pickerMode: threeSixtyId};
 
     // Render the question list.
-    const promises = ajax.call([
+    const response = await ajax.call([
         {
             methodname: 'mod_threesixo_get_questions',
             args: {}
         }
-    ]);
-    promises[0].then(function(response) {
-        questions = response.questions;
-        context.questions = checkQuestions(questions);
+    ])[0];
 
-        // Render the template and display the comment chooser dialog.
-        return templates.render('mod_threesixo/question_bank', context);
-    }).then(questionBankTemplate => {
-        return getString('labelpickfromquestionbank', 'mod_threesixo').then(title => {
-            return displayQuestionBankDialogue(title, questionBankTemplate);
-        });
-    }).then(() => {
-        if (threeSixtyId) {
-            CheckboxToggleAll.init();
-        }
-        return true;
-    }).catch(notification.exception);
-}
+    questions = response.questions;
+    context.questions = checkQuestions(questions);
+
+    // Render the template and display the comment chooser dialog.
+    const questionBankTemplate = await templates.render('mod_threesixo/question_bank', context);
+    const dialogueTitle = await getString('labelpickfromquestionbank', 'mod_threesixo');
+    await displayQuestionBankDialogue(dialogueTitle, questionBankTemplate);
+
+    if (threeSixtyId) {
+        CheckboxToggleAll.init();
+    }
+};
 
 const questionBankInit = function(id) {
     threeSixtyId = id;
@@ -454,8 +449,7 @@ const questionBankInit = function(id) {
         if (threeSixtyId) {
             return promises[1];
         }
-        renderQuestionBank();
-        return null;
+        return renderQuestionBank();
     }).then(response => {
         if (response === null) {
             return false;
@@ -471,8 +465,7 @@ const questionBankInit = function(id) {
             // Store originally selected question IDs for comparison later.
             selectedQuestionsOld.push(items[i].questionid);
         }
-        renderQuestionBank();
-        return true;
+        return renderQuestionBank();
     }).catch(notification.exception);
 
     registerEvents();
