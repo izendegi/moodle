@@ -29,7 +29,11 @@ defined('MOODLE_INTERNAL') || die;
 
 require_once($CFG->dirroot.'/mod/helixmedia/lib.php');
 require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
+<<<<<<< HEAD
 require_once($CFG->libdir.'/externallib.php'); 
+=======
+require_once($CFG->libdir.'/externallib.php');
+>>>>>>> 20ef284d2b2 (mod_helixmedia-2024012302_mobileapp_patch_activitycompletion)
 
 use context_module;
 use mod_helixmedia_external;
