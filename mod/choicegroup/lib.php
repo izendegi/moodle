@@ -45,6 +45,9 @@ define('CHOICEGROUP_SORTGROUPS_SYSTEMDEFAULT',    '0');
 define('CHOICEGROUP_SORTGROUPS_CREATEDATE',    '1');
 define('CHOICEGROUP_SORTGROUPS_NAME',    '2');
 
+define('CHOICEGROUP_GROUPDESCRIPTIONSTATE_HIDDEN', 0);
+define('CHOICEGROUP_GROUPDESCRIPTIONSTATE_VISIBLE', 1);
+
 // Ugly hack to make 3.11 and 4.0 work seamlessly.
 if (!defined('FEATURE_MOD_PURPOSE')) {
     define('FEATURE_MOD_PURPOSE', 'mod_purpose');
@@ -848,12 +851,14 @@ function choicegroup_get_choicegroup($choicegroupid) {
             $grpfilter = "AND grp_o.groupid = :groupid";
         }
 
+        $castorderby = ($sortcolumn == 'name') ? $DB->sql_cast_char2int("REGEXP_SUBSTR($sortcolumn, '[0-9]+')") . "," : "";
+
         $sql = "SELECT grp_m.id grpmemberid, grp_m.userid, grp_o.id, grp_o.groupid, grp_o.maxanswers
                  FROM {groups} grp
                  INNER JOIN {choicegroup_options} grp_o on grp.id = grp_o.groupid
                  LEFT JOIN {groups_members} grp_m on grp_m.groupid = grp_o.groupid
                  WHERE grp_o.choicegroupid = :choicegroupid $grpfilter
-                 ORDER BY $sortcolumn ASC";
+                 ORDER BY $castorderby $sortcolumn ASC";
 
         $rs = $DB->get_recordset_sql($sql, $params);
 
