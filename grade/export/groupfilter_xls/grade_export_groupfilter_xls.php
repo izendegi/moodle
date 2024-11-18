@@ -22,45 +22,25 @@
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 /**
- * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
  * @package gradeexport_groupfilter_xls
- * @copyright 2023 Proyecto UNIMOODLE
- * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
- * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
+ * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
+ * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
+ * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace gradeexport_groupfilter_xls;
-
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot . '/grade/export/lib.php');
+require_once($CFG->dirroot.'/grade/export/lib.php');
 
-/**
- * Class grade_export_groupfilter_xls
- *
- * This class extends the grade_export class and represents a grade export handler
- * specifically designed for group filtering and exporting data in text format.
- */
-class grade_export_groupfilter_xls extends \grade_export {
+class grade_export_groupfilter_xls extends grade_export {
 
-    /**
-     * The plugin type for this export handler.
-     *
-     * @var string
-     */
     public $plugin = 'xls';
 
-    /**
-     * The validated form data.
-     *
-     * @var stdClass
-     */
     private $formdata;
 
     /**
      * Constructor should set up all the private variables ready to be pulled
-     *
      * @param object $course
      * @param int $groupid id of selected group, 0 means all
      * @param stdClass $formdata The validated data from the grade export form.
@@ -78,7 +58,7 @@ class grade_export_groupfilter_xls extends \grade_export {
      */
     public function print_grades() {
         global $CFG;
-        require_once($CFG->dirroot . '/lib/excellib.class.php');
+        require_once($CFG->dirroot.'/lib/excellib.class.php');
 
         $exporttracking = $this->track_exports();
 
@@ -88,27 +68,23 @@ class grade_export_groupfilter_xls extends \grade_export {
         \core_form\util::form_download_complete();
 
         // Calculate file name.
-        $shortname = format_string(
-            $this->course->shortname,
-            true,
-            ['context' => \context_course::instance($this->course->id)]
-        );
+        $shortname = format_string($this->course->shortname, true, array('context' => context_course::instance($this->course->id)));
         $downloadfilename = clean_filename("$shortname $strgrades.xls");
         // Creating a workbook.
-        $workbook = new \MoodleExcelWorkbook("-");
+        $workbook = new MoodleExcelWorkbook("-");
         // Sending HTTP headers.
         $workbook->send($downloadfilename);
         // Adding the worksheet.
         $myxls = $workbook->add_worksheet($strgrades);
 
         // Added Group.
-        $group = new \stdClass();
+        $group = new stdClass();
         $group->customid = 0;
         $group->shortname = "groups";
         $group->fullname = get_string('group', 'gradeexport_groupfilter_xls');
 
         // Print names of all the fields.
-        $profilefields = \grade_helper::get_user_profile_fields($this->course->id, $this->usercustomfields);
+        $profilefields = grade_helper::get_user_profile_fields($this->course->id, $this->usercustomfields);
 
         // Obtain selected fields from user formdata.
         $profilefieldsselected = [];
@@ -159,7 +135,7 @@ class grade_export_groupfilter_xls extends \grade_export {
 
         // Print all the lines of data.
         $i = 0;
-        $geub = new \grade_export_update_buffer();
+        $geub = new grade_export_update_buffer();
 
         // Obtain list of the groups.
         $groups = groups_get_all_groups($this->course->id);
@@ -175,7 +151,7 @@ class grade_export_groupfilter_xls extends \grade_export {
             // All participants format.
             if ($groupid == 0) {
                 foreach ($groups as $usergroup) {
-                    $gui = new \graded_users_iterator($this->course, $this->columns, $usergroup->id);
+                    $gui = new graded_users_iterator($this->course, $this->columns, $usergroup->id);
                     $gui->require_active_enrolment($this->onlyactive);
                     $gui->allow_user_custom_fields($this->usercustomfields);
                     $gui->init();
@@ -190,7 +166,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                             foreach ($profilefields as $id => $field) {
                                 // Remove group warning.
                                 if ($field->shortname != "groups") {
-                                    $fieldvalue = \grade_helper::get_user_field_value($user, $field);
+                                    $fieldvalue = grade_helper::get_user_field_value($user, $field);
                                     $myxls->write_string($i, $id, $fieldvalue);
                                 }
                             }
@@ -229,7 +205,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                 }
                 $usersingroup = groups_get_groups_members($arraygroupsid);
 
-                $gui = new \graded_users_iterator($this->course, $this->columns, $this->groupid);
+                $gui = new graded_users_iterator($this->course, $this->columns, $this->groupid);
                 $gui->require_active_enrolment($this->onlyactive);
                 $gui->allow_user_custom_fields($this->usercustomfields);
                 $gui->init();
@@ -252,7 +228,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                         foreach ($profilefields as $id => $field) {
                             // Remove group warning.
                             if ($field->shortname != "groups") {
-                                $fieldvalue = \grade_helper::get_user_field_value($user, $field);
+                                $fieldvalue = grade_helper::get_user_field_value($user, $field);
                                 $myxls->write_string($i, $id, $fieldvalue);
                             }
                         }
@@ -285,7 +261,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                     }
                 }
             } else { // Group format.
-                $gui = new \graded_users_iterator($this->course, $this->columns, $this->groupid);
+                $gui = new graded_users_iterator($this->course, $this->columns, $this->groupid);
                 $gui->require_active_enrolment($this->onlyactive);
                 $gui->allow_user_custom_fields($this->usercustomfields);
                 $gui->init();
@@ -301,7 +277,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                         foreach ($profilefields as $id => $field) {
                             // Remove group warning.
                             if ($field->shortname != "groups") {
-                                $fieldvalue = \grade_helper::get_user_field_value($user, $field);
+                                $fieldvalue = grade_helper::get_user_field_value($user, $field);
                                 $myxls->write_string($i, $id, $fieldvalue);
                             }
                         }
@@ -335,7 +311,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                 }
             }
         } else {
-            $gui = new \graded_users_iterator($this->course, $this->columns,  $this->groupid);
+            $gui = new graded_users_iterator($this->course, $this->columns,  $this->groupid);
             $gui->require_active_enrolment($this->onlyactive);
             $gui->allow_user_custom_fields($this->usercustomfields);
             $gui->init();
@@ -349,7 +325,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                 foreach ($profilefields as $id => $field) {
                     // Remove group warning.
                     if ($field->shortname != "groups") {
-                        $fieldvalue = \grade_helper::get_user_field_value($user, $field);
+                        $fieldvalue = grade_helper::get_user_field_value($user, $field);
                         $myxls->write_string($i, $id, $fieldvalue);
                     }
                 }
@@ -377,6 +353,7 @@ class grade_export_groupfilter_xls extends \grade_export {
                 }
                 // Time exported.
                 $myxls->write_string($i, $j++, time());
+
             }
         }
 
@@ -389,3 +366,5 @@ class grade_export_groupfilter_xls extends \grade_export {
         exit;
     }
 }
+
+

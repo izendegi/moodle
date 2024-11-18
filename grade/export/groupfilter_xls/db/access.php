@@ -22,38 +22,40 @@
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 /**
- * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
+ * Capabilities gradeexport plugin.
+ *
  * @package gradeexport_groupfilter_xls
- * @copyright 2023 Proyecto UNIMOODLE
- * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
- * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright   2007 Petr Skoda {@link http://skodak.org}
+ * @copyright   2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
+ * @author      UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
+ * @author      Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = [
-    'gradeexport/groupfilter_xls:view' => [
+$capabilities = array(
+
+    'gradeexport/groupfilter_xls:view' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
-        ],
-    ],
+        ),
+    ),
 
-    'gradeexport/groupfilter_xls:publish' => [
+    'gradeexport/groupfilter_xls:publish' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [
+        'archetypes' => array(
             'manager' => CAP_ALLOW,
-        ],
-    ],
+        ),
+    ),
 
-];
+);
 
 
