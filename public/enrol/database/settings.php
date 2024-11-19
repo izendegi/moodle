@@ -51,8 +51,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('enrol_database/debugdb', get_string('debugdb', 'enrol_database'), get_string('debugdb_desc', 'enrol_database'), 0));
 
-
-
+    //--- local field mapping --------------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_database_localheader', get_string('settingsheaderlocal', 'enrol_database'), ''));
 
     $options = array('id'=>'id', 'idnumber'=>'idnumber', 'shortname'=>'shortname');
@@ -70,6 +69,7 @@ if ($ADMIN->fulltree) {
     $options = array('id'=>'id', 'idnumber'=>'idnumber', 'shortname'=>'shortname');
     $settings->add(new admin_setting_configselect('enrol_database/localtemplatefield', get_string('localtemplatefield', 'enrol_database'), '', 'idnumber', $options));
 
+    //--- remote field mapping -------------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_database_remoteheader', get_string('settingsheaderremote', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/remoteenroltable', get_string('remoteenroltable', 'enrol_database'), get_string('remoteenroltable_desc', 'enrol_database'), ''));
@@ -104,8 +104,7 @@ if ($ADMIN->fulltree) {
                      ENROL_EXT_REMOVED_SUSPENDNOROLES => get_string('extremovedsuspendnoroles', 'enrol'));
     $settings->add(new admin_setting_configselect('enrol_database/unenrolaction', get_string('extremovedaction', 'enrol'), get_string('extremovedaction_help', 'enrol'), ENROL_EXT_REMOVED_UNENROL, $options));
 
-
-
+    //--- creation of new courses ----------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_database_newcoursesheader', get_string('settingsheadernewcourses', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/newcoursetable', get_string('newcoursetable', 'enrol_database'), get_string('newcoursetable_desc', 'enrol_database'), ''));
@@ -142,7 +141,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configtext('enrol_database/templatecourse', get_string('templatecourse', 'enrol_database'), get_string('templatecourse_desc', 'enrol_database'), ''));
 
-    //Creation of new groups
+    //--- creation of new groups ---------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_database_newgroupsheader', get_string('settingsheadernewgroups', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/newgrouptable', get_string('newgrouptable', 'enrol_database'), get_string('newgrouptable_desc', 'enrol_database'), ''));
@@ -161,6 +160,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('enrol_database/groupmessaging', get_string('groupmessaging', 'enrol_database'), get_string('groupmessaging_desc', 'enrol_database'), 1));
 
+    //--- remote group enrolment mapping -------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_database_groupenrolheader', get_string('settingsheadergroupenrol', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/groupenroltable', get_string('groupenroltable', 'enrol_database'), get_string('groupenroltable_desc', 'enrol_database'), ''));
@@ -168,5 +168,7 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configtext('enrol_database/userfield', get_string('userfield', 'enrol_database'), get_string('userfield_desc', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/groupfield', get_string('groupfield', 'enrol_database'), get_string('groupfield_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configcheckbox('enrol_database/groupupgrading', get_string('groupupgrading', 'enrol_database'), get_string('groupupgrading_desc', 'enrol_database'), 0));
 
 }
