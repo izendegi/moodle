@@ -105,7 +105,7 @@ class enrol_database_plugin extends enrol_plugin {
             return;
         }
 
-        $table            = $this->get_config('remoteenroltable');
+        $table            = trim($this->get_config('remoteenroltable'));
         $coursefield      = trim($this->get_config('remotecoursefield'));
         $userfield        = trim($this->get_config('remoteuserfield'));
         $rolefield        = trim($this->get_config('remoterolefield'));
@@ -488,7 +488,7 @@ class enrol_database_plugin extends enrol_plugin {
         core_php_time_limit::raise();
         raise_memory_limit(MEMORY_HUGE);
 
-        $table            = $this->get_config('remoteenroltable');
+        $table            = trim($this->get_config('remoteenroltable'));
         $coursefield      = trim($this->get_config('remotecoursefield'));
         $userfield        = trim($this->get_config('remoteuserfield'));
         $rolefield        = trim($this->get_config('remoterolefield'));
@@ -846,7 +846,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         $courseconfig = get_config('moodlecourse');
 
-        $table     = $this->get_config('newcoursetable');
+        $table     = trim($this->get_config('newcoursetable'));
         $fullname  = trim($this->get_config('newcoursefullname'));
         $shortname = trim($this->get_config('newcourseshortname'));
         $idnumber  = trim($this->get_config('newcourseidnumber'));
@@ -1167,7 +1167,7 @@ class enrol_database_plugin extends enrol_plugin {
             return 1;
         }
 
-        $table = $this->get_config('newgrouptable');
+        $table = trim($this->get_config('newgrouptable'));
         $name = trim($this->get_config('newgroupname'));
         $idnumber = trim($this->get_config('newgroupidnumber'));
         $description = trim($this->get_config('newgroupdesc'));
