@@ -386,39 +386,42 @@ class enrol_database_plugin extends enrol_plugin {
             unset($requestedgroups);
         }
 
-        // This group membership update should be controlled by a new setting allowing it
-        $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
-                             mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
-                             ge.$groupfield as groupfield, c.id as courseid
-                        FROM $table ge
-                        JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
-                        JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                        JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                       WHERE mu.deleted = 0
-                         AND mu.id = :userid
-                         AND exists (SELECT 1
-                                       FROM {groups_members} mgm
-                                      WHERE mgm.groupid = mg.id
-                                        AND mgm.userid = mu.id
-                                        AND mgm.component='');";
-        if ($result = $DB->get_records_sql($updatesql, array('userid' => $user->id))) {
-            foreach ($result as $rs){
-                $group['userid'] = $rs->userid;
-                $group['groupid'] = $rs->groupid;
-                $group['localuserfield'] = $rs->localuserfield;
-                $group['localcoursefield'] = $rs->localcoursefield;
-                $group['groupfield'] = $rs->groupfield;
-                $group['courseid'] = $rs->courseid;
-                $requestedgroups[$rs->index] = $group;
-            }
-            // Removing users without component from groups and adding them back.
-            foreach ($requestedgroups as $group) {
-                require_once($CFG->dirroot.'/group/lib.php');
+        // Upgrade group membership component if the setting is enabled
+        $groupupgrading = $this->get_config('groupupgrading');
+        if ($groupupgrading) {
+            $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                                mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                                ge.$groupfield as groupfield, c.id as courseid
+                            FROM $table ge
+                            JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                            JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                            JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                        WHERE mu.deleted = 0
+                            AND mu.id = :userid
+                            AND exists (SELECT 1
+                                        FROM {groups_members} mgm
+                                        WHERE mgm.groupid = mg.id
+                                            AND mgm.userid = mu.id
+                                            AND mgm.component='');";
+            if ($result = $DB->get_records_sql($updatesql, array('userid' => $user->id))) {
+                foreach ($result as $rs){
+                    $group['userid'] = $rs->userid;
+                    $group['groupid'] = $rs->groupid;
+                    $group['localuserfield'] = $rs->localuserfield;
+                    $group['localcoursefield'] = $rs->localcoursefield;
+                    $group['groupfield'] = $rs->groupfield;
+                    $group['courseid'] = $rs->courseid;
+                    $requestedgroups[$rs->index] = $group;
+                }
+                // Removing users without component from groups and adding them back.
+                foreach ($requestedgroups as $group) {
+                    require_once($CFG->dirroot.'/group/lib.php');
 
-                groups_remove_member($group['groupid'], $group['userid']);
-                groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
+                    groups_remove_member($group['groupid'], $group['userid']);
+                    groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
+                }
+                unset($requestedgroups);
             }
-            unset($requestedgroups);
         }
 
         $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
@@ -1364,47 +1367,50 @@ class enrol_database_plugin extends enrol_plugin {
             unset($requestedgroups);
         }
 
-        // This group membership update should be controlled by a new setting allowing it
-        $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
-                             mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
-                             ge.$groupfield as groupfield, c.id as courseid
-                        FROM $table ge
-                        JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
-                        JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                        JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                       WHERE mu.deleted = 0
-                         AND exists (SELECT 1
-                                       FROM {groups_members} mgm
-                                      WHERE mgm.groupid = mg.id
-                                        AND mgm.userid = mu.id
-                                        AND mgm.component='');";
-        if ($result = $DB->get_records_sql($updatesql)) {
-            foreach ($result as $rs){
-                $group['userid'] = $rs->userid;
-                $group['groupid'] = $rs->groupid;
-                $group['localuserfield'] = $rs->localuserfield;
-                $group['localcoursefield'] = $rs->localcoursefield;
-                $group['groupfield'] = $rs->groupfield;
-                $group['courseid'] = $rs->courseid;
-                $requestedgroups[$rs->index] = $group;
-            }
-            // Removing users without component from groups and adding them back.
-            foreach ($requestedgroups as $group) {
-                require_once($CFG->dirroot.'/group/lib.php');
-
-                $trace->output("  removing user ".$group['localuserfield']." with empty component from group ".$group['groupfield'].
-                               ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                groups_remove_member($group['groupid'], $group['userid']);
-                if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
-                    $trace->output("  adding back the user ".$group['localuserfield']." to group: ".$group['groupfield'].
-                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                } else {
-                    $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
-                    $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ".$errorcourse->courseid.
-                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+        // Upgrade group membership component if the setting is enabled
+        $groupupgrading = $this->get_config('groupupgrading');
+        if ($groupupgrading) {
+            $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                                mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                                ge.$groupfield as groupfield, c.id as courseid
+                            FROM $table ge
+                            JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                            JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                            JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                        WHERE mu.deleted = 0
+                            AND exists (SELECT 1
+                                        FROM {groups_members} mgm
+                                        WHERE mgm.groupid = mg.id
+                                            AND mgm.userid = mu.id
+                                            AND mgm.component='');";
+            if ($result = $DB->get_records_sql($updatesql)) {
+                foreach ($result as $rs){
+                    $group['userid'] = $rs->userid;
+                    $group['groupid'] = $rs->groupid;
+                    $group['localuserfield'] = $rs->localuserfield;
+                    $group['localcoursefield'] = $rs->localcoursefield;
+                    $group['groupfield'] = $rs->groupfield;
+                    $group['courseid'] = $rs->courseid;
+                    $requestedgroups[$rs->index] = $group;
                 }
+                // Removing users without component from groups and adding them back.
+                foreach ($requestedgroups as $group) {
+                    require_once($CFG->dirroot.'/group/lib.php');
+
+                    $trace->output("  removing user ".$group['localuserfield']." with empty component from group ".$group['groupfield'].
+                                ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                    groups_remove_member($group['groupid'], $group['userid']);
+                    if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
+                        $trace->output("  adding back the user ".$group['localuserfield']." to group: ".$group['groupfield'].
+                                    ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                    } else {
+                        $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
+                        $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ".$errorcourse->courseid.
+                                    ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                    }
+                }
+                unset($requestedgroups);
             }
-            unset($requestedgroups);
         }
 
         $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
