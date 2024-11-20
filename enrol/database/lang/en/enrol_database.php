@@ -17,14 +17,15 @@
 /**
  * Strings for component 'enrol_database', language 'en'.
  *
- * @package   enrol_database
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package     enrol_database
+ * @copyright   1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ *              2024 onwards Iñigo Zendegi  {@link https://mondragon.edu}
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 $string['autocreatecategory'] = 'Create course categories';
-$string['autocreatecategory_desc'] = 'If courses are automatically created and they belong to a category that does not exist in Moodle yet, those categories can be created automatically';
-$string['categoryseparator'] = 'Category separator';
+$string['autocreatecategory_desc'] = 'If checked, when courses are automatically created and they belong to a category that does not exist in Moodle yet, those categories will be created automatically.';
+$string['categoryseparator'] = 'Category separator character';
 $string['categoryseparator_desc'] = 'Leave this empty if you do not want to use subcategories in your external database. Otherwise, specify the character you are using as the category separator. You need to specify the \'path\' of the subcategory (in the \'New course category\' field) as the identifiers of the categories separated by the category separator. For example, if we use \'/\' as the separator, we should have something like category1/category2 (i.e., category2 is inside category category1, which is a top level category)';
 $string['database:config'] = 'Configure database enrol instances';
 $string['database:unenrol'] = 'Unenrol suspended users';
@@ -47,6 +48,16 @@ $string['defaultcategory'] = 'Default new course category';
 $string['defaultcategory_desc'] = 'The default category for auto-created courses. Used when no new course category field is specified or the category is not found (and \'Create course categories\' is not enabled.)';
 $string['defaultrole'] = 'Default role';
 $string['defaultrole_desc'] = 'The role that will be assigned by default if no other role is specified in external table.';
+$string['groupenroltable'] = 'Remote group enrolments table';
+$string['groupenroltable_desc'] = 'Specify the name of the table that contains list of users that need to be added to a group. Empty means no group enrolments sync.';
+$string['groupfield'] = 'Group idnumber field';
+$string['groupfield_desc'] = 'The name of the field in the remote table that we are using to match entries in the groups table.';
+$string['groupingcreation'] = 'Enable new groupings creation';
+$string['groupingcreation_desc'] = 'If enabled, the groupings specified in the external database that do not exist in the Moodle database will be created automatically.';
+$string['groupmessaging'] = 'Enable group messaging';
+$string['groupmessaging_desc'] = 'If enabled, group members can send messages to the others in their group via de messaging drawer.';
+$string['groupupgrading'] = 'Upgrade group component';
+$string['groupupgrading_desc'] = 'When enabled, if there is a manually added group member when adding a group membership from external database, the membership adding method will be changed to external database and membership removal will be prevented.';
 $string['ignorehiddencourses'] = 'Ignore hidden courses';
 $string['ignorehiddencourses_desc'] = 'If enabled users will not be enrolled on courses that are set to be unavailable to students.';
 $string['localcategoryfield'] = 'Local category field';
@@ -64,14 +75,26 @@ $string['newcoursecategorypath'] = 'New course category path field';
 $string['newcoursecategorypath_desc'] = 'The path of the category, which will be used to check if the category exists, taking into account the subcategories, if category separator given.';
 $string['newcoursefullname'] = 'New course full name field';
 $string['newcourseidnumber'] = 'New course ID number field';
+$string['newcourseshortname'] = 'New course short name field';
 $string['newcoursestartdate'] = 'New course start date field';
 $string['newcoursestartdate_desc'] = 'Specify a date in the format yyyy-mm-dd or Unix time, or leave blank for the course start date to be set to the current date.';
+$string['newcoursetable'] = 'Remote new courses table';
+$string['newcoursetable_desc'] = 'Specify the name of the table that contains list of courses that should be created automatically. Empty means no courses are created.';
 $string['newcoursetemplate'] = 'New course template field';
 $string['newcoursetemplate_desc'] = 'Auto-created courses can copy their settings from a template course. Specify the name of the field where the identifier of the template course (as specified in \'Local course field\' setting) is stored';
-$string['newcourseshortname'] = 'New course short name field';
 $string['newcoursesummary'] = 'New course summary field';
+$string['newgroupcourse'] = 'New group course identifier field';
+$string['newgroupcourse_desc'] = 'The identifier of the course to which the new group belongs (as specified in \'Local course field\' setting).';
+$string['newgroupdesc'] = 'New group description field';
+$string['newgroupidnumber'] = 'New group id number field';
+$string['newgroupgroupings'] = 'New group grouping field';
+$string['newgroupgroupings_desc'] = 'The name of the field in the remote table that we are using to match entries in the groupings table.';
+$string['newgroupname'] = 'New group name field';
+$string['newgrouptable'] = 'Remote new groups table';
+$string['newgrouptable_desc'] = 'Specify the name of the table that contains list of groups that should be created automatically. Empty means no groups are created.';
 $string['pluginname'] = 'External database';
 $string['pluginname_desc'] = 'You can use an external database (of nearly any kind) to control your enrolments. It is assumed your external database contains at least a field containing a course ID, and a field containing a user ID. These are compared against fields that you choose in the local course and user tables.';
+$string['privacy:metadata'] = 'The External database enrolment plugin does not store any personal data.';
 $string['remotecoursefield'] = 'Remote course field';
 $string['remotecoursefield_desc'] = 'The name of the field in the remote table that we are using to match entries in the course table.';
 $string['remoteenroltable'] = 'Remote user enrolment table';
@@ -81,35 +104,15 @@ $string['remoteotheruserfield_desc'] = 'The name of the field in the remote tabl
 $string['remoterolefield'] = 'Remote role field';
 $string['remoterolefield_desc'] = 'The name of the field in the remote table that we are using to match entries in the roles table.';
 $string['remoteuserfield'] = 'Remote user field';
-$string['settingsheaderdb'] = 'External database connection';
-$string['settingsheaderlocal'] = 'Local field mapping';
-$string['settingsheaderremote'] = 'Remote enrolment sync';
-$string['settingsheadernewcourses'] = 'Creation of new courses';
-$string['syncenrolmentstask'] = 'Synchronise external database enrolments task';
 $string['remoteuserfield_desc'] = 'The name of the field in the remote table that we are using to match entries in the user table.';
+$string['settingsheaderdb'] = 'External database connection';
+$string['settingsheadergroupenrol'] = 'Group enrolments sync';
+$string['settingsheaderlocal'] = 'Local field mapping';
+$string['settingsheadernewcourses'] = 'Creation of new courses';
+$string['settingsheadernewgroups'] = 'Creation of new groups';
+$string['settingsheaderremote'] = 'Remote enrolment sync';
+$string['syncenrolmentstask'] = 'Synchronise external database enrolments task';
 $string['templatecourse'] = 'New course template';
 $string['templatecourse_desc'] = 'Optional: auto-created courses can copy their settings from a template course. Type here the shortname of the template course. Used when no new course template field is specified or the template course is not found';
-$string['settingsheadernewgroups'] = 'Creation of new groups';
-$string['newgrouptable'] = 'Remote new groups table';
-$string['newgrouptable_desc'] = 'Specify the name of the table that contains list of groups that should be created automatically. Empty means no groups are created.';
-$string['newgroupname'] = 'New group name field';
-$string['newgroupidnumber'] = 'New group id number field';
-$string['newgroupdesc'] = 'New group description field';
-$string['newgroupgroupings'] = 'New group grouping field';
-$string['newgroupgroupings_desc'] = 'The name of the field in the remote table that we are using to match entries in the groupings table.';
-$string['groupupgrading'] = 'Upgrade group component';
-$string['groupupgrading_desc'] = 'When enabled, if there is a manually added group member when adding a group membership from external database, the membership adding method will be changed to external database and membership removal will be prevented.';
-$string['groupingcreation'] = 'Enable new groupings creation';
-$string['groupingcreation_desc'] = 'If enabled, the groupings specified in the external database that do not exist in the Moodle database will be created automatically.';
-$string['newgroupcourse'] = 'New group course field';
-$string['newgroupcourse_desc'] = 'The short name of the course to which the new group belongs.';
-$string['groupmessaging'] = 'Enable group messaging';
-$string['groupmessaging_desc'] = 'If enabled, group members can send messages to the others in their group via de messaging drawer.';
-$string['settingsheadergroupenrol'] = 'Group enrolments sync';
-$string['groupenroltable'] = 'Remote group enrolments table';
-$string['groupenroltable_desc'] = 'Specify the name of the table that contains list of users that need to be added to a group. Empty means no group enrolments sync.';
 $string['userfield'] = 'User name field';
 $string['userfield_desc'] = 'The name of the field in the remote table that we are using to match entries in the user table.';
-$string['groupfield'] = 'Group idnumber field';
-$string['groupfield_desc'] = 'The name of the field in the remote table that we are using to match entries in the groups table.';
-$string['privacy:metadata'] = 'The External database enrolment plugin does not store any personal data.';
