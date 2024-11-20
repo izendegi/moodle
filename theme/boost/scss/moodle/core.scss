@@ -2614,10 +2614,15 @@ $picker-emojis-per-row: 7 !default;
 
 .toast-wrapper {
     max-width: $toast-max-width;
-    max-height: 0;
-    // Place these above any modals and other elements.
+    max-height: none; // Allow content to expand fully
     z-index: 1051;
 
+    // Add centering styles for .toast-wrapper
+    position: fixed;
+    top: 10%;
+    left: 0%;
+    transform: translate(-50%, -50%);
+    
     > :first-child {
         margin-top: $spacer;
     }
