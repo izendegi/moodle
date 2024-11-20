@@ -1052,7 +1052,7 @@ class enrol_database_plugin extends enrol_plugin {
                 $newcourse->fullname  = $fields->fullname;
                 $newcourse->shortname = $fields->shortname;
                 $newcourse->idnumber  = $fields->idnumber;
-                $newcourse->summary = $fields->summary;
+                $newcourse->summary   = $fields->summary;
                 $newcourse->category  = $fields->category;
 
                 if (isset($fields->startdate)) {
@@ -1123,7 +1123,6 @@ class enrol_database_plugin extends enrol_plugin {
 
             unset($createcourses);
             unset($defaulttemplate);
-
         }
 
         // Close db connection.
@@ -1475,7 +1474,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         return $sql;
     }
-    
+
     /**
      * Tries to make connection to the external database.
      *
@@ -1674,7 +1673,6 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
-
                 echo $OUTPUT->notification('External enrolment table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
@@ -1692,7 +1690,6 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
-
                 echo $OUTPUT->notification('External course table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
