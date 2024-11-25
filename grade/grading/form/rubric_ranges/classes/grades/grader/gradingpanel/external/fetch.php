@@ -41,6 +41,7 @@ use core_external\external_warnings;
 use stdClass;
 use moodle_exception;
 require_once($CFG->dirroot.'/grade/grading/form/rubric_ranges/lib.php');
+require_once($CFG->dirroot . '/lib/externallib.php');
 
 /**
  * Web services relating to fetching of a rubric for the grading panel.
