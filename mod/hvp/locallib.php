@@ -721,6 +721,7 @@ function hvp_create_hub_export_url($cmid, $content) {
  *
  * @return string
  */
+
 function hvp_base64_encode($string) {
     return str_replace('=', '', strtr(base64_encode($string), '+/', '-_'));
 }
