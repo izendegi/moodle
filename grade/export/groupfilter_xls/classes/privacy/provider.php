@@ -15,22 +15,19 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Privacy Subsystem implementation for gradeexport_xls.
+ * Privacy Subsystem implementation for gradeexport_groupfilter_xls.
  *
- * @package gradeexport_groupfilter_xls_xls
+ * @package    gradeexport_groupfilter_xls
  * @copyright  2018 Sara Arjona <sara@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace gradeexport_groupfilter_xls\privacy;
 
-defined('MOODLE_INTERNAL') || die();
 
 /**
- * Privacy Subsystem for gradeexport_xls implementing null_provider.
+ * Privacy Subsystem for gradeexport_groupfilter_xls implementing null_provider.
  *
- * @copyright  2018 Sara Arjona <sara@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements \core_privacy\local\metadata\null_provider {
 
@@ -40,7 +37,7 @@ class provider implements \core_privacy\local\metadata\null_provider {
      *
      * @return  string
      */
-    public static function get_reason() : string {
+    public static function get_reason(): string {
         return 'privacy:metadata';
     }
 }
