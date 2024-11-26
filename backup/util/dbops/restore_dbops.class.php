@@ -579,7 +579,21 @@ abstract class restore_dbops {
             CONTEXT_COURSECAT => CONTEXT_COURSE);
 
         /** @var restore_controller $rc */
+        $includeids = [];
         $rc = restore_controller_dbops::load_controller($restoreid);
+        // When duplicating a single activity in a course, we only need to work with the questions from that activity.
+        // First, check if this is a single activity backup.
+        $bc = $DB->get_record('backup_controllers', ['backupid' => $rc->get_tempdir()]);
+        if ($bc && $bc->type == backup::TYPE_1ACTIVITY) {
+            // Get the question ids from the activity.
+            $sql = "SELECT q.id
+                      FROM {question} q
+                      JOIN {question_versions} qv ON qv.questionid = q.id
+                      JOIN {question_references} qrf ON qv.questionbankentryid = qrf.questionbankentryid
+                      JOIN {context} ctx ON ctx.id = qrf.usingcontextid
+                      WHERE ctx.instanceid = ?";
+            $includeids = $DB->get_fieldset_sql($sql, [$bc->itemid]);
+        }
         $plan = $rc->get_plan();
         $after35 = $plan->backup_release_compare('3.5', '>=') && $plan->backup_version_compare(20180205, '>');
         $rc->destroy(); // Always need to destroy.
@@ -671,22 +685,29 @@ abstract class restore_dbops {
                     $questions = self::restore_get_questions($restoreid, $category->id);
 
                     // Collect all the questions for this category into memory so we only talk to the DB once.
-                    $questioncache = $DB->get_records_sql_menu('SELECT q.stamp, q.id
-                                                                  FROM {question} q
-                                                                  JOIN {question_versions} qv
-                                                                    ON qv.questionid = q.id
-                                                                  JOIN {question_bank_entries} qbe
-                                                                    ON qbe.id = qv.questionbankentryid
-                                                                  JOIN {question_categories} qc
-                                                                    ON qc.id = qbe.questioncategoryid
-                                                                 WHERE qc.id = ?', array($matchcat->id));
+                    $sql = "SELECT q.stamp, q.id
+                              FROM {question} q
+                              JOIN {question_versions} qv ON qv.questionid = q.id
+                              JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
+                              JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
+                              WHERE qc.id = ?";
+                    $params = [$matchcat->id];
+                    if (count($includeids) > 0) {
+                        list($insql, $inparams) = $DB->get_in_or_equal($includeids);
+                        $sql .= " AND q.id $insql";
+                        $params = array_merge($params, $inparams);
+                    }
+                    $questioncache = $DB->get_records_sql_menu($sql, $params);
 
                     foreach ($questions as $question) {
-                        $cacheid = $question->stamp . '-' . $question->timemodified;
-                        if (isset($questioncache[$cacheid])) {
-                            $matchqid = $questioncache[$cacheid];
+                        if (empty($includeids) || in_array($question->id, $includeids)) {
+                            if (isset($questioncache[$question->stamp])) {
+                                $matchqid = $questioncache[$question->stamp];
+                            } else {
+                                $matchqid = false;
+                            }
                         } else {
-                            $matchqid = false;
+                            $matchqid = $question->id;
                         }
                         // 5a) No match, check if user can add q
                         if (!$matchqid) {
