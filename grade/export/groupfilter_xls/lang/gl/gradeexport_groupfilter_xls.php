@@ -21,26 +21,23 @@
 // Valladolid, Complutense de Madrid, UPV/EHU, León, Salamanca,
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
-
 /**
- * Strings for component 'gradeexport_groupfilter_xls'.
- *
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
  * @package gradeexport_groupfilter_xls
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
- * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
- * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+
+
 $string['eventgradeexported'] = 'Groupfilter XLS grao exportado';
+$string['group'] = 'Grupos';
+$string['groupfilter_xls:publish'] = 'Publicar a exportación de grao XLS de Groupfilter';
+$string['groupfilter_xls:view'] = 'Use a exportación de notas de Excel';
 $string['pluginname'] = 'Groupfilter Folla de cálculo de Excel';
 $string['privacy:metadata'] = 'O complemento de exportación da folla de cálculo de Excel non almacena ningún dato persoal.';
 $string['timeexported'] = 'Última descarga deste curso';
-$string['groupfilter_xls:publish'] = 'Publicar a exportación de grao XLS de Groupfilter';
-$string['groupfilter_xls:view'] = 'Use a exportación de notas de Excel';
-
-// Added for grade_export_form.
-$string['userfieldsheader'] = 'Campos de usuario';
 $string['userfields_form'] = 'Selección de campos de usuario';
-$string['group'] = 'Grupos';
+$string['userfieldsheader'] = 'Campos de usuario';

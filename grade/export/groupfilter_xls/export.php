@@ -22,18 +22,21 @@
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 /**
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
  * @package gradeexport_groupfilter_xls
- * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
- * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
- * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace gradeexport_groupfilter_xls;
+
 require_once('../../../config.php');
-require_once($CFG->dirroot.'/grade/export/lib.php');
+require_once($CFG->dirroot . '/grade/export/lib.php');
 require_once('grade_export_groupfilter_xls.php');
 
-$id                = required_param('id', PARAM_INT); // Course id.
+$id = required_param('id', PARAM_INT); // Course id.
 $PAGE->set_url('/grade/export/groupfilter_xls/export.php', ['id' => $id]);
 
 if (!$course = $DB->get_record('course', ['id' => $id])) {
@@ -41,7 +44,7 @@ if (!$course = $DB->get_record('course', ['id' => $id])) {
 }
 
 require_login($course);
-$context = context_course::instance($id);
+$context = \context_course::instance($id);
 $groupid = groups_get_course_group($course, true);
 
 require_capability('moodle/grade:export', $context);
@@ -52,9 +55,19 @@ require_capability('gradeexport/groupfilter_xls:view', $context);
 $key = optional_param('key', '', PARAM_RAW);
 if (!empty($CFG->gradepublishing) && !empty($key)) {
     $actionbar = new \core_grades\output\export_publish_action_bar($context, 'groupfilter_xls');
-    print_grade_page_head($COURSE->id, 'export', 'groupfilter_xls',
+    print_grade_page_head(
+        $COURSE->id,
+        'export',
+        'groupfilter_xls',
         get_string('exportto', 'grades') . ' ' . get_string('pluginname', 'gradeexport_groupfilter_xls'),
-        false, false, true, null, null, null, $actionbar);
+        false,
+        false,
+        true,
+        null,
+        null,
+        null,
+        $actionbar
+    );
 }
 
 if (groups_get_course_groupmode($COURSE) == SEPARATEGROUPS && !has_capability('moodle/site:accessallgroups', $context)) {
@@ -63,16 +76,21 @@ if (groups_get_course_groupmode($COURSE) == SEPARATEGROUPS && !has_capability('m
     }
 }
 
-$mform = new \gradeexport_groupfilter_xls\grade_export_form(null,
-    array('publishing' => true, 'simpleui' => true, 'multipledisplaytypes' => true));
+$mform = new grade_export_form(
+    null,
+    ['publishing' => true, 'simpleui' => true, 'multipledisplaytypes' => true]
+);
 // Form processing and displaying is done here.
 if ($mform->is_cancelled()) {
     // If there is a cancel element on the form, and it was pressed,
     // then the `is_cancelled()` function will return true.
     // You can handle the cancel operation here.
-    redirect( $CFG->wwwroot . "/grade/export/groupfilter_xls/index.php?id=" . $id , "Form Canceled",
-        null, \core\output\notification::NOTIFY_INFO);
-
+    redirect(
+        $CFG->wwwroot . "/grade/export/groupfilter_xls/index.php?id=" . $id,
+        "Form Canceled",
+        null,
+        \core\output\notification::NOTIFY_INFO
+    );
 } else if ($fromform = $mform->get_data()) {
     // When the form is submitted, and the data is successfully validated,
     // the `get_data()` function will return the data posted in the form.
@@ -81,22 +99,17 @@ if ($mform->is_cancelled()) {
 } else {
     // This branch is executed if the form is submitted but the data doesn't
     // validate and the form should be redisplayed or on the first display of the form.
-
-    // Set anydefault data (if any).
-    // $mform->set_data($toform);
-
     // Display the form.
     $mform->display();
 }
 
 // If the gradepublishing is enabled and user key is selected print the grade publishing link.
 if (!empty($CFG->gradepublishing) && !empty($key)) {
-    groups_print_course_menu($course, 'index.php?id='.$id);
+    \groups_print_course_menu($course, 'index.php?id=' . $id);
     echo $export->get_grade_publishing_url();
     echo $OUTPUT->footer();
 } else {
-    $event = \gradeexport_groupfilter_xls\event\grade_exported::create(array('context' => $context));
+    $event = \gradeexport_groupfilter_xls\event\grade_exported::create(['context' => $context]);
     $event->trigger();
     $export->print_grades();
 }
-

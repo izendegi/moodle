@@ -21,26 +21,22 @@
 // Valladolid, Complutense de Madrid, UPV/EHU, León, Salamanca,
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
-
 /**
- * Strings for component 'gradeexport_groupfilter_xls'.
- *
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
  * @package gradeexport_groupfilter_xls
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
- * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
- * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['eventgradeexported'] = 'S\'han exportat les qualificacions en format XLS (informació del grup inclosa)';
-$string['pluginname'] = 'Groupfilter Full de càlcul Excel';
-$string['privacy:metadata'] = 'El connector d\'exportació de qualificacions en format XLS no emmagatzema cap dada personal.';
-$string['timeexported'] = 'Darrera descàrrega d\'aquest curs';
-$string['groupfilter_xls:publish'] = 'Publica l\'exportació de les qualificacions en format XLS (informació del grup inclosa)';
-$string['groupfilter_xls:view'] = 'Utilitza l\'exportació de les qualificacions en format XLS';
 
-// Added for grade_export_form.
-$string['userfieldsheader'] = 'Camps d\'usuari';
-$string['userfields_form'] = 'Selecció de camps d\'usuari';
+$string['eventgradeexported'] = 'Groupfilter xls grau exportat';
 $string['group'] = 'Grups';
+$string['groupfilter_xls:publish'] = 'Publiqueu l\'exportació del grau de xls Groupfilter';
+$string['groupfilter_xls:view'] = 'Utilitzeu l\'exportació de qualificacions d\'Excel';
+$string['pluginname'] = 'Groupfilter Full de càlcul Excel';
+$string['privacy:metadata'] = 'El connector d\'exportació de la qualificació del full de càlcul d\'Excel no emmagatzema cap dada personal.';
+$string['timeexported'] = 'Última descàrrega d\'aquest curs';
+$string['userfields_form'] = 'Selecció de camps d\'usuari';
+$string['userfieldsheader'] = 'Camps d\'usuari';

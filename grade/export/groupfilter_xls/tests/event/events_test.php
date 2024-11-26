@@ -13,17 +13,24 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+/**
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
+ * @package gradeexport_groupfilter_xls
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
-namespace gradeexport_groupfilter_xls\event;
+namespace gradeexport_groupfilter_xls;
+
+use gradeexport_groupfilter_txt\event\grade_exported;
 
 /**
  * XLS grade export events test cases.
  *
- * @package gradeexport_groupfilter_xls_xls
- * @copyright  2016 Zane Karl zkarl@oid.ucla.edu
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class events_test extends \advanced_testcase {
+final class events_test extends \advanced_testcase {
 
     /**
      * Setup is called before calling test case.
@@ -34,15 +41,17 @@ class events_test extends \advanced_testcase {
 
     /**
      * Test course_module_instance_list_viewed event.
+     *
+     * @covers \gradeexport_xls\event\grade_exported::create
      */
-    public function test_logging() {
+    public function test_logging(): void {
         // There is no proper API to call to trigger this event, so what we are
         // doing here is simply making sure that the events returns the right information.
         $course = $this->getDataGenerator()->create_course();
         $params = [
             'context' => \context_course::instance($course->id),
         ];
-        $event = \gradeexport_xls\event\grade_exported::create($params);
+        $event = grade_exported::create($params);
         // Triggering and capturing the event.
         $sink = $this->redirectEvents();
         $event->trigger();
@@ -50,8 +59,8 @@ class events_test extends \advanced_testcase {
         $this->assertCount(1, $events);
         $event = reset($events);
         // Checking that the event contains the expected values.
-        $this->assertInstanceOf('\gradeexport_xls\event\grade_exported', $event);
+        $this->assertInstanceOf('\gradeexport_groupfilter_txt\event\grade_exported', $event);
         $this->assertEquals(\context_course::instance($course->id), $event->get_context());
-        $this->assertEquals('xls', $event->get_export_type());
+        $this->assertEquals('groupfilter', $event->get_export_type());
     }
 }
