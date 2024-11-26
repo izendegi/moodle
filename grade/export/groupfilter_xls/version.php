@@ -21,23 +21,18 @@
 // Valladolid, Complutense de Madrid, UPV/EHU, León, Salamanca,
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
-
 /**
- * Version details
- *
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
  * @package gradeexport_groupfilter_xls
- * @subpackage xls
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
- * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
- * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
- * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2023043002;        // The current plugin version (Date: YYYYMMDDXX).
+$plugin->version   = 2024110701;        // The current plugin version (Date: YYYYMMDDXX).
 $plugin->requires  = 2022041911;        // Requires this Moodle version.
-$plugin->release   = "0.0.3";
-$plugin->maturity  = MATURITY_BETA;
 $plugin->component = 'gradeexport_groupfilter_xls'; // Full name of the plugin (used for diagnostics).
