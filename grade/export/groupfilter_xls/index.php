@@ -22,10 +22,11 @@
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 /**
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
  * @package gradeexport_groupfilter_xls
- * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
- * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
- * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
