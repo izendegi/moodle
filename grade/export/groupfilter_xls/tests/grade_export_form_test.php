@@ -22,28 +22,36 @@
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 /**
- * Display information about all the gradereport_gradeconfigwizard modules in the requested course. *
- * @package gradeconfigwizard
- * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
- * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
- * @author Joan Carbassa (IThinkUPC) <joan.carbassa@ithinkupc.com>
- * @author Yerai Rodríguez (IThinkUPC) <yerai.rodriguez@ithinkupc.com>
- * @author Marc Geremias (IThinkUPC) <marc.geremias@ithinkupc.com>
- * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
+ * @package gradeexport_groupfilter_xls
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Joan Carbassa (IThinkUPC) &lt;joan.carbassa@ithinkupc.com&gt;
+ * @author Yerai Rodríguez (IThinkUPC) &lt;yerai.rodriguez@ithinkupc.com&gt;
+ * @author Marc Geremias (IThinkUPC) &lt;marc.geremias@ithinkupc.com&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace gradeexport_groupfilter_xls;
 
-defined('MOODLE_INTERNAL') || die();
-
-class  groupfilter_xls_grade_export_form_test extends \advanced_testcase {
+/**
+ * Class grade_export_form_test
+ *
+ * This class represents a unit test case for the grade_export_form class
+ * in the gradeexport_groupfilter_txt plugin.
+ *
+ * @coversDefaultClass \gradeexport_groupfilter_txt\grade_export_form
+ * @group gradeexport_groupfilter_txt
+ */
+final class grade_export_form_test extends \advanced_testcase {
 
     /**
      * Test form_constructor.
      *
      * @covers \gradeexport_groupfilter_xls\grade_export_form::definition
      */
-    public function test_form_constructor() {
+    public function test_form_constructor(): void {
         $this->resetAfterTest(true);
         $formoptions = [
             'includeseparator' => true,
@@ -51,7 +59,7 @@ class  groupfilter_xls_grade_export_form_test extends \advanced_testcase {
             'simpleui' => true,
             'multipledisplaytypes' => true,
         ];
-        $mform = new \gradeexport_groupfilter_xls\grade_export_form(null, $formoptions);
+        $mform = new grade_export_form(null, $formoptions);
         $this->assertNotEmpty($mform, 'userfields created in the form');
     }
 
