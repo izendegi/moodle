@@ -22,11 +22,11 @@
 // Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 /**
-
+ * Display information about all the gradeexport_groupfilter_xls modules in the requested course. *
  * @package gradeexport_groupfilter_xls
- * @copyright 2023 Proyecto UNIMOODLE {@link https://unimoodle.github.io}
- * @author UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
- * @author Miguel Gutiérrez (UPCnet) <miguel.gutierrez.jariod@upcnet.es>
+ * @copyright 2023 Proyecto UNIMOODLE
+ * @author UNIMOODLE Group (Coordinator) &lt;direccion.area.estrategia.digital@uva.es&gt;
+ * @author Miguel Gutiérrez (UPCnet) &lt;miguel.gutierrez.jariod@upcnet.es&gt;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -38,11 +38,17 @@ require_once($CFG->dirroot.'/grade/export/grade_export_form.php');
 require_once($CFG->dirroot.'/user/lib.php');
 require_once($CFG->dirroot.'/user/profile/lib.php');
 
+/**
+ * Class grade_export_form
+ *
+ * This class represents a form for exporting grades.
+ * It extends the \grade_export_form class.
+ */
 class grade_export_form extends \grade_export_form {
-    public function __construct($action=null, $customdata=null, $method='post', $target='', $attributes=null,
-                                $editable=true, $ajaxformdata=null) {
-        parent::__construct($action, $customdata, $method, $target, $attributes, $editable, $ajaxformdata);
-    }
+
+    /**
+     * Define the form elements for grade_export_form
+     */
     public function definition() {
         global $CFG;
         parent::definition();
