@@ -162,10 +162,11 @@ function multilang2_actual_test_cases(): array {
             '¡Hola!
              This text is common for all languages because it is outside of all lang blocks.
              ',
-            '{mlang other}Hello!{mlang}{mlang es,es_mx}¡Hola!{mlang}
+            '{mlang other}Hello!{mlang}{mlang es}¡Hola!{mlang}
              This text is common for all languages because it is outside of all lang blocks.
              {mlang other}Bye!{mlang}{mlang it}Ciao!{mlang}',
-            'es_mx', ['es_mx' => 'es'],
+            'es_mx',
+            ['es_mx' => 'es'],
         ],
         [
             '
@@ -270,6 +271,62 @@ function multilang2_actual_test_cases(): array {
             123.0,
             123.0,
             'es',
+        ],
+        [
+            'Some Canadian French text.Some French text.',
+            '{mlang fr_ca}Some Canadian French text.{mlang}'
+            . '{mlang en}Some English text.{mlang}'
+            . '{mlang es}Some Spanish text.{mlang}'
+            . '{mlang en_kids}Some English for Kids text.{mlang}'
+            . '{mlang fr}Some French text.{mlang}',
+            'fr_ca',
+            [
+                'fr_ca' => 'fr',
+                'en_kids' => 'en',
+            ],
+            'default',
+        ],
+        [
+            'Some Canadian French text.',
+            '{mlang fr_ca}Some Canadian French text.{mlang}'
+            . '{mlang en}Some English text.{mlang}'
+            . '{mlang es}Some Spanish text.{mlang}'
+            . '{mlang en_kids}Some English for Kids text.{mlang}'
+            . '{mlang fr}Some French text.{mlang}',
+            'fr_ca',
+            [
+                'fr_ca' => 'fr',
+                'en_kids' => 'en',
+            ],
+            'never',
+        ],
+        [
+            'Some English for Kids text.',
+            '{mlang fr_ca}Some Canadian French text.{mlang}'
+            . '{mlang en}Some English text.{mlang}'
+            . '{mlang es}Some Spanish text.{mlang}'
+            . '{mlang en_kids}Some English for Kids text.{mlang}'
+            . '{mlang fr}Some French text.{mlang}',
+            'en_kids',
+            [
+                'fr_ca' => 'fr',
+                'en_kids' => 'en',
+            ],
+            'default',
+        ],
+        [
+            'Some English text.Some English for Kids text.',
+            '{mlang fr_ca}Some Canadian French text.{mlang}'
+            . '{mlang en}Some English text.{mlang}'
+            . '{mlang es}Some Spanish text.{mlang}'
+            . '{mlang en_kids}Some English for Kids text.{mlang}'
+            . '{mlang fr}Some French text.{mlang}',
+            'en_kids',
+            [
+                'fr_ca' => 'fr',
+                'en_kids' => 'en',
+            ],
+            'include_en',
         ],
     ];
 }
