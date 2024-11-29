@@ -685,29 +685,54 @@ abstract class restore_dbops {
                     $questions = self::restore_get_questions($restoreid, $category->id);
 
                     // Collect all the questions for this category into memory so we only talk to the DB once.
-                    $sql = "SELECT q.stamp, q.id
-                              FROM {question} q
-                              JOIN {question_versions} qv ON qv.questionid = q.id
-                              JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
-                              JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
-                              WHERE qc.id = ?";
+                    $sql = "SELECT
+                                q.id,
+                                q.stamp,
+                                q.qtype,
+                                q.name,
+                                q.questiontext
+                            FROM {question} q
+                            JOIN {question_versions} qv
+                                ON qv.questionid = q.id
+                            JOIN {question_bank_entries} qbe
+                                ON qbe.id = qv.questionbankentryid
+                            JOIN {question_categories} qc
+                                ON qc.id = qbe.questioncategoryid
+                            WHERE qc.id = ?";
                     $params = [$matchcat->id];
-                    if (count($includeids) > 0) {
-                        list($insql, $inparams) = $DB->get_in_or_equal($includeids);
-                        $sql .= " AND q.id $insql";
-                        $params = array_merge($params, $inparams);
+                    if (!empty($includeids)) {
+                        [$in_sql, $in_params] = $DB->get_in_or_equal($includeids);
+                        $sql .= " AND q.id $in_sql";
+                        $params = array_merge($params, $in_params);
                     }
-                    $questioncache = $DB->get_records_sql_menu($sql, $params);
+
+                    // Map questions with mixer of question properties.
+                    $questioncache = [];
+
+                    $question_records = $DB->get_recordset_sql($sql, $params);
+                    foreach ($question_records as $question_record) {
+                        $question_checksum = $question_record->stamp;
+                        $question_checksum .= '-' . $question_record->qtype;
+                        $question_checksum .= '-' . $question_record->name;
+                        $question_checksum .= '-' . $question_record->questiontext;
+                        $question_checksum = md5($question_checksum, true);
+                        $questioncache[$question_checksum] = $question_record->id;
+                    }
+                    $question_records->close();
 
                     foreach ($questions as $question) {
-                        if (empty($includeids) || in_array($question->id, $includeids)) {
-                            if (isset($questioncache[$question->stamp])) {
-                                $matchqid = $questioncache[$question->stamp];
-                            } else {
-                                $matchqid = false;
-                            }
-                        } else {
+                        $question_checksum = $question->stamp;
+                        $question_checksum .= '-' . $question->qtype;
+                        $question_checksum .= '-' . $question->name;
+                        $question_checksum .= '-' . $question->questiontext;
+                        $question_checksum = md5($question_checksum, true);
+
+                        if (!empty($includeids) && !in_array($question->id, $includeids)) {
                             $matchqid = $question->id;
+                        } elseif (isset($questioncache[$question_checksum])) {
+                            $matchqid = $questioncache[$question_checksum];
+                        } else {
+                            $matchqid = false;
                         }
                         // 5a) No match, check if user can add q
                         if (!$matchqid) {
