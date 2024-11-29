@@ -579,7 +579,21 @@ abstract class restore_dbops {
             CONTEXT_COURSECAT => CONTEXT_COURSE);
 
         /** @var restore_controller $rc */
+        $includeids = [];
         $rc = restore_controller_dbops::load_controller($restoreid);
+        // When duplicating a single activity in a course, we only need to work with the questions from that activity.
+        // First, check if this is a single activity backup.
+        $bc = $DB->get_record('backup_controllers', ['backupid' => $rc->get_tempdir()]);
+        if ($bc && $bc->type == backup::TYPE_1ACTIVITY) {
+            // Get the question ids from the activity.
+            $sql = "SELECT q.id
+                      FROM {question} q
+                      JOIN {question_versions} qv ON qv.questionid = q.id
+                      JOIN {question_references} qrf ON qv.questionbankentryid = qrf.questionbankentryid
+                      JOIN {context} ctx ON ctx.id = qrf.usingcontextid
+                      WHERE ctx.instanceid = ?";
+            $includeids = $DB->get_fieldset_sql($sql, [$bc->itemid]);
+        }
         $plan = $rc->get_plan();
         $after35 = $plan->backup_release_compare('3.5', '>=') && $plan->backup_version_compare(20180205, '>');
         $rc->destroy(); // Always need to destroy.
@@ -671,19 +685,52 @@ abstract class restore_dbops {
                     $questions = self::restore_get_questions($restoreid, $category->id);
 
                     // Collect all the questions for this category into memory so we only talk to the DB once.
-                    $questioncache = $DB->get_records_sql_menu('SELECT q.stamp, q.id
-                                                                  FROM {question} q
-                                                                  JOIN {question_versions} qv
-                                                                    ON qv.questionid = q.id
-                                                                  JOIN {question_bank_entries} qbe
-                                                                    ON qbe.id = qv.questionbankentryid
-                                                                  JOIN {question_categories} qc
-                                                                    ON qc.id = qbe.questioncategoryid
-                                                                 WHERE qc.id = ?', array($matchcat->id));
+                    $sql = "SELECT
+                                q.id,
+                                q.stamp,
+                                q.qtype,
+                                q.name,
+                                q.questiontext
+                            FROM {question} q
+                            JOIN {question_versions} qv
+                                ON qv.questionid = q.id
+                            JOIN {question_bank_entries} qbe
+                                ON qbe.id = qv.questionbankentryid
+                            JOIN {question_categories} qc
+                                ON qc.id = qbe.questioncategoryid
+                            WHERE qc.id = ?";
+                    $params = [$matchcat->id];
+                    if (!empty($includeids)) {
+                        [$in_sql, $in_params] = $DB->get_in_or_equal($includeids);
+                        $sql .= " AND q.id $in_sql";
+                        $params = array_merge($params, $in_params);
+                    }
+
+                    // Map questions with mixer of question properties.
+                    $questioncache = [];
+
+                    $question_records = $DB->get_recordset_sql($sql, $params);
+                    foreach ($question_records as $question_record) {
+                        $question_checksum = $question_record->stamp;
+                        $question_checksum .= '-' . $question_record->qtype;
+                        $question_checksum .= '-' . $question_record->name;
+                        $question_checksum .= '-' . $question_record->questiontext;
+                        $question_checksum = md5($question_checksum, true);
+                        $questioncache[$question_checksum] = $question_record->id;
+                    }
+                    $question_records->close();
 
                     foreach ($questions as $question) {
-                        if (isset($questioncache[$question->stamp])) {
-                            $matchqid = $questioncache[$question->stamp];
+                        $question_checksum = $question->stamp;
+                        $question_checksum .= '-' . $question->qtype;
+                        $question_checksum .= '-' . $question->name;
+                        $question_checksum .= '-' . $question->questiontext;
+                        $question_checksum = md5($question_checksum, true);
+
+                        if (!empty($includeids) && !in_array($question->id, $includeids)) {
+                            $matchqid = $question->id;
+                        } elseif (isset($questioncache[$question_checksum])) {
+                            $matchqid = $questioncache[$question_checksum];
                         } else {
                             $matchqid = false;
                         }
