@@ -706,7 +706,23 @@ class enrol_database_plugin extends enrol_plugin {
                     $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE);
                     $trace->output("unsuspending $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                 }
+                
+                // ToDo: Añadir setting (upgrademanualenrolment o similar) para controlar esta funcionalidad 
+                $sql_check_manual_enrol = "SELECT ue.id 
+                                             FROM {user_enrolments} ue
+                                             JOIN {enrol} e ON e.id = ue.enrolid
+                                            WHERE e.enrol = 'manual'
+                                              AND ue.userid = :userid
+                                              AND e.courseid = :courseid";
+                $params_check_manual = array('userid' => $userid, 'courseid' => $course->id);
+                $manual_enrol = $DB->get_record_sql($sql_check_manual_enrol, $params_check_manual);
+
+                if ($manual_enrol) {
+                    $DB->delete_records('user_enrolments', array('id' => $manual_enrol->id));
+                    $trace->output("manual enrolment removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
+                }
             }
+            
 
             foreach ($requestedroles as $userid => $userroles) {
                 // Assign extra roles.
