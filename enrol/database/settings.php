@@ -19,6 +19,11 @@
  *
  * @package    enrol_database
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
+ * @copyright  2013 Iñaki Arenaza {@link https://www.mondragon.edu}
+ * @copyright  2016 Julen Pardo {@link https://www.mondragon.edu}
+ * @copyright  2019 Kepa Urzelai {@link https://www.mondragon.edu}
+ * @copyright  2023 Iñigo Zendegi {@link https://www.mondragon.edu}
+ * @copyright  2024 Ibai Mutiloa {@link https://www.mondragon.edu}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -103,6 +108,8 @@ if ($ADMIN->fulltree) {
                      ENROL_EXT_REMOVED_SUSPEND        => get_string('extremovedsuspend', 'enrol'),
                      ENROL_EXT_REMOVED_SUSPENDNOROLES => get_string('extremovedsuspendnoroles', 'enrol'));
     $settings->add(new admin_setting_configselect('enrol_database/unenrolaction', get_string('extremovedaction', 'enrol'), get_string('extremovedaction_help', 'enrol'), ENROL_EXT_REMOVED_UNENROL, $options));
+
+    $settings->add(new admin_setting_configcheckbox('enrol_database/manualenrol_cleaning', get_string('manualenrol_cleaning', 'enrol_database'), get_string('manualenrol_cleaning_desc', 'enrol_database'), 0));
 
     //--- creation of new courses ----------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_database_newcoursesheader', get_string('settingsheadernewcourses', 'enrol_database'), ''));
