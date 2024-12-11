@@ -25,6 +25,7 @@
  * @copyright  2016 Julen Pardo {@link https://www.mondragon.edu}
  * @copyright  2019 Kepa Urzelai {@link https://www.mondragon.edu}
  * @copyright  2023 Iñigo Zendegi {@link https://www.mondragon.edu}
+ * @copyright  2024 Ibai Mutiloa {@link https://www.mondragon.edu}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -477,7 +478,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
-
+        $manual_enrol_check = $this->get_config('manualenrol_cleaning');
         // Create roles mapping.
         $allroles = get_all_roles();
         if (!isset($allroles[$defaultrole])) {
@@ -691,6 +692,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             // Enrol all users and sync roles.
             foreach ($requestedenrols as $userid => $userroles) {
+
                 foreach ($userroles as $roleid) {
                     if (empty($currentenrols[$userid])) {
                         $this->enrol_user($instance, $userid, $roleid, 0, 0, ENROL_USER_ACTIVE);
@@ -707,19 +709,28 @@ class enrol_database_plugin extends enrol_plugin {
                     $trace->output("unsuspending $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                 }
                 
-                // ToDo: Añadir setting (upgrademanualenrolment o similar) para controlar esta funcionalidad 
-                $sql_check_manual_enrol = "SELECT ue.id 
-                                             FROM {user_enrolments} ue
-                                             JOIN {enrol} e ON e.id = ue.enrolid
-                                            WHERE e.enrol = 'manual'
-                                              AND ue.userid = :userid
-                                              AND e.courseid = :courseid";
-                $params_check_manual = array('userid' => $userid, 'courseid' => $course->id);
-                $manual_enrol = $DB->get_record_sql($sql_check_manual_enrol, $params_check_manual);
-
-                if ($manual_enrol) {
-                    $DB->delete_records('user_enrolments', array('id' => $manual_enrol->id));
-                    $trace->output("manual enrolment removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
+                // If enabled, check if there is a manual enrolment and remove the (now) duplicated enrolment by removing the previous manual enrolment
+                if $manual_enrol_check {
+                    $sql_check_manual_enrol = "SELECT e.id AS enrolid
+                                                 FROM {user_enrolments} ue
+                                                 JOIN {enrol} e ON e.id = ue.enrolid
+                                                WHERE e.enrol = 'manual'
+                                                  AND ue.userid = :userid
+                                                  AND e.courseid = :courseid
+                                               ";
+                    $params_check_manual = array('userid' => $userid, 'courseid' => $course->id);
+                    $manual_enrol = $DB->get_record_sql($sql_check_manual_enrol, $params_check_manual);
+                    if ($manual_enrol) {
+                        $enrol_plugin = enrol_get_plugin('manual');
+                        $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
+                
+                        if ($manual_instance) {
+                            $enrol_plugin->unenrol_user($manual_instance, $userid);
+                            $trace->output("manual enrolment removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
+                        } else {
+                            $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.",1);
+                        }
+                    }
                 }
             }
             
