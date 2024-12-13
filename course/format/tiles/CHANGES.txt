@@ -585,3 +585,10 @@ Other
 ====================
 - Improve sub-sections expanded state handling (e.g. when persist when content is reloaded)
 - Add behat test for sub-sections
+
+4.5.0.2 (2024102550)
+====================
+- Fix missing section link in breadcrumb in activity
+- Fix new number picker button titles
+- Remove jquery from behat tests
+- Remove redundant local icons for resource subtiles in Moodle 4.3+
