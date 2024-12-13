@@ -149,7 +149,7 @@
 
         {{#dimmed}}
             {{#clickable}}
-                <a href="{{url}}" class="dim-overlay cm-link"{{#modalType}} data-action="launch-tiles-cm-modal"{{/modalType}}
+                <a id="cm-link-{{id}}" href="{{url}}" class="dim-overlay cm-link"{{#modalType}} data-action="launch-tiles-cm-modal"{{/modalType}}
                     {{#onclick}} onclick="{{{onclick}}}"{{/onclick}}>
                 </a>
             {{/clickable}}

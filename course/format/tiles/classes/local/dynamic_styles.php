@@ -86,12 +86,14 @@ class dynamic_styles {
         $course = $courseid ? $format->get_course() : null;
         $basecolourhex = !$course ? self::DEFAULT_COLOUR : self::get_tile_base_colour($course->basecolour ?? '');
         $tilestyle = get_config('format_tiles', 'tilestyle') ?? \format_tiles\output\course_output::TILE_STYLE_STANDARD;
+        $usinghighcontrast = \format_tiles\local\util::using_high_contrast();
 
         $outputdata = [
             'courseid' => $courseid,
             "isstyle-$tilestyle" => true,
             'isstyle1or2' => $tilestyle == 1 || $tilestyle == 2,
-            'base_colour_rgb' => $basecolourhex ? self::rgbcolour($basecolourhex) : null,
+            'base_colour_rgb' => $usinghighcontrast ? "0,0,0" : ($basecolourhex ? self::rgbcolour($basecolourhex) : null),
+            'high_contrast_black' => '#000',
             'usesubtiles' => $course->courseusesubtiles ?? false,
             // Shade heading bar will be 1 (used) or 0 (not used) now.
             // (Legacy values could be 'standard' for not used, or a colour for used, but in that case treat as 'used').
@@ -103,7 +105,7 @@ class dynamic_styles {
 
         if (get_config('format_tiles', 'allowphototiles')) {
             $outputdata['allowphototiles'] = 1;
-            $outputdata['photo_tile_text_bg_opacity'] =
+            $outputdata['photo_tile_text_bg_opacity'] = $usinghighcontrast ? 1 :
                 1.0 - (float)get_config('format_tiles', 'phototiletitletransarency');
 
             // The best values here vary by theme and browser, so mostly come from admin setting.

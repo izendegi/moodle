@@ -161,6 +161,7 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
             openTile = 0;
             $(Selector.BODY).removeClass(ClassNames.HAS_OPEN_TILE);
             overlay.fadeOut(300);
+            overlay.css('min-height', 'inherit');
 
             // If any moodle dialogues are open, close them (e.g. glossary auto links).
             $(Selector.MOODLE_DIALOGUE).remove();
@@ -392,6 +393,27 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
          */
         var expandSection = function (contentArea, sectionNumber) {
             const tile = $("#tile-" + sectionNumber);
+
+            /**
+             * Need to adjust the height of the overlay to ensure it covers full height of expanded section.
+             * The element height we need to match varies depending on Moodle version.
+             * For Moodle 4.3+ we can use #page.  For Moodle 4.0/4.2 use #topofscroll.
+             * Not all themes may have #topofscroll (e.g. Adaptable) so also use fallback.
+             * Quickly show content area and close all others to grab full height before reverting that for animation.
+             */
+            const setOverlayHeight = () => {
+                const footerHeight = $('#page-footer').outerHeight() ?? 0;
+                $('li.section.state-visible').hide();
+                contentArea.show();
+                const heights = [
+                    $('#page').outerHeight() ?? 0,
+                    ($('#topofscroll.main-inner').outerHeight() ?? 0) + ($('#page-header').outerHeight() ?? 0),
+                    $('#page-content').outerHeight() ?? 0
+                ];
+                contentArea.hide();
+                overlay.css('min-height', `${Math.ceil(Math.max(...heights)) +  footerHeight + 20}px`);
+            };
+
             var expandAndScroll = function () {
                 // Scroll to the top of content bearing section
                 // we have to wait until possible reOrg and slide down totally before calling this, else co-ords are wrong.
@@ -453,6 +475,7 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
             };
 
             contentArea.addClass(ClassNames.STATE_VISIBLE);
+            setOverlayHeight();
             overlay.fadeIn(300);
             tile.addClass(ClassNames.SELECTED);
             $(Selector.BODY).addClass(ClassNames.HAS_OPEN_TILE);
@@ -504,16 +527,28 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
             if (failResult) {
                 // Notify the user and invite them to refresh.  We did get a "failResult" from server,
                 // So it looks like we do have a connection and can launch this.
-                Notification.confirm(
-                    stringStore.sectionerrortitle,
-                    stringStore.sectionerrorstring,
-                    stringStore.refresh,
-                    stringStore.cancel,
-                    function () {
-                        window.location.reload();
-                    },
-                    null
-                );
+                if (failResult.errorcode === 'notavailablecourse') {
+                    Notification.confirm(
+                        stringStore.sectionerrortitle,
+                        failResult.message,
+                        stringStore.continue
+                    );
+                } else {
+                    Notification.confirm(
+                        stringStore.sectionerrortitle,
+                        stringStore.sectionerrorstring,
+                        stringStore.refresh,
+                        stringStore.cancel,
+                        function () {
+                            window.location.reload();
+                        },
+                        null
+                    );
+                    require(["core/log"], function(log) {
+                        log.debug(failResult);
+                    });
+                }
+
                 contentArea.html(""); // Clear loading icon.
             } else {
                 // It looks like we may not have a connection so we can't launch notifications.
@@ -523,10 +558,6 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                     expandSection(contentArea, sectionNum);
                 }, 500);
             }
-            require(["core/log"], function(log) {
-                log.debug(failResult);
-            });
-            throw new Error("Not successful retrieving tile content by AJAX for section " + sectionNum);
         };
 
         /**
@@ -631,6 +662,32 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
             }
         };
 
+
+        /**
+         * Watch the course index and, if a section link is clicked, treat it as a tile click.
+         */
+        const initCourseIndexWatcher = () => {
+            // We have to watch the parent element as the children are not populated on page load.
+            const courseIndex = $('nav#courseindex');
+            if (courseIndex.length > 0) {
+                courseIndex.on('click', (e) => {
+                    const target = $(e.target);
+                    if (target.hasClass('courseindex-link') && target.data('action') === 'togglecourseindexsection') {
+                        const sec = target.closest('.courseindex-section');
+                        const sectionNumber = sec.data('number');
+                        if (sec && sectionNumber !== undefined) {
+                            e.preventDefault();
+                            if (sectionNumber === 0) {
+                                cancelTileSelections(0);
+                            } else {
+                                populateAndExpandSection(courseContextId, sec.data('id'), sectionNumber);
+                            }
+                        }
+                    }
+                });
+            }
+        };
+
         return {
             init: function (
                 courseIdInit,
@@ -720,6 +777,7 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                     // In case some themes don't have a page content div, use window as alternative.
                     const widthObservedElement = pageContentElem.length ? pageContentElem : $(window);
                     var observedElementWidth = widthObservedElement.outerWidth();
+                    const page = $('#page');
 
                     if (useJavascriptNav) {
                         // User is not editing but is usingJS nav to view.
@@ -748,6 +806,7 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                                 cancelTileSelections(dataSection);
                                 browserStorage.setLastVisitedSection(0);
                                 overlay.fadeOut(300);
+                                overlay.css('min-height', 'inherit');
                             } else {
                                 populateAndExpandSection(courseContextId, thisTile.data('true-sectionid'), dataSection);
                             }
@@ -826,6 +885,15 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                             removeUrlParam(/(&|\\?)cmid=\d+/gi);
                             removeUrlParam(/(&|\\?)section=\d+/gi);
                         }
+
+                        // Move overlay into #page element.
+                        // Enables left and right drawers plus scroll bar remain on top when tile is open.
+                        if (page.length) {
+                            $(`#${OVERLAY_ID}`).appendTo(page).css('position', 'absolute');
+                        }
+
+                        initCourseIndexWatcher();
+
                     } else if (fitTilesToWidth) {
                         tileFitter.resizeTilesDivWidth(courseId);
                     }
@@ -955,7 +1023,8 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                         {key: "noconnectionerror", component: "format_tiles"},
                         {key: "show"},
                         {key: "hide"},
-                        {key: "other", component: "format_tiles"}
+                        {key: "other", component: "format_tiles"},
+                        {key: "continue"}
                     ];
                     str.get_strings(stringKeys).done(function (s) {
                         s.forEach(function(str, index) {
@@ -988,7 +1057,7 @@ define(["jquery", "core/templates", "core/ajax", "format_tiles/browser_storage",
                                         const sectionRect = section.getBoundingClientRect();
                                         const right = document.body.clientWidth - sectionRect.right + 30;
                                         const sectionButtons = s.find('.sectionbuttons');
-                                        const topMargin = $("#page").offset().top;
+                                        const topMargin = page.offset().top;
                                         if (sectionRect.top + topMargin < 0 && sectionRect.bottom - topMargin > 0) {
                                             sectionButtons.addClass('position-fixed');
                                             sectionButtons.css({'top': topMargin + 10, 'right': right});
