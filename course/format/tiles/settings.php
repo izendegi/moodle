@@ -24,8 +24,6 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-require_once($CFG->dirroot . '/course/format/tiles/lib.php');
-
 if ($ADMIN->fulltree) {
     $settings = null; // We add our own settings pages and do not want the standard settings link.
 

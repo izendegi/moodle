@@ -89,7 +89,7 @@
             <div id="tile-numbers-container" class="d-flex flex-wrap m-auto">
                 {{#tilenumbers}}
                     <span class="tile-number-container" id="tile-number-container-{{.}}">
-                        <button id="tile-number-{{.}}" class="tile-number m-2 pickericon" data-icon="number_{{.}}" data-dismiss="modal" data-imagetype="tileicon">{{.}}</button>
+                        <button id="tile-number-{{.}}" class="tile-number m-2 pickericon" data-icon="number_{{.}}" data-dismiss="modal" data-imagetype="tileicon" title="{{#str}}icontitle-number, format_tiles, {{.}}{{/str}}">{{.}}</button>
                     </span>
                 {{/tilenumbers}}
             </div>
