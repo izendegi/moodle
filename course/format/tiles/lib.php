@@ -94,12 +94,12 @@ class format_tiles extends core_courseformat\base {
     public function get_section_name($section) {
         global $PAGE;
         $section = $this->get_section($section);
-        if ((string)$section->name !== '') {
+        if (trim((string)$section->name) != '') {
             return format_string($section->name, true, ['context' => context_course::instance($this->courseid)]);
         } else if ($section->section == 0) {
-            return $PAGE->user_is_editing() ? get_string('section0name', 'format_tiles') : '';
+            return $PAGE->user_is_editing() ? self::get_default_section_name($section) : '';
         } else {
-            return get_string('sectionname', 'format_tiles') . ' ' . $section->section;
+            return self::get_default_section_name($section);
         }
     }
 
