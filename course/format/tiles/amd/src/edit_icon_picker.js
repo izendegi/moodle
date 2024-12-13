@@ -238,8 +238,10 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
          * @param {int} section
          * @param {int} allowPhotoTiles whether to render a button for the photo tile form - true or false).
          * @param {string} documentationurl
+         * @param {number} maxNumberIcons
          */
-        var launchIconPicker = function (pageType, courseId, sectionId, section, allowPhotoTiles, documentationurl) {
+        var launchIconPicker = function (pageType, courseId, sectionId, section,
+                                         allowPhotoTiles, documentationurl, maxNumberIcons) {
             // Launch icon picker can be a tile icon (if editing course) or a button (if on a form).
             var populatePhotoLibrary = function(photosHTML, modalRoot, modal) {
                 var photoLibrary = $("#iconpickerphotos");
@@ -291,8 +293,8 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
                         icon_picker_icons: iconSet,
                         showphotos: allowPhotoTiles,
                         sectionnumber: section,
-                        showicons: true, // Always include this but we can hide it when using photos.
-                        tilenumbers: Array.from({length: 21}, (e, i)=> i).filter((e) => e > 0),
+                        showicons: true, // Always include this, but we can hide it when using photos.
+                        tilenumbers: Array.from({length: maxNumberIcons + 1}, (e, i)=> i).filter((e) => e > 0),
                         wwwroot: config.wwwroot,
                         documentationurl: documentationurl
                     }).done(function (iconsHTML) {
@@ -338,7 +340,7 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
                                     }
                                 });
                                 try {
-                                    const pickerIcon = $(".pickericon");
+                                    const pickerIcon = $(".pickericon:not(.tile-number)");
                                     if (typeof pickerIcon.tooltip == 'function') {
                                         pickerIcon.tooltip();
                                     }
@@ -408,7 +410,7 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
         };
 
         return {
-            init: function (courseId, pageType, allowPhotoTiles, documentationurl) {
+            init: function (courseId, pageType, allowPhotoTiles, documentationurl, maxNumberIcons) {
                 $(document).ready(function () {
                     var stringKey = allowPhotoTiles ? "picknewiconphoto" : "picknewicon";
                     str.get_string(stringKey, "format_tiles").done(function (pickAnIcon) {
@@ -431,7 +433,8 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
                             clickedIcon.data('true-sectionid'),
                             clickedIcon.data('section'),
                             allowPhotoTiles,
-                            documentationurl
+                            documentationurl,
+                            maxNumberIcons
                         );
                     });
                 });
