@@ -71,6 +71,7 @@ Feature: Users view subsections on course page in tiles format
     # And I click on "Expand" "link" in the "Subsection1" "activity"
     And I click on "a[data-toggle='collapse']" "css_element" in the "Subsection1" "activity"
     And I hover "Insert an activity or resource before 'Page1 in Subsection1'" "button"
+    And I wait "1" seconds
     And I press "Insert an activity or resource before 'Page1 in Subsection1'"
     And I click on "Add a new Assignment" "link" in the "Add an activity or resource" "dialogue"
     And I set the following fields to these values:
@@ -89,7 +90,9 @@ Feature: Users view subsections on course page in tiles format
     When I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
     And I hover "Insert content before 'Subsection2'" "button"
+    And I wait "1" seconds
     And I press "Insert content before 'Subsection2'"
+    And I wait "1" seconds
     And I click on "Activity or resource" "button" in the ".dropdown-menu.show" "css_element"
     And I click on "Add a new Assignment" "link" in the "Add an activity or resource" "dialogue"
     And I set the following fields to these values:
@@ -112,6 +115,7 @@ Feature: Users view subsections on course page in tiles format
     When I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
     And I hover "Insert content before 'New page'" "button"
+    And I wait "1" seconds
     And I press "Insert content before 'New page'"
     And I click on "Subsection" "link" in the ".dropdown-menu.show" "css_element"
     Then I should see "New subsection" in the "Section 3" "section"
@@ -123,6 +127,7 @@ Feature: Users view subsections on course page in tiles format
     When I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
     And I click on "Add content" "button" in the "General" "section"
+    And I wait "1" seconds
     And I click on "Activity or resource" "button" in the ".dropdown-menu.show" "css_element"
     And I click on "Add a new Forum" "link" in the "Add an activity or resource" "dialogue"
     And I set the field "Forum name" to "New forum"
@@ -134,7 +139,9 @@ Feature: Users view subsections on course page in tiles format
     When I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
     And I hover "Insert content before 'New page'" "button"
+    And I wait "1" seconds
     And I press "Insert content before 'New page'"
+    And I wait "1" seconds
     And I click on "Activity or resource" "button" in the ".dropdown-menu.show" "css_element"
     And I click on "Add a new Forum" "link" in the "Add an activity or resource" "dialogue"
     And I set the field "Forum name" to "New forum"
