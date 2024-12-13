@@ -607,3 +607,11 @@ Other
 4.5.0.4 (2024121250)
 ====================
 - Adjust tests
+
+4.5.0.5 (2024121251)
+====================
+- Fix JS build file course.min.js
+
+4.5.0.6 (2024121252)
+====================
+- Add missing change to version.php
