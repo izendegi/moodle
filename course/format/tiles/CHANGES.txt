@@ -76,7 +76,7 @@
 - Improve mobile CSS
 - Overall progress indicator to show even when filter bar is hidden
 - Cooperate better with Snap theme
-- Re-initialise media player when loadin content via AJAX
+- Re-initialise media player when loading content via AJAX
 - Add icons to JS and data pref menu options
 - Use formatted text for cm description
 - Dim hidden label in non subtiles mode
@@ -592,3 +592,18 @@ Other
 - Fix new number picker button titles
 - Remove jquery from behat tests
 - Remove redundant local icons for resource subtiles in Moodle 4.3+
+- Improve appearance of bigbluebutton and Turnitin icons on sub-tiles
+
+4.5.0.3 (2024120950)
+=====================
+- High contrast mode available (shown if activated by user preference)
+- Simplify $displaysection
+- Improve scroll bar access when tile open (overlay in centre section only, exposing left and right drawers to user)
+- Include "General" heading (for section zero) at top of course index
+- In course index, clicks on section headings can open sections using JS nav (if enabled)
+- Remove debug message
+- Allow null displaysection on js init
+
+4.5.0.4 (2024121250)
+====================
+- Adjust tests
