@@ -221,7 +221,7 @@ class behat_format_tiles extends behat_base {
             $cms[$cminfo->name] = $cminfo->id;
         }
         $this->wait_for_pending_js(); // Wait for AJAX request to complete.
-        $this->getSession()->wait(1000);
+        $this->getSession()->wait(1500);
         if (!isset($cms[$activitytitle])) {
             throw new \Behat\Mink\Exception\ExpectationException(
             "Activity type '$modtype' title '$activitytitle' not found in $coursefullname."
@@ -367,6 +367,9 @@ class behat_format_tiles extends behat_base {
      * @throws Exception
      */
     public function click_format_tiles_activity($activityname) {
+        // As the open tile overlay is moved when page is ready, add a short pause to ensure that is complete.
+        $this->wait_for_pending_js();
+        $this->getSession()->wait(100);
         $this->execute("behat_general::i_click_on_in_the", [$this->escape($activityname), 'link', '#page-content', 'css_element']);
     }
 

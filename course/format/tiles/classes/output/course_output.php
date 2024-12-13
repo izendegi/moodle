@@ -119,6 +119,11 @@ class course_output implements \renderable, \templatable {
      */
     private $moodlerelease;
 
+    /**
+     * Whether we are using javascript animated navigation.
+     * @var bool
+     */
+    private $usingjsnav;
 
     /**
      * Identifier of the standard tile style (see settings.php).
@@ -161,6 +166,8 @@ class course_output implements \renderable, \templatable {
         $this->courseformatoptions = $this->get_course_format_options($this->fromajax);
 
         $this->moodlerelease = util::get_moodle_release();
+
+        $this->usingjsnav = \format_tiles\local\util::using_js_nav();
     }
 
     /**
@@ -182,7 +189,7 @@ class course_output implements \renderable, \templatable {
                 // Issue #153 avoid multiple glossary auto link JS onclick events.
                 $PAGE->requires->should_create_one_time_item_now('filter_glossary_autolinker');
 
-            } catch (\Exception $e) {
+            } catch (\Exception) {
                 debugging('Could not set glossary autolink created', DEBUG_DEVELOPER);
             }
         }
@@ -222,20 +229,18 @@ class course_output implements \renderable, \templatable {
         $data['istrackeduser'] = $this->completionenabled && $this->completioninfo->is_tracked_user($USER->id);
         $data['from_ajax'] = $this->fromajax;
         $data['ismobile'] = $this->devicetype == \core_useragent::DEVICETYPE_MOBILE;
-        if (isset($SESSION->format_tiles_jssuccessfullyused)) {
-            // If this flag is set, user is being shown JS versions of pages.
-            // Allow them to cancel the session var if they have no JS.
-            $data['showJScancelLink'] = 1;
-        } else {
-            $data['showJScancelLink'] = 0;
-        }
+        // If this session flag is set, user is being shown JS versions of pages.
+        // Allow them to cancel the session var if they have no JS.
+        $data['showJScancelLink'] = isset($SESSION->format_tiles_jssuccessfullyused) ? 1 : 0;
         $data['editing'] = $this->isediting;
         $data['sesskey'] = sesskey();
         $data['showinitialpageloadingicon'] = !$this->isediting
             && \format_tiles\local\dynamic_styles::page_needs_loading_icon($this->course->id);
         $data['jsnavadminallowed'] = get_config('format_tiles', 'usejavascriptnav');
+        $data['usingjsnav'] = $this->usingjsnav ? 1 : 0;
         $data['jsnavuserenabled'] = !get_user_preferences('format_tiles_stopjsnav');
-        $data['usingjsnav'] = $data['jsnavadminallowed'] && $data['jsnavuserenabled'];
+        $data['abovetilescontrols'] = $this->get_above_tiles_controls($data['jsnavadminallowed'], $data['usingjsnav']);
+        $data['hasabovetilescontrols'] = !empty($data['abovetilescontrols']);
 
         $data['useSubtiles'] = get_config('format_tiles', 'allowsubtilesview') && $this->courseformatoptions['courseusesubtiles'];
         $data['usetooltips'] = get_config('format_tiles', 'usetooltips');
@@ -924,6 +929,14 @@ class course_output implements \renderable, \templatable {
                 $iconclass = 'nofilter';
             }
 
+            // Turnitin logo is too small and blurry on subtiles and wrong colour.
+            if ($mod->modname === 'turnitintooltwo' && $this->courseformatoptions['courseusesubtiles']) {
+                if (file_exists("$CFG->dirroot/mod/turnitintooltwo/pix/tii-icon.png")) {
+                    $modiconurl = $output->image_url('tii-icon', 'turnitintooltwo');
+                    $iconclass = '';
+                }
+            }
+
             $moduleobject['icon'] = [
                 'url' => $modiconurl,
                 'label' => $moduleobject['activityname'],
@@ -1200,5 +1213,39 @@ class course_output implements \renderable, \templatable {
             }
         }
         return false;
+    }
+
+    /**
+     * Get an array of the controls to show above the tiles e.g. high contrast mode.
+     * @param bool $jsnavadminallowed
+     * @param bool $usingjsnav
+     * @return array
+     * @throws \coding_exception
+     * @throws \dml_exception|\moodle_exception
+     */
+    public function get_above_tiles_controls(bool $jsnavadminallowed, bool $usingjsnav): array {
+        $controls = [];
+        $courseurl = '/course/view.php';
+        $courseurlparams = ['id' => $this->course->id, 'sesskey' => sesskey()];
+        if ($jsnavadminallowed) {
+            $controls[] = [
+                'url' => new \moodle_url($courseurl, array_merge($courseurlparams, ['format-tiles-action' => 'toggleanimatednav'])),
+                'label' => get_string('jsactivate', 'format_tiles'),
+                'iconname' => $usingjsnav ? 'toggle-on' : 'toggle-off',
+                'icontitle' => get_string($usingjsnav ? 'on' : 'off', 'format_tiles'),
+            ];
+        }
+        if (get_config('format_tiles', 'highcontrastmodeallow')) {
+            $usehighcontrast = \format_tiles\local\util::using_high_contrast();
+            $controls[] = [
+                'url' => new \moodle_url(
+                    $courseurl, array_merge($courseurlparams, ['format-tiles-action' => 'togglehighcontrast'])
+                ),
+                'label' => get_string('highcontrastmode', 'format_tiles'),
+                'iconname' => $usehighcontrast ? 'toggle-on' : 'toggle-off',
+                'icontitle' => get_string($usehighcontrast ? 'on' : 'off', 'format_tiles'),
+            ];
+        }
+        return $controls;
     }
 }
