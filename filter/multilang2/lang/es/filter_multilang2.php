@@ -30,16 +30,16 @@ $string['parentlangalwaysen'] = 'Usar idiomas padre siempre, incluído \'en\'.';
 $string['parentlangbehaviour'] = 'Comportamiento de idiomas padre';
 $string['parentlangbehaviour_desc'] = '
 <p>
-    El filtro determina si un bloque de idioma se debe visualizar o no
-    basándose en los idiomas indicados en dicho bloque y en el idioma
-    actual usado por el usuario (en adelante "el idioma del
-    usuario"). Este emparejamiento se puede realizar de tres formas
-    diferentes, a las que el filtro llama <em>comportamiento de
-    idiomas padre</em>:
+  El filtro determina si un bloque de idioma se debe visualizar o no
+  basándose en los idiomas indicados en dicho bloque y en el idioma
+  actual usado por el usuario (en adelante "el idioma del
+  usuario"). Este emparejamiento se puede realizar de tres formas
+  diferentes, a las que el filtro llama <em>comportamiento de idiomas
+  padre</em>:
 </p>
 <ol>
   <li>
-    <b>Usar idiomas padre siempre, excluído \'en\'</b>.
+    <b>Usar idiomas padre siempre, excluído \'en\'.</b>
     <ul>
       <li>
         Este es el valor predeterminado para el ajuste. El filtro
@@ -73,8 +73,8 @@ $string['parentlangbehaviour_desc'] = '
       </li>
       <li>
         Ejemplo: si un bloque de idioma especifica <code>{mlang
-        en}...{mlang}</code>, dicho bloque se visualizará tanto si el
-        idioma del usuario es <code>en_us_k12</code>, como si
+        en_us_k12}...{mlang}</code>, dicho bloque se visualizará tanto
+        si el idioma del usuario es <code>en_us_k12</code>, como si
         es <code>en_us</code>, o si es <code>en</code>.
       </li>
     </ul>
