@@ -339,6 +339,14 @@ if ($ADMIN->fulltree) {
     $default = 1;
     $page->add(new admin_setting_configcheckbox($name, $title, $description, $default));
 
+    $page->add(new admin_setting_heading(
+        'experimentalfeatures', get_string('experimentalfeatures', 'format_tiles'), ''
+    ));
+    $name = 'format_tiles/highcontrastmodeallow';
+    $title = get_string('highcontrastmodeallow', 'format_tiles');
+    $default = 0;
+    $page->add(new admin_setting_configcheckbox($name, $title, get_string('highcontrastmodeallow_desc', 'format_tiles'), $default));
+
     $settingscategory->add($page);
 
     $ADMIN->add('formatsettings', $settingscategory);
