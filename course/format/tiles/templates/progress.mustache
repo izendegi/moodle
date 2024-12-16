@@ -61,11 +61,7 @@
         {{! if the progress is out of zero then do not show the indicator at all}}
         {{#showAsPercent}}
             <div class="progress-indic percent{{#isOverall}} overall-progress align-top{{/isOverall}}  tiles-hide-if-complete" id="tileprogress-{{tileid}}"
-                 data-numcomplete="{{numComplete}}" data-numoutof="{{numOutOf}}"
-                {{#usetooltips}} title="{{{progresstitle}}}" data-toggle="tooltip" data-html="true"{{/usetooltips}}
-                {{^usetooltips}} title="{{{progresstitle}}}"{{/usetooltips}}
-            >
-
+                 data-numcomplete="{{numComplete}}" data-numoutof="{{numOutOf}}">
                 <div class="progress-indic-label">
                   {{#isOverall}}{{#str}}overallprogressshort, format_tiles{{/str}}{{/isOverall}}{{^isOverall}}{{#str}}progress, format_tiles{{/str}}{{/isOverall}} %
                 </div>
@@ -85,10 +81,7 @@
 
         {{^showAsPercent}}
             <div class="progress-indic{{#isOverall}} overall-progress align-top{{/isOverall}}  tiles-hide-if-complete" id="tileprogress-{{tileid}}"
-                 data-numcomplete="{{numComplete}}" data-numoutof="{{numOutOf}}"
-                {{#usetooltips}} title="{{{progresstitle}}}" data-toggle="tooltip" data-html="true"{{/usetooltips}}
-                {{^usetooltips}} title="{{{progresstitle}}}"{{/usetooltips}}
-            >
+                 data-numcomplete="{{numComplete}}" data-numoutof="{{numOutOf}}">
                 {{#str}}progress, format_tiles{{/str}}:
                 <span class="num-complete">{{numComplete}}</span><span> / </span><span class="num-out-of">{{numOutOf}}</span>
             </div>
@@ -98,8 +91,7 @@
         <div class="progress-indic{{#showAsPercent}} percent{{/showAsPercent}} tiles-hide-if-incomplete" id="tileprogress-{{tileid}}-allcomplete"
              data-numcomplete="{{numComplete}}" data-numoutof="{{numOutOf}}">
             {{#isOverall}}
-                <div class="progress-indic progress-indic-label" id="tileallcomplete-{{tileid}}" data-numcomplete="{{numComplete}}"
-                     data-numoutof="{{numOutOf}}" title="{{#str}}allcomplete, format_tiles{{/str}}"{{#usetooltips}} data-toggle="tooltip"{{/usetooltips}}>
+                <div class="progress-indic progress-indic-label" id="tileallcomplete-{{tileid}}" data-numcomplete="{{numComplete}}" data-numoutof="{{numOutOf}}">
                     {{#pix}}completion-check, format_tiles, {{#str}}allcomplete, format_tiles{{/str}}{{/pix}}
                     {{#str}}allcomplete, format_tiles{{/str}}
                 </div>

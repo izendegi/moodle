@@ -183,10 +183,10 @@ class util {
      * @throws \dml_exception
      */
     public static function using_js_nav() {
-        $userstopjsnav = get_user_preferences('format_tiles_stopjsnav', 0);
-
         // JS navigation and modals in Internet Explorer are not supported by this plugin so we disable JS nav here.
-        return !$userstopjsnav && get_config('format_tiles', 'usejavascriptnav') && !\core_useragent::is_ie();
+        return get_config('format_tiles', 'usejavascriptnav')
+            && !get_user_preferences('format_tiles_stopjsnav', 0)
+            && !\core_useragent::is_ie();
     }
 
     /**
@@ -245,27 +245,25 @@ class util {
      * Include AMD module required for tiles course.
      * @param \stdClass $course
      * @param int $contextid
-     * @param int|null $displaysection
+     * @param int|null $sectionnumber
      * @return void
      * @throws \coding_exception
      * @throws \dml_exception
      */
-    public static function init_js($course, int $contextid, $displaysection) {
+    public static function init_js($course, int $contextid, ?int $sectionnumber) {
         global $USER, $SESSION, $PAGE;
         if ($PAGE->user_allowed_editing()) {
-            $SESSION->editing_last_edited_section = $course->id . "-" . $displaysection;
+            $SESSION->editing_last_edited_section = $course->id . "-" . $sectionnumber;
         }
 
         $usejsnav = self::using_js_nav();
-        $jssectionnum = $displaysection ?? optional_param('expand', 0, PARAM_INT);
-
         if (!$PAGE->user_is_editing()) {
             // Initialise the main JS module for non editing users.
             $jsparams = [
                 'courseId' => $course->id,
                 'useJSNav' => $usejsnav, // See also lib.php page_set_course().
                 'isMobile' => \core_useragent::get_device_type() == \core_useragent::DEVICETYPE_MOBILE ? 1 : 0,
-                'jsSectionNum' => $jssectionnum,
+                'jsSectionNum' => $sectionnumber ?? optional_param('expand', 0, PARAM_INT),
                 'displayFilterBar' => $course->displayfilterbar,
                 'assumeDataStoreContent' => get_config('format_tiles', 'assumedatastoreconsent'),
                 'reOpenLastSection' => get_config('format_tiles', 'reopenlastsection'),
@@ -346,5 +344,14 @@ class util {
      */
     public static function get_icon_picker_max_number_icons() {
         return 20;
+    }
+
+    /**
+     * Does the user want high contrast mode?
+     * @return bool
+     */
+    public static function using_high_contrast(): bool {
+        return get_config('format_tiles', 'highcontrastmodeallow')
+            && get_user_preferences('format_tiles_high_contrast_mode', 0);
     }
 }
