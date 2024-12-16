@@ -93,10 +93,17 @@ class condition extends \core_availability\condition {
             return true;
         }
 
+        // Do not continue if $ME is empty and we cannot do URL checks.
+        if (empty($ME)) {
+            return false;
+        }
+
         // Check rare cases, like webservice/pluginfile.php.
         if (strpos($ME, "webservice/") !== false || strpos($ME, "tokenpluginfile.php") !== false) {
             $token = optional_param('token', '', PARAM_ALPHANUM);
-            if ($token) {
+            $ismobileapp = \core_useragent::is_moodle_app();    // Just for those scripts, check if the user agent is a mobile app.
+
+            if ($token || $ismobileapp) {
                 return true;
             }
         }
