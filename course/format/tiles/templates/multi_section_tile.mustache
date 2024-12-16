@@ -74,7 +74,7 @@
                         data-toggle="tooltip" data-html="true" data-original-title="{{activity_summary}}"
                     {{/usetooltips}}{{/activity_summary}}{{/ismobile}}>
                     <div class="tile-textinner{{titleclass}}" id="tileTextin-{{tileid}}">
-                      <h3{{^title}} title="{{{tilearialabel}}}"{{/title}}>{{{title}}}</h3>
+                        {{#title}}<h3{{^title}} title="{{{tilearialabel}}}"{{/title}}>{{{title}}}</h3>{{/title}}
                     </div>
                     {{#availabilitymessage}}
                         {{>format_tiles/availability_info}}

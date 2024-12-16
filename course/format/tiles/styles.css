@@ -30,6 +30,10 @@
 .format-tiles .course-content ul.tiles .tile.tilestyle-2.selected {
     border-top-color: var(--format-tiles-colour-5);
 }
+.format-tiles.format-tiles-high-contrast .course-content ul.tiles .tile.tilestyle-1.selected,
+.format-tiles.format-tiles-high-contrast .course-content ul.tiles .tile.tilestyle-2.selected {
+    box-shadow: 0 0 20px 10px var(--format-tiles-high-contrast-black);
+}
 .format-tiles .embed_cm_modal .modal-header {
     background-color: var(--format-tiles-colour);
 }
@@ -175,17 +179,24 @@
     stroke: #888;
     fill: none;
 }
-
+.format-tiles.format-tiles-high-contrast .progress-indic svg circle.partial {
+    stroke: var(--format-tiles-high-contrast-black);
+}
 .format-tiles .progress-indic svg circle.whole {
     stroke: rgba(0, 0, 0, 0.15);
     fill: none;
 }
-
+.format-tiles.format-tiles-high-contrast .progress-indic svg circle.whole {
+    stroke: rgb(188, 188, 188);
+}
 .format-tiles .progress-indic svg text {
     font-size: 18px;
     font-weight: normal;
     transition: all 0.2s ease-in-out;
     fill: #666;
+}
+.format-tiles.format-tiles-high-contrast .progress-indic svg text {
+    fill: var(--format-tiles-high-contrast-black);
 }
 .format-tiles .tiletopright i.icon.fa {
     font-size: 30px;
@@ -201,6 +212,9 @@
     margin-right: 3px;
     color: #676767;
     font-size: 0.9em;
+}
+.format-tiles.format-tiles-high-contrast .progress-indic .progress-indic-label {
+    color: var(--format-tiles-high-contrast-black);
 }
 
 .format-tiles .overall-progress {
@@ -301,6 +315,9 @@
 .format-tiles .course-content ul li.section.main.moveablesection {
     padding: 30px 10px 10px 10px;
     margin-left: 7px;
+}
+.format-tiles.format-tiles-high-contrast .course-content ul li.section.main.moveablesection {
+    box-shadow: 0 0 20px 10px var(--format-tiles-high-contrast-black);
 }
 .format-tiles .course-content ul.tiles .tile {
     display: flex;
@@ -470,7 +487,8 @@
 .format-tiles li.activity .tileiconcontainer .tile-icon .icon.fa {
     font-size: 60px;
 }
-.format-tiles li.section .tiles-editor-image .tile-icon img {
+.format-tiles li.section .tiles-editor-image .tile-icon img,
+.format-tiles.format-tiles-high-contrast li.tile .tile-icon img {
     filter: brightness(0);
 }
 .format-tiles .tileiconcontainer.hasphoto {
@@ -485,11 +503,14 @@
 }
 .format-tiles:not(.editing) .course-content .tilestyle-1 .tile-icon .icon,
 .format-tiles:not(.editing) .course-content .tilestyle-2 .tile-icon .icon,
-.format-tiles .iconpickericons .icon,
-.format-site .iconpickericons .icon,
 .format-tiles .sectionbutton {
     color: #8c8c8c;
     opacity: 1;
+}
+.format-tiles:not(.editing).format-tiles-high-contrast .course-content .tilestyle-1 .tile-icon .icon,
+.format-tiles:not(.editing).format-tiles-high-contrast .course-content .tilestyle-2 .tile-icon .icon,
+.format-tiles.format-tiles-high-contrast .sectionbutton {
+    color: var(--format-tiles-high-contrast-black);
 }
 .format-tiles .tile-number,
 .format-tiles ul.tiles .tile h2.tile-number {
@@ -504,6 +525,11 @@
     font-weight: bold;
     font-size: 34px;
     color: #8c8c8c;
+}
+.format-tiles.format-tiles-high-contrast .tile-number,
+.format-tiles.format-tiles-high-contrast ul.tiles .tile h2.tile-number {
+    color: var(--format-tiles-high-contrast-black);
+    border-color: var(--format-tiles-high-contrast-black);
 }
 .format-tiles #icon-picker-modal-body .tile-number-container {
     max-height: 70px;
@@ -651,7 +677,7 @@
     text-align: center;
 }
 .format-tiles .single-section .navigation-arrow .icon {
-    font-size: 35px;
+    font-size: 30px;
     height: 35px;
     width: 35px;
     padding: 2px 3px 2px 3px;
@@ -804,7 +830,10 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     border-radius: 10px;
     flex-wrap: wrap;
 }
-
+.format-tiles.format-tiles-high-contrast .course-content #filterbuttons i.fa-filter.fa-filter,
+.format-tiles.format-tiles-high-contrast .filterbutton {
+    color: var(--format-tiles-high-contrast-black);
+}
 .format-tiles .overall-prog-radial {
     font-size: 1.2em;
     height: 40px;
@@ -887,7 +916,7 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     width: calc(100% - 40px);
 }
 .format-tiles .phototile .progress-indic {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255);
     padding: 2px 7px 2px 7px;
     position: absolute;
     bottom: 10px;
@@ -971,7 +1000,9 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     color: #666;
     display: inline-block;
 }
-
+.format-tiles.format-tiles-high-contrast .sectiontitle h2 {
+    color: var(--format-tiles-high-contrast-black);
+}
 .format-tiles #section-0 .contentwithoutlink .no-overflow p {
     margin: 0;
 }
@@ -1106,6 +1137,7 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     font-size: 55px;
     vertical-align: top;
     margin: 3px;
+    color: #8c8c8c;
 }
 .format-tiles .embed_cm_modal .modal {
     margin: 10px auto;
@@ -1899,6 +1931,10 @@ body.jsenabled.format-tiles #collapsiblesec0 {
 .format-tiles .tile.tile-restricted .badge-info {
     background-color: #565656;
 }
+.format-tiles.format-tiles-high-contrast .tile.tile-restricted .badge-info,
+.format-tiles.format-tiles-high-contrast .tile.tile-hidden .badge-info {
+    background-color: var(--format-tiles-high-contrast-black);
+}
 .format-tiles .tile.tile-restricted,
 .format-tiles .tile.tile-hidden {
     filter: grayscale(1);
@@ -1919,6 +1955,13 @@ body.jsenabled.format-tiles #collapsiblesec0 {
     position: absolute;
     top: 0;
     left: 0;
+}
+.format-tiles.format-tiles-high-contrast .tile-bg {
+    background-color: #fff;
+    border: 1px solid var(--format-tiles-colour);
+}
+.format-tiles.format-tiles-high-contrast li.tile.phototile .tile-link {
+    border: 1px solid var(--format-tiles-colour);
 }
 .format-tiles .moveablesection .availabilityinfo i {
     font-size: 1.2em;
@@ -2005,6 +2048,9 @@ body.jsenabled.format-tiles #collapsiblesec0 {
 .format-tiles .format-tiles-colour-subtile-icon-bg li.subtile .tileiconcontainer.other {
     background-color: #767d84;
     border: none;
+}
+.format-tiles li.subtile.bigbluebuttonbn .tileiconcontainer.other {
+    background-color: #0f4d9d;
 }
 .format-tiles .format-tiles-colour-subtile-icon-bg li.subtile .activityiconcontainer:not(.isbranded) .activityicon:not(.nofilter),
 .format-tiles .format-tiles-colour-subtile-icon-bg li.subtile .activityiconcontainer:not(.isbranded) .icon:not(.nofilter) {

@@ -92,12 +92,9 @@ class format_tiles extends core_courseformat\base {
      * @throws moodle_exception
      */
     public function get_section_name($section) {
-        global $PAGE;
         $section = $this->get_section($section);
-        if (trim((string)$section->name) != '') {
+        if ((string)$section->name != '') {
             return format_string($section->name, true, ['context' => context_course::instance($this->courseid)]);
-        } else if ($section->section == 0) {
-            return $PAGE->user_is_editing() ? self::get_default_section_name($section) : '';
         } else {
             return self::get_default_section_name($section);
         }
@@ -856,38 +853,63 @@ class format_tiles extends core_courseformat\base {
      * @throws moodle_exception
      */
     public function page_set_course(moodle_page $page) {
-        global $SESSION;
-        if (get_config('format_tiles', 'usejavascriptnav')) {
-            if (optional_param('stopjsnav', 0, PARAM_INT) == 1) {
+        global $SESSION, $DB;
+        $tilesactionparam = optional_param('format-tiles-action', '', PARAM_TEXT);
+        if ($tilesactionparam) {
+            require_sesskey();
+        }
+        if ($tilesactionparam == 'toggleanimatednav') {
+            if (get_config('format_tiles', 'usejavascriptnav')) {
                 // User is toggling JS nav setting.
-                $existingstoppref = get_user_preferences('format_tiles_stopjsnav', 0);
+                $userpreferencenamejsnav = 'format_tiles_stopjsnav';
+                $existingstoppref = get_user_preferences($userpreferencenamejsnav, 0);
                 if (!$existingstoppref) {
                     // Did not already have it disabled.
-                    set_user_preference('format_tiles_stopjsnav', 1);
-                    $reenablelink = html_writer::link(
-                        new moodle_url('/course/view.php', ['id' => $page->course->id, 'stopjsnav' => 1]),
-                        get_string('reactivate', 'format_tiles'),
-                        ['class' => 'btn btn-secondary ml-3']
-                    );
-                    \core\notification::warning(get_string('jsdeactivated', 'format_tiles') . $reenablelink);
+                    set_user_preference($userpreferencenamejsnav, 1);
+                    \core\notification::warning(get_string('jsdeactivated', 'format_tiles'));
                 } else {
                     // User previously disabled it, but now is re-enabling.
-                    unset_user_preference('format_tiles_stopjsnav');
+                    unset_user_preference($userpreferencenamejsnav);
                     \core\notification::success(get_string('jsreactivated', 'format_tiles'));
                 }
-                if ($page->course->id) {
+                if ($page->course->id ?? null) {
                     redirect(new moodle_url('/course/view.php', ['id' => $page->course->id]));
                 }
                 unset($SESSION->format_tiles_jssuccessfullyused);
             }
+        } else if ($tilesactionparam == 'togglehighcontrast') {
+            if (get_config('format_tiles', 'highcontrastmodeallow')) {
+                // User is toggling high contrast setting.
+                $userpreferencenamecontrast = 'format_tiles_high_contrast_mode';
+                if (get_user_preferences($userpreferencenamecontrast, 0) == 1) {
+                    unset_user_preference($userpreferencenamecontrast);
+                } else {
+                    set_user_preference($userpreferencenamecontrast, 1);
+                }
+                if ($page->course->id ?? null) {
+                    redirect(new moodle_url('/course/view.php', ['id' => $page->course->id]));
+                }
+            }
         }
-        // On a single section page in non JS mode, do not remove core limited page width.
-        if ($page->pagetype == 'course-view' && $page->state <= $page::STATE_BEFORE_HEADER) {
-            $requiresbodyclass = (optional_param('section', 0, PARAM_INT)
-                || optional_param('singlesec', 0, PARAM_INT))
-                && !\format_tiles\local\util::using_js_nav();
-            if ($requiresbodyclass) {
-                $page->add_body_class("format-tiles-single-sec");
+        if ($page->state <= $page::STATE_BEFORE_HEADER) {
+            // On a single section page in non JS mode, if not using sub-tiles, do not remove core limited page width.
+            if ($page->pagetype == 'course-view') {
+                if ((optional_param('section', 0, PARAM_INT)
+                        || optional_param('singlesec', 0, PARAM_INT))
+                    && !\format_tiles\local\util::using_js_nav()) {
+                    $courseusessubtiles = get_config('format_tiles', 'allowsubtilesview')
+                        && ($page->course->id ?? null)
+                        && $DB->get_field(
+                            'course_format_options', 'value',
+                            ['courseid' => $page->course->id, 'format' => 'tiles', 'sectionid' => 0, 'name' => 'courseusesubtiles']
+                        ) == "1";
+                    if (!$courseusessubtiles) {
+                        $page->add_body_class("format-tiles-single-sec");
+                    }
+                }
+                if (\format_tiles\local\util::using_high_contrast()) {
+                    $page->add_body_class("format-tiles-high-contrast");
+                }
             }
         }
     }
@@ -997,8 +1019,10 @@ function format_tiles_output_fragment_get_cm_list(array $args): string {
     // We don't need to check course context permission as fragment API does that.
     // But we should check that the user can see this specific section as may be hidden.
     $modinfo = get_fast_modinfo($course);
-    if (!$modinfo->get_section_info($section->section, MUST_EXIST)->uservisible) {
-        require_capability('moodle/course:viewhiddensections', context_course::instance($course->id));
+    $sectioninfo = $modinfo->get_section_info($section->section, MUST_EXIST);
+    if (!$sectioninfo->uservisible) {
+        $format = course_get_format($course);
+        throw new moodle_exception('notavailablecourse', '', '', $format->get_section_name($sectioninfo));
     }
 
     $renderer = $PAGE->get_renderer('format_tiles');
