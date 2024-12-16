@@ -35,13 +35,13 @@ global $CFG;
  * @copyright availability_mobileapp
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class availability_mobileapp_condition_testcase extends advanced_testcase {
+class availability_mobileapp_condition_testcase extends \advanced_testcase {
     /**
      * Load required classes.
      */
-    public function setUp() {
+    protected function setUp(): void {
         // Load the mock info class so that it can be used.
-        global $CFG, $DB;
+        global $CFG;
         require_once($CFG->dirroot . '/availability/tests/fixtures/mock_info.php');
     }
 
@@ -96,7 +96,7 @@ class availability_mobileapp_condition_testcase extends advanced_testcase {
             $cond = new condition($structure);
             $this->fail();
         } catch (coding_exception $e) {
-            $this->assertContains('Missing or invalid ->e', $e->getMessage());
+            $this->assertStringContainsString('Missing or invalid ->e', $e->getMessage());
         }
 
         // Successful construct & display with all different expected values.
