@@ -15,23 +15,31 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Atto helixatto  version file.
+ * Privacy Subsystem implementation for format_tabtopics.
  *
- * @package    atto_helixatto
- * @copyright  Streaming LTD
+ * @package    mod_helixmedia
+ * @copyright  
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace mod_helixmedia\privacy;
+
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024120901;        // The current plugin version (Date: YYYYMMDDXX).
-$plugin->requires  = 2022112800;        // Requires this Moodle version.
-$plugin->component = 'atto_helixatto';  // Full name of the plugin (used for diagnostics).
-$plugin->maturity  = MATURITY_STABLE;
-// Human readable version information.
-$plugin->release   = '8.5.19e';
-
-$plugin->dependencies = array(
-    'mod_helixmedia' => '2024120901'
-);
-$plugin->supported = [401, 405];
+/**
+ * The format_tabtopics
+ *
+ */
+class provider implements \core_privacy\local\metadata\null_provider
+{
+    /**
+     * Get the language string identifier with the component's language
+     * file to explain why this plugin stores no data.
+     *
+     * @return string
+     */
+    public static function get_reason(): string
+    {
+        return 'privacy:metadata';
+    }
+}
