@@ -65,5 +65,13 @@ if ($hassiteconfig) {
                                               $cfg->embedopt,
                                               $options);
         $settings->add($embedopt);
+
+        $feedback = new admin_setting_configselect('tiny_medial/allowfeedback',
+                                              new lang_string('allowfeedback', 'tiny_medial'),
+                                              new lang_string('allowfeedback_desc', 'tiny_medial'),
+                                              $cfg->allowfeedback,
+                                              $options);
+
+        $settings->add($feedback);
     }
 }
