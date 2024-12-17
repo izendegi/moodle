@@ -102,4 +102,3 @@ Feature: Plagiarism plugin works with a Moodle Assignment and utilise student da
     And I wait until the page is ready
     And I wait "10" seconds
     Then I should see "testfile.txt"
-
