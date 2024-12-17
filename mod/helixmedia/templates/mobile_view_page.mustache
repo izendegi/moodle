@@ -4,7 +4,7 @@
         </core-course-module-info>
     {{/canusemoduleinfo}}
     {{^canusemoduleinfo}}
-        <core-course-module-description description="{{description}}" component="mod_helixmedia" componentId="{{cmid}}"></core-course-module-description>
+        <core-course-module-description description="{{helixmedia.intro}}" component="mod_helixmedia" componentId="{{cmid}}"></core-course-module-description>
     {{/canusemoduleinfo}}
     <iframe allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" id="contentframe" height="{{height}}" width="100%" src="{{launchurl}}" style='margin-left:0px;margin-right:0px'></iframe>
 </div>
