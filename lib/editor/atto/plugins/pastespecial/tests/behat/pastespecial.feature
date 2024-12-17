@@ -69,8 +69,8 @@ Feature: Atto Pastespecial
     And I press "Save changes"
     Then I should see "Or only when redcolor I do this?"
 
-   @javascript
-   Scenario: Paste table and content into formatting
+  @javascript
+  Scenario: Paste table and content into formatting
     When I set the innerhtml of "atto_pastespecial_iframe" to "<p>Look at me</p><table id=\"table\"><tr><td>Cell</td></tr></table><p>Also here</p>"
     And I click on "Paste as unformatted text" "radio"
     And I click on "form.atto_form .submit" "css_element"
