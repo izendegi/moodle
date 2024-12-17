@@ -51,6 +51,7 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
         array $fpoptions,
         ?editor $editor = null
     ): bool {
+        global $PAGE, $DB;
         // Disabled if:
         // - The user doesn't have the correct permissions
         // - Files are not allowed.
@@ -70,14 +71,26 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
             }
         }
 
-        // Switch off button when using the activity module.
-        // Use PARAM_RAW type here in case "add" is used for something other than a plugin name in other parts of moodle.
-        $add = optional_param("add", "none", PARAM_RAW);
-        $action = optional_param("action", "none", PARAM_RAW);
-        if ($add == "helixmedia" || $action == "grader" || $action == "grade") {
-            $func = false;
+        $func = true;
+        // This hides the button in specific situations where we want people to use the plugin, eg in the MEDIAL activity
+        // and the assign grading interface where we want people to use Feedback.
+        if ($PAGE->cm) {
+            switch ($PAGE->cm->modname) {
+                case "helixmedia":
+                    $func = false;
+                    break;
+                case "assign":
+                    $action = $PAGE->url->get_param("action");
+                    if (($action == "grader" || $action == "grade" ) && !get_config('tiny_medial', 'allowfeedback')) {
+                        $func = false;
+                    }
+                    break;
+            }
         } else {
-            $func = true;
+            // $PAGE->cm is false when adding a new instance, so check the URL and see if we're adding a MEDIAL activity
+            if ($PAGE->url->get_path() == "/course/modedit.php" && $PAGE->url->get_param("add") == "helixmedia") {
+                $func = false;
+            }
         }
 
         return $func && $permission && $canhavefiles && $canhaveexternalfiles;
