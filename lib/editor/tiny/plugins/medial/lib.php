@@ -80,7 +80,7 @@ function tiny_medial_get_defaults() {
     // If we already have ATTO installed and the TINY config doesn't exist, use ATTO config for the initial default.
     $acfg = get_config('atto_helixatto');
     $mcfg = get_config('tiny_medial', 'hideinsert');
-    if ($acfg && $mcfg === false) {
+    if (isset($acfg->hideinsert) && $mcfg === false) {
         return $acfg;
     }
 
@@ -90,5 +90,6 @@ function tiny_medial_get_defaults() {
     $cfg->modtypeperm = '';
     $cfg->uselinkdesc = "forum\r\nworkshop";
     $cfg->embedopt = 0;
+    $cfg->allowfeedback = 0;
     return $cfg;
 }
