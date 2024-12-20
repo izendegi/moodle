@@ -1277,7 +1277,9 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         error_reporting(E_ALL & ~E_NOTICE); // Avoids showing the php notice thrown by the next function:
-        $creategroups = array_diff_assoc($extdbgroups, $dbgroups); // PHP Notice: array to string conversion.
+        $creategroups = array_udiff($extdbgroups, $dbgroups, function($a, $b) {
+            return strcmp(serialize($a), serialize($b));
+        });
         error_reporting($CFG->debug); // Set again the debug messaging level configured in the site administration.
 
         if ($creategroups) {
