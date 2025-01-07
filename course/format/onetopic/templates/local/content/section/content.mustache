@@ -85,11 +85,6 @@
         "highlightedlabel" : "Highlighted"
     }
 }}
-{{#restrictionlock}}
-    <div class="align-self-center ml-2">
-        {{#pix}}t/unlock, core{{/pix}}
-    </div>
-{{/restrictionlock}}
 {{#collapsemenu}}
     {{^displayonesection}}
     <div class="flex-fill d-flex justify-content-end mr-2 align-self-start mt-2">
@@ -111,16 +106,16 @@
 <div id="coursecontentcollapse{{num}}"
     class="content {{^iscoursedisplaymultipage}}{{^sitehome}}{{^displayonesection}}course-content-item-content collapse {{^contentcollapsed}}show{{/contentcollapsed}}{{/displayonesection}}{{/sitehome}}{{/iscoursedisplaymultipage}}">
     <div class="{{#hasavailability}}description{{/hasavailability}} my-3" data-for="sectioninfo">
+        {{#availability}}
+            {{$ core_courseformat/local/content/section/availability }}
+                {{> core_courseformat/local/content/section/availability }}
+            {{/ core_courseformat/local/content/section/availability }}
+        {{/availability}}
         {{#summary}}
             {{$ core_courseformat/local/content/section/summary }}
                 {{> core_courseformat/local/content/section/summary }}
             {{/ core_courseformat/local/content/section/summary }}
         {{/summary}}
-        {{#availability}}
-            {{$ format_onetopic/courseformat/content/cm/availabilityinline }}
-                {{> format_onetopic/courseformat/content/cm/availabilityinline }}
-            {{/ format_onetopic/courseformat/content/cm/availabilityinline }}
-        {{/availability}}
     </div>
     {{#cmsummary}}
         {{$ core_courseformat/local/content/section/cmsummary }}
