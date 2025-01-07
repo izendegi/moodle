@@ -16,6 +16,14 @@ Download zip package, extract the onetopic folder and upload this folder into co
 
 ## IN VERSION
 
+### 2024050904:
+* New "sectionname" parameter to navigate to a tab directly using its name.
+* New default course settings in site level.
+* The courseindex option has been removed from the tab view option. Courses that had it set will continue to work until the option is overridden. It is being removed because there is no way to customize its behavior from the course format and some serious UX bugs are occurring.
+
+### 2024050903:
+* Fixed Load previously browsed section when section is not specified in URL.
+
 ### 2024050901:
 * Compatibility with moodle 4.4
 
