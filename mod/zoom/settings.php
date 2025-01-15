@@ -26,7 +26,6 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/zoom/locallib.php');
 require_once($CFG->libdir . '/environmentlib.php');
-require_once($CFG->dirroot . '/mod/zoom/classes/webservice.php');
 
 if ($ADMIN->fulltree) {
     require_once($CFG->dirroot . '/mod/zoom/classes/invitation.php');
@@ -172,20 +171,23 @@ if ($ADMIN->fulltree) {
         1
     );
     $settings->add($recycleonjoin);
-    
-    // Only call to the web services and load the setting if the connection is OK
-    if (isset($status)) {
-        if ($status == 'connectionok') {
-            $zoomgrps[] = null;
-            $groupobj = zoom_webservice()->get_groups();
-            foreach ($groupobj->groups as $group) {
-                $zoomgrps[$group->id] = $group->name;
-            }
-            $protectedgrp = new admin_setting_configselect('zoom/protectedgrp',
-                get_string('protectedgrp','mod_zoom'),
-                get_string('protectedgrp_desc','mod_zoom'),0,$zoomgrps);
-            $settings->add($protectedgrp);   
+
+    // Only call to the web services and load the setting if the connection is OK.
+    if (isset($status) && $status === 'connectionok') {
+        $zoomgroups = [];
+        $groups = zoom_webservice()->get_groups();
+        foreach ($groups as $group) {
+            $zoomgroups[$group->id] = $group->name;
         }
+
+        $protectedgroups = new admin_setting_configmultiselect(
+            'zoom/protectedgroups',
+            get_string('protectedgroups', 'mod_zoom'),
+            get_string('protectedgroups_desc', 'mod_zoom'),
+            [],
+            $zoomgroups
+        );
+        $settings->add($protectedgroups);
     }
 
     // Global settings.
