@@ -101,7 +101,7 @@ class webservice {
      * Zoom group to protect from licenses redefining
      * @var array
      */
-    protected $protectedgroup;
+    protected $protectedgroups;
 
     /**
      * Maximum limit of paid users
@@ -157,7 +157,7 @@ class webservice {
             if (!empty($config->utmost)) {
                 $this->recyclelicenses = $config->utmost;
                 $this->instanceusers = !empty($config->instanceusers);
-                $this->protectedgroup = $config->protectedgrp;
+                $this->protectedgroups = !empty($config->protectedgroups) ? explode(',', $config->protectedgroups) : [];
             }
 
             if ($this->recyclelicenses) {
@@ -468,12 +468,24 @@ class webservice {
         $userslist = $this->list_users();
 
         foreach ($userslist as $user) {
-            if ($user->type != ZOOM_USER_TYPE_BASIC && isset($user->last_login_time)
-                && !in_array($this->protectedgroup,$user->group_ids ?? array(),true)) { // needle: 'PROTECTED' zoom group
-                // Count the user if we're including all users or if the user is on this instance.
-                if (!$this->instanceusers || core_user::get_user_by_email($user->email)) {
-                    $usertimes[$user->id] = strtotime($user->last_login_time);
-                }
+            // Skip Basic user accounts.
+            if ($user->type == ZOOM_USER_TYPE_BASIC) {
+                continue;
+            }
+
+            // Skip the users of protected groups.
+            if (!empty(array_intersect($this->protectedgroups, $user->group_ids ?? []))) {
+                continue;
+            }
+
+            // We need the login time.
+            if (!isset($user->last_login_time)) {
+                continue;
+            }
+
+            // Count the user only if we're including all users or if the user is on this instance.
+            if (!$this->instanceusers || core_user::get_user_by_email($user->email)) {
+                $usertimes[$user->id] = strtotime($user->last_login_time);
             }
         }
 
@@ -487,10 +499,25 @@ class webservice {
     /**
      * Get a list of Zoom groups
      *
-     * @return stdClass The call's result in JSON format.
+     * @return array Group information.
      */
     public function get_groups() {
-        return $this->make_call('/groups');
+        $groups = [];
+
+        // Classic: group:read:admin.
+        // Granular: group:read:list_groups:admin.
+        // Not essential scope, execute only if scope has been granted.
+        if ($this->has_scope(['group:read:list_groups:admin', 'group:read:admin'])) {
+            try {
+                $response = $this->make_call('/groups');
+                $groups = $response->groups ?? [];
+            } catch (moodle_exception $error) {
+                // Only available for Paid accounts, so ignore error.
+                $response = '';
+            }
+        }
+
+        return $groups;
     }
 
     /**
@@ -655,6 +682,9 @@ class webservice {
 
         if (isset($zoom->registration)) {
             $data['settings']['approval_type'] = $zoom->registration;
+            if ($zoom->registration != ZOOM_REGISTRATION_OFF) {
+                $data['settings']['use_pmi'] = false;
+            }
         }
 
         if (!empty($zoom->webinar)) {
@@ -780,7 +810,11 @@ class webservice {
             if ($this->paid_user_limit_reached()) {
                 $leastrecentlyactivepaiduserid = $this->get_least_recently_active_paid_user_id();
                 // Changes least_recently_active_user to a basic user so we can use their license.
-                $this->make_call("users/$leastrecentlyactivepaiduserid", ['type' => ZOOM_USER_TYPE_BASIC], 'patch');
+                if ($leastrecentlyactivepaiduserid) {
+                    $this->make_call("users/$leastrecentlyactivepaiduserid", ['type' => ZOOM_USER_TYPE_BASIC], 'patch');
+                } else {
+                    throw new moodle_exception('errornousersfound', 'mod_zoom');
+                }
             }
 
             // Changes current user to pro so they can make a meeting.
@@ -1317,5 +1351,18 @@ class webservice {
         $url = 'meetings/' . $this->encode_uuid($meetinguuid) . '/recordings/settings';
         $response = $this->make_call($url);
         return $response;
+    }
+
+    /**
+     * Returns whether or not the current user is permitted to create a meeting/webinar that requires registration.
+     * @return boolean
+     */
+    public function is_user_permitted_to_require_registration() {
+        global $USER;
+        $zoomuser = zoom_get_user(zoom_get_api_identifier($USER));
+        if ($zoomuser && $zoomuser->type == ZOOM_USER_TYPE_PRO) {
+            return true;
+        }
+        return false;
     }
 }
