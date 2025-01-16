@@ -27,7 +27,7 @@ namespace enrol_database;
  * @copyright  2011 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class sync_test extends \advanced_testcase {
+final class sync_test extends \advanced_testcase {
     protected static $courses = array();
     protected static $users = array();
     protected static $roles = array();
@@ -711,26 +711,26 @@ class sync_test extends \advanced_testcase {
         $coursecat = $this->getDataGenerator()->create_category(array('name' => 'Test category 1', 'idnumber' => 'tcid1'));
         $defcat = $DB->get_record('course_categories', array('id' => $plugin->get_config('defaultcategory')));
 
-        $course1 = ['fullname' => 'New course 1', 'shortname' => 'nc1', 'idnumber' => 'ncid1', 'category' => $coursecat->id, 'startdate' => 0, 'enddate' => 0];
-        $course2 = ['fullname' => 'New course 2', 'shortname' => 'nc2', 'idnumber' => 'ncid2', 'category' => null];
+        $course1 = array('fullname' => 'New course 1', 'shortname' => 'nc1', 'idnumber' => 'ncid1', 'category' => $coursecat->id);
+        $course2 = array('fullname' => 'New course 2', 'shortname' => 'nc2', 'idnumber' => 'ncid2', 'category' => null);
         // Duplicate records are to be ignored.
-        $course3 = ['fullname' => 'New course 3', 'shortname' => 'xx', 'idnumber' => 'yy2', 'category' => $defcat->id];
-        $course4 = ['fullname' => 'New course 4', 'shortname' => 'xx', 'idnumber' => 'yy3', 'category' => $defcat->id];
-        $course5 = ['fullname' => 'New course 5', 'shortname' => 'xx1', 'idnumber' => 'yy', 'category' => $defcat->id];
-        $course6 = ['fullname' => 'New course 6', 'shortname' => 'xx2', 'idnumber' => 'yy', 'category' => $defcat->id];
+        $course3 = array('fullname' => 'New course 3', 'shortname' => 'xx', 'idnumber' => 'yy2', 'category' => $defcat->id);
+        $course4 = array('fullname' => 'New course 4', 'shortname' => 'xx', 'idnumber' => 'yy3', 'category' => $defcat->id);
+        $course5 = array('fullname' => 'New course 5', 'shortname' => 'xx1', 'idnumber' => 'yy', 'category' => $defcat->id);
+        $course6 = array('fullname' => 'New course 6', 'shortname' => 'xx2', 'idnumber' => 'yy', 'category' => $defcat->id);
 
-        $DB->insert_record('enrol_database_test_courses', $course1); // Should be created
-        $DB->insert_record('enrol_database_test_courses', $course2); // Should not be created (no category)
-        $DB->insert_record('enrol_database_test_courses', $course3); // Should be created
-        $DB->insert_record('enrol_database_test_courses', $course4); // Should not be created (duplicated shortname)
-        $DB->insert_record('enrol_database_test_courses', $course5); // Should be created
-        $DB->insert_record('enrol_database_test_courses', $course6); // Should not be created (duplicated idnumber)
+        $DB->insert_record('enrol_database_test_courses', $course1);
+        $DB->insert_record('enrol_database_test_courses', $course2);
+        $DB->insert_record('enrol_database_test_courses', $course3);
+        $DB->insert_record('enrol_database_test_courses', $course4);
+        $DB->insert_record('enrol_database_test_courses', $course5);
+        $DB->insert_record('enrol_database_test_courses', $course6);
 
         $this->assertEquals(1+count(self::$courses), $DB->count_records('course'));
 
         $plugin->sync_courses($trace);
 
-        $this->assertEquals(3+1+count(self::$courses), $DB->count_records('course'));
+        $this->assertEquals(4+1+count(self::$courses), $DB->count_records('course'));
 
         $this->assertTrue($DB->record_exists('course', $course1));
         $course2['category'] = $defcat->id;
@@ -753,7 +753,7 @@ class sync_test extends \advanced_testcase {
         // Test category mapping via idnumber.
 
         $plugin->set_config('localcategoryfield', 'idnumber');
-        $course7 = ['fullname' => 'New course 7', 'shortname' => 'nc7', 'idnumber' => 'ncid7', 'category' => 'tcid1'];
+        $course7 = array('fullname' => 'New course 7', 'shortname' => 'nc7', 'idnumber' => 'ncid7', 'category' => 'tcid1');
         $DB->insert_record('enrol_database_test_courses', $course7);
         $plugin->sync_courses($trace);
 
@@ -769,7 +769,7 @@ class sync_test extends \advanced_testcase {
         $template = $this->getDataGenerator()->create_course(array('numsections' => 666, 'shortname' => 'crstempl'));
         $plugin->set_config('templatecourse', 'crstempl');
 
-        $course8 = ['fullname' => 'New course 8', 'shortname' => 'nc8', 'idnumber' => 'ncid8', 'category' => null];
+        $course8 = array('fullname' => 'New course 8', 'shortname' => 'nc8', 'idnumber' => 'ncid8', 'category' => null);
         $DB->insert_record('enrol_database_test_courses', $course8);
         $plugin->sync_courses($trace);
 
@@ -781,7 +781,7 @@ class sync_test extends \advanced_testcase {
 
         // Test invalid category.
 
-        $course9 = ['fullname' => 'New course 9', 'shortname' => 'nc9', 'idnumber' => 'ncid9', 'category' => 'xxxxxxx'];
+        $course9 = array('fullname' => 'New course 9', 'shortname' => 'nc9', 'idnumber' => 'ncid9', 'category' => 'xxxxxxx');
         $DB->insert_record('enrol_database_test_courses', $course9);
         $plugin->sync_courses($trace);
         $this->assertEquals(2+1+4+1+count(self::$courses), $DB->count_records('course'));
@@ -916,7 +916,7 @@ class sync_test extends \advanced_testcase {
         // Push courses with correct dates, but set date configuration to not existing date fields.
         $course12 = ['fullname' => 'C12', 'shortname' => 'c12', 'idnumber' => 'c12', 'startdate' => '2024-05-22',
             'enddate' => '2027-05-12'];
-        $DB->insert_record('enrol_database_test_courses', $course12);
+        $DB->insert_record('enrol_database_test_courses', $course11);
 
         $plugin->set_config('newcoursestartdate', 'startdate');
         $plugin->set_config('newcourseenddate', 'ed');
@@ -927,7 +927,7 @@ class sync_test extends \advanced_testcase {
 
         $course13 = ['fullname' => 'C13', 'shortname' => 'c13', 'idnumber' => 'c13', 'startdate' => '2024-05-22',
             'enddate' => '2027-05-12'];
-        $DB->insert_record('enrol_database_test_courses', $course13);
+        $DB->insert_record('enrol_database_test_courses', $course11);
 
         $plugin->set_config('newcoursestartdate', 'sd');
         $plugin->set_config('newcourseenddate', 'enddate');
