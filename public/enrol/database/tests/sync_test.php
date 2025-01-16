@@ -916,7 +916,7 @@ final class sync_test extends \advanced_testcase {
         // Push courses with correct dates, but set date configuration to not existing date fields.
         $course12 = ['fullname' => 'C12', 'shortname' => 'c12', 'idnumber' => 'c12', 'startdate' => '2024-05-22',
             'enddate' => '2027-05-12'];
-        $DB->insert_record('enrol_database_test_courses', $course11);
+        $DB->insert_record('enrol_database_test_courses', $course12);
 
         $plugin->set_config('newcoursestartdate', 'startdate');
         $plugin->set_config('newcourseenddate', 'ed');
@@ -927,7 +927,7 @@ final class sync_test extends \advanced_testcase {
 
         $course13 = ['fullname' => 'C13', 'shortname' => 'c13', 'idnumber' => 'c13', 'startdate' => '2024-05-22',
             'enddate' => '2027-05-12'];
-        $DB->insert_record('enrol_database_test_courses', $course11);
+        $DB->insert_record('enrol_database_test_courses', $course13);
 
         $plugin->set_config('newcoursestartdate', 'sd');
         $plugin->set_config('newcourseenddate', 'enddate');
