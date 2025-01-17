@@ -724,12 +724,12 @@ final class sync_test extends \advanced_testcase {
         $course5 = array('fullname' => 'New course 5', 'shortname' => 'xx1', 'idnumber' => 'yy', 'category' => $defcat->id);
         $course6 = array('fullname' => 'New course 6', 'shortname' => 'xx2', 'idnumber' => 'yy', 'category' => $defcat->id);
 
-        $DB->insert_record('enrol_database_test_courses', $course1); // Should be created
-        $DB->insert_record('enrol_database_test_courses', $course2); // Should not be created (no category)
-        $DB->insert_record('enrol_database_test_courses', $course3); // Should be created
-        $DB->insert_record('enrol_database_test_courses', $course4); // Should not be created (duplicated shortname)
-        $DB->insert_record('enrol_database_test_courses', $course5); // Should be created
-        $DB->insert_record('enrol_database_test_courses', $course6); // Should not be created (duplicated idnumber)
+        $DB->insert_record('enrol_database_test_courses', $course1);
+        $DB->insert_record('enrol_database_test_courses', $course2);
+        $DB->insert_record('enrol_database_test_courses', $course3);
+        $DB->insert_record('enrol_database_test_courses', $course4);
+        $DB->insert_record('enrol_database_test_courses', $course5);
+        $DB->insert_record('enrol_database_test_courses', $course6);
 
         $this->assertEquals(1+count(self::$courses), $DB->count_records('course'));
 
@@ -737,11 +737,11 @@ final class sync_test extends \advanced_testcase {
 
         $this->assertEquals(4+1+count(self::$courses), $DB->count_records('course'));
 
+        $course1['category'] = $coursecat->id;
         $this->assertTrue($DB->record_exists('course', $course1));
-
         $course2['category'] = $defcat->id;
-        $plugin->sync_courses($trace);
         $this->assertTrue($DB->record_exists('course', $course2));
+
 
         // People should NOT push duplicates there because the results are UNDEFINED! But anyway skip the duplicates.
 
