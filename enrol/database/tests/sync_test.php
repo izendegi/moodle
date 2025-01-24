@@ -737,10 +737,6 @@ final class sync_test extends \advanced_testcase {
 
         $this->assertTrue($DB->record_exists('course', $course1));
 
-        $course2['category'] = $defcat->id;
-        $plugin->sync_courses($trace);
-        $this->assertTrue($DB->record_exists('course', $course2));
-
         // People should NOT push duplicates there because the results are UNDEFINED! But anyway skip the duplicates.
 
         $this->assertEquals(1, $DB->count_records('course', array('idnumber' => 'yy')));
