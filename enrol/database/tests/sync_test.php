@@ -737,11 +737,9 @@ final class sync_test extends \advanced_testcase {
 
         $this->assertEquals(4+1+count(self::$courses), $DB->count_records('course'));
 
-        $course1['category'] = $coursecat->id;
         $this->assertTrue($DB->record_exists('course', $course1));
         $course2['category'] = $defcat->id;
         $this->assertTrue($DB->record_exists('course', $course2));
-
 
         // People should NOT push duplicates there because the results are UNDEFINED! But anyway skip the duplicates.
 
