@@ -253,7 +253,10 @@ class course_format_data_common_trait {
             $section = $allsectinswithoutdelegated[$sectionindex];
 
             //Generate context for the sectoin
-            $sections[] = $this->get_single_section_generated_data($course, $section);
+            $sectiongenerateddata = $this->get_single_section_generated_data($course, $section);
+            if ($sectiongenerateddata) {
+                $sections[] = $sectiongenerateddata;
+            }
         }
 
         // Add new sections button.
@@ -885,6 +888,10 @@ class course_format_data_common_trait {
                     $activitydetails->hidden = 1;
                 }
 
+                if (!empty($mod->indent)) {
+                    $activitydetails->indented  = true;
+                }
+
                 $availstatus = $this->course_section_cm_availability($mod, $displayoptions);
 
                 // It will add  the open due data in activitydetails context address is passed as argument.
@@ -905,6 +912,7 @@ class course_format_data_common_trait {
                 $count++;
             }
         }
+
         return $output;
     }
 
