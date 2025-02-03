@@ -1,5 +1,13 @@
 CHANGES LOG
 
+Version 4.1.12
+=============
+Feature - In edit mode  moodle format will be visible for easy editing.
+Tweak - Further UI/UX improvements done in list and card layouts.
+Version 4.1.11
+=============
+Fix - Resolved the issue where hidden sections were visible as empty cards to students.
+
 Version 4.1.10
 =============
 Feature - Compatibility with Moodle 4.5.
@@ -18,7 +26,7 @@ Feature - Added language translation files for:
         - Portuguese (Brazil) (pt_br)
         - France (fr)
         - Polish (pl)
-        - Arabic (ar)    
+        - Arabic (ar)
 Feature - Teachers of the same group are visible in the course header when the separate group setting is selected
 Tweak - Multi lang filter plugins  support added
 Tweak - Added missing translated string in  lang files.
