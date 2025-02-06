@@ -1,6 +1,32 @@
 Release notes
 =============
 
+2025020505
+
+1. 2025-02-05 - bump version to make a new plugin version available for M4.5.
+
+2025020503
+
+1. 2025-02-05 - fix: URL on old and new user profile fields definition.
+2. 2025-02-05 - improvement: CLI script now shows better log of merging operations.
+
+2025020502
+
+1. 2025-02-05 #295 - fix: remove deprecation warning on CLIGathering, related to Iterator. Thanks to @CatSema. 
+
+2025020501
+
+1. 2025-02-05 - bump version, update CHANGES.md, and kept support only for M4.1.
+
+2025020500
+
+1. 2025-02-05 - bump version and update CHANGES.md
+2. 2025-02-05 #283 - new feature: use custom profile fields to identify merged old and new users (to both users). Partly contributed thanks to @sampraxis and @ClausSchmidtPraxis on 2024-11-14. PHPUnit test ensures the behaviour is the expected.
+3. 2025-02-05 #294 - fix: pass tests on mod_assign again. Thanks to @leonstr.
+4. 2025-02-04 #304 - fix: set up again suspended image to merged source user.
+5. 2025-02-04 #253 - fix: CRLF codification passed to LF.
+6. 2025-01-23 #299 - fix: fix file content to get them properly uploaded into AMOS.
+
 2025012300
 
 1. 2025-01-23 #299 - make lang file compatible with AMOS to be translatable.
@@ -65,7 +91,7 @@ Contributors
 
 Maintained by:
 
-* [Jordi Pujol-Ahulló](https://recursoseducatius.urv.cat).
+* [Jordi Pujol-Ahulló](https://www.urv.cat).
 * [Nicolas Dunand](https://moodle.org/plugins/browse.php?list=contributor&id=141933).
 
-[See all Github contributors](https://github.com/ndunand/moodle-tool_mergeusers/graphs/contributors)
+[See all Github contributors](https://github.com/jpahullo/moodle-tool_mergeusers/graphs/contributors)
