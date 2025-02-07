@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * coursecompleted enrolment plugin tests.
+ * Coursecompleted enrolment plugin tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
@@ -29,13 +29,13 @@ use advanced_testcase;
 use stdClass;
 
 /**
- * coursecompleted enrolment plugin tests.
+ * Coursecompleted enrolment plugin tests.
  *
  * @package   enrol_coursecompleted
  * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @coversDefaultClass \enrol_coursecompleted_plugin
+ * #[CoversClass(enrol_coursecompleted_plugin)]
  */
 final class backup_test extends advanced_testcase {
     /** @var stdClass Student. */
@@ -71,7 +71,7 @@ final class backup_test extends advanced_testcase {
 
     /**
      * Test backup.
-     * @covers \enrol_coursecompleted_plugin
+     * #[CoversClass(enrol_coursecompleted_plugin)]
      */
     public function test_backup_restore(): void {
         global $CFG, $DB, $PAGE;
