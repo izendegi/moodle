@@ -45,7 +45,7 @@ class mod_attendance_report_page_params extends mod_attendance_page_with_filter_
     /**
      * mod_attendance_report_page_params constructor.
      */
-    public function  __construct() {
+    public function __construct() {
         $this->selectortype = self::SELECTOR_GROUP;
     }
 
@@ -70,7 +70,7 @@ class mod_attendance_report_page_params extends mod_attendance_page_with_filter_
      * @return array
      */
     public function get_significant_params() {
-        $params = array();
+        $params = [];
 
         if ($this->sort != ATT_SORT_DEFAULT) {
             $params['sort'] = $this->sort;
