@@ -898,6 +898,7 @@ abstract class restore_dbops {
     public static function restore_get_questions($restoreid, $qcatid) {
         global $DB;
 
+        $emptyhash = sha1('');
         $results = array();
         $qs = $DB->get_recordset_sql("SELECT itemid, info
                                       FROM {backup_ids_temp}
@@ -906,6 +907,18 @@ abstract class restore_dbops {
                                        AND parentitemid = ?", array($restoreid, $qcatid));
         foreach ($qs as $q) {
             $results[$q->itemid] = backup_controller_dbops::decode_backup_temp_info($q->info);
+            $results[$q->itemid]->answerhash = $emptyhash;
+        }
+        $qs->close();
+        // Second pass for question_answerhash because MySQL won't let a temporary
+        // table be used twice in a query.
+        $qs = $DB->get_recordset_sql("SELECT itemid, info
+                                      FROM {backup_ids_temp}
+                                     WHERE backupid = ?
+                                       AND itemname = 'question_answerhash'
+                                       AND parentitemid = ?", array($restoreid, $qcatid));
+        foreach ($qs as $q) {
+            $results[$q->itemid]->answerhash = backup_controller_dbops::decode_backup_temp_info($q->info);
         }
         $qs->close();
         return $results;
