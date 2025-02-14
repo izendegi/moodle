@@ -174,7 +174,7 @@ class mod_attendance_page_with_filter_controls {
         global $SESSION;
 
         if (!property_exists($SESSION, 'attsessiontype')) {
-            $SESSION->attsessiontype = array($this->cm->course => self::SESSTYPE_ALL);
+            $SESSION->attsessiontype = [$this->cm->course => self::SESSTYPE_ALL];
         } else if (!array_key_exists($this->cm->course, $SESSION->attsessiontype)) {
             $SESSION->attsessiontype[$this->cm->course] = self::SESSTYPE_ALL;
         }
@@ -224,7 +224,7 @@ class mod_attendance_page_with_filter_controls {
     private function calc_sessgroupslist() {
         global $USER, $PAGE;
 
-        $this->sessgroupslist = array();
+        $this->sessgroupslist = [];
         $groupmode = groups_get_activity_groupmode($this->cm);
         if ($groupmode == NOGROUPS) {
             return;
