@@ -25,7 +25,7 @@ Feature: Clicking the subcourse instance in the course outline may or may not re
 
   @javascript
   Scenario: Student has to click the link to the referenced course manually
-    And I add a "Subcourse" to section "1" and I fill the form with:
+    And I add a "subcourse" activity to course "MainCourse" section "1" and I fill the form with:
       | Subcourse name                    | Unit course 1       |
       | Fetch grades from                 | RefCourse (R)       |
       | Redirect to the referenced course | 0                   |
@@ -39,7 +39,7 @@ Feature: Clicking the subcourse instance in the course outline may or may not re
 
   @javascript
   Scenario: Student is instantly redirected to the referenced course
-    And I add a "Subcourse" to section "1" and I fill the form with:
+    And I add a "subcourse" activity to course "MainCourse" section "1" and I fill the form with:
       | Subcourse name                    | Unit course 1       |
       | Fetch grades from                 | RefCourse (R)       |
       | Redirect to the referenced course | 1                   |
@@ -51,7 +51,7 @@ Feature: Clicking the subcourse instance in the course outline may or may not re
 
   @javascript
   Scenario: Teacher is not redirected instantly even if that is enabled
-    And I add a "Subcourse" to section "1" and I fill the form with:
+    And I add a "subcourse" activity to course "MainCourse" section "1" and I fill the form with:
       | Subcourse name                    | Unit course 1       |
       | Fetch grades from                 | RefCourse (R)       |
       | Redirect to the referenced course | 1                   |
@@ -62,7 +62,7 @@ Feature: Clicking the subcourse instance in the course outline may or may not re
 
   @javascript
   Scenario: Teacher is redirected instantly if unable to fetch grades manually
-    And I add a "Subcourse" to section "1" and I fill the form with:
+    And I add a "subcourse" activity to course "MainCourse" section "1" and I fill the form with:
       | Subcourse name                    | Unit course 1       |
       | Fetch grades from                 | RefCourse (R)       |
       | Redirect to the referenced course | 1                   |
