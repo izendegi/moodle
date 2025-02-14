@@ -1158,6 +1158,23 @@ class view {
 
         [$categoryid, $contextid] = category_condition::validate_category_param($this->pagevars['cat']);
         $catcontext = \context::instance_by_id($contextid);
+
+        // ecastro ULPGC
+        global $DB;
+        if(isset($this->pagevars['filter']['category'])) {
+            $filteredcatid = $this->pagevars['filter']['category']['values'][0];
+            if($filteredcatid != $categoryid) {
+                $categoryid = $filteredcatid;
+                $category = $DB->get_record('question_categories',
+                                            ['id' => $categoryid],
+                                            '*', MUST_EXIST);
+                $catcontext = \context::instance_by_id($category->contextid);
+                $this->pagevars['cat'] = "$categoryid,{$category->contextid}";
+                $this->set_pagevars($this->pagevars);
+            }
+        }
+        // ecastro ULPGC
+
         // Update the question in the list with correct category context when we have selected category filter.
         if (isset($this->pagevars['filter']['category']['values'])) {
             $categoryid = $this->pagevars['filter']['category']['values'][0];
