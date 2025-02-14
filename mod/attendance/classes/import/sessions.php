@@ -44,10 +44,10 @@ class sessions {
     protected $error = '';
 
     /** @var array $sessions The sessions info */
-    protected $sessions = [];
+    protected $sessions = array();
 
     /** @var array $mappings The mappings info */
-    protected $mappings = [];
+    protected $mappings = array();
 
     /** @var int The id of the csv import */
     protected $importid = 0;
@@ -56,7 +56,7 @@ class sessions {
     protected $importer = null;
 
     /** @var array $foundheaders */
-    protected $foundheaders = [];
+    protected $foundheaders = array();
 
     /** @var bool $useprogressbar Control whether importing should use progress bars or not. */
     protected $useprogressbar = false;
@@ -252,7 +252,7 @@ class sessions {
         $this->useprogressbar = $useprogressbar;
         $domainid = 1;
 
-        $sessions = [];
+        $sessions = array();
 
         while ($row = $this->importer->next()) {
             // This structure mimics what the UI form returns.
@@ -485,20 +485,20 @@ class sessions {
         $okcount = 0;
 
         foreach ($this->sessions as $session) {
-            $groupids = [];
+            $groupids = array();
             // Check course shortname matches.
-            if ($DB->record_exists('course', [
-                'shortname' => $session->course,
-            ])) {
+            if ($DB->record_exists('course', array(
+                'shortname' => $session->course
+            ))) {
                 // Get course.
-                $course = $DB->get_record('course', [
-                    'shortname' => $session->course,
-                ], '*', MUST_EXIST);
+                $course = $DB->get_record('course', array(
+                    'shortname' => $session->course
+                ), '*', MUST_EXIST);
 
                 // Check course has activities.
-                if ($DB->record_exists('attendance', [
-                    'course' => $course->id,
-                ])) {
+                if ($DB->record_exists('attendance', array(
+                    'course' => $course->id
+                ))) {
                     // Translate group names to group IDs. They are unique per course.
                     if ($session->sessiontype === \mod_attendance_structure::SESSION_GROUP) {
                         foreach ($session->groups as $groupname) {
@@ -533,11 +533,11 @@ class sessions {
                         foreach ($sessions as $index => $sess) {
                             // Check for duplicate sessions.
                             if ($this->session_exists($sess, $att->id)) {
-                                mod_attendance_notifyqueue::notify_message(get_string('sessionduplicate', 'attendance', ([
+                                mod_attendance_notifyqueue::notify_message(get_string('sessionduplicate', 'attendance', (array(
                                     'course' => $session->course,
                                     'activity' => $cm->name,
-                                    'date' => construct_session_full_date_time($sess->sessdate, $sess->duration),
-                                ])));
+                                    'date' => construct_session_full_date_time($sess->sessdate, $sess->duration)
+                                ))));
                                 unset($sessions[$index]);
                             } else {
                                 $okcount ++;
@@ -565,13 +565,13 @@ class sessions {
         }
 
         // Trigger a sessions imported event.
-        $event = \mod_attendance\event\sessions_imported::create([
+        $event = \mod_attendance\event\sessions_imported::create(array(
             'objectid' => 0,
             'context' => \context_system::instance(),
-            'other' => [
-                'count' => $okcount,
-            ],
-        ]);
+            'other' => array(
+                'count' => $okcount
+            )
+        ));
 
         $event->trigger();
     }
@@ -589,7 +589,7 @@ class sessions {
         $check = ['attendanceid' => $attid,
                   'sessdate' => $session->sessdate,
                   'duration' => $session->duration,
-                  'groupid' => $session->groupid, ];
+                  'groupid' => $session->groupid];
         if ($DB->record_exists('attendance_sessions', $check)) {
             return true;
         }

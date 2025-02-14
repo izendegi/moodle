@@ -71,7 +71,6 @@ define(['core/yui'], function(Y) {
                     if ((typeof afterHide !== 'undefined')) {
                         Y.soon(function() {
                             afterHide(parent);
-                            parent.close();
                         });
                     }
                 }

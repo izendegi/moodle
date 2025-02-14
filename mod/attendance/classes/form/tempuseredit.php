@@ -54,11 +54,11 @@ class tempuseredit extends \moodleform {
         $mform->addRule('temail', 'Email', 'email', null, 'client');
         $mform->setType('temail', PARAM_EMAIL);
 
-        $buttonarray = [
+        $buttonarray = array(
             $mform->createElement('submit', 'submitbutton', get_string('edituser', 'attendance')),
             $mform->createElement('cancel'),
-        ];
-        $mform->addGroup($buttonarray, 'buttonar', '', [' '], false);
+        );
+        $mform->addGroup($buttonarray, 'buttonar', '', array(' '), false);
         $mform->closeHeaderBefore('submit');
     }
 

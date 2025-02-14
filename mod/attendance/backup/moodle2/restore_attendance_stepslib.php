@@ -37,7 +37,7 @@ class restore_attendance_activity_structure_step extends restore_activity_struct
      */
     protected function define_structure() {
 
-        $paths = [];
+        $paths = array();
 
         $userinfo = $this->get_setting_value('userinfo'); // Are we including userinfo?
 

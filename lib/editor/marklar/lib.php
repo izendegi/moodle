@@ -99,11 +99,11 @@ class marklar_texteditor extends texteditor {
      * Add required JS needed for editor
      *
      * @param string $elementid id of text area to be converted to editor
-     * @param array|null $options
+     * @param array $options
      * @param object $fpoptions file picker options
      * @return void
      */
-    public function use_editor($elementid, array|null $options = null, $fpoptions = null) {
+    public function use_editor($elementid, array $options=null, $fpoptions = null) {
         global $PAGE;
 
         $initparams = [
@@ -119,7 +119,7 @@ class marklar_texteditor extends texteditor {
         // hack to work around that. See MDL-53423 for details.
         $PAGE->requires->js_init_code('M.editor_marklar = M.editor_marklar || {}');
         $PAGE->requires->js_init_code('M.editor_marklar.fpoptions = M.editor_marklar.fpoptions || {}');
-        $PAGE->requires->js_init_code(js_writer::set_variable('M.editor_marklar.fpoptions['.json_encode($elementid).']',
+        $PAGE->requires->js_init_code(js_writer::set_variable('M.editor_marklar.fpoptions.'.$elementid,
             convert_to_array($fpoptions)));
     }
 }

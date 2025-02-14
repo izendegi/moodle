@@ -67,7 +67,7 @@ class user_data implements renderable {
      * @param int $userid
      * @param boolean $mobile - this is called by the mobile code, don't generate everything.
      */
-    public function __construct(mod_attendance_structure $att, $userid, $mobile = false) {
+    public function  __construct(mod_attendance_structure $att, $userid, $mobile = false) {
         $this->user = $att->get_user($userid);
 
         $this->pageparams = $att->pageparams;
@@ -76,7 +76,7 @@ class user_data implements renderable {
             $this->statuses = $att->get_statuses(true, true);
 
             if (!$mobile) {
-                $this->summary = new mod_attendance_summary($att->id, [$userid], $att->pageparams->startdate,
+                $this->summary = new mod_attendance_summary($att->id, array($userid), $att->pageparams->startdate,
                     $att->pageparams->enddate);
 
                 $this->filtercontrols = new filter_controls($att);
@@ -87,9 +87,9 @@ class user_data implements renderable {
             $this->groups = groups_get_all_groups($att->course->id);
         } else if ($this->pageparams->mode == mod_attendance_view_page_params::MODE_ALL_SESSIONS) {
             $this->coursesatts = attendance_get_user_courses_attendances($userid);
-            $this->statuses = [];
-            $this->summary = [];
-            $this->groups = [];
+            $this->statuses = array();
+            $this->summaries = array();
+            $this->groups = array();
 
             foreach ($this->coursesatts as $atid => $ca) {
                 // Check to make sure the user can view this cm.
@@ -101,7 +101,7 @@ class user_data implements renderable {
                     $this->coursesatts[$atid]->cmid = $modinfo->instances['attendance'][$ca->attid]->get_course_module_record()->id;
                 }
                 $this->statuses[$ca->attid] = attendance_get_statuses($ca->attid);
-                $this->summary[$ca->attid] = new mod_attendance_summary($ca->attid, [$userid]);
+                $this->summaries[$ca->attid] = new mod_attendance_summary($ca->attid, array($userid));
 
                 if (!array_key_exists($ca->courseid, $this->groups)) {
                     $this->groups[$ca->courseid] = groups_get_all_groups($ca->courseid);
@@ -109,7 +109,7 @@ class user_data implements renderable {
             }
 
             if (!$mobile) {
-                $this->summary = new mod_attendance_summary($att->id, [$userid], $att->pageparams->startdate,
+                $this->summary = new mod_attendance_summary($att->id, array($userid), $att->pageparams->startdate,
                     $att->pageparams->enddate);
 
                 $this->filtercontrols = new filter_controls($att);
@@ -128,8 +128,8 @@ class user_data implements renderable {
 
         } else {
             $this->coursesatts = attendance_get_user_courses_attendances($userid);
-            $this->statuses = [];
-            $this->summary = [];
+            $this->statuses = array();
+            $this->summary = array();
             foreach ($this->coursesatts as $atid => $ca) {
                 // Check to make sure the user can view this cm.
                 $modinfo = get_fast_modinfo($ca->courseid);
@@ -140,7 +140,7 @@ class user_data implements renderable {
                     $this->coursesatts[$atid]->cmid = $modinfo->instances['attendance'][$ca->attid]->get_course_module_record()->id;
                 }
                 $this->statuses[$ca->attid] = attendance_get_statuses($ca->attid);
-                $this->summary[$ca->attid] = new mod_attendance_summary($ca->attid, [$userid]);
+                $this->summary[$ca->attid] = new mod_attendance_summary($ca->attid, array($userid));
             }
         }
         $this->urlpath = $att->url_view()->out_omit_querystring();
@@ -155,7 +155,7 @@ class user_data implements renderable {
      * @param array $excludeparams
      * @return moodle_url
      */
-    public function url($params=[], $excludeparams=[]) {
+    public function url($params=array(), $excludeparams=array()) {
         $params = array_merge($this->urlparams, $params);
 
         foreach ($excludeparams as $paramkey) {
@@ -172,15 +172,14 @@ class user_data implements renderable {
      */
     public function take_sessions_from_form_data($formdata) {
         global $DB, $USER;
-        // phpcs:disable moodle.Commenting.TodoComment
         // TODO: WARNING - $formdata is unclean - comes from direct $_POST - ideally needs a rewrite but we do some cleaning below.
         // This whole function could do with a nice clean up.
 
         $now = time();
-        $sesslog = [];
+        $sesslog = array();
         $formdata = (array)$formdata;
-        $updatedsessions = [];
-        $sessionatt = [];
+        $updatedsessions = array();
+        $sessionatt = array();
 
         foreach ($formdata as $key => $value) {
             // Look at Remarks field because the user options may not be passed if empty.
@@ -222,15 +221,15 @@ class user_data implements renderable {
                 $formlog->takenby = $USER->id;
 
                 if (!array_key_exists($stid, $sesslog)) {
-                    $sesslog[$stid] = [];
+                    $sesslog[$stid] = array();
                 }
                 $sesslog[$stid][$sessid] = $formlog;
             }
         }
 
-        $updateatts = [];
+        $updateatts = array();
         foreach ($sesslog as $stid => $userlog) {
-            $dbstudlog = $DB->get_records('attendance_log', ['studentid' => $stid], '',
+            $dbstudlog = $DB->get_records('attendance_log', array('studentid' => $stid), '',
                 'sessionid,statusid,remarks,id,statusset');
             foreach ($userlog as $log) {
                 if (array_key_exists($log->sessionid, $dbstudlog)) {
@@ -246,7 +245,7 @@ class user_data implements renderable {
 
                         $updatedsessions[$log->sessionid] = $log->sessionid;
                         if (!array_key_exists($attid, $updateatts)) {
-                            $updateatts[$attid] = [];
+                            $updateatts[$attid] = array();
                         }
                         array_push($updateatts[$attid], $log->studentid);
                     }
@@ -254,7 +253,7 @@ class user_data implements renderable {
                     $DB->insert_record('attendance_log', $log, false);
                     $updatedsessions[$log->sessionid] = $log->sessionid;
                     if (!array_key_exists($attid, $updateatts)) {
-                        $updateatts[$attid] = [];
+                        $updateatts[$attid] = array();
                     }
                     array_push($updateatts[$attid], $log->studentid);
                 }

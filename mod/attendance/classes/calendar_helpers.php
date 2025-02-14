@@ -13,7 +13,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-
 /**
  * Calendar related functions
  *
@@ -44,7 +43,7 @@ function attendance_create_calendar_event(&$session) {
         return true;
     }
 
-    $attendance = $DB->get_record('attendance', ['id' => $session->attendanceid]);
+    $attendance = $DB->get_record('attendance', array('id' => $session->attendanceid));
 
     $caleventdata = new stdClass();
     $caleventdata->name           = $attendance->name;
@@ -66,7 +65,7 @@ function attendance_create_calendar_event(&$session) {
     $calevent = new stdClass();
     if ($calevent = calendar_event::create($caleventdata, false)) {
         $session->caleventid = $calevent->id;
-        $DB->set_field('attendance_sessions', 'caleventid', $session->caleventid, ['id' => $session->id]);
+        $DB->set_field('attendance_sessions', 'caleventid', $session->caleventid, array('id' => $session->id));
         return true;
     } else {
         return false;
@@ -118,7 +117,7 @@ function attendance_update_calendar_event($session) {
     if ($session->calendarevent == 0) {
         if ($session->caleventid != 0) {
             // There is an existing event we should delete, calendarevent just got turned off.
-            $DB->delete_records_list('event', 'id', [$caleventid]);
+            $DB->delete_records_list('event', 'id', array($caleventid));
             $session->caleventid = 0;
             $DB->update_record('attendance_sessions', $session);
             return true;

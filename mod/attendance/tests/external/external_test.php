@@ -51,7 +51,7 @@ require_once($CFG->dirroot . '/mod/attendance/classes/structure.php');
  * @group      mod_attendance
  * @runTestsInSeparateProcesses
  */
-final class external_test extends externallib_advanced_testcase {
+class external_test extends externallib_advanced_testcase {
     /** @var core_course_category */
     protected $category;
     /** @var stdClass */
@@ -72,10 +72,10 @@ final class external_test extends externallib_advanced_testcase {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/mod/attendance/externallib.php');
         $this->category = $this->getDataGenerator()->create_category();
-        $this->course = $this->getDataGenerator()->create_course(['category' => $this->category->id]);
-        $att = $this->getDataGenerator()->create_module('attendance', ['course' => $this->course->id]);
-        $cm = $DB->get_record('course_modules', ['id' => $att->cmid], '*', MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+        $this->course = $this->getDataGenerator()->create_course(array('category' => $this->category->id));
+        $att = $this->getDataGenerator()->create_module('attendance', array('course' => $this->course->id));
+        $cm = $DB->get_record('course_modules', array('id' => $att->cmid), '*', MUST_EXIST);
+        $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
         $this->attendance = new mod_attendance_structure($att, $cm, $course);
 
         $this->create_and_enrol_users();
@@ -100,12 +100,9 @@ final class external_test extends externallib_advanced_testcase {
         $this->attendance->add_sessions($this->sessions);
     }
 
-    /**
-     * Creating 10 students and 1 teacher.
-     * @return void
-     */
+    /** Creating 10 students and 1 teacher. */
     protected function create_and_enrol_users() {
-        $this->students = [];
+        $this->students = array();
         for ($i = 0; $i < 10; $i++) {
             $this->students[] = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
         }
@@ -113,14 +110,8 @@ final class external_test extends externallib_advanced_testcase {
         $this->teacher = $this->getDataGenerator()->create_and_enrol($this->course, 'editingteacher');
     }
 
-    /**
-     * Test attendance_handler::get_courses_with_today_sessions.
-     *
-     * @covers \mod_attendance\external::get_courses_with_today_sessions
-     * @return void
-     * @throws \invalid_response_exception
-     */
-    public function test_get_courses_with_today_sessions(): void {
+    /** test attendance_handler::get_courses_with_today_sessions */
+    public function test_get_courses_with_today_sessions() {
         $this->resetAfterTest(true);
 
         // Just adding the same session again to check if the method returns the right amount of instances.
@@ -138,23 +129,15 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertEquals(count($attendanceinstance['today_sessions']), 2);
     }
 
-    /**
-     * Test attendance_handler::get_courses_with_today_sessions multiple.
-     *
-     * @covers \mod_attendance\external::get_session
-     * @return void
-     * @throws \coding_exception
-     * @throws \dml_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_get_courses_with_today_sessions_multiple_instances(): void {
+    /** test attendance_handler::get_courses_with_today_sessions multiple */
+    public function test_get_courses_with_today_sessions_multiple_instances() {
         global $DB;
         $this->resetAfterTest(true);
 
         // Make another attendance.
-        $att = $this->getDataGenerator()->create_module('attendance', ['course' => $this->course->id]);
-        $cm = $DB->get_record('course_modules', ['id' => $att->cmid], '*', MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+        $att = $this->getDataGenerator()->create_module('attendance', array('course' => $this->course->id));
+        $cm = $DB->get_record('course_modules', array('id' => $att->cmid), '*', MUST_EXIST);
+        $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
         $second = new mod_attendance_structure($att, $cm, $course);
 
         // Just add the same session.
@@ -172,14 +155,8 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertEquals(count($course['attendance_instances']), 2);
     }
 
-    /**
-     * Test attendance_handler::get_session.
-     *
-     * @covers \mod_attendance\external::get_session
-     * @return void
-     * @throws \invalid_response_exception
-     */
-    public function test_get_session(): void {
+    /** test attendance_handler::get_session */
+    public function test_get_session() {
         $this->resetAfterTest(true);
 
         $courseswithsessions = attendance_handler::get_courses_with_today_sessions($this->teacher->id);
@@ -199,15 +176,8 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertEquals(count($sessioninfo['users']), 10);
     }
 
-    /**
-     * Test get session with group.
-     *
-     * @covers \mod_attendance\external::get_courses_with_today_sessions
-     * @return void
-     * @throws \coding_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_get_session_with_group(): void {
+    /** test get session with group */
+    public function test_get_session_with_group() {
         $this->resetAfterTest(true);
 
         // Create a group in our course, and add some students to it.
@@ -253,15 +223,8 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertEquals(count($sessioninfo['users']), 5);
     }
 
-    /**
-     *  Test update user status.
-     *
-     * @covers \mod_attendance\external::update_user_status
-     * @return void
-     * @throws \invalid_parameter_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_update_user_status(): void {
+    /** test update user status */
+    public function test_update_user_status() {
         $this->resetAfterTest(true);
 
         $courseswithsessions = attendance_handler::get_courses_with_today_sessions($this->teacher->id);
@@ -293,17 +256,8 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertEquals($status['id'], $log['statusid']);
     }
 
-    /**
-     * Test adding new attendance record via ws.
-     *
-     * @covers \mod_attendance\external::add_attendance
-     * @return void
-     * @throws \coding_exception
-     * @throws \dml_exception
-     * @throws \invalid_parameter_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_add_attendance(): void {
+    /** Test adding new attendance record via ws. */
+    public function test_add_attendance() {
         global $DB;
         $this->resetAfterTest(true);
 
@@ -311,7 +265,7 @@ final class external_test extends externallib_advanced_testcase {
 
         // Become a teacher.
         $teacher = self::getDataGenerator()->create_user();
-        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
         $this->setUser($teacher);
 
@@ -351,21 +305,14 @@ final class external_test extends externallib_advanced_testcase {
         $result = mod_attendance_external::add_attendance($course->id, 'test1', 'test1', 100);
     }
 
-    /**
-     * Test remove attendance va ws.
-     *
-     * @covers \mod_attendance\external::remove_attendance
-     * @return void
-     * @throws \dml_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_remove_attendance(): void {
+    /** Test remove attendance va ws. */
+    public function test_remove_attendance() {
         global $DB;
         $this->resetAfterTest(true);
 
         // Become a teacher.
         $teacher = self::getDataGenerator()->create_user();
-        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($teacher->id, $this->course->id, $teacherrole->id);
         $this->setUser($teacher);
 
@@ -382,26 +329,17 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertCount(0, $DB->get_records('attendance_sessions', ['attendanceid' => $this->attendance->id]));
     }
 
-    /**
-     * Test add session to existing attendnace via ws.
-     *
-     * @covers \mod_attendance\external::add_session
-     * @return void
-     * @throws \coding_exception
-     * @throws \dml_exception
-     * @throws \invalid_parameter_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_add_session(): void {
+    /** Test add session to existing attendnace via ws. */
+    public function test_add_session() {
         global $DB;
         $this->resetAfterTest(true);
 
         $course = $this->getDataGenerator()->create_course();
-        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $group = $this->getDataGenerator()->create_group(array('courseid' => $course->id));
 
         // Become a teacher.
         $teacher = self::getDataGenerator()->create_user();
-        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
         $this->setUser($teacher);
 
@@ -434,26 +372,17 @@ final class external_test extends externallib_advanced_testcase {
         mod_attendance_external::add_session($attendancesepgroups['attendanceid'], 'test', time(), 3600, 0, false);
     }
 
-    /**
-     * Test add session group in no group - error.
-     *
-     * @covers \mod_attendance\external::add_session
-     * @return void
-     * @throws \coding_exception
-     * @throws \dml_exception
-     * @throws \invalid_parameter_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_add_session_group_in_no_group_exception(): void {
+    /** Test add session group in no group - error. */
+    public function test_add_session_group_in_no_group_exception() {
         global $DB;
         $this->resetAfterTest(true);
 
         $course = $this->getDataGenerator()->create_course();
-        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $group = $this->getDataGenerator()->create_group(array('courseid' => $course->id));
 
         // Become a teacher.
         $teacher = self::getDataGenerator()->create_user();
-        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
         $this->setUser($teacher);
 
@@ -471,26 +400,17 @@ final class external_test extends externallib_advanced_testcase {
         mod_attendance_external::add_session($attendancenogroups['attendanceid'], 'test', time(), 3600, $group->id, false);
     }
 
-    /**
-     * Test add sesssion to invalid group.
-     *
-     * @covers \mod_attendance\external::add_session
-     * @return void
-     * @throws \coding_exception
-     * @throws \dml_exception
-     * @throws \invalid_parameter_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_add_session_invalid_group_exception(): void {
+    /** Test add sesssion to invalid group. */
+    public function test_add_session_invalid_group_exception() {
         global $DB;
         $this->resetAfterTest(true);
 
         $course = $this->getDataGenerator()->create_course();
-        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $group = $this->getDataGenerator()->create_group(array('courseid' => $course->id));
 
         // Become a teacher.
         $teacher = self::getDataGenerator()->create_user();
-        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher']);
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
         $this->setUser($teacher);
 
@@ -507,16 +427,8 @@ final class external_test extends externallib_advanced_testcase {
         mod_attendance_external::add_session($attendancevisgroups['attendanceid'], 'test', time(), 3600, $group->id + 100, false);
     }
 
-    /**
-     * Test remove session via ws.
-     *
-     * @covers \mod_attendance\external::remove_session
-     * @return void
-     * @throws \dml_exception
-     * @throws \invalid_parameter_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_remove_session(): void {
+    /** Test remove session via ws. */
+    public function test_remove_session() {
         global $DB;
         $this->resetAfterTest(true);
 
@@ -543,15 +455,8 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertCount(0, $DB->get_records('attendance_sessions', ['attendanceid' => $attendance['attendanceid']]));
     }
 
-    /**
-     * Test session creates cal event.
-     *
-     * @covers \mod_attendance\external::add_attendance
-     * @return void
-     * @throws \invalid_parameter_exception
-     * @throws \invalid_response_exception
-     */
-    public function test_add_session_creates_calendar_event(): void {
+    /** Test session creates cal event. */
+    public function test_add_session_creates_calendar_event() {
         global $DB;
         $this->resetAfterTest(true);
 
@@ -588,14 +493,8 @@ final class external_test extends externallib_advanced_testcase {
         $this->assertInstanceOf('\mod_attendance\event\session_added', $events[1]);
     }
 
-    /**
-     * Test get sessions.
-     *
-     * @covers \mod_attendance\external::get_sessions
-     * @return void
-     * @throws \invalid_response_exception
-     */
-    public function test_get_sessions(): void {
+    /** Test get sessions. */
+    public function test_get_sessions() {
         $this->resetAfterTest(true);
 
         $courseswithsessions = attendance_handler::get_courses_with_today_sessions($this->teacher->id);

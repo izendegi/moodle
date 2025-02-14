@@ -23,6 +23,8 @@
  */
 namespace mod_verbalfeedback\model;
 
+use mod_verbalfeedback\utils\instance_utils;
+
 /**
  * The report class
  */
