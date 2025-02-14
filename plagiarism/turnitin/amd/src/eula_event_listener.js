@@ -7,11 +7,6 @@
  */
 
 define(['jquery'], function($) {
-    /**
-     * Handles the message event.
-     *
-     * @param {Event} ev - The event object.
-     */
     function handleMessage(ev) {
         var message = typeof ev.data === 'undefined' ? ev.originalEvent.data : ev.data;
 
@@ -36,9 +31,6 @@ define(['jquery'], function($) {
         }
     }
 
-    /**
-     * Attaches the event listener for the message event.
-     */
     function attachEventListener() {
         $(window).on("message", handleMessage);
     }

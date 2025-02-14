@@ -52,11 +52,11 @@ class restore_attendance_activity_task extends restore_activity_task {
      * processed by the link decoder
      */
     public static function define_decode_contents() {
-        $contents = [];
+        $contents = array();
 
-        $contents[] = new restore_decode_content('attendance', ['intro'], 'attendance');
+        $contents[] = new restore_decode_content('attendance', array('intro'), 'attendance');
         $contents[] = new restore_decode_content('attendance_sessions',
-                          ['description'], 'attendance_session');
+                          array('description'), 'attendance_session');
 
         return $contents;
     }
@@ -66,18 +66,18 @@ class restore_attendance_activity_task extends restore_activity_task {
      * to the activity to be executed by the link decoder
      */
     public static function define_decode_rules() {
-        $rules = [];
+        $rules = array();
 
         $rules[] = new restore_decode_rule('ATTENDANCEVIEWBYID',
                     '/mod/attendance/view.php?id=$1', 'course_module');
         $rules[] = new restore_decode_rule('ATTENDANCEVIEWBYIDSTUD',
-                    '/mod/attendance/view.php?id=$1&studentid=$2', ['course_module', 'user']);
+                    '/mod/attendance/view.php?id=$1&studentid=$2', array('course_module', 'user'));
 
         // Older style backups using previous plugin name.
         $rules[] = new restore_decode_rule('ATTFORBLOCKVIEWBYID',
             '/mod/attendance/view.php?id=$1', 'course_module');
         $rules[] = new restore_decode_rule('ATTFORBLOCKVIEWBYIDSTUD',
-            '/mod/attendance/view.php?id=$1&studentid=$2', ['course_module', 'user']);
+            '/mod/attendance/view.php?id=$1&studentid=$2', array('course_module', 'user'));
 
         return $rules;
 
@@ -90,9 +90,8 @@ class restore_attendance_activity_task extends restore_activity_task {
      * of {@see restore_log_rule} objects
      */
     public static function define_restore_log_rules() {
-        $rules = [];
+        $rules = array();
 
-        // phpcs:disable moodle.Commenting.TodoComment
         // TODO: log restore.
         return $rules;
     }
@@ -108,7 +107,7 @@ class restore_attendance_activity_task extends restore_activity_task {
      * activity level. All them are rules not linked to any module instance (cmid = 0)
      */
     public static function define_restore_log_rules_for_course() {
-        $rules = [];
+        $rules = array();
 
         return $rules;
     }

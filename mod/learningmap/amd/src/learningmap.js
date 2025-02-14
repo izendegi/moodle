@@ -50,9 +50,6 @@ export const init = () => {
     let mapdiv = document.getElementById('learningmap-editor-map');
     let code = document.getElementById('id_svgcode');
 
-    let svgdoc = new DOMParser().parseFromString(code.value, 'image/svg+xml');
-    let svgnode = svgdoc.querySelector('svg');
-
     // DOM nodes for the activity selector
     let activitySetting = document.getElementById('learningmap-activity-setting');
     let activitySelector = document.getElementById('learningmap-activity-selector');
@@ -84,15 +81,12 @@ export const init = () => {
             if (activitySelector.value) {
                 let text = document.getElementById('text' + elementForActivitySelector);
                 if (text) {
-                    text.replaceChildren(svgdoc.createCDATASection(
-                        activitySelector.querySelector('option[value="' + activitySelector.value + '"]').textContent
-                    ));
+                    text.textContent = activitySelector.querySelector('option[value="' + activitySelector.value + '"]').textContent;
                 }
                 let title = document.getElementById('title' + elementForActivitySelector);
                 if (title) {
-                    title.replaceChildren(svgdoc.createCDATASection(
-                        activitySelector.querySelector('option[value="' + activitySelector.value + '"]').textContent
-                    ));
+                    title.textContent =
+                        activitySelector.querySelector('option[value="' + activitySelector.value + '"]').textContent;
                 }
                 document.getElementById(elementForActivitySelector).classList.remove('learningmap-emptyplace');
             } else {
@@ -168,7 +162,7 @@ export const init = () => {
 
     // Get SVG code from the (hidden) textarea field
     if (code && mapdiv) {
-        mapdiv.replaceChildren(svgnode);
+        mapdiv.innerHTML = code.value;
     }
     // Reload background image to get the correct width and height values
     refreshBackgroundImage();
@@ -176,7 +170,8 @@ export const init = () => {
     updateCode();
 
     // Enable dragging of places
-    makeDraggable(svgnode);
+    let svg = document.getElementById('learningmap-svgmap-' + placestore.getMapid());
+    makeDraggable(svg);
 
     // Refresh stylesheet values from placestore
     updateCSS();
@@ -610,8 +605,7 @@ export const init = () => {
         // Default value for delta: Circle radius * 1.5 (as a padding)
         text.setAttribute('dx', circleRadius * 1.5);
         text.setAttribute('dy', circleRadius * 1.5);
-        let textcontent = svgdoc.createCDATASection(content);
-        text.replaceChildren(textcontent);
+        text.textContent = content;
         return text;
     }
 
@@ -850,7 +844,7 @@ export const init = () => {
                 let height = parseInt(background.getBBox().height);
                 let width = background.getBBox().width;
                 placestore.setBackgroundDimensions(width, height);
-                svgnode.setAttribute('viewBox', '0 0 ' + placestore.width + ' ' + placestore.height);
+                svg.setAttribute('viewBox', '0 0 ' + placestore.width + ' ' + placestore.height);
                 background.setAttribute('width', width);
                 background.setAttribute('height', height);
                 updateCode();

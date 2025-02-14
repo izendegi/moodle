@@ -16,10 +16,10 @@
 /**
  * drag and drop frontend handeling by jquery
  *
- * @package
- *
+ * @package qtype_ddmatch
+ * 
  * @author DualCube <admin@dualcube.com>
- * @copyright  2007 DualCube (https://dualcube.com)
+ * @copyright  2007 DualCube (https://dualcube.com) 
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -419,7 +419,6 @@ define([
      */
     DragDropToMatch.prototype.getNextDrag = function(drag) {
         var choice;
-        var numChoices = this.getRoot().find('.draghome').length; // Define numChoices
 
         if (drag.length === 0) {
             choice = 1; // Was empty, so we want to select the first choice.
@@ -518,7 +517,8 @@ define([
             chosen.find('option[selected=selected]').removeAttr('selected');
             chosen.find('option[value=' + choice + ']').attr('selected', 'selected');
         }
-
+        
+            
     };
 
     /**
@@ -815,6 +815,7 @@ define([
             }
         },
 
+        
     };
 
     /**

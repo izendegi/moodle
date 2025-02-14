@@ -30,6 +30,7 @@ global $CFG;
 
 use mod_verbalfeedback\model\language;
 use mod_verbalfeedback\repository\language_repository;
+use mod_verbalfeedback\repository\mapper;
 use mod_verbalfeedback\repository\tables;
 
 /**
@@ -44,11 +45,6 @@ final class language_repository_test extends \advanced_testcase {
      * Setup the test class.
      */
     public function setUp(): void {
-        global $DB;
-
-        parent::setUp();
-        // Empty table, while not necessary locally it is necessary for CI at github.
-        $DB->execute(sprintf('TRUNCATE TABLE {%s}', tables::LANGUAGE_TABLE));
         $this->repo = new language_repository();
     }
 
@@ -167,11 +163,11 @@ final class language_repository_test extends \advanced_testcase {
             ['id' => 2, 'language' => 'de'],
             ['id' => 3, 'language' => 'fr'],
         ];
-        $DB->insert_records(tables::LANGUAGE_TABLE, $languages);
+        $DB->insert_records('verbalfeedback_language', $languages);
 
         $this->repo->delete_by_id(1);
 
-        $this->assertFalse($DB->get_record(tables::LANGUAGE_TABLE, ['id' => 1]));
+        $this->assertFalse($DB->get_record('verbalfeedback_language', ['id' => 1]));
     }
 
     /**

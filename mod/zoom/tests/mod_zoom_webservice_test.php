@@ -46,35 +46,6 @@ final class mod_zoom_webservice_test extends advanced_testcase {
     }
 
     /**
-     * Get mock webservice object.
-     *
-     * @param array $mockmethods Array of method => return value methods.
-     */
-    public function get_mock_webservice($mockmethods) {
-        $mockmethods += [
-            'get_access_token' => 'token123',
-        ];
-
-        $mockbuilder = $this->getMockBuilder(webservice::class);
-
-        if (method_exists($mockbuilder, 'onlyMethods')) {
-            $mockbuilder->onlyMethods(array_keys($mockmethods));
-        } else {
-            $mockbuilder->setMethods(array_keys($mockmethods));
-        }
-
-        $mockservice = $mockbuilder->getMock();
-
-        foreach ($mockmethods as $method => $willreturn) {
-            $mockservice->expects($this->any())
-                ->method($method)
-                ->willReturn($willreturn);
-        }
-
-        return $mockservice;
-    }
-
-    /**
      * Setup before every test.
      */
     public function setUp(): void {
@@ -85,15 +56,15 @@ final class mod_zoom_webservice_test extends advanced_testcase {
         set_config('clientsecret', 'test', 'zoom');
         set_config('accountid', 'test', 'zoom');
 
+        // @codingStandardsIgnoreStart
         $this->notfoundmockcurl = new class {
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
             /**
              * Stub for curl setHeader().
              * @param string $unusedparam
              * @return void
              */
             public function setHeader($unusedparam) {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 return;
             }
             /**
@@ -135,11 +106,21 @@ final class mod_zoom_webservice_test extends advanced_testcase {
      * Tests whether the meeting not found errors are properly parsed.
      */
     public function test_meeting_not_found_exception(): void {
-        $methods = [
-            'make_curl_call' => '{"code":3001,"message":"réunion introuvable"}',
-            'get_curl_object' => $this->notfoundmockcurl,
-        ];
-        $mockservice = $this->get_mock_webservice($methods);
+        $mockservice = $this->getMockBuilder('\mod_zoom\webservice')
+            ->setMethods(['make_curl_call', 'get_curl_object', 'get_access_token'])
+            ->getMock();
+
+        $mockservice->expects($this->any())
+            ->method('make_curl_call')
+            ->willReturn('{"code":3001,"message":"réunion introuvable"}');
+
+        $mockservice->expects($this->any())
+            ->method('get_curl_object')
+            ->willReturn($this->notfoundmockcurl);
+
+        $mockservice->expects($this->any())
+            ->method('get_access_token')
+            ->willReturn('token123');
 
         $foundexception = false;
         try {
@@ -157,11 +138,21 @@ final class mod_zoom_webservice_test extends advanced_testcase {
      * Tests whether user not found errors are properly parsed.
      */
     public function test_user_not_found_exception(): void {
-        $methods = [
-            'make_curl_call' => '{"code":1001,"message":"n’existe pas ou n’appartient pas à ce compte"}',
-            'get_curl_object' => $this->notfoundmockcurl,
-        ];
-        $mockservice = $this->get_mock_webservice($methods);
+        $mockservice = $this->getMockBuilder('\mod_zoom\webservice')
+            ->setMethods(['make_curl_call', 'get_curl_object', 'get_access_token'])
+            ->getMock();
+
+        $mockservice->expects($this->any())
+            ->method('make_curl_call')
+            ->willReturn('{"code":1001,"message":"n’existe pas ou n’appartient pas à ce compte"}');
+
+        $mockservice->expects($this->any())
+            ->method('get_curl_object')
+            ->willReturn($this->notfoundmockcurl);
+
+        $mockservice->expects($this->any())
+            ->method('get_access_token')
+            ->willReturn('token123');
 
         $foundexception = false;
         try {
@@ -180,15 +171,15 @@ final class mod_zoom_webservice_test extends advanced_testcase {
      * Tests whether invalid user errors are parsed properly
      */
     public function test_invalid_user_exception(): void {
+        // @codingStandardsIgnoreStart
         $invalidmockcurl = new class {
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
             /**
              * Stub for curl setHeader().
              * @param string $unusedparam
              * @return void
              */
             public function setHeader($unusedparam) {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 return;
             }
             /**
@@ -207,11 +198,21 @@ final class mod_zoom_webservice_test extends advanced_testcase {
             }
         };
 
-        $methods = [
-            'make_curl_call' => '{"code":1120,"message":"utilisateur invalide"}',
-            'get_curl_object' => $invalidmockcurl,
-        ];
-        $mockservice = $this->get_mock_webservice($methods);
+        $mockservice = $this->getMockBuilder('\mod_zoom\webservice')
+            ->setMethods(['make_curl_call', 'get_curl_object', 'get_access_token'])
+            ->getMock();
+
+        $mockservice->expects($this->any())
+            ->method('make_curl_call')
+            ->willReturn('{"code":1120,"message":"utilisateur invalide"}');
+
+        $mockservice->expects($this->any())
+            ->method('get_curl_object')
+            ->willReturn($invalidmockcurl);
+
+        $mockservice->expects($this->any())
+            ->method('get_access_token')
+            ->willReturn('token123');
 
         $foundexception = false;
         try {
@@ -231,19 +232,16 @@ final class mod_zoom_webservice_test extends advanced_testcase {
      * is in the curl response to specify the time that the retry should be sent.
      */
     public function test_retry_with_header(): void {
+        // @codingStandardsIgnoreStart
         $retrywithheadermockcurl = new class {
-            /**
-             * @var int Number of calls.
-             */
             public $numgetinfocalls = 0;
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
             /**
              * Stub for curl setHeader().
              * @param string $unusedparam
              * @return void
              */
             public function setHeader($unusedparam) {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 return;
             }
             /**
@@ -265,13 +263,13 @@ final class mod_zoom_webservice_test extends advanced_testcase {
 
                 return ['http_code' => 200];
             }
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
+            // @codingStandardsIgnoreStart
             /**
              * Returns retry to be 1 second later.
              * @return array
              */
             public function getResponse() {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 // Set retry time to be 1 second. Format is 2020-05-31T00:00:00Z.
                 $retrytime = time() + 1;
                 return [
@@ -282,13 +280,23 @@ final class mod_zoom_webservice_test extends advanced_testcase {
             }
         };
 
+        $mockservice = $this->getMockBuilder('\mod_zoom\webservice')
+            ->setMethods(['make_curl_call', 'get_curl_object', 'get_access_token'])
+            ->getMock();
+
+        $mockservice->expects($this->any())
+            ->method('make_curl_call')
+            ->willReturn('{"response":"success", "message": "", "code": 200}');
+
         // Class retrywithheadermockcurl will give 429 retry error 3 times
         // before giving a 200.
-        $methods = [
-            'make_curl_call' => '{"response":"success", "message": "", "code": 200}',
-            'get_curl_object' => $retrywithheadermockcurl,
-        ];
-        $mockservice = $this->get_mock_webservice($methods);
+        $mockservice->expects($this->any())
+            ->method('get_curl_object')
+            ->willReturn($retrywithheadermockcurl);
+
+        $mockservice->expects($this->any())
+            ->method('get_access_token')
+            ->willReturn('token123');
 
         $result = $mockservice->get_user("1");
         // Expect 3 debugging calls for each retry attempt.
@@ -303,19 +311,16 @@ final class mod_zoom_webservice_test extends advanced_testcase {
      * header is not sent in the curl response.
      */
     public function test_retry_without_header(): void {
+        // @codingStandardsIgnoreStart
         $retrynoheadermockcurl = new class {
-            /**
-             * @var int Number of calls.
-             */
             public $numgetinfocalls = 0;
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
             /**
              * Stub for curl setHeader().
              * @param string $unusedparam
              * @return void
              */
             public function setHeader($unusedparam) {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 return;
             }
             /**
@@ -337,22 +342,32 @@ final class mod_zoom_webservice_test extends advanced_testcase {
 
                 return ['http_code' => 200];
             }
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
+            // @codingStandardsIgnoreStart
             /**
              * Returns empty response.
              * @return array
              */
             public function getResponse() {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 return [];
             }
         };
 
-        $methods = [
-            'make_curl_call' => '{"response":"success"}',
-            'get_curl_object' => $retrynoheadermockcurl,
-        ];
-        $mockservice = $this->get_mock_webservice($methods);
+        $mockservice = $this->getMockBuilder('\mod_zoom\webservice')
+            ->setMethods(['make_curl_call', 'get_curl_object', 'get_access_token'])
+            ->getMock();
+
+        $mockservice->expects($this->any())
+            ->method('make_curl_call')
+            ->willReturn('{"response":"success"}');
+
+        $mockservice->expects($this->any())
+            ->method('get_curl_object')
+            ->willReturn($retrynoheadermockcurl);
+
+        $mockservice->expects($this->any())
+            ->method('get_access_token')
+            ->willReturn('token123');
 
         $result = $mockservice->get_user("1");
         $this->assertDebuggingCalledCount($expectedcount = 3);
@@ -364,19 +379,16 @@ final class mod_zoom_webservice_test extends advanced_testcase {
      * Tests that we throw error if we tried more than max retries.
      */
     public function test_retry_exception(): void {
+        // @codingStandardsIgnoreStart
         $retryfailuremockcurl = new class {
-            /**
-             * @var ?string URL path.
-             */
             public $urlpath = null;
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
             /**
              * Stub for curl setHeader().
              * @param string $unusedparam
              * @return void
              */
             public function setHeader($unusedparam) {
-                // phpcs:enable
+            // @codingStandardsIgnoreend
                 return;
             }
             /**
@@ -391,7 +403,7 @@ final class mod_zoom_webservice_test extends advanced_testcase {
              * @return array
              */
             public function get_info() {
-                return ['http_code' => 429];
+                return array('http_code' => 429);
             }
             /**
              * Returns error code and message.
@@ -408,13 +420,13 @@ final class mod_zoom_webservice_test extends advanced_testcase {
                 }
                 return '{"code":-1, "message":"too many retries"}';
             }
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
+            // @codingStandardsIgnoreStart
             /**
              * Returns retry to be 1 second later.
              * @return array
              */
             public function getResponse() {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 // Set retry time after 1 second. Format is 2020-05-31T00:00:00Z.
                 $retrytime = time() + 1;
                 return [
@@ -425,10 +437,17 @@ final class mod_zoom_webservice_test extends advanced_testcase {
             }
         };
 
-        $methods = [
-            'get_curl_object' => $retryfailuremockcurl,
-        ];
-        $mockservice = $this->get_mock_webservice($methods);
+        $mockservice = $this->getMockBuilder('\mod_zoom\webservice')
+            ->setMethods(['get_curl_object', 'get_access_token'])
+            ->getMock();
+
+        $mockservice->expects($this->any())
+            ->method('get_curl_object')
+            ->willReturn($retryfailuremockcurl);
+
+        $mockservice->expects($this->any())
+            ->method('get_access_token')
+            ->willReturn('token123');
 
         $foundexception = false;
         try {
@@ -447,19 +466,16 @@ final class mod_zoom_webservice_test extends advanced_testcase {
      * Tests that we are waiting 1 minute for QPS rate limit types.
      */
     public function test_retryqps_exception(): void {
+        // @codingStandardsIgnoreStart
         $retryqpsmockcurl = new class {
-            /**
-             * @var ?string URL path.
-             */
             public $urlpath = null;
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
             /**
              * Stub for curl setHeader().
              * @param string $unusedparam
              * @return void
              */
             public function setHeader($unusedparam) {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 return;
             }
             /**
@@ -492,22 +508,29 @@ final class mod_zoom_webservice_test extends advanced_testcase {
 
                 return '{"code":-1, "message":"too many retries"}';
             }
-            // phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
+            // @codingStandardsIgnoreStart
             /**
              * Returns retry to be 1 second later.
              * @return array
              */
             public function getResponse() {
-                // phpcs:enable
+            // @codingStandardsIgnoreEnd
                 // Signify that we reached max per second/minute rate limit.
                 return ['X-RateLimit-Type' => 'QPS'];
             }
         };
 
-        $methods = [
-            'get_curl_object' => $retryqpsmockcurl,
-        ];
-        $mockservice = $this->get_mock_webservice($methods);
+        $mockservice = $this->getMockBuilder('\mod_zoom\webservice')
+            ->setMethods(['get_curl_object', 'get_access_token'])
+            ->getMock();
+
+        $mockservice->expects($this->any())
+            ->method('get_curl_object')
+            ->willReturn($retryqpsmockcurl);
+
+        $mockservice->expects($this->any())
+            ->method('get_access_token')
+            ->willReturn('token123');
 
         $foundexception = false;
         try {

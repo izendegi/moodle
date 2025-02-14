@@ -82,9 +82,9 @@ class sessions_imported extends \core\event\base {
      * @return array of parameters for object mapping.
      */
     public static function get_objectid_mapping() {
-        return [
+        return array(
             'db' => 'attendance',
-            'restore' => 'attendance',
-        ];
+            'restore' => 'attendance'
+        );
     }
 }
