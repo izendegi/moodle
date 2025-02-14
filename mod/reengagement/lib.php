@@ -54,6 +54,9 @@ function reengagement_add_instance($reengagement) {
         $reengagement->suppresstarget = 0;
     }
     unset($reengagement->suppressemail);
+    if (!isset($reengagement->emailcontent)) {
+        $reengagement->emailcontent = '';
+    }
 
     // Check course has completion enabled, and enable it if not, and user has permission to do so.
     $course = $DB->get_record('course', array('id' => $reengagement->course));
