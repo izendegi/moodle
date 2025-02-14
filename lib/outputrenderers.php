@@ -3910,7 +3910,7 @@ EOD;
     }
 
     /**
-     * Returns the custom menu if one has been set
+     * Applies Moodle filters to the custom menu and returns the custom menu if one has been set.
      *
      * A custom menu can be configured by browsing to a theme's settings page
      * and then configuring the custommenu config setting as described.
@@ -3919,7 +3919,7 @@ EOD;
      * {@link core_renderer::render_custom_menu()} instead.
      *
      * @param string $custommenuitems - custom menuitems set by theme instead of global theme settings
-     * @return string
+     * @return string Rendered custom_menu after filters have been applied.
      */
     public function custom_menu($custommenuitems = '') {
         global $CFG;
@@ -3927,6 +3927,14 @@ EOD;
         if (empty($custommenuitems) && !empty($CFG->custommenuitems)) {
             $custommenuitems = $CFG->custommenuitems;
         }
+
+        // If filtering of the primary custom menu is enabled, apply only the string filters.
+        if (!empty($CFG->navfilter) && !empty($CFG->stringfilters)) {
+            // Apply filters that are enabled for Content and Headings.
+            $filtermanager = filter_manager::instance();
+            $custommenuitems = $filtermanager->filter_string($custommenuitems, \context_system::instance());
+        }
+
         $custommenu = new custom_menu($custommenuitems, current_language());
         return $this->render_custom_menu($custommenu);
     }
@@ -3942,6 +3950,14 @@ EOD;
         if (empty($custommenuitems) && !empty($CFG->custommenuitems)) {
             $custommenuitems = $CFG->custommenuitems;
         }
+
+        // If filtering of the primary custom menu is enabled, apply only the string filters.
+        if (!empty($CFG->navfilter) && !empty($CFG->stringfilters)) {
+            // Apply filters that are enabled for Content and Headings.
+            $filtermanager = filter_manager::instance();
+            $custommenuitems = $filtermanager->filter_string($custommenuitems, \context_system::instance());
+        }
+
         $custommenu = new custom_menu($custommenuitems, current_language());
         $langs = get_string_manager()->get_list_of_translations();
         $haslangmenu = $this->lang_menu() != '';
