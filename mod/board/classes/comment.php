@@ -170,7 +170,7 @@ class comment {
         global $DB, $USER;
 
         $this->timemodified = time();
-        $this->content = clean_param(html_to_text($this->content, 5000, false), PARAM_TEXT);
+        $this->content = html_to_text($this->content, 5000, false);
 
         if ($this->id > 0) {
             $DB->update_record('board_comments', $this);

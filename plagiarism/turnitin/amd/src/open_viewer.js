@@ -8,7 +8,7 @@
 
 define(['jquery',
         'core/notification'
-       ], function($, Notification) {
+       ], function($) {
     return {
         origreport_open: function() {
             var that = this;

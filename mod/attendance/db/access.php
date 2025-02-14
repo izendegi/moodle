@@ -24,153 +24,153 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = [
-    'mod/attendance:view' => [
+$capabilities = array(
+    'mod/attendance:view' => array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'student' => CAP_ALLOW,
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/attendance:addinstance' => [
+    'mod/attendance:addinstance' => array(
         'riskbitmask' => RISK_XSS,
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-        'clonepermissionsfrom' => 'moodle/course:manageactivities',
-    ],
+            'manager' => CAP_ALLOW
+        ),
+        'clonepermissionsfrom' => 'moodle/course:manageactivities'
+    ),
 
-    'mod/attendance:viewreports' => [
+    'mod/attendance:viewreports' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/attendance:takeattendances' => [
+    'mod/attendance:takeattendances' => array(
         'riskbitmask' => RISK_DATALOSS,
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/attendance:changeattendances' => [
+    'mod/attendance:changeattendances' => array(
         'riskbitmask' => RISK_DATALOSS,
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/attendance:manageattendances' => [
+    'mod/attendance:manageattendances' => array(
         'riskbitmask' => RISK_CONFIG,
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/attendance:changepreferences' => [
+    'mod/attendance:changepreferences' => array(
         'riskbitmask' => RISK_CONFIG,
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/attendance:import' => [
+    'mod/attendance:import' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/attendance:export' => [
+    'mod/attendance:export' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
 
-    'mod/attendance:canbelisted' => [
+    'mod/attendance:canbelisted' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
-            'student' => CAP_ALLOW,
-        ],
-    ],
+        'archetypes' => array(
+            'student' => CAP_ALLOW
+        )
+    ),
 
     // Allow teachers to manage temporary users.
-    'mod/attendance:managetemporaryusers' => [
+    'mod/attendance:managetemporaryusers' => array(
         'riskbitmask' => RISK_DATALOSS,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
     // Allow access to site level reports.
-    'mod/attendance:viewsummaryreports' => [
+    'mod/attendance:viewsummaryreports' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSECAT,
-        'archetypes' => [
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+        'archetypes' => array(
+            'manager' => CAP_ALLOW
+        )
+    ),
     // Users that can receive extra warning e-mails.
-    'mod/attendance:warningemails' => [
+    'mod/attendance:warningemails' => array(
         'riskbitmask' => RISK_DATALOSS,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
-    'mod/attendance:manualautomark' => [
+            'manager' => CAP_ALLOW
+        )
+    ),
+    'mod/attendance:manualautomark' => array(
         'riskbitmask' => RISK_XSS,
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-        'clonepermissionsfrom' => 'moodle/course:manageactivities',
-    ],
-];
+            'manager' => CAP_ALLOW
+        ),
+        'clonepermissionsfrom' => 'moodle/course:manageactivities'
+    ),
+);

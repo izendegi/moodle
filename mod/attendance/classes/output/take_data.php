@@ -65,7 +65,7 @@ class take_data implements renderable {
      * take_data constructor.
      * @param mod_attendance_structure $att
      */
-    public function __construct(mod_attendance_structure $att) {
+    public function  __construct(mod_attendance_structure $att) {
         if ($att->pageparams->grouptype) {
             $this->users = $att->get_users($att->pageparams->grouptype, $att->pageparams->page);
         } else {
@@ -87,7 +87,7 @@ class take_data implements renderable {
         } else if ($this->updatemode) {
             $this->sessionlog = $att->get_session_log($att->pageparams->sessionid);
         } else {
-            $this->sessionlog = [];
+            $this->sessionlog = array();
         }
 
         if (!$this->updatemode) {
@@ -108,7 +108,7 @@ class take_data implements renderable {
      * @param array $excludeparams
      * @return moodle_url
      */
-    public function url($params=[], $excludeparams=[]) {
+    public function url($params=array(), $excludeparams=array()) {
         $params = array_merge($this->urlparams, $params);
 
         foreach ($excludeparams as $paramkey) {
@@ -123,7 +123,7 @@ class take_data implements renderable {
      * @param array $params
      * @return mixed
      */
-    public function url_view($params=[]) {
+    public function url_view($params=array()) {
         return url_helpers::url_view($this->att, $params);
     }
 

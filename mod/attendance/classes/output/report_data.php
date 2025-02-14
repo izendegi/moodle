@@ -49,11 +49,11 @@ class report_data implements renderable {
     /** @var array includes disablrd/deleted statuses. */
     public $allstatuses;
     /** @var array  */
-    public $usersgroups = [];
+    public $usersgroups = array();
     /** @var array  */
-    public $sessionslog = [];
+    public $sessionslog = array();
     /** @var array|mod_attendance_summary  */
-    public $summary = [];
+    public $summary = array();
     /** @var mod_attendance_structure  */
     public $att;
 
@@ -61,7 +61,7 @@ class report_data implements renderable {
      * report_data constructor.
      * @param mod_attendance_structure $att
      */
-    public function __construct(mod_attendance_structure $att) {
+    public function  __construct(mod_attendance_structure $att) {
         $this->pageparams = $att->pageparams;
 
         $this->users = $att->get_users($att->pageparams->group, $att->pageparams->page);
@@ -120,7 +120,7 @@ class report_data implements renderable {
      * @param array $params
      * @return mixed
      */
-    public function url_view($params=[]) {
+    public function url_view($params=array()) {
         return url_helpers::url_view($this->att, $params);
     }
 
@@ -129,7 +129,7 @@ class report_data implements renderable {
      * @param array $params
      * @return moodle_url
      */
-    public function url($params=[]) {
+    public function url($params=array()) {
         $params = array_merge($params, $this->pageparams->get_significant_params());
 
         return $this->att->url_report($params);
