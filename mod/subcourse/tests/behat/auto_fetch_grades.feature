@@ -35,17 +35,12 @@ Feature: Grades are fetched automatically from the referenced course
     And I log in as "teacher1"
     And I am on "RefCourse" course homepage
     And I navigate to "Setup > Gradebook setup" in the course gradebook
-    And I click on "Edit" "link" in the "RefCourse" "table_row"
-    And I click on "Edit settings" "link" in the "RefCourse" "table_row"
-    And I set the following fields to these values:
+    And I set the following settings for grade item "RefCourse" of type "course" on "setup" page:
       | Aggregation   | Mean of grades  |
       | Maximum grade | 1000            |
-    And I press "Save changes"
-    And I press "Add grade item"
-    And I set the following fields to these values:
-      | Item name     | Manual item 1   |
-      | Maximum grade | 200             |
-    And I press "Save changes"
+    And the following "grade items" exist:
+      | itemname      | grademax | course |
+      | Manual item 1 | 200      | R      |
     And I navigate to "View > Grader report" in the course gradebook
     And I turn editing mode on
     And I give the grade "100" to the user "Student 1" for the grade item "Manual item 1"
@@ -55,9 +50,7 @@ Feature: Grades are fetched automatically from the referenced course
     #
     # Create the subcourse instance.
     #
-    And I am on "MainCourse" course homepage
-    And I turn editing mode on
-    And I add a "Subcourse" to section "1" and I fill the form with:
+    And I add a "subcourse" activity to course "MainCourse" section "1" and I fill the form with:
       | Subcourse name                    | Unit course 1       |
       | Fetch grades from                 | RefCourse (R)       |
       | Redirect to the referenced course | 0                   |
@@ -74,7 +67,7 @@ Feature: Grades are fetched automatically from the referenced course
     #
     And I am on "MainCourse" course homepage
     And I navigate to "View > User report" in the course gradebook
-    And I click on "Student 1" in the "user" search widget
+    And I click on "Student 1" in the "Search users" search combo box
     And the following should exist in the "user-grade" table:
       | Grade item    | Grade | Range   |
       | Unit course 1 | 500   | 0–1000  |
@@ -92,7 +85,7 @@ Feature: Grades are fetched automatically from the referenced course
     And I should not see "Student 2"
     And I am on "MainCourse" course homepage
     And I navigate to "View > User report" in the course gradebook
-    And I click on "Student 1" in the "user" search widget
+    And I click on "Student 1" in the "Search users" search combo box
     And the following should exist in the "user-grade" table:
       | Grade item    | Grade | Range   |
       | Unit course 1 | 750   | 0–1000  |
@@ -104,7 +97,7 @@ Feature: Grades are fetched automatically from the referenced course
       | student2      | M         | student           |
     And I am on "MainCourse" course homepage
     And I navigate to "View > User report" in the course gradebook
-    And I click on "Student 2" in the "user" search widget
+    And I click on "Student 2" in the "Search users" search combo box
     And the following should exist in the "user-grade" table:
       | Grade item    | Grade | Range   |
       | Unit course 1 | 250   | 0–1000  |
