@@ -14,7 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package
+ * @package    mod_helixmedia
  * @copyright  2021 Tim Williams Streaming LTD
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -29,7 +29,7 @@ define(['jquery'], function($) {
         minst.params = params;
         minst.params.gotIn = false;
         minst.params.medial_interval = false;
-
+    
         minst.openmodal = function(evt) {
             evt.preventDefault();
             $('#mod_helixmedia_launchframe_'+minst.params.docID).attr('src', minst.params.launchurl);
@@ -53,11 +53,11 @@ define(['jquery'], function($) {
             }
 
             $('#mod_helixmedia_launchframe_'+minst.params.docID).attr('src', '');
-
+        
             if (!minst.params.doStatusCheck) {
-                return;
+                return;   
             }
-
+        
             var tframe = document.getElementById("mod_helixmedia_thumbframe_"+minst.params.docID);
             if (tframe !== null && typeof(minst.params.thumburl) !== "undefined") {
                 tframe.contentWindow.location = minst.params.thumburl;
@@ -115,9 +115,7 @@ define(['jquery'], function($) {
 
         minst.checkStatus = function() {
             var xmlDoc = new XMLHttpRequest();
-            var params = "resource_link_id=" + minst.params.resID +
-                         "&user_id=" + minst.params.userID +
-                         "&oauth_consumer_key=" + minst.params.oauthConsumerKey;
+            var params = "resource_link_id="+minst.params.resID+"&user_id="+minst.params.userID+"&oauth_consumer_key="+minst.params.oauthConsumerKey;
             xmlDoc.addEventListener("load", minst.checkStatusResponse);
             xmlDoc.open("POST", minst.params.statusURL);
             xmlDoc.setRequestHeader("Content-type","application/x-www-form-urlencoded");
@@ -129,7 +127,7 @@ define(['jquery'], function($) {
 
     module.init = function(frameid, launchurl, thumburl, resID, userID, statusURL, oauthConsumerKey, doStatusCheck,
         sessionURL, sessionFreq, resDelay, extraID) {
-        // AMD Modules aren't unique, so this will get called in the same instance for each MEDIAL we have on the page.
+        // AMD Modules aren't unique, so this will get called in the same instance for each MEDIAL we have on the page. 
         // That causes trouble on the quiz grading interface in particular, so wrap each call in an inner object.
 
         // Sanity check, sometimes this gets called more than once with the same resID. Clean up the old one and re-init.
