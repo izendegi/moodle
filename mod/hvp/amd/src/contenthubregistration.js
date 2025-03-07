@@ -1,4 +1,4 @@
-define([], function () {
+define(['H5PSettings', 'H5PHub'], function (H5PSettings, H5PHub) {
   return {
     init: function () {
       // Moodle complains if you pass in settings through init (js_call_amd) since they are too large
