@@ -76,7 +76,7 @@ define(['jquery',
             handleCloseModalMessage: function (event) {
                 var that = this;
                 if (event.data.type === 'CloseRubricsView') {
-                    that.modal.hide();      
+                    that.modal.hide();
                     window.removeEventListener('message', that.handleCloseModalMessage.bind(that));
                 }
             },
