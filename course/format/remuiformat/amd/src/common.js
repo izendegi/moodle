@@ -82,6 +82,7 @@ define(['jquery'], function($) {
      *
      */
     function init() {
+        var moodleversionbranch = '405'; // Define moodleversionbranch
 
         $('#page-course-view-remuiformat .section-modchooser-link:not(.dropdown-item)').addClass("btn btn-primary");
 
@@ -147,7 +148,7 @@ define(['jquery'], function($) {
         });
 
         // Handling addSubsection
-        $('body').on('click', '[data-action="addModule"]', function(event) {
+        $('body').on('click', '[data-action="addModule"]', function() {
             setTimeout(() => {
                 location.reload();
             }, 200);
