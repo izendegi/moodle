@@ -72,8 +72,7 @@ define(['jquery'], function($) { // Removed 'plagiarism_turnitin/datatables' and
                         ct.show();
                     }
 
-                    $('#id_plagiarism_turnitin_accountid, #id_plagiarism_turnitin_secretkey, ' +
-                      '#id_plagiarism_turnitin_apiurl').keyup(function () {
+                    $('#id_plagiarism_turnitin_accountid, #id_plagiarism_turnitin_secretkey, #id_plagiarism_turnitin_apiurl').keyup(function () {
                         ct.hide();
 
                         var accountid = $('#id_plagiarism_turnitin_accountid').val();
