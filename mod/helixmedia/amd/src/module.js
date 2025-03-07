@@ -14,7 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package    mod_helixmedia
+ * @package
  * @copyright  2021 Tim Williams Streaming LTD
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -25,12 +25,11 @@ define(['jquery'], function($) {
     module.first = true;
 
     module.medialinstance = function($, params) {
-
         var minst = {};
         minst.params = params;
         minst.params.gotIn = false;
         minst.params.medial_interval = false;
-    
+
         minst.openmodal = function(evt) {
             evt.preventDefault();
             $('#mod_helixmedia_launchframe_'+minst.params.docID).attr('src', minst.params.launchurl);
@@ -48,35 +47,34 @@ define(['jquery'], function($) {
             minst.closemodal();
         };
 
-        minst.closemodal = function(evt) {
-            if (minst.params.medial_interval != false) {
+        minst.closemodal = function() {
+            if (minst.params.medial_interval !== false) {
                 clearInterval(minst.params.medial_interval);
             }
 
             $('#mod_helixmedia_launchframe_'+minst.params.docID).attr('src', '');
-        
+
             if (!minst.params.doStatusCheck) {
-                return;   
+                return;
             }
-        
+
             var tframe = document.getElementById("mod_helixmedia_thumbframe_"+minst.params.docID);
-            if (tframe != null && typeof(minst.params.thumburl) != "undefined") {
+            if (tframe !== null && typeof(minst.params.thumburl) !== "undefined") {
                 tframe.contentWindow.location = minst.params.thumburl;
             }
 
             var mform1 = document.getElementById("mform1");
-            if (mform1 == null) {
+            if (mform1 === null) {
                 var elements = document.getElementsByClassName("mform");
                 mform1 = elements[0];
             }
-
         };
 
         minst.closeDialogue = function() {
             $('#mod_helixmedia_modal_'+minst.params.docID).modal('hide');
             minst.closemodal();
-        }
-    
+        };
+
         minst.bind = function() {
             $('#helixmedia_ltimodal_'+minst.params.docID).click(minst.openmodal);
             $('#mod_helixmedia_closemodal_'+minst.params.docID).click(minst.closemodalListen);
@@ -85,7 +83,7 @@ define(['jquery'], function($) {
         minst.unbind = function() {
             $('#helixmedia_ltimodal_'+minst.params.docID).off();
             $('#mod_helixmedia_closemodal_'+minst.params.docID).off();
-            if (minst.params.medial_interval != false) {
+            if (minst.params.medial_interval !== false) {
                 clearInterval(minst.params.medial_interval);
             }
         };
@@ -99,16 +97,15 @@ define(['jquery'], function($) {
 
         minst.checkStatusResponse = function(evt) {
             var responseText = evt.target.responseText;
-            if (responseText=="IN") {
-                minst.params.gotIn=true;
+            if (responseText === "IN") {
+                minst.params.gotIn = true;
             }
-            if (responseText!="OUT" || minst.params.gotIn==false) {
-                if (minst.params.medial_interval == false) {
+            if (responseText !== "OUT" || minst.params.gotIn === false) {
+                if (minst.params.medial_interval === false) {
                     minst.params.medial_interval = setInterval(minst.checkStatus, 2000);
                 }
             } else {
-
-                if (minst.params.resDelay == 0) {
+                if (minst.params.resDelay === 0) {
                     minst.closeDialogue();
                 } else {
                     setTimeout(minst.closeDialogue, (minst.params.resDelay * 1000));
@@ -118,7 +115,9 @@ define(['jquery'], function($) {
 
         minst.checkStatus = function() {
             var xmlDoc = new XMLHttpRequest();
-            var params = "resource_link_id="+minst.params.resID+"&user_id="+minst.params.userID+"&oauth_consumer_key="+minst.params.oauthConsumerKey;
+            var params = "resource_link_id=" + minst.params.resID +
+                         "&user_id=" + minst.params.userID +
+                         "&oauth_consumer_key=" + minst.params.oauthConsumerKey;
             xmlDoc.addEventListener("load", minst.checkStatusResponse);
             xmlDoc.open("POST", minst.params.statusURL);
             xmlDoc.setRequestHeader("Content-type","application/x-www-form-urlencoded");
@@ -130,8 +129,7 @@ define(['jquery'], function($) {
 
     module.init = function(frameid, launchurl, thumburl, resID, userID, statusURL, oauthConsumerKey, doStatusCheck,
         sessionURL, sessionFreq, resDelay, extraID) {
-
-        // AMD Modules aren't unique, so this will get called in the same instance for each MEDIAL we have on the page. 
+        // AMD Modules aren't unique, so this will get called in the same instance for each MEDIAL we have on the page.
         // That causes trouble on the quiz grading interface in particular, so wrap each call in an inner object.
 
         // Sanity check, sometimes this gets called more than once with the same resID. Clean up the old one and re-init.
@@ -151,7 +149,7 @@ define(['jquery'], function($) {
         params.sessionURL = sessionURL;
         params.sessionFreq = sessionFreq;
         params.resDelay = resDelay;
-        params.docID = resID+extraID
+        params.docID = resID+extraID;
         var medialhandler = module.medialinstance($, params);
         module.instances[params.docID] = medialhandler;
         medialhandler.bind();
