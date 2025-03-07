@@ -718,7 +718,7 @@ class webservice {
                     $zoomuser = zoom_get_user($zoom->schedule_for);
                     $zoomuserid = $zoomuser->id;
                 } else {
-                    $zoomuserid = zoom_get_user_id();
+                    $zoomuserid = $zoom->host_id;
                 }
 
                 $autorecording = zoom_get_user_settings($zoomuserid)->recording->auto_recording;
@@ -807,18 +807,20 @@ class webservice {
         // Classic: user:read:admin.
         // Granular: user:read:user:admin.
         if ($this->recyclelicenses && $this->make_call("users/$zoomuserid")->type == ZOOM_USER_TYPE_BASIC) {
-            if ($this->paid_user_limit_reached()) {
+            $licenseisavailable = !$this->paid_user_limit_reached();
+            if (!$licenseisavailable) {
                 $leastrecentlyactivepaiduserid = $this->get_least_recently_active_paid_user_id();
                 // Changes least_recently_active_user to a basic user so we can use their license.
                 if ($leastrecentlyactivepaiduserid) {
                     $this->make_call("users/$leastrecentlyactivepaiduserid", ['type' => ZOOM_USER_TYPE_BASIC], 'patch');
-                } 
+                    $licenseisavailable = true;
+                }
             }
 
             // Changes current user to pro so they can make a meeting.
             // Classic: user:write:admin.
             // Granular: user:update:user:admin.
-            if (!$this->paid_user_limit_reached() || $leastrecentlyactivepaiduserid) {
+            if ($licenseisavailable) {
                 $this->make_call("users/$zoomuserid", ['type' => ZOOM_USER_TYPE_PRO], 'patch');
             }
         }
@@ -1070,7 +1072,7 @@ class webservice {
         $response = null;
         try {
             // Classic: tracking_fields:read:admin.
-            // Granular: Not yet implemented by Zoom.
+            // Granular: tracking_field:read:list_tracking_fields:admin.
             $response = $this->make_call('tracking_fields');
         } catch (moodle_exception $error) {
             debugging($error->getMessage());
@@ -1239,6 +1241,34 @@ class webservice {
     }
 
     /**
+     * Check for Zoom scopes
+     *
+     * @param string $requiredscopes Required Zoom scopes.
+     * @throws moodle_exception
+     * @return array missingscopes
+     */
+    public function check_scopes($requiredscopes) {
+        if (!isset($this->scopes)) {
+            $this->get_access_token();
+        }
+
+        $scopetype = $this->get_scope_type($this->scopes);
+
+        $missingscopes = array_diff($requiredscopes[$scopetype], $this->scopes);
+        return $missingscopes;
+    }
+
+    /**
+     * Checks for the type of scope (classic or granular) of the user.
+     *
+     * @param array $scopes
+     * @return string scope type
+     */
+    private function get_scope_type($scopes) {
+        return in_array('meeting:read:admin', $scopes, true) ? 'classic' : 'granular';
+    }
+
+    /**
      * Stores token and expiration in cache, returns token from OAuth call.
      *
      * @param cache $cache
@@ -1274,31 +1304,29 @@ class webservice {
 
         $scopes = explode(' ', $response->scope);
 
+        // Keep the scope information in memory.
+        $this->scopes = $scopes;
+
         // Assume that we are using granular scopes.
         $requiredscopes = [
-            'meeting:read:meeting:admin',
-            'meeting:read:invitation:admin',
-            'meeting:delete:meeting:admin',
-            'meeting:update:meeting:admin',
-            'meeting:write:meeting:admin',
-            'user:read:list_schedulers:admin',
-            'user:read:settings:admin',
-            'user:read:user:admin',
-        ];
-
-        // Check if we received classic scopes.
-        if (in_array('meeting:read:admin', $scopes, true)) {
-            $requiredscopes = [
+            'granular' => [
+                'meeting:read:meeting:admin',
+                'meeting:read:invitation:admin',
+                'meeting:delete:meeting:admin',
+                'meeting:update:meeting:admin',
+                'meeting:write:meeting:admin',
+                'user:read:list_schedulers:admin',
+                'user:read:settings:admin',
+                'user:read:user:admin',
+            ],
+            'classic' => [
                 'meeting:read:admin',
                 'meeting:write:admin',
                 'user:read:admin',
-            ];
-        }
+            ],
+        ];
 
-        $missingscopes = array_diff($requiredscopes, $scopes);
-
-        // Keep the scope information in memory.
-        $this->scopes = $scopes;
+        $missingscopes = $this->check_scopes($requiredscopes);
 
         if (!empty($missingscopes)) {
             $missingscopes = implode(', ', $missingscopes);
