@@ -133,7 +133,7 @@ const saveUserData = (modalEditRequiredPersonalData) => {
 					modalEditRequiredPersonalData.hide();
 					return savedres;
 				} else {
-					if (savedres.form !== null) {
+					if (savedres.form != null) {
 						modalEditRequiredPersonalData.setBody(savedres.form);
 						addModalEditBillingDataChangeABillingddressListener(modalEditRequiredPersonalData);
 						checkIfNeedToDisplayBilligInfo(modalEditRequiredPersonalData);
@@ -200,25 +200,18 @@ const openEditBillingInfoModal = (parentmodal, form) => {
 const fillBillingWithStudentData = (modalEditBillingData) => {
 	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CIF')[0].value = modalEditBillingData.getRoot().find('#id_profile_field_DNI')[0].value;
 	let stdLastname = modalEditBillingData.getRoot().find('#id_lastname')[0].value;
-	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_NAME')[0].value = 
-		modalEditBillingData.getRoot().find('#id_firstname')[0].value + 
-		(stdLastname ? stdLastname : '');
-	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_ADDRESS')[0].value = 
-		modalEditBillingData.getRoot().find('#id_address')[0].value;
-	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CITY')[0].value = 
-		modalEditBillingData.getRoot().find('#id_city')[0].value;
-	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CP')[0].value = 
-		modalEditBillingData.getRoot().find('#id_profile_field_CP')[0].value;
-	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_EMAIL')[0].value = 
-		modalEditBillingData.getRoot().find('#id_email')[0].value;
-	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_PHONE')[0].value = 
-		modalEditBillingData.getRoot().find('#id_phone2')[0].value;
+	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_NAME')[0].value = modalEditBillingData.getRoot().find('#id_firstname')[0].value + (stdLastname != null && stdLastname !== '' && typeof stdLastname !== 'undefined' ? stdLastname : '');
+	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_ADDRESS')[0].value = modalEditBillingData.getRoot().find('#id_address')[0].value;
+	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CITY')[0].value = modalEditBillingData.getRoot().find('#id_city')[0].value;
+	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CP')[0].value = modalEditBillingData.getRoot().find('#id_profile_field_CP')[0].value;
+	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_EMAIL')[0].value = modalEditBillingData.getRoot().find('#id_email')[0].value;
+	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_PHONE')[0].value = modalEditBillingData.getRoot().find('#id_phone2')[0].value;
 };
 
 const clearBillingData = (modalEditBillingData) => {
 	let billingInputs = modalEditBillingData.getRoot().find('#id_billinghdrcontainer input');
 
-	if (billingInputs !== null && typeof billingInputs !== 'undefined' && billingInputs.length > 0) {
+	if (billingInputs != null && typeof billingInputs !== 'undefined' && billingInputs.length > 0) {
 		for (let i = 0; i < billingInputs.length; i++) {
 			billingInputs[i].value = '';
 		}
