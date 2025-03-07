@@ -62,16 +62,16 @@ export const process = (component, paymentArea, itemId) => {
 			let body = document.getElementsByTagName('body')[0];
 			let crsId = null;
 			let bdClassList = null;
-			if(body !== null && typeof body !== 'undefined') {
+			if (body !== null && typeof body !== 'undefined') {
 				bdClassList = body.classList;
 				bdClassList.forEach(
-					function(classItem, index) {
-						if(classItem.startsWith('course-')) {
+					function(classItem) {
+						if (classItem.startsWith('course-')) {
 							crsId = classItem.split('course-')[1];
 						}
 					}
 				);
-				if(crsId !== null && typeof crsId !== 'undefined') {
+				if (crsId !== null && typeof crsId !== 'undefined') {
 					let courseId = parseInt(crsId);
 					return Promise.all([modal, askForDataToUser(modal), courseId]);
 				}
@@ -86,28 +86,28 @@ export const process = (component, paymentArea, itemId) => {
 };
 
 const checkSaveBllingDataResult = (component, paymentArea, itemId, modal, resSavedData, courseId) => {
-	if(resSavedData.success) {
+	if (resSavedData.success) {
 		return Promise.all([modal, getMucommercePaymentUrl(component, paymentArea, itemId, courseId)])
-		.then(([modal, resUrl]) => {
-			if (resUrl.success) {
-				if (resUrl.url !== 'undefined' && resUrl.url !== '') {
-					location.href = resUrl.url;
-					return new Promise(() => null);
-				}
-				modal.hide();
-				return Promise.resolve(resUrl.message);
-			} else {
-				if (resUrl.form !== 'undefined' && resUrl.form !== '') {
-					return Promise.all([modal, openEditBillingInfoModal(modal, resUrl.form), courseId])
-					.then(([modal, resSavedData, courseId]) => {
-						return checkSaveBllingDataResult(component, paymentArea, itemId, modal, resSavedData, courseId);
-					});
-				} else {
+			.then(([modal, resUrl]) => {
+				if (resUrl.success) {
+					if (resUrl.url !== 'undefined' && resUrl.url !== '') {
+						location.href = resUrl.url;
+						return new Promise(() => null);
+					}
 					modal.hide();
-					return Promise.reject(resUrl.message);
+					return Promise.resolve(resUrl.message);
+				} else {
+					if (resUrl.form !== 'undefined' && resUrl.form !== '') {
+						return Promise.all([modal, openEditBillingInfoModal(modal, resUrl.form), courseId])
+							.then(([modal, resSavedData, courseId]) => {
+								return checkSaveBllingDataResult(component, paymentArea, itemId, modal, resSavedData, courseId);
+							});
+					} else {
+						modal.hide();
+						return Promise.reject(resUrl.message);
+					}
 				}
-			}
-		});
+			});
 	} else {
 		return Promise.reject(resSavedData.message);
 	}
@@ -118,8 +118,8 @@ const getMucommercePaymentUrl = (component, paymentArea, itemId, courseId) => {
 		Repository.getPaymentUrl(component, paymentArea, itemId, courseId)
 			.then(res => {
 				return res;
-			}).
-			then(resolve);
+			})
+			.then(resolve);
 	});
 };
 
@@ -133,30 +133,30 @@ const saveUserData = (modalEditRequiredPersonalData) => {
 					modalEditRequiredPersonalData.hide();
 					return savedres;
 				} else {
-					if(savedres.form != null) {
+					if (savedres.form != null) {
 						modalEditRequiredPersonalData.setBody(savedres.form);
 						addModalEditBillingDataChangeABillingddressListener(modalEditRequiredPersonalData);
 						checkIfNeedToDisplayBilligInfo(modalEditRequiredPersonalData);
 						savedres.reject();
 					} else {
 						modalEditRequiredPersonalData.getRoot().find('form').find('.msg-generic').find('.msg-error')
-						.text(savedres.message);
+							.text(savedres.message);
 						modalEditRequiredPersonalData.getRoot().find('form').find('.msg-generic')[0].style.display = 'block';
 						addModalEditBillingDataChangeABillingddressListener(modalEditRequiredPersonalData);
 						checkIfNeedToDisplayBilligInfo(modalEditRequiredPersonalData);
 						savedres.reject();
 					}
 				}
-		}).then(savedUserDataResult);
+			}).then(savedUserDataResult);
 	});
 };
 
 const askForDataToUser = (parentmodal) => {
 	return new Promise(editBillingDataForm => {
 		Repository.getEditBillingDataForm()
-		.then(resultBillForm => {
-				if(resultBillForm.success) {
-					if(resultBillForm.form) {
+			.then(resultBillForm => {
+				if (resultBillForm.success) {
+					if (resultBillForm.form) {
 						return openEditBillingInfoModal(parentmodal, resultBillForm.form);
 					} else {
 						return resultBillForm;
@@ -165,34 +165,36 @@ const askForDataToUser = (parentmodal) => {
 					return resultBillForm;
 				}
 			}).then(editBillingDataForm);
-		});
+	});
 };
 
 const openEditBillingInfoModal = (parentmodal, form) => {
 	return new Promise(saveBillingDataResult => {
-							showEditRequiredPersonalDataModal(form)
-								.then(modalEditBillingData => {
-									return new Promise(result =>  {																				
-										modalEditBillingData.getRoot().on(ModalEvents.save, e => {
-											e.preventDefault();
-											if(!modalEditBillingData.getRoot().find('input[name=changeinvoiceaddress][type=checkbox]')[0].checked) fillBillingWithStudentData(modalEditBillingData);
-											 saveUserData(modalEditBillingData)
-											.then(result)
-											.catch(Notification.exception);
-										});
-						
-										modalEditBillingData.getRoot().on(ModalEvents.hidden, () => {
-											modalEditBillingData.destroy();
-											cif = name = address = city = cp = email = phone = null;
-											parentmodal.hide();
-										});
-										
-										addModalEditBillingDataChangeABillingddressListener(modalEditBillingData);
-										checkIfNeedToDisplayBilligInfo(modalEditBillingData);
-									});
-								}).then(saveBillingDataResult)
-								.catch(Notification.exception);
-							});
+		showEditRequiredPersonalDataModal(form)
+			.then(modalEditBillingData => {
+				return new Promise(result => {
+					modalEditBillingData.getRoot().on(ModalEvents.save, e => {
+						e.preventDefault();
+						if (!modalEditBillingData.getRoot().find('input[name=changeinvoiceaddress][type=checkbox]')[0].checked) {
+							fillBillingWithStudentData(modalEditBillingData);
+						}
+						saveUserData(modalEditBillingData)
+							.then(result)
+							.catch(Notification.exception);
+					});
+
+					modalEditBillingData.getRoot().on(ModalEvents.hidden, () => {
+						modalEditBillingData.destroy();
+						cif = name = address = city = cp = email = phone = null;
+						parentmodal.hide();
+					});
+
+					addModalEditBillingDataChangeABillingddressListener(modalEditBillingData);
+					checkIfNeedToDisplayBilligInfo(modalEditBillingData);
+				});
+			}).then(saveBillingDataResult)
+			.catch(Notification.exception);
+	});
 };
 
 const fillBillingWithStudentData = (modalEditBillingData) => {
@@ -208,32 +210,46 @@ const fillBillingWithStudentData = (modalEditBillingData) => {
 
 const clearBillingData = (modalEditBillingData) => {
 	let billingInputs = modalEditBillingData.getRoot().find('#id_billinghdrcontainer input');
-	
-	if(billingInputs != null && typeof billingInputs !== 'undefined' && billingInputs.length > 0){
-		for(let i = 0; i < billingInputs.length; i++) {
+
+	if (billingInputs != null && typeof billingInputs !== 'undefined' && billingInputs.length > 0) {
+		for (let i = 0; i < billingInputs.length; i++) {
 			billingInputs[i].value = '';
 		}
 	}
-};	
+};
 
-const addModalEditBillingDataChangeABillingddressListener = (modalEditBillingData) => {	
+const addModalEditBillingDataChangeABillingddressListener = (modalEditBillingData) => {
 	modalEditBillingData.getRoot().find('input[name=changeinvoiceaddress][type=checkbox]')[0].addEventListener('change', event => {
-		if(event.target.checked) {
-			if(cif == null || typeof cif === 'undefined') cif = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CIF')[0].value;
-			if(name == null || typeof name === 'undefined') name =  modalEditBillingData.getRoot().find('#id_profile_field_BILLING_NAME')[0].value;
-			if(address == null || typeof address === 'undefined') address =  modalEditBillingData.getRoot().find('#id_profile_field_BILLING_ADDRESS')[0].value;
-			if(city == null || typeof city === 'undefined') city =  modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CITY')[0].value;
-			if(cp == null || typeof cp === 'undefined') cp =  modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CP')[0].value;
-			if(email == null || typeof email === 'undefined') email =  modalEditBillingData.getRoot().find('#id_profile_field_BILLING_EMAIL')[0].value;
-			if(phone == null || typeof phone === 'undefined') phone =  modalEditBillingData.getRoot().find('#id_profile_field_BILLING_PHONE')[0].value;
-			
-			if(cif != null && typeof cif !== 'undefined' && cif !== ''
-				|| name != null && typeof name !== 'undefined' && name !== ''
-				|| address != null && typeof address !== 'undefined' && address !== ''
-				|| city != null && typeof city !== 'undefined' && city !== ''
-				|| cp != null && typeof cp !== 'undefined' && cp !== ''
-				|| email != null && typeof email !== 'undefined' && email !== ''
-				|| phone != null && typeof phone !== 'undefined' && phone !== '') {
+		if (event.target.checked) {
+			if (cif === null || typeof cif === 'undefined') {
+				cif = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CIF')[0].value;
+			}
+			if (name === null || typeof name === 'undefined') {
+				name = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_NAME')[0].value;
+			}
+			if (address === null || typeof address === 'undefined') {
+				address = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_ADDRESS')[0].value;
+			}
+			if (city === null || typeof city === 'undefined') {
+				city = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CITY')[0].value;
+			}
+			if (cp === null || typeof cp === 'undefined') {
+				cp = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CP')[0].value;
+			}
+			if (email === null || typeof email === 'undefined') {
+				email = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_EMAIL')[0].value;
+			}
+			if (phone === null || typeof phone === 'undefined') {
+				phone = modalEditBillingData.getRoot().find('#id_profile_field_BILLING_PHONE')[0].value;
+			}
+
+			if (cif !== null && typeof cif !== 'undefined' && cif !== '' ||
+				name !== null && typeof name !== 'undefined' && name !== '' ||
+				address !== null && typeof address !== 'undefined' && address !== '' ||
+				city !== null && typeof city !== 'undefined' && city !== '' ||
+				cp !== null && typeof cp !== 'undefined' && cp !== '' ||
+				email !== null && typeof email !== 'undefined' && email !== '' ||
+				phone !== null && typeof phone !== 'undefined' && phone !== '') {
 				modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CIF')[0].value = cif;
 				modalEditBillingData.getRoot().find('#id_profile_field_BILLING_NAME')[0].value = name;
 				modalEditBillingData.getRoot().find('#id_profile_field_BILLING_ADDRESS')[0].value = address;
@@ -250,10 +266,12 @@ const addModalEditBillingDataChangeABillingddressListener = (modalEditBillingDat
 			clearBillingData(modalEditBillingData);
 		}
 	});
-};	
+};
 
-const checkIfNeedToDisplayBilligInfo = (modalEditBillingData) => {	
-	if(modalEditBillingData.getRoot().find('input[name=changeinvoiceaddress][type=checkbox]')[0].checked) modalEditBillingData.getRoot().find('#id_billinghdr')[0].classList.add('display-elm');
+const checkIfNeedToDisplayBilligInfo = (modalEditBillingData) => {
+	if (modalEditBillingData.getRoot().find('input[name=changeinvoiceaddress][type=checkbox]')[0].checked) {
+		modalEditBillingData.getRoot().find('#id_billinghdr')[0].classList.add('display-elm');
+	}
 };
 
 let cif, name, address, city, cp, email, phone;
