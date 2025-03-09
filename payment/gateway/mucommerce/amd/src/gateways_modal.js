@@ -202,7 +202,7 @@ const fillBillingWithStudentData = (modalEditBillingData) => {
 	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_CIF')[0].value = billingCif;
 	let stdLastname = modalEditBillingData.getRoot().find('#id_lastname')[0].value;
 	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_NAME')[0].value =
-		modalEditBillingData.getRoot().find('#id_firstname')[0].value + 
+		modalEditBillingData.getRoot().find('#id_firstname')[0].value +
 		(stdLastname ? stdLastname : '');
 	modalEditBillingData.getRoot().find('#id_profile_field_BILLING_ADDRESS')[0].value =
 		modalEditBillingData.getRoot().find('#id_address')[0].value;
