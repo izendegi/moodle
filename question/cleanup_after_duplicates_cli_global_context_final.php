@@ -85,7 +85,7 @@ function is_question_safe_to_delete($questionid) {
                 $sql = "SELECT COUNT(DISTINCT qs.quizid) 
                         FROM {quiz_slots} qs 
                         WHERE qs.id IN (
-                            SELECT qsr.slotid 
+                            SELECT qsr.itemid 
                             FROM {question_references} qsr
                             WHERE qsr.questionbankentryid IN (
                                 SELECT qv.questionbankentryid
