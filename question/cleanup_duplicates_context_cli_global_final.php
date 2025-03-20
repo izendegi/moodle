@@ -6,7 +6,6 @@ require_once(__DIR__ . '/../config.php');
 require_once($CFG->libdir . '/clilib.php');
 require_once($CFG->libdir . '/adminlib.php');
 // Add this near the top of your script
-//ini_set('memory_limit', '8G');  // Increase to 1GB or higher if needed
 ini_set('memory_limit', '32G');  // Increase to 1GB or higher if needed
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
@@ -377,7 +376,7 @@ function process_duplicates($contextId = 0, $courseId = 0, $categoryId = 0, $for
             $dup->context_path = $q->context_path;
             $dup->row_num = $rowNum;
             $dup->newstamp = ($rowNum > 1) ? "dup" . ($rowNum-1) . "." . $stamp : null;
-            $dup->newname = ($rowNum > 1) ? $q->question_name . " (duplicate " . ($rowNum-1) . ")" : null;
+            $dup->newname = ($rowNum > 1) ? substr($q->question_name, 0, 238) . " (duplicate " . ($rowNum-1) . ")" : null;
             $duplicates[$q->question_id] = $dup;
         }
     }
