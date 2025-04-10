@@ -34,10 +34,6 @@ use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 use mod_verbalfeedback\api;
 use mod_verbalfeedback\helper;
-use mod_verbalfeedback\model\instance_category;
-use mod_verbalfeedback\model\instance_criterion;
-use mod_verbalfeedback\repository\language_repository;
-use mod_verbalfeedback\repository\model\localized_string_type;
 
 /**
  * Implementation of the privacy subsystem plugin provider for the 36o-degree feedback activity module.
@@ -60,7 +56,7 @@ class provider implements
      * @param collection $items a reference to the collection to use to store the metadata.
      * @return collection the updated collection of metadata items.
      */
-    public static function get_metadata(collection $items): collection {
+    public static function get_metadata(collection $items) : collection {
         $items->add_database_table(
             'verbalfeedback_submission',
             [
@@ -75,8 +71,8 @@ class provider implements
         $items->add_database_table(
             'verbalfeedback_response',
             [
-                'instanceid' => 'privacy:metadata:verbalfeedback',
-                'submissionid' => 'privacy:metadata:verbalfeedback_submissionid',
+                'instanceid' => 'privacy:metadata:instanceid',
+                'item' => 'privacy:metadata:verbalfeedback_item',
                 'fromuserid' => 'privacy:metadata:verbalfeedback_submission:fromuserid',
                 'touserid' => 'privacy:metadata:verbalfeedback_submission:touserid',
                 'value' => 'privacy:metadata:verbalfeedback_response:value',
@@ -93,7 +89,7 @@ class provider implements
      * @param int $userid the userid.
      * @return contextlist the list of contexts containing user info for the user.
      */
-    public static function get_contexts_for_userid(int $userid): contextlist {
+    public static function get_contexts_for_userid(int $userid) : contextlist {
         // Fetch all verbalfeedback activity contexts where the user is participating.
         $sql = "SELECT ctx.id
                   FROM {context} ctx
@@ -233,17 +229,17 @@ class provider implements
     protected static function export_responses_data($contextids, $user, $respondent = true) {
         global $DB;
 
-        $categorystr = [];
-        $criterionstr = [];
-
         list($contextsql, $contextparams) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
         $sql = "
                 SELECT tr.id,
                        cm.id as cmid,
                        t.id as verbalfeedback,
                        t.name as verbalfeedbackname,
-                       ti.id as criterionid,
-                       ti.categoryid,
+                       ti.position,
+                       tq.id as questionid,
+                       tq.question,
+                       tq.type,
+                       tq.category,
                        tr.value,
                        tr.fromuserid,
                        tr.touserid
@@ -254,15 +250,16 @@ class provider implements
                     ON m.id = cm.module AND m.name = :modname
                   JOIN {verbalfeedback} t
                     ON t.id = cm.instance
-                  JOIN {verbalfeedback_submission} ts
-                    ON ts.instanceid = t.id
-                  JOIN {verbalfeedback_response} tr
-                    ON tr.submissionid = ts.id
                   JOIN {verbalfeedback_i_criterion} ti
-                    ON ti.id = tr.criterionid
+                    ON ti.verbalfeedback = t.id
+                  JOIN {verbalfeedback_question} tq
+                    ON tq.id = ti.question
+                  JOIN {verbalfeedback_response} tr
+                    ON tr.instanceid = t.id AND tr.item = ti.id
                  WHERE ctx.id {$contextsql} %s
               ORDER BY cmid ASC,
-                       ti.position ASC";
+                       ti.position ASC,
+                       tq.type ASC";
 
         $params = ['modname' => 'verbalfeedback', 'contextlevel' => CONTEXT_MODULE, 'userid' => $user] + $contextparams;
 
@@ -286,39 +283,29 @@ class provider implements
                     'name' => $response->verbalfeedbackname,
                 ];
             }
-            if (!\array_key_exists($response->categoryid, $categorystr)) {
-                $ids = static::get_strings($response->verbalfeedback, localized_string_type::INSTANCE_CRITERION);
-                foreach ($ids as $id => $str) {
-                    $categorystr[$id] = $str;
-                }
-            }
-            if (!\array_key_exists($response->criterionid, $criterionstr)) {
-                $ids = static::get_strings($response->verbalfeedback, localized_string_type::INSTANCE_CRITERION);
-                foreach ($ids as $id => $str) {
-                    $criterionstr[$id] = $str;
-                }
-            }
-
+            $question = format_string($response->question, true, $options);
             if ($respondent) {
-                $relateduser = transform::user($response->touserid);
+                $relateduser = transform::user($response->touser);
             } else {
-                if ($response->touserid) {
-                    $relateduser = transform::user($response->fromuserid);
+                if ($response->touser) {
+                    $relateduser = transform::user($response->fromuser);
                 } else {
                     $relateduser = get_string('anonymous', 'mod_verbalfeedback');
                 }
             }
 
-            if (!isset($responsesdata[$response->cmid]['criterion'][$response->criterionid])) {
-                $responsesdata[$response->cmid]['criterion'][$response->criterionid]['criterion'] =
-                    $criterionstr[$response->criterionid];
-                $responsesdata[$response->cmid]['criterion'][$response->criterionid]['category'] =
-                    $categorystr[$response->categoryid];
-                $responsesdata[$response->cmid]['criterion'][$response->criterionid]['submissions'] = [];
+            if ($response->type == api::QTYPE_RATED) {
+                $valuetext = helper::get_scale_values($response->value);
+            } else {
+                $valuetext = format_string($response->value, true, $options);
             }
-            $responsesdata[$response->cmid]['criterion'][$response->criterionid]['submissions'][] = [
+
+            if (!isset($responsesdata[$response->cmid]['questions'][$response->questionid])) {
+                $responsesdata[$response->cmid]['questions'][$response->questionid]['question'] = $question;
+            }
+            $responsesdata[$response->cmid]['questions'][$response->questionid]['responses'][] = [
                 $userkey => $relateduser,
-                'value' => format_string($response->value, true, $options),
+                'value' => $valuetext,
             ];
         }
         $responses->close();
@@ -334,40 +321,6 @@ class provider implements
     }
 
     /**
-     * Get the localized strings for the given instance and category/criterion.
-     * @param int $id The instance ID.
-     * @param string $type The type of localized string.
-     * @return array With key = category/criterion id and value = string.
-     */
-    private static function get_strings(int $id, string $type) {
-        global $DB;
-
-        $lang = (new language_repository)->get_by_iso(current_language());
-        if (!$lang) {
-            return [$id => ''];
-        }
-        $sql = 'SELECT DISTINCT(c.id) as cid, string
-                  FROM {verbalfeedback_local_string} s
-                  JOIN {verbalfeedback_i_criterion} c
-                    ON c.id = s.foreignkey AND s.typeid = :typeid AND s.languageid = :languageid
-                  JOIN {verbalfeedback_response} r
-                    ON r.criterionid = __c_id__
-                 WHERE r.instanceid = :id';
-        if ($type === localized_string_type::INSTANCE_CATEGORY_HEADER) {
-            $sql = str_replace(
-                'c.id', 'c.categoryid', $sql
-            );
-        }
-        $sql = str_replace('__c_id__', 'c.id', $sql);
-        $params = [
-            'id' => $id,
-            'languageid' => $lang->get_id(),
-            'typeid' => localized_string_type::str2id($type),
-        ];
-        return $DB->get_records_sql_menu($sql, $params);
-    }
-
-    /**
      * Delete all data for all users in the specified context.
      *
      * @param \context $context the context to delete in.
@@ -380,8 +333,8 @@ class provider implements
         }
 
         if ($cm = get_coursemodule_from_id('verbalfeedback', $context->instanceid)) {
-            $DB->delete_records('verbalfeedback_response', ['instanceid' => $cm->instance]);
-            $DB->delete_records('verbalfeedback_submission', ['instanceid' => $cm->instance]);
+            $DB->delete_records('verbalfeedback_response', ['verbalfeedback' => $cm->instance]);
+            $DB->delete_records('verbalfeedback_submission', ['verbalfeedback' => $cm->instance]);
         }
     }
 
@@ -404,8 +357,8 @@ class provider implements
                 continue;
             }
             $instanceid = $DB->get_field('course_modules', 'instance', ['id' => $context->instanceid], MUST_EXIST);
-            $select = 'instanceid = :instanceid AND (fromuserid = :fromuserid OR touserid = :touserid)';
-            $params = ['instanceid' => $instanceid, 'fromuserid' => $userid, 'touserid' => $userid];
+            $select = 'verbalfeedback = :verbalfeedback AND (fromuser = :fromuserid OR touser = :touserid)';
+            $params = ['verbalfeedback' => $instanceid, 'fromuserid' => $userid, 'touserid' => $userid];
             $DB->delete_records_select('verbalfeedback_response', $select, $params);
             $DB->delete_records_select('verbalfeedback_submission', $select, $params);
         }

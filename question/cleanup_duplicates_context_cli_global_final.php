@@ -299,8 +299,6 @@ function process_duplicates($contextId = 0, $courseId = 0, $categoryId = 0, $for
                 LIMIT {$limit}";
                 
             $allQuestions = $DB->get_records_sql($sql);
-            cli_writeln("Found " . count($allQuestions) . " questions, grouping by stamp...");
-            
         } catch (Exception $e) {
             cli_writeln("Error fetching questions: " . $e->getMessage());
             return [0, 0];
