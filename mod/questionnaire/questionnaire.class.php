@@ -709,10 +709,12 @@ class questionnaire {
 
     /**
      * True if the user can view the responses to this questionnaire, and there are valid responses.
+     *
      * @param null|int $usernumresp
+     * @param bool $isviewreport
      * @return bool
      */
-    public function can_view_all_responses($usernumresp = null) {
+    public function can_view_all_responses($usernumresp = null, $isviewreport = false) {
         global $USER, $SESSION;
 
         $owner = $this->is_survey_owner();
@@ -738,7 +740,7 @@ class questionnaire {
         }
 
         $grouplogic = $canviewgroups || $canviewallgroups;
-        $respslogic = ($numresp > 0) && ($numselectedresps > 0);
+        $respslogic = ($numresp > 0) && ($numselectedresps > 0) || $isviewreport;
         return $this->can_view_all_responses_anytime($grouplogic, $respslogic) ||
             $this->can_view_all_responses_with_restrictions($usernumresp, $grouplogic, $respslogic);
     }
@@ -851,15 +853,20 @@ class questionnaire {
             $sql = 'SELECT r.* ' .
                 'FROM {questionnaire_response} r ' .
                 $groupsql .
-                'WHERE r.questionnaireid = :questionnaireid AND r.complete = :status' . $groupcnd;
+                'WHERE r.questionnaireid = :questionnaireid' . $groupcnd;
             $params['questionnaireid'] = $this->id;
-            $params['status'] = 'y';
         }
         if ($userid) {
             $sql .= ' AND r.userid = :userid';
             $params['userid'] = $userid;
         }
 
+        $status = optional_param('responsestats', '0', PARAM_ALPHANUM);
+        if ($status) {
+            $status = ($status === 'n') ? 'n' : 'y';
+            $sql .= ' AND r.complete = :status';
+            $params['status'] = $status;
+        }
         $sql .= ' ORDER BY r.id';
         return $DB->get_records_sql($sql, $params) ?? [];
     }
@@ -1620,6 +1627,7 @@ class questionnaire {
                 } else {
                     $dependants = [];
                 }
+                $this->questions[$questionid]->set_isprint($referer === 'print');
                 $output .= $this->renderer->question_output($this->questions[$questionid], $this->responses[0] ?? [],
                     $i++, null, $dependants);
                 $this->page->add_to_page('questions', $output);
@@ -2858,6 +2866,7 @@ class questionnaire {
             $numresps = 1;
         } else {
             $navbar = false;
+            $userview = optional_param('responsestats', 0, PARAM_ALPHA);
             if ($uid !== false) { // One participant only.
                 $rows = $this->get_responses($uid);
                 // All participants or all members of a group.
@@ -2874,8 +2883,12 @@ class questionnaire {
                 return;
             }
             $numresps = count($rows);
+            $respondentstring = get_string('responses', 'questionnaire');
+            if ($userview === 'y') {
+                $respondentstring = get_string('submissions', 'questionnaire');
+            }
             $this->page->add_to_page('respondentinfo',
-                ' '.get_string('responses', 'questionnaire').': <strong>'.$numresps.'</strong>');
+                    ' ' . $respondentstring . ': <strong>' . $numresps . '</strong>');
             if (empty($rows)) {
                 $errmsg = get_string('erroropening', 'questionnaire') .' '. get_string('noresponsedata', 'questionnaire');
                 return($errmsg);
@@ -2915,11 +2928,11 @@ class questionnaire {
             }
             if (!$pdf) {
                 $this->page->add_to_page('responses', $this->renderer->container_start('qn-container'));
-                $this->page->add_to_page('responses', $this->renderer->container_start('qn-info'));
-                if ($question->is_numbered()) {
+                if ($this->questions_autonumbered() && $question->is_numbered()) {
+                    $this->page->add_to_page('responses', $this->renderer->container_start('qn-info'));
                     $this->page->add_to_page('responses', $this->renderer->heading($qnum, 2, 'qn-number'));
+                    $this->page->add_to_page('responses', $this->renderer->container_end()); // End qn-info.
                 }
-                $this->page->add_to_page('responses', $this->renderer->container_end()); // End qn-info.
                 $this->page->add_to_page('responses', $this->renderer->container_start('qn-content'));
             }
             // If question text is "empty", i.e. 2 non-breaking spaces were inserted, do not display any question text.
@@ -2928,7 +2941,7 @@ class questionnaire {
             }
             if ($pdf) {
                 $response = new stdClass();
-                if ($question->is_numbered()) {
+                if ($this->questions_autonumbered() && $question->is_numbered()) {
                     $response->qnum = $qnum;
                 }
                 $response->qcontent = format_text(file_rewrite_pluginfile_urls($question->content, 'pluginfile.php',
@@ -3923,7 +3936,7 @@ class questionnaire {
                 // Just in case a question pertaining to a section has been deleted or made not required
                 // after being included in scorecalculation.
                 if (isset($qscore[$qid])) {
-                    $key = ($key == 0) ? 1 : $key;
+                    $key = empty($key) ? 1 : $key;
                     $score[$section] += round($qscore[$qid] * $key);
                     $maxscore[$section] += round($qmax[$qid] * $key);
                     if ($compare  || $allresponses) {
