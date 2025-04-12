@@ -33,6 +33,7 @@ use lang_string;
 use curl;
 use core_qrcode;
 use stdClass;
+use filter_manager;
 
 /**
  * API exposed by tool_mobile, to be used mostly by external functions and the plugin settings.
