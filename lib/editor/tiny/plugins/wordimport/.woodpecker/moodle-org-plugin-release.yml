@@ -1,0 +1,35 @@
+when:
+  - event: tag
+    ref: refs/tags/v*
+
+depends_on:
+  - moodle-plugin-ci
+
+steps:
+  - name: Call the webservice function on moodle.org
+    image: ubuntu:latest
+    environment:
+      MOODLE_PLUGIN_NAME: tiny_wordimport
+      CURL: curl -s
+      MOODLE_ORG_ENDPOINT: https://moodle.org/webservice/rest/server.php
+      MOODLE_ORG_WEBSERVICE_FUNCTION: local_plugins_add_version
+      MOODLE_ORG_PLUGIN_MAINTENANCE:
+        from_secret: MOODLE_ORG_PLUGIN_MAINTENANCE
+    commands:
+      - apt-get -y update
+      - apt-get -y install curl jq
+      - |
+        ZIPURL="${CI_REPO_URL}/archive/${CI_COMMIT_TAG}.zip"
+        RESPONSE=$($${CURL} $${MOODLE_ORG_ENDPOINT} --data-urlencode "wstoken=$${MOODLE_ORG_PLUGIN_MAINTENANCE}" \
+                                                    --data-urlencode "wsfunction=$${MOODLE_ORG_WEBSERVICE_FUNCTION}" \
+                                                    --data-urlencode "moodlewsrestformat=json" \
+                                                    --data-urlencode "frankenstyle=$${MOODLE_PLUGIN_NAME}" \
+                                                    --data-urlencode "zipurl=$${ZIPURL}" \
+                                                    --data-urlencode "vcssystem=git" \
+                                                    --data-urlencode "vcsrepositoryurl=${CI_REPO_URL}" \
+                                                    --data-urlencode "vcstag=${CI_COMMIT_TAG}" \
+                                                    --data-urlencode "changelogurl=${CI_REPO_URL}/releases/tag/${CI_COMMIT_TAG}" \
+                                                    --data-urlencode "altdownloadurl=$${ZIPURL}")
+      - |
+        jq <<< $${RESPONSE}
+        jq --exit-status ".id" <<< $${RESPONSE} > /dev/null
