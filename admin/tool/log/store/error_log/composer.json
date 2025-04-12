@@ -1,0 +1,20 @@
+{
+    "name": "abautu/logstore_error_log",
+    "description": "A log plugin stores log entries in PHP's error log.",
+    "type": "moodle-logstore",
+    "version": "2024120700",
+    "require": {
+        "composer/installers": "~1.0",
+        "moodle/moodle": "v3.* || v4.*"
+    },
+    "extra": {
+        "installer-name": "error_log"
+    },
+    "license": "GNU GPL v3 or later",
+    "authors": [
+        {
+            "name": "Andrei Bautu",
+            "email": "abautu@gmail.com"
+        }
+    ]
+}
