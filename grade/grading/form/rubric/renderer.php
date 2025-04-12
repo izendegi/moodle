@@ -95,7 +95,7 @@ class gradingform_rubric_renderer extends plugin_renderer_base {
                 $criteriontemplate .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => '{NAME}[criteria][{CRITERION-id}][sortorder]', 'value' => $criterion['sortorder']));
                 $criteriontemplate .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => '{NAME}[criteria][{CRITERION-id}][description]', 'value' => $criterion['description']));
             }
-            $description = s($criterion['description']);
+            $description = format_string(($criterion['description']), false);
         }
         $descriptionclass = 'description';
         if (isset($criterion['error_description'])) {
@@ -273,7 +273,7 @@ class gradingform_rubric_renderer extends plugin_renderer_base {
                 $leveltemplate .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => '{NAME}[criteria][{CRITERION-id}][levels][{LEVEL-id}][definition]', 'value' => $level['definition']));
                 $leveltemplate .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => '{NAME}[criteria][{CRITERION-id}][levels][{LEVEL-id}][score]', 'value' => $level['score']));
             }
-            $definition = s($level['definition']);
+            $definition = format_string(($level['definition']), false);
             $score = $level['score'];
         }
         if ($mode == gradingform_rubric_controller::DISPLAY_EVAL) {
