@@ -122,7 +122,7 @@ class renderer extends \plugin_renderer_base {
         $docdata = $doc->export_for_template($this);
 
         // Limit text fields size.
-        $docdata['title'] = shorten_text($docdata['title'], static::SEARCH_RESULT_STRING_SIZE, true);
+        $docdata['title'] = shorten_text(format_string($docdata['title']), static::SEARCH_RESULT_STRING_SIZE, true);
         $docdata['content'] = $docdata['content'] ? shorten_text($docdata['content'], static::SEARCH_RESULT_TEXT_SIZE, true) : '';
         $docdata['description1'] = $docdata['description1'] ? shorten_text($docdata['description1'], static::SEARCH_RESULT_TEXT_SIZE, true) : '';
         $docdata['description2'] = $docdata['description2'] ? shorten_text($docdata['description2'], static::SEARCH_RESULT_TEXT_SIZE, true) : '';
