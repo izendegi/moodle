@@ -15,20 +15,30 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version file.
+ * Behat plugin generator
  *
  * @package    availability_xp
- * @copyright  2014 Frédéric Massart
+ * @category   test
+ * @copyright  2025 Frédéric Massart
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class behat_availability_xp_generator extends behat_generator_base {
 
-defined('MOODLE_INTERNAL') || die();
+    /**
+     * Get the list of creatable entities.
+     *
+     * @return array
+     */
+    protected function get_creatable_entities(): array {
+        return [
+            'restrictions' => [
+                'datagenerator' => 'restriction',
+                'required' => ['activity', 'level', 'mode'],
+                'switchids' => [
+                    'activity' => 'cmid',
+                ],
+            ],
+        ];
+    }
 
-$plugin->version   = 2025041100;
-$plugin->requires  = 2014041500;
-$plugin->component = 'availability_xp';
-$plugin->release   = '2.2.0';
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->dependencies = [
-    'block_xp'  => 2017080700,
-];
+}
