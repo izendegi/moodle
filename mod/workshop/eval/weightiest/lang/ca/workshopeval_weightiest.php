@@ -17,7 +17,7 @@
 /**
  * Catalan translation.
  *
- * @copyright 2014-2023 Albert Gasset <albertgasset@fsfe.org>
+ * @copyright 2014-2025 Albert Gasset <albertgasset@fsfe.org>
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @package   workshopeval_weightiest
  */
@@ -34,6 +34,3 @@ $string['comparisonlevel7'] = '70% de tolerància';
 $string['comparisonlevel8'] = '80% de tolerància';
 $string['comparisonlevel9'] = '90% de tolerància';
 $string['pluginname'] = 'Comparació amb l\'avaluació de més pes.';
-
-$string['comparison_help'] = 'Aquest paràmetre especifica el percentatge de tolerància en cada criteri per acceptar com a correcta una avaluació en ser comparada amb les altres. Com menys tolerància s\'estableixi, més han de coincidir les avaluacions de cada criteri amb l\'avaluació de més pes per tal d\'obtenir una qualificació més alta.';
-$string['configcomparison'] = 'Valor per omissió del factor que influencia la puntuació d\'avaluacions.';
