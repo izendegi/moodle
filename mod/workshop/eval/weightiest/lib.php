@@ -17,7 +17,7 @@
 /**
  * Workshop evaluation class.
  *
- * @copyright 2014-2023 Albert Gasset <albertgasset@fsfe.org>
+ * @copyright 2014-2025 Albert Gasset <albertgasset@fsfe.org>
  * @license   https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @package   workshopeval_weightiest
  */
@@ -40,7 +40,7 @@ class workshop_weightiest_evaluation extends workshop_best_evaluation {
      * @param moodle_url|null $actionurl
      * @return \workshopeval_weightiest\settings_form
      */
-    public function get_settings_form(moodle_url $actionurl = null) {
+    public function get_settings_form(?moodle_url $actionurl = null) {
 
         $customdata['workshop'] = $this->workshop;
         $customdata['current'] = $this->settings;
