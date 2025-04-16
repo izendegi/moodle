@@ -23,9 +23,12 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace enrol_coursecompleted;
 
 use stdClass;
+use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
  * Coursecompleted enrolment plugin hook tests.
@@ -35,6 +38,9 @@ use stdClass;
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[CoversClass(\enrol_coursecompleted_plugin::class)]
+#[CoversClass(hook_listener::class)]
+#[CoversClass(observer::class)]
 final class hook_test extends \advanced_testcase {
 
     /** @var stdClass First course. */
@@ -97,7 +103,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test disabled.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_disabled(): void {
         $sink = $this->redirectMessages();
@@ -120,7 +125,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test enabled.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_enabled(): void {
         $sink = $this->redirectMessages();
@@ -145,7 +149,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test custommessage.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_custommessage(): void {
         $sink = $this->redirectMessages();
@@ -171,7 +174,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test enabled no messages.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_enabled_nomessages(): void {
         $sink = $this->redirectMessages();
@@ -194,7 +196,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test enabled later messages.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_later_messages(): void {
         global $DB;
@@ -219,7 +220,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test role.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_role(): void {
         $this->plugin->add_instance(
@@ -238,7 +238,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test unenrol.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_unenrol(): void {
         $context = \context_course::instance($this->course2->id);
@@ -262,7 +261,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test not unenrol.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_not_unenrol(): void {
         $context = \context_course::instance($this->course2->id);
@@ -286,7 +284,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test group.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_group(): void {
         [$groupid1, $groupid2] = $this->create_groups();
@@ -306,7 +303,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test not group.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_not_group(): void {
         [$groupid1, $groupid2] = $this->create_groups();
@@ -353,9 +349,9 @@ final class hook_test extends \advanced_testcase {
         $this->getDataGenerator()->create_group_member(['groupid' => $groupid2, 'userid' => $this->student->id]);
         return [$groupid1, $groupid2];
     }
+
     /**
      * Test non group.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_non_group(): void {
         [$groupid1, $groupid2] = $this->create_groups();
@@ -375,7 +371,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test delete.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_delete(): void {
         global $DB;
@@ -409,7 +404,6 @@ final class hook_test extends \advanced_testcase {
 
     /**
      * Test future delete.
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_future_delete(): void {
         global $DB;
