@@ -23,6 +23,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace enrol_coursecompleted;
 
 use advanced_testcase;
@@ -30,6 +32,7 @@ use context_course;
 use moodle_page;
 use moodle_url;
 use stdClass;
+use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
  * Coursecompleted enrolment plugin tests.
@@ -38,8 +41,11 @@ use stdClass;
  * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * #[CoversClass(enrol_coursecompleted_plugin)]
  */
+#[CoversClass(\enrol_coursecompleted_plugin::class)]
+#[CoversClass(hook_listener::class)]
+#[CoversClass(observer::class)]
+#[CoversClass(task\process_expirations::class)]
 final class enrol_test extends advanced_testcase {
     /** @var stdClass Instance. */
     private $instance;
@@ -159,8 +165,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test if user is enrolled after completing a course.
-     * #[CoversClass(enrol_coursecompleted\observer)]
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_event_enrolled(): void {
         $manager1 = new \course_enrolment_manager($this->page, $this->course1);
@@ -190,8 +194,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test if user is enrolled after completing a course.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
-     * #[CoversClass(enrol_coursecompleted\hook_listener)]
      */
     public function test_enrolled_after_completion(): void {
         global $PAGE;
@@ -209,7 +211,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test ue.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
      */
     public function test_user_edit(): void {
         global $PAGE;
@@ -271,7 +272,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test builld course path.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
      */
     public function test_build_course_path(): void {
         global $DB;
@@ -285,9 +285,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test library.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
-     * #[CoversClass(enrol_coursecompleted\observer)]
-     * #[CoversClass(enrol_coursecompleted\task\process_future)]
      */
     public function test_library_functions(): void {
         $this->assertEquals($this->plugin->get_name(), 'coursecompleted');
@@ -361,9 +358,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test library 2.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
-     * #[CoversClass(enrol_coursecompleted\observer)]
-     * #[CoversClass(enrol_coursecompleted\task\process_future)]
      */
     public function test_library_other_functionality(): void {
         global $DB;
@@ -420,7 +414,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test form.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
      */
     public function test_form(): void {
         $page = new moodle_page();
@@ -447,16 +440,13 @@ final class enrol_test extends advanced_testcase {
         $this->assertStringContainsString('fieldsetdata-fieldtype="date_time"class="m-0p-0border-0"id="id_customint4"', $cleaned);
         $this->assertStringContainsString('name="customint4[enabled]"', $cleaned);
         $this->assertStringContainsString('name="customint5"class="form-check-input"value="1"id="id_customint5"', $cleaned);
-        $this->assertStringContainsString(
-            '<selectclass="custom-select"name="status"id="id_status"><optionvalue="0">Yes</option>',
-            $cleaned
-        );
-        $this->assertStringContainsString('<selectclass="custom-select"name="customint2"id="id_customint2">', $cleaned);
+        $this->assertStringContainsString('-select"name="status"id="id_status"><optionvalue="0">Yes</option>', $cleaned);
+        $this->assertStringContainsString('-select"name="customint2"id="id_customint2">', $cleaned);
         $this->assertStringContainsString('<optionvalue="1"selected>Fromthecoursecontact</option>', $cleaned);
         $this->assertStringNotContainsString('<optionvalue="2">Fromthekeyholder</option>', $cleaned);
         $this->assertStringContainsString('<optionvalue="3">Fromtheno-replyaddress</option>', $cleaned);
         $this->assertStringContainsString(
-            '<selectclass="custom-select"name="roleid"id="id_roleid"><optionvalue="5"selected>Student</option>',
+            '-select"name="roleid"id="id_roleid"><optionvalue="5"selected>Student</option>',
             $cleaned
         );
 
@@ -488,7 +478,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test other config.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
      */
     public function test_other_config(): void {
         global $DB;
@@ -533,13 +522,10 @@ final class enrol_test extends advanced_testcase {
         $mform->display();
         $html = ob_get_clean();
         $cleaned = preg_replace('/\s+/', '', $html);
-        $this->assertStringContainsString(
-            '<selectclass="custom-select"name="status"id="id_status"><optionvalue="0">Yes</option>',
-            $cleaned
-        );
+        $this->assertStringContainsString('-select"name="status"id="id_status"><optionvalue="0">Yes</option>', $cleaned);
         $this->assertStringContainsString('<optionvalue="1"selected>No</option>', $cleaned);
         $this->assertStringContainsString('cols="60"rows="8"', $cleaned);
-        $this->assertStringContainsString('<selectclass="custom-select"name="customint2"id="id_customint2">', $cleaned);
+        $this->assertStringContainsString('-select"name="customint2"id="id_customint2">', $cleaned);
         $this->assertStringContainsString('name="customint3"class="form-check-input"value="1"id="id_customint3"', $cleaned);
         $this->assertStringContainsString(
             '<inputtype="checkbox"name="customint4[enabled]"class="form-check-input"id="id_customint4_enabled"value="1">',
@@ -562,7 +548,6 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test form.
-     * #[CoversClass(enrol_coursecompleted_plugin)]
      * @return \moodleform
      */
     private function tempform() {
