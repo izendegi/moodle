@@ -34,19 +34,21 @@ defined('MOODLE_INTERNAL') || die;
 
 /**
  * Get the structure of this grading definition
+ * This function  should be renamed or moved into a class something like
+ * report_advancedgrading\lib to avoid name clashes in the future.
  *
  * @param int $assignid
- * @return \stdClass
+ * @return false|\stdClass
  */
-function get_grading_definition(int $assignid): \stdClass {
+function get_grading_definition(int $assignid) {
     global $DB;
     $sql = "SELECT gdef.id AS definitionid, ga.activemethod, gdef.name AS definition
               FROM {assign} assign
               JOIN {course_modules} cm ON cm.instance = assign.id
               JOIN {context} ctx ON ctx.instanceid = cm.id
-              JOIN {grading_areas} ga ON ctx.id=ga.contextid
-              JOIN {grading_definitions} gdef ON ga.id = gdef.areaid
-             WHERE assign.id = :assignid";
+              JOIN {grading_areas} ga ON ctx.id = ga.contextid
+              JOIN {grading_definitions} gdef ON (ga.id = gdef.areaid AND ga.activemethod = gdef.method)
+             WHERE assign.id = :assignid AND gdef.method = ga.activemethod";
     $definition = $DB->get_record_sql($sql, ['assignid' => $assignid]);
     return $definition;
 }
@@ -89,7 +91,7 @@ function report_advancedgrading_get_user_groups($courseid): array {
 function header_fields(array $data, array $criteria, \stdClass $course, \cm_info $assign, \stdClass $gdef): array {
     foreach ($criteria as $criterion) {
         $data['criteria'][] = [
-            'description' => $criterion
+            'description' => $criterion,
         ];
     }
 
@@ -97,7 +99,7 @@ function header_fields(array $data, array $criteria, \stdClass $course, \cm_info
         'coursename' => format_string($course->fullname),
         'assignment' => format_string($assign->name),
         'gradingmethod' => get_string('pluginname', 'gradingform_'.$gdef->activemethod),
-        'definition' => $gdef->definition
+        'definition' => $gdef->definition,
     ];
 
     $criterion = [];
@@ -140,7 +142,7 @@ function user_fields(array $data, array $dbrecords): array {
  * @param string $page
  * @return void
  */
-function send_output(string $form, string $dload, array $data, string $page) : void {
+function send_output(string $form, string $dload, array $data, string $page): void {
     global $OUTPUT, $PAGE;
     $PAGE->set_cm($data['cm']);
     if ($dload) {
@@ -174,7 +176,7 @@ function init(array $data): array {
 
     $modinfo = get_fast_modinfo($data['courseid']);
     $data['cm'] = $modinfo->get_cm($data['modid']);
-    $data['course'] = $DB->get_record('course', array('id' => $data['courseid']), '*', MUST_EXIST);
+    $data['course'] = $DB->get_record('course', ['id' => $data['courseid']], '*', MUST_EXIST);
     $data['gradingdefinition'] = get_grading_definition($data['cm']->instance);
 
     $data['context'] = \context_module::instance($data['cm']->id);
@@ -195,12 +197,12 @@ function init(array $data): array {
     // TODO check if headerspanis actually used.
     $data['headerspan'] = $data['colcount'];
 
-    $event = \report_advancedgrading\event\report_viewed::create(array(
+    $event = \report_advancedgrading\event\report_viewed::create([
         'context' => $data['context'],
-        'other' => array(
-            'gradingmethod' => $data['grademethod']
-        )
-    ));
+        'other' => [
+            'gradingmethod' => $data['grademethod'],
+        ],
+    ]);
     $event->add_record_snapshot('course_modules', $data['cm']);
     $event->trigger();
 
@@ -243,7 +245,7 @@ function get_grades(array $data, array $dbrecords): array {
             'userid' => $grade->userid,
             'score' => number_format($grade->grade_rub_range ?? $grade->score, 2),
             'definition' => $grade->definition ?? "",
-            'feedback' => $grade->remark
+            'feedback' => $grade->remark,
         ];
         if (isset($scaleoptions)) {
             $formattedgrade = $scaleoptions[round($grade->grade)] ?? $scaleoptions[1];
@@ -255,7 +257,7 @@ function get_grades(array $data, array $dbrecords): array {
             'overallfeedback' => $grade->overallfeedback,
             'grader' => gradedbydata($grade),
             'timegraded' => $grade->modified,
-            'grade' => $formattedgrade
+            'grade' => $formattedgrade,
         ];
 
         foreach ($data['students'] as $student) {
@@ -293,7 +295,7 @@ function add_groups(array $data, int $courseid): array {
  * @param array $student
  * @return string
  */
-function get_student_cells(array $data, array $student) :string {
+function get_student_cells(array $data, array $student): string {
     $cell = '';
     foreach ($data['profilefields'] as $field) {
         $cell .= '<td>' . $student[$field] . '</td>';
@@ -330,7 +332,7 @@ function set_blindmarking(array $data, $assign, $cm): array {
  * @param mixed $student
  * @return string
  */
-function get_summary_cells($student) : string {
+function get_summary_cells($student): string {
     $cell = '<td>' . $student['gradeinfo']['overallfeedback'] . '</td>';
     $cell .= '<td>' . $student['gradeinfo']['grade'] . '</td>';
     $cell .= '<td>' . $student['gradeinfo']['grader'] . '</td>';
@@ -347,6 +349,7 @@ function get_summary_cells($student) : string {
  * @return void
  */
 function download(string $spreadsheet, array $data) {
+    $spreadsheet = preg_replace('/<(\s*)img[^<>]*>/i', '', $spreadsheet);
     $filename = $data['grademethod'];
     $reader = new \PhpOffice\PhpSpreadsheet\Reader\Html();
     $spreadsheet = $reader->loadFromString($spreadsheet);
@@ -356,7 +359,7 @@ function download(string $spreadsheet, array $data) {
     if ($viewsubmissions > "") {
         $params = [
             'id' => $data['modid'],
-            'action' => 'grading'
+            'action' => 'grading',
         ];
         redirect(new moodle_url("/mod/assign/view.php?", $params));
     }
@@ -407,7 +410,7 @@ function download(string $spreadsheet, array $data) {
  * @param string $filetype
  * @return boolean
  */
-function output_header(string $filename, string$filetype) : bool {
+function output_header(string $filename, string$filetype): bool {
     if ($filetype == 'Xlsx') {
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     } else {
