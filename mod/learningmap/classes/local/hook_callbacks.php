@@ -50,11 +50,16 @@ class hook_callbacks {
     public static function inject_backlinks_into_activity_header(before_http_headers $beforehttpheadershook): void {
         global $OUTPUT, $PAGE;
 
+        // Don't run during initial install.
+        if (during_initial_install()) {
+            return;
+        }
+
         if (get_config('mod_learningmap', 'backlinkallowed') == 0) {
             return;
         }
 
-        if ($PAGE->context->contextlevel != CONTEXT_MODULE) {
+        if ($PAGE->context->contextlevel != CONTEXT_MODULE || $PAGE->pagelayout == 'admin') {
             return;
         }
 
@@ -91,7 +96,7 @@ class hook_callbacks {
 
             if ($backlinktext) {
                 $activityheader = $PAGE->activityheader->export_for_template($OUTPUT);
-                $PAGE->activityheader->set_description($activityheader['description'] . $backlinktext);
+                $PAGE->activityheader->set_description(($activityheader['description'] ?? '') . $backlinktext);
             }
         } catch (Exception $e) {
             debugging($e->getMessage());
