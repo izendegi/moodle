@@ -18,7 +18,7 @@
  * English strings for FilterCodes plugin.
  *
  * @package    filter_filtercodes
- * @copyright  2017-2024 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2017-2025 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -250,6 +250,6 @@ $string['teamcardslinktype_desc'] = 'Choose the type of link for the team member
 $string['unenrolme'] = 'Unenrol me from this course';
 $string['verbose'] = 'Verbose';
 $string['wishlist'] = 'Wishlist';
-$string['wishlist_nocourses'] = 'No courses in the list';
 $string['wishlist_add'] = 'Add this course to the list';
+$string['wishlist_nocourses'] = 'No courses in the list';
 $string['wishlist_remove'] = 'Remove this course from the list';
