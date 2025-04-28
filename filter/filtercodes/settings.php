@@ -18,7 +18,7 @@
  * Main filter code for FilterCodes.
  *
  * @package    filter_filtercodes
- * @copyright  2017-2024 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2017-2025 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -29,7 +29,7 @@ defined('MOODLE_INTERNAL') || die;
 
 if ($hassiteconfig) {
     if ($ADMIN->fulltree) {
-        require('settings/general.php');
-        require('settings/global.php');
+        require($CFG->dirroot . '/filter/filtercodes/settings/general.php');
+        require($CFG->dirroot . '/filter/filtercodes/settings/global.php');
     }
 }
