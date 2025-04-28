@@ -18,7 +18,7 @@
  * Library of functions for MailTest.
  *
  * @package    local_mailtest
- * @copyright  2015-2024 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2015-2025 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -417,9 +417,10 @@ function local_mailtest_checkdns($domain) {
 
     $icon = $success ? 'fa-info-circle text-info' : 'fa-exclamation-triangle text-warning';
     $title = get_string('iconlabel', 'local_mailtest', $domain);
-    $popupicon = '<a class="btn btn-link p-0" role="button" data-container="body" data-toggle="popover"'
-        . ' data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>{message}</p></div>"'
-        . ' data-html="true" tabindex="0" data-trigger="focus">'
+    $bs = ($CFG->branch >= 500 ? 'bs-' : '');
+    $popupicon = '<a class="btn btn-link p-0" role="button" data-' . $bs . 'container="body" data-' . $bs . 'toggle="popover"'
+        . ' data-' . $bs . 'placement="right" data-' . $bs . 'content="<div class=&quot;no-overflow&quot;><p>{message}</p></div>"'
+        . ' data-' . $bs . 'html="true" tabindex="0" data-' . $bs . 'trigger="focus">'
         . '<i class="icon fa ' . $icon . ' fa-fw " title="' . $title . '" aria-label="' . $title . '"></i></a>';
     $message = '<p class="alert alert-warning">' . get_string('checkingdomain', 'local_mailtest', $domain) . '</p>' . $message;
     $message = str_replace('{message}', str_replace('"', '&quot;', $message), $popupicon);
