@@ -18,19 +18,17 @@
  * Library for the Benchmark report
  *
  * @package    report_benchmark
- * @copyright  2016 onwards Mickaël Pannequin {@link mickael.pannequin@gmail.com}
+ * @copyright  2016 onwards Mickaël Pannequin {@link mailto:mickael.pannequin@gmail.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  *
  * HOW TO CREATE A TEST
  * @see testlib.php
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Utility class for report_benchmark
  *
- * @copyright  2016 onwards Mickaël Pannequin {@link mickael.pannequin@gmail.com}
+ * @copyright  2016 onwards Mickaël Pannequin {@link mailto:mickael.pannequin@gmail.com}
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_benchmark {
@@ -40,7 +38,7 @@ class report_benchmark {
      *
      * @var array Benchmark results.
      */
-    private $results = array();
+    private $results = [];
 
     /**
      * benchmark constructor.
@@ -49,7 +47,7 @@ class report_benchmark {
 
         // Get the list of test.
         $tests  = $this->get_tests();
-        $benchs = array();
+        $benchs = [];
         $idtest = 0;
 
         foreach ($tests as $name) {
@@ -70,13 +68,13 @@ class report_benchmark {
             $stop      = round($overstop - $overstart, 3);
 
             // Store and merge result.
-            $benchs[$name] = array(
+            $benchs[$name] = [
                     'during'    => $stop,
                     'id'        => $idtest,
                     'class'     => $this->get_feedback_class($stop, $result['limit'], $result['over']),
                     'name'      => get_string($name.'name', 'report_benchmark'),
                     'info'      => get_string($name.'moreinfo', 'report_benchmark'),
-                ) + $result;
+                ] + $result;
         }
 
         // Store all results.
@@ -92,7 +90,7 @@ class report_benchmark {
      */
     private function start_test($name) {
 
-        return call_user_func(array('report_benchmark_test', $name));
+        return call_user_func(['report_benchmark_test', $name]);
 
     }
 
@@ -104,7 +102,7 @@ class report_benchmark {
     private function get_tests() {
 
         // Get the list of all static method in the class benchmark_test.
-        $tests      = array();
+        $tests      = [];
         $class      = new ReflectionClass(__CLASS__.'_test');
         $methods    = $class->getMethods(ReflectionMethod::IS_STATIC);
 
@@ -163,10 +161,10 @@ class report_benchmark {
             $total += $result['during'];
         }
 
-        return array(
+        return [
             'total' => $total,
             'score' => ceil($total * 100),
-        );
+        ];
 
     }
 
