@@ -1,6 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [3.1.7] - 2025-04-27
+### Updates
+- Fixes Moodle 5.0 compatbility issue.
+- Compatible with Moodle up to v5.0.
+- Updated copyright for 2025.
+
+## [3.1.6] - 2024-10-03
+### Updates
+- No version change as there was no change to the code.
+- Tested compatible with Moodle 4.5.
+
 ## [3.1.6] - 2024-07-22
 ### Updated
 - Fixed deprecated strings in Moodle 4.4.
