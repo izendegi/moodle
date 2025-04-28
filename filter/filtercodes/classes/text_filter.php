@@ -18,7 +18,7 @@
  * Main filter code for FilterCodes.
  *
  * @package    filter_filtercodes
- * @copyright  2017-2024 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2017-2025 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -44,7 +44,7 @@ if (class_exists('\core_filters\text_filter')) {
 /**
  * Extends the moodle_text_filter class to provide plain text support for new tags.
  *
- * @copyright  2017-2024 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2017-2025 TNG Consulting Inc. - www.tngconsulting.ca
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class text_filter extends \filtercodes_base_text_filter {
@@ -57,6 +57,9 @@ class text_filter extends \filtercodes_base_text_filter {
      * user is allowed
      */
     private static $customrolespermissions = [];
+
+    /** @var bool $infiltercodes Flag to track if a filter is being called recursively */
+    private static $infiltercodes = false;
 
     /**
      * Constructor: Get the role IDs associated with each of the archetypes.
@@ -249,9 +252,14 @@ class text_filter extends \filtercodes_base_text_filter {
         global $PAGE;
 
         $sizes = ['sm' => 35, '2' => 35, 'md' => 100, '1' => 100, 'lg' => 512, '3' => 512];
-        if (empty($px = $sizes[$size])) {
+        if (isset($sizes[$size])) {
+            $px = $sizes[$size];
+        } else if (is_numeric($size)) {
             $px = $size; // Size was specified in pixels.
+        } else {
+            $px = 100; // Default size.
         }
+
         $userpicture = new \user_picture($user);
         $userpicture->size = $px; // Size in pixels.
         $url = $userpicture->get_url($PAGE);
@@ -839,11 +847,11 @@ class text_filter extends \filtercodes_base_text_filter {
                 }
                 if ($this->hasminarchetype('manager')) { // If a manager or above.
                     $menu .= '-{getstring}user{/getstring}: {getstring:admin}usermanagement{/getstring}|/admin/user.php' . PHP_EOL;
-                    $menu .= '{ifminsitemanager}' . PHP_EOL;
-                    $menu .= '-{getstring}user{/getstring}: {getstring:mnet}profilefields{/getstring}|/user/profile/index.php' .
+                    if (is_siteadmin()) {
+                        $menu .= '-{getstring}user{/getstring}: {getstring:mnet}profilefields{/getstring}|/user/profile/index.php' .
                             PHP_EOL;
+                    }
                     $menu .= '-###' . PHP_EOL;
-                    $menu .= '{/ifminsitemanager}' . PHP_EOL;
                     $menu .= '-{getstring}course{/getstring}: {getstring:admin}coursemgmt{/getstring}|/course/management.php' .
                             '?categoryid={categoryid}' . PHP_EOL;
                     $menu .= '-{getstring}course{/getstring}: {getstring}new{/getstring}|/course/edit.php' .
@@ -1031,7 +1039,7 @@ class text_filter extends \filtercodes_base_text_filter {
             // Allow Theme Changes on URL must be enabled for this to have any effect.
             if (stripos($text, '{menuthemes}') !== false) {
                 $menu = '';
-                if (is_siteadmin() && empty($_POST)) { // If a site administrator.
+                if (empty($_POST) && is_siteadmin() && !is_role_switched($PAGE->course->id)) { // If a site administrator.
                     if (get_config('core', 'allowthemechangeonurl')) {
                         $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http")
                             . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
@@ -1043,34 +1051,32 @@ class text_filter extends \filtercodes_base_text_filter {
                             $menu .= '-' . $themename . '|' . $url . 'theme=' . $theme . PHP_EOL;
                         }
 
-                        // If an administrator, add links to Advanced Theme Settings and to Current theme settings.
-                        if (is_siteadmin() && !is_role_switched($PAGE->course->id)) {
-                            $theme = $PAGE->theme->name;
-                            $menu = 'Themes' . PHP_EOL . $menu;
-                            if ($CFG->branch >= 404) {
-                                $label = 'themesettingsadvanced';
-                                $section = 'themesettingsadvanced';
-                            } else {
-                                $label = 'themesettings';
-                                $section = 'themesettings';
-                            }
+                        // Add links to Advanced Theme Settings and to Current theme settings.
+                        $theme = $PAGE->theme->name;
+                        $menu = 'Themes' . PHP_EOL . $menu;
+                        if ($CFG->branch >= 404) {
+                            $label = 'themesettingsadvanced';
+                            $section = 'themesettingsadvanced';
+                        } else {
+                            $label = 'themesettings';
+                            $section = 'themesettings';
+                        }
 
-                            $menu .= '-###' . PHP_EOL;
-                            $menu .= '-{getstring:admin}' . $label . '{/getstring}|/admin/settings.php' .
-                                '?section=' . $section . '|Including custom menus, designer mode, theme in URL' . PHP_EOL;
+                        $menu .= '-###' . PHP_EOL;
+                        $menu .= '-{getstring:admin}' . $label . '{/getstring}|/admin/settings.php' .
+                            '?section=' . $section . '|Including custom menus, designer mode, theme in URL' . PHP_EOL;
 
-                            if (!file_exists($CFG->dirroot . '/mod/hvp/version.php')) { // Not compatible with mod_hvp.
-                                if (file_exists($CFG->dirroot . '/theme/' . $theme . '/settings.php')) {
-                                    require_once($CFG->libdir . '/adminlib.php');
-                                    if (admin_get_root()->locate('theme_' . $theme)) {
-                                        // Settings use categories interface URL.
-                                        $url = '/admin/category.php?category=theme_' . $theme . PHP_EOL;
-                                    } else {
-                                        // Settings use tabs interface URL.
-                                        $url = '/admin/settings.php?section=themesetting' . $theme . PHP_EOL;
-                                    }
-                                    $menu .= '-{getstring:admin}currenttheme{/getstring}|' . $url;
+                        if (!file_exists($CFG->dirroot . '/mod/hvp/version.php')) { // Not compatible with mod_hvp.
+                            if (file_exists($CFG->dirroot . '/theme/' . $theme . '/settings.php')) {
+                                require_once($CFG->libdir . '/adminlib.php');
+                                if (admin_get_root()->locate('theme_' . $theme)) {
+                                    // Settings use categories interface URL.
+                                    $url = '/admin/category.php?category=theme_' . $theme . PHP_EOL;
+                                } else {
+                                    // Settings use tabs interface URL.
+                                    $url = '/admin/settings.php?section=themesetting' . $theme . PHP_EOL;
                                 }
+                                $menu .= '-{getstring:admin}currenttheme{/getstring}|' . $url;
                             }
                         }
                     }
@@ -1149,7 +1155,7 @@ class text_filter extends \filtercodes_base_text_filter {
                             $menu .= "\n-###\n";
                         }
                         $action = in_array($PAGE->course->id, $wishlist) ? 'remove' : 'add';
-                        $url = (new \moodle_url('/filter/filtercodes/wishlist.php', [
+                        $url = (new \moodle_url('/filter/filtercodes/action.php', [
                             'courseid' => $PAGE->course->id,
                             'action' => $action,
                         ]))->out();
@@ -1180,7 +1186,8 @@ class text_filter extends \filtercodes_base_text_filter {
                         $coursecontext->id,
                         'course',
                         'section',
-                        0);
+                        0
+                    );
                     $replace['/\{coursesummary\}/i'] = format_text(
                         $summary,
                         FORMAT_HTML,
@@ -1572,7 +1579,7 @@ class text_filter extends \filtercodes_base_text_filter {
     public function filter($text, array $options = []) {
         global $CFG, $SITE, $PAGE, $USER, $DB;
 
-        if (strpos($text, '{') === false && strpos($text, '%7B') === false) {
+        if (strpos($text, '{') === false && strpos($text, '%7B') === false || self::$infiltercodes) {
             return $text;
         }
 
@@ -1587,6 +1594,7 @@ class text_filter extends \filtercodes_base_text_filter {
 
         // Handle escaped tags to be ignored. Remove them so they don't get processed if the option to [{escape braces}] is enabled.
         $text = $this->escapedtags($text);
+        self::$infiltercodes = true; // Prevent recursive calls to this function.
 
         // START: Process tags that may end up containing other tags first.
 
@@ -2369,6 +2377,7 @@ class text_filter extends \filtercodes_base_text_filter {
         if ($this->replacetags($text, $replace) == false) {
             // No more tags? Put back the escaped tags, if any, and return the string.
             $text = $this->escapedtags($text);
+            self::$infiltercodes = false;
             return $text;
         }
 
@@ -2568,7 +2577,7 @@ class text_filter extends \filtercodes_base_text_filter {
             // Description: Site summary as defined in the Front Page/Site Home Settings.
             // Parameters: None.
             if (stripos($text, '{sitesummary}') !== false) {
-                $replace['/\{sitesummary\}/i'] = $SITE->fullname;
+                $replace['/\{sitesummary\}/i'] = $SITE->summary;
             }
 
             // Tag: {siteyear}.
@@ -2595,6 +2604,7 @@ class text_filter extends \filtercodes_base_text_filter {
         if ($this->replacetags($text, $replace) == false) {
             // No more tags? Put back the escaped tags, if any, and return the string.
             $text = $this->escapedtags($text);
+            self::$infiltercodes = false;
             return $text;
         }
 
@@ -2728,7 +2738,8 @@ class text_filter extends \filtercodes_base_text_filter {
                         '/\{userpictureimg\s+(\w+)\}/isuU',
                         function ($matches) use ($USER) {
                             $url = $this->getprofilepictureurl($USER, $matches[1]);
-                            $tag = '<img src="' . $url . '" alt="' . $USER->fullname . '" class="userpicture">';
+                            $fullname = get_string('fullnamedisplay', null, $USER);
+                            $tag = '<img src="' . $url . '" alt="' . $fullname . '" class="userpicture">';
                             return $tag;
                         },
                         $text
@@ -3789,7 +3800,7 @@ class text_filter extends \filtercodes_base_text_filter {
         }
 
         // Tag: {sectionname}.
-        // Description: The name of the section in which the current activity is located. Blank if not in a course.
+        // Description: The name of the section in which the current activity is located. Blank if not in course or on course page.
         // Parameters: None.
         if (stripos($text, '{sectionname}') !== false) {
             // If in a course and section name.
@@ -3982,8 +3993,8 @@ class text_filter extends \filtercodes_base_text_filter {
                             if (($cm = \get_coursemodule_from_id('', $cmid, 0)) !== false) {
                                 // Get the completion data for this activity if it exists.
                                 try {
-                                    $data = $completion->get_data($cm, true, $USER->id);
-                                    $iscompleted = ($data->completionstate == COMPLETION_COMPLETE);
+                                    $data = $completion->get_data($cm, false, $USER->id);
+                                    $iscompleted = ($data->completionstate > COMPLETION_INCOMPLETE); // A completed state.
                                 } catch (\moodle_exception $e) {
                                     // Handle Moodle-specific exceptions.
                                     unset($e);
@@ -4027,15 +4038,15 @@ class text_filter extends \filtercodes_base_text_filter {
 
                             // Only process valid IDs.
                             if (($cm = \get_coursemodule_from_id('', $cmid, 0)) !== false) {
-                                // Get the completion data for this activity.
+                                // Get the completion data for this activity if it exists.
                                 try {
-                                    $data = $completion->get_data($cm, true, $USER->id);
-                                    $iscompleted = ($data->completionstate == COMPLETION_COMPLETE);
+                                    $data = $completion->get_data($cm, false, $USER->id);
+                                    $iscompleted = ($data->completionstate > COMPLETION_INCOMPLETE); // A completed state.
                                 } catch (\moodle_exception $e) {
                                     // Handle Moodle-specific exceptions.
                                     unset($e);
                                     continue;
-                                } catch (Exception $e) {
+                                } catch (\Exception $e) {
                                     unset($e);
                                     continue;
                                 }
@@ -4078,7 +4089,7 @@ class text_filter extends \filtercodes_base_text_filter {
                     $tag = 'ifprofile_field_' . $field->shortname;
 
                     // If the tag exists, user is logged-in and we are allowed to evaluate this field.
-                    if (isset($profiledata[$field->id]) && $isuser && ($field->visible != '0' || $allowall)) {
+                    if (!empty($field->id) && isset($profiledata[$field->id]) && $isuser && ($field->visible != '0' || $allowall)) {
                         $data = trim($profiledata[$field->id]);
                     } else {
                         $data = '';
@@ -4161,7 +4172,7 @@ class text_filter extends \filtercodes_base_text_filter {
                                 break;
                             case 'contains':
                                 // If the specified field contains the specified value.
-                                // Example:{ifprofile email contains "@example.com"}...{/ifprofile}.
+                                // Example:{ifprofile email contains "@yoursite.com"}...{/ifprofile}.
                                 if (strpos($profilefields[$fieldname]->value, $value) !== false) {
                                     $content = $matches[4][$key];
                                 }
@@ -5302,11 +5313,19 @@ class text_filter extends \filtercodes_base_text_filter {
             static $helpwrapper = [];
             if (!isset($help)) {
                 $help = get_string('help');
-                $helpwrapper[0] = '<a class="btn btn-link p-0" role="button" data-container="body" data-toggle="popover"'
+                if ($CFG->branch >= 500) {
+                    $helpwrapper[0] = '<a class="btn btn-link p-0" role="button" data-bs-container="body" data-bs-toggle="popover"'
+                            . ' data-bs-placement="right" data-bs-content="<div class=&quot;no-overflow&quot;><p>';
+                    $helpwrapper[1] = '</p></div>" data-bs-html="true" tabindex="0" data-bs-trigger="focus"><i class="icon'
+                            . ' fa fa-circle-question text-info fa-fw " title="' . $help . '" aria-label="' . $help . '"></i></a>';
+                } else {
+                    $helpwrapper[0] = '<a class="btn btn-link p-0" role="button" data-container="body" data-toggle="popover"'
                         . ' data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>';
-                $helpwrapper[1] = '</p></div>" data-html="true" tabindex="0" data-trigger="focus"><i class="icon'
+                    $helpwrapper[1] = '</p></div>" data-html="true" tabindex="0" data-trigger="focus"><i class="icon'
                         . ' fa fa-question-circle text-info fa-fw " title="' . $help . '" aria-label="' . $help . '"></i></a>';
+                }
             }
+
             $newtext = preg_replace_callback(
                 '/\{help\}(.*)\{\/help\}/isuU',
                 function ($matches) use ($helpwrapper) {
@@ -5328,10 +5347,17 @@ class text_filter extends \filtercodes_base_text_filter {
             static $infowrapper = [];
             if (!isset($info)) {
                 $info = get_string('info');
-                $infowrapper[0] = '<a class="btn btn-link p-0" role="button" data-container="body" data-toggle="popover"'
+                if ($CFG->branch >= 500) {
+                    $infowrapper[0] = '<a class="btn btn-link p-0" role="button" data-bs-container="body" data-bs-toggle="popover"'
+                        . ' data-bs-placement="right" data-bs-content="<div class=&quot;no-overflow&quot;><p>';
+                    $infowrapper[1] = '</p></div>" data-bs-html="true" tabindex="0" data-bs-trigger="focus"><i class="icon'
+                        . ' fa fa-circle-info text-info fa-fw " title="' . $info . '" aria-label="' . $info . '"></i></a>';
+                } else {
+                    $infowrapper[0] = '<a class="btn btn-link p-0" role="button" data-container="body" data-toggle="popover"'
                         . ' data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>';
-                $infowrapper[1] = '</p></div>" data-html="true" tabindex="0" data-trigger="focus"><i class="icon'
+                    $infowrapper[1] = '</p></div>" data-html="true" tabindex="0" data-trigger="focus"><i class="icon'
                         . ' fa fa-info-circle text-info fa-fw " title="' . $info . '" aria-label="' . $info . '"></i></a>';
+                }
             }
             $newtext = preg_replace_callback(
                 '/\{info\}(.*)\{\/info\}/isuU',
@@ -5350,6 +5376,7 @@ class text_filter extends \filtercodes_base_text_filter {
         if ($this->replacetags($text, $replace) == false) {
             // No more tags? Put back the escaped tags, if any, and return the string.
             $text = $this->escapedtags($text);
+            self::$infiltercodes = false;
             return $text;
         }
 
@@ -5436,6 +5463,7 @@ class text_filter extends \filtercodes_base_text_filter {
         $this->replacetags($text, $replace);
         // Put back the escaped tags.
         $text = $this->escapedtags($text);
+        self::$infiltercodes = false;
         return $text;
     }
 }
