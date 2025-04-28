@@ -18,8 +18,8 @@
  * Version details of the benchmark report
  *
  * @package    report_benchmark
- * @copyright  2016 onwards Mickaël Pannequin {@link mickael.pannequin@gmail.com}
- * @copyright  2023 onwards Nicolas Martignoni {@link nicolas@martignoni.net}
+ * @copyright  2016 onwards Mickaël Pannequin {@link mailto:mickael.pannequin@gmail.com}
+ * @copyright  2023 onwards Nicolas Martignoni {@link mailto:nicolas@martignoni.net}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -31,9 +31,9 @@ if (!isset($plugin)) {
 }
 
 // Plugin informations.
-$plugin->version    = 2023012800; // The current module version (Date: YYYYMMDDXX).
-$plugin->release    = 'v1.5.1';
+$plugin->version    = 2025042700; // The current module version (Date: YYYYMMDDXX).
+$plugin->release    = 'v1.5.3';
 $plugin->requires   = 2011120500; // Requires this Moodle version 2.0 or later.
-$plugin->supported  = [27, 410];
+$plugin->supported  = [27, 500];
 $plugin->maturity   = MATURITY_STABLE;
 $plugin->component  = 'report_benchmark'; // Full name of the plugin (used for diagnostics).

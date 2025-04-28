@@ -18,21 +18,23 @@
  * Benchmark report capabilities are defined here.
  *
  * @package    report_benchmark
- * @copyright  2016 onwards Mickaël Pannequin {@link mickael.pannequin@gmail.com}
+ * @copyright  2016 onwards Mickaël Pannequin {@link mailto:mickael.pannequin@gmail.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @link       https://github.com/mikasmart/moodle-report_benchmark Source on GitHub
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = array(
-    'report/benchmark:view' => array(
+$capabilities = [
+
+    'report/benchmark:view' => [
         'riskbitmask' => RISK_DATALOSS,
         'captype' => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array(
-            'manager' => CAP_ALLOW
-        ),
-        'clonepermissionsfrom' => 'report/performance:view'
-    )
-);
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+        'clonepermissionsfrom' => 'report/performance:view',
+    ],
+
+];
