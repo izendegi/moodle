@@ -18,19 +18,22 @@
  * The Benchmark report
  *
  * @package    report_benchmark
- * @copyright  2016 onwards Mickaël Pannequin {@link mickael.pannequin@gmail.com}
+ * @copyright  2016 onwards Mickaël Pannequin {@link mailto:mickael.pannequin@gmail.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @link       https://github.com/mikasmart/moodle-report_benchmark Source on GitHub
  */
 
 // Timeout at 2 minutes.
+// Let codechecker ignore the next line because we need config.php to
+// be loaded a bit later.
+// phpcs:disable moodle.Files.MoodleInternal.MoodleInternalGlobalState
 set_time_limit(120);
 
 define('NO_OUTPUT_BUFFERING', true);
 
 // Required config and set markers for the 1st test.
 define('BENCHSTART', microtime(true));
-require(__DIR__ . '/../../config.php');
+require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 define('BENCHSTOP', microtime(true));
 
 // Required files.
