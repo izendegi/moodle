@@ -119,7 +119,9 @@
 }
 
 #page-mod-quiz-report-answersheets-attemptsheet .im-controls input[type=submit],
-#page-mod-quiz-report-answersheets-submitresponses .im-controls input[type=submit] {
+#page-mod-quiz-report-answersheets-submitresponses .im-controls input[type=submit],
+#page-mod-quiz-report-answersheets-attemptsheet .im-controls button[type=submit],
+#page-mod-quiz-report-answersheets-submitresponses .im-controls button[type=submit] {
     display: none;
 }
 
@@ -130,6 +132,18 @@
 
 #page-mod-quiz-report tr.lastchanged td {
     background-color: #afa;
+}
+
+.path-mod-quiz-report-answersheets .que.truefalse .answer div.r0,
+.path-mod-quiz-report-answersheets .que.truefalse .answer div.r1 {
+    display: flex;
+    margin: 0.25rem 0;
+    align-items: flex-start;
+}
+
+#page-mod-quiz-report-answersheets-submitresponses .que.truefalse .answer div.r0,
+#page-mod-quiz-report-answersheets-submitresponses .que.truefalse .answer div.r1 {
+    align-items: center;
 }
 
 @media print {

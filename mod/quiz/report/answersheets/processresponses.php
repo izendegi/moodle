@@ -45,18 +45,28 @@ require_login($attemptobj->get_course(), false, $attemptobj->get_cm());
 require_capability('quiz/answersheets:submitresponses', context_module::instance($attemptobj->get_cmid()));
 require_sesskey();
 
+$url = new moodle_url('/mod/quiz/report/answersheets/processresponses.php', ['cmdid' => $cmid]);
+$PAGE->set_url($url);
+
 $reportoptions = new report_display_options('answersheets', $attemptobj->get_quiz(),
         $attemptobj->get_cm(), $attemptobj->get_course());
 $reportoptions->setup_from_params();
 
 // If the attempt is already closed, send them to the review sheet page.
 if ($attemptobj->is_finished()) {
-    throw new moodle_quiz_exception($attemptobj->get_quizobj(), 'attemptalreadyclosed', null,
+    throw new moodle_exception('attemptalreadyclosed', 'quiz',
             new moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
                     ['attempt' => $attemptid, 'userinfo' => $reportoptions->combine_user_info_visibility()]));
 }
 
 // Process the attempt, getting the new status for the attempt.
+// If we are trying to create and update the student response for closed quizzes.
+// Then we will have to set processing time to quiz timeclose.
+// Otherwise, the attempt would not get updated, considering it to be too late in the process_attempt function.
+$quiz = $attemptobj->get_quiz();
+if ($timenow > $quiz->timeclose) {
+    $timenow = $quiz->timeclose;
+}
 $attemptobj->process_attempt($timenow, $finishattempt, false, 0);
 
 if ($redirect == '') {
