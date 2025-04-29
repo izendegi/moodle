@@ -24,8 +24,18 @@
 
 namespace quiz_answersheets;
 
-defined('MOODLE_INTERNAL') || die();
 use mod_quiz\local\reports\attempts_report_options_form;
+use MoodleQuickForm;
+
+defined('MOODLE_INTERNAL') || die();
+
+// This work-around is required until Moodle 4.2 is the lowest version we support.
+if (class_exists('\mod_quiz\local\reports\attempts_report_options_form')) {
+    class_alias('\mod_quiz\local\reports\attempts_report_options_form', '\mod_quiz_attempts_report_form_parent_class_alias');
+} else {
+    require_once($CFG->dirroot . '/mod/quiz/report/attemptsreport_form.php');
+    class_alias('\mod_quiz_attempts_report_form', '\mod_quiz_attempts_report_form_parent_class_alias');
+}
 
 /**
  * This file defines the setting form for the quiz answersheets report.
@@ -34,27 +44,33 @@ use mod_quiz\local\reports\attempts_report_options_form;
  * @copyright 2019 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class report_settings_form extends attempts_report_options_form {
+class report_settings_form extends \mod_quiz_attempts_report_form_parent_class_alias {
 
-    protected $_customdata;
-
-    protected function other_preference_fields(\MoodleQuickForm $mform): void
-    {
-        $field = report_display_options::possible_user_info_visibility_settings(
-                $this->_customdata['quiz']->cmobject);
+    /**
+     * Add the custom fields to the form.
+     *
+     * @param MoodleQuickForm $mform The form.
+     */
+    protected function other_preference_fields(MoodleQuickForm $mform): void {
+        $field = report_display_options::possible_user_info_visibility_settings($this->_customdata['quiz']->cmobject);
 
         $userinfogroup = [];
-        foreach ($field as $name => $notused) {
+        foreach (array_keys($field) as $name) {
             $userinfogroup[] = $mform->createElement('advcheckbox', 'show' . $name, '',
-                    report_display_options::user_info_visibility_settings_name($name));
+                report_display_options::user_info_visibility_settings_name($name));
             $mform->setDefault('show' . $name, 1);
         }
-        $mform->addGroup($userinfogroup, 'userinfo',
-                get_string('showuserinfo', 'quiz_answersheets'), array(' '), false);
+        $mform->addGroup($userinfogroup, 'userinfo', get_string('showuserinfo', 'quiz_answersheets'), [' '], false);
 
-        $mform->addElement('advcheckbox', 'questioninstruction',
-                get_string('showquestioninstruction', 'quiz_answersheets'));
+        $instandmarkedcbs = [];
+        $instandmarkedcbs[] = $mform->createElement('advcheckbox', 'questioninstruction',
+            get_string('showquestioninstruction', 'quiz_answersheets'));
         $mform->setDefault('questioninstruction', 1);
 
+        $instandmarkedcbs[] = $mform->createElement('advcheckbox', 'marks',
+            get_string('showmarkedoutoftext', 'quiz_answersheets'));
+        $mform->setDefault('marks', 1);
+        $mform->addGroup($instandmarkedcbs, 'instructionandmarkedcheckboxes', '', '',
+            false);
     }
 }

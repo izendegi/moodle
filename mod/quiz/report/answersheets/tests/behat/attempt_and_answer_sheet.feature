@@ -22,9 +22,9 @@ Feature: Attempt sheet, Review sheet and Answer sheet feature of the Answer shee
       | contextlevel | reference | name           |
       | Course       | C1        | Test questions |
     And the following "activities" exist:
-      | activity | name   | intro              | course | idnumber |
-      | quiz     | Quiz 1 | Quiz 1 description | C1     | quiz1    |
-      | quiz     | Quiz 2 | Quiz 2 description | C1     | quiz2    |
+      | activity | name   | intro              | course | idnumber | preferredbehaviour |
+      | quiz     | Quiz 1 | Quiz 1 description | C1     | quiz1    | interactive        |
+      | quiz     | Quiz 2 | Quiz 2 description | C1     | quiz2    | deferredfeedback   |
     And the following "questions" exist:
       | questioncategory | qtype       | name | questiontext    | template    |
       | Test questions   | truefalse   | TF1  | First question  |             |
@@ -37,11 +37,11 @@ Feature: Attempt sheet, Review sheet and Answer sheet feature of the Answer shee
   @javascript
   Scenario: Attempt sheet, Answer sheet links do not exist for Student do not have any attempt yet
     Given I am on the "Quiz 1" "quiz_answersheets > Report" page logged in as "teacher"
-    And I set the field "Attempts from" to "enrolled users who have attempted the quiz"
+    And I set the field "Attempts from" to "enrolled_with"
     When I press "Show report"
     Then I should see "Attempts: 0"
     And I should see "Nothing to display"
-    And I set the field "Attempts from" to "enrolled users who have, or have not, attempted the quiz"
+    And I set the field "Attempts from" to "enrolled_any"
     And I press "Show report"
     And I should see "Student One"
     And "Student One" row "Attempt sheets" column of "answersheets" table should contain "-"
@@ -63,10 +63,11 @@ Feature: Attempt sheet, Review sheet and Answer sheet feature of the Answer shee
     And "Student One" row "Answer sheets" column of "answersheets" table should contain "Right answer sheet"
     When I click on "Attempt sheet" "link" in the "Student One" "table_row"
     Then I should see "First question"
+    And I should not see "Check"
     And "table.quizreviewsummary" "css_element" should exist
     And I should see "Student One" in the "table.quizreviewsummary" "css_element"
-    And I should not see "Started on" in the "table.quizreviewsummary" "css_element"
-    And I should not see "State" in the "table.quizreviewsummary" "css_element"
+    And I should not see "Started" in the "table.quizreviewsummary" "css_element"
+    And I should not see "Status" in the "table.quizreviewsummary" "css_element"
     And I should see "Select the correct answer" in the ".question-instruction" "css_element"
     And I should not see "If incorrect:"
     And I should not see "If partially correct:"
@@ -75,7 +76,7 @@ Feature: Attempt sheet, Review sheet and Answer sheet feature of the Answer shee
     And I press the "back" button in the browser
     When I click on "Right answer sheet" "link" in the "Student One" "table_row"
     Then I should see "First question"
-    And the field "True" matches value "1"
+    And I should see "Second question"
     And I should see "If incorrect:"
     And I should see "If partially correct:"
     And I should see "If correct:"
@@ -92,12 +93,11 @@ Feature: Attempt sheet, Review sheet and Answer sheet feature of the Answer shee
     Then I should see "First question"
     And "table.quizreviewsummary" "css_element" should exist
     And I should see "Student One" in the "table.quizreviewsummary" "css_element"
-    And I should see "Started on" in the "table.quizreviewsummary" "css_element"
-    And I should see "State" in the "table.quizreviewsummary" "css_element"
+    And I should see "Started" in the "table.quizreviewsummary" "css_element"
 
   @javascript
   Scenario: Sheet's special message for un-submitted RecordRTC question type
-    Given I check the "recordrtc" question type already installed for export attempts report
+    Given the qtype_recordrtc plugin is installed
     And the following "questions" exist:
       | questioncategory | qtype     | name | questiontext   | template |
       | Test questions   | recordrtc | RTC1 | Third question | audio    |
@@ -111,23 +111,80 @@ Feature: Attempt sheet, Review sheet and Answer sheet feature of the Answer shee
     And "No response recorded." "text" in the "Third question" "question" should not be visible
 
   @javascript
-  Scenario: Sheet's special message for submitted RecordRTC question type
-    # We need to work around for this case because Moodle is creating response file for current logged in user.
-    Given I check the "recordrtc" question type already installed for export attempts report
-    And the following "questions" exist:
-      | questioncategory | qtype     | name | questiontext   | template |
-      | Test questions   | recordrtc | RTC1 | Third question | audio    |
+  Scenario: Sheet's special message for submitted oumaxtrix question type
+    Given the qtype_oumatrix plugin is installed
+    When the following "questions" exist:
+      | questioncategory | qtype    | name | questiontext    | template       |
+      | Test questions   | oumatrix | OUM1 | Fourth question | animals_single |
     And quiz "Quiz 2" contains the following questions:
       | question | page |
-      | RTC1     | 1    |
+      | OUM1     | 1    |
     And I am on the "quiz2" "Activity" page logged in as "student1"
     And I click on "Attempt quiz" "button"
-    And "student1" has recorded "moodle-sharon.ogg" into the record RTC question
     And I press "Finish attempt ..."
     And I press "Submit all and finish"
-    And I click on "Submit all and finish" "button" in the "Confirmation" "dialogue"
-    And I log out
+    And I click on "Submit all and finish" "button" in the "Submit all your answers and finish?" "dialogue"
+    And I should see "That is not right at all."
     And I am on the "Quiz 2" "quiz_answersheets > Report" page logged in as "teacher"
     When I click on "Review sheet" "link" in the "Student One" "table_row"
-    Then I should not see "No recording"
-    And "Response recorded: recorder1.ogg" "text" in the "Third question" "question" should not be visible
+    Then I should see "Fourth question"
+    And I should see "That is not right at all."
+    And I should see "We are recognising different type of animals."
+    And I should see "The correct answers are:"
+    And I should see "Bee → Insects"
+    And I should see "Salmon → Fish"
+    And I should see "Seagull → Birds"
+    And I should see "Dog → Mammals"
+
+  @javascript
+  Scenario: Review sheet link available for finished attempt for oumatrix
+    Given the qtype_oumatrix plugin is installed
+    When the following "questions" exist:
+      | questioncategory | qtype    | name | questiontext    | template       |
+      | Test questions   | oumatrix | OUM1 | Fourth question | animals_single |
+    And quiz "Quiz 2" contains the following questions:
+      | question | page |
+      | OUM1     | 1    |
+    And user "student1" has started an attempt at quiz "Quiz 2"
+    And I am on the "Quiz 2" "quiz_answersheets > Report" page logged in as "teacher"
+    And I click on "Right answer sheet" "link" in the "Student One" "table_row"
+    # OU Matrix response answer.
+    Then I should see "Feedback" in the "Insects" "table_row"
+    And I should see "Fourth question"
+    And I should see "Flies and Bees are insects." in the "Bee" "table_row"
+    And I should see "Cod, Salmon and Trout are fish." in the "Salmon" "table_row"
+    And I should see "Gulls and Owls are birds." in the "Seagull" "table_row"
+    And I should see "Cows, Dogs and Horses are mammals." in the "Dog" "table_row"
+    # General feedback.
+    And I should see "Well done!"
+    And I should see "We are recognising different type of animals."
+    And I should see "The correct answers are:"
+    And I should see "Bee → Insects"
+    And I should see "Salmon → Fish"
+    And I should see "Seagull → Birds"
+    And I should see "Dog → Mammals"
+
+  @javascript
+  Scenario: Sheet's special messgae for submitted oumultiresponse question type
+    Given the qtype_oumultiresponse plugin is installed
+    When the following "questions" exist:
+      | questioncategory | qtype           | name          | questiontext   | template    |
+      | Test questions   | oumultiresponse | OUM response1 | Third question | two_of_four |
+    And quiz "Quiz 2" contains the following questions:
+      | question      | page |
+      | OUM response1 | 1    |
+    And I am on the "quiz2" "Activity" page logged in as "student1"
+    And I click on "Attempt quiz" "button"
+    And I press "Finish attempt ..."
+    And I press "Submit all and finish"
+    And I click on "Submit all and finish" "button" in the "Submit all your answers and finish?" "dialogue"
+    Then I should see "That is not right at all."
+    And I am on the "Quiz 2" "quiz_answersheets > Report" page logged in as "teacher"
+    And I click on "Review sheet" "link" in the "Student One" "table_row"
+    And I should see "Third question"
+    And I should see "One is odd."
+    And I should see "Two is even."
+    And I should see "Three is odd."
+    And I should see "Four is odd."
+    And the field "Three" in the ".oumultiresponse" "css_element" matches value "1"
+    And the field "One" in the ".oumultiresponse" "css_element" matches value "1"
