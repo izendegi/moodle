@@ -40,9 +40,15 @@ require_once($CFG->dirroot . '/question/type/recordrtc/renderer.php');
  * @copyright  2020 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
 
+    /**
+     * The code was copied from question/type/recordrtc/renderer.php, with modifications.
+     *
+     * @param question_attempt $qa The question attempt.
+     * @param question_display_options $options The display options.
+     * @return string HTML string.
+     */
     protected function no_recording_message(): string {
         $output = '';
 
@@ -53,7 +59,18 @@ class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
         return $output;
     }
 
-    protected function playback_ui($recordingurl, string $mediatype, string $filename, $videowidth, $videoheight): string {
+    /**
+     * Render the playback UI for the recording.
+     *
+     * @param string $recordingurl
+     * @param string $mediatype
+     * @param string $filename
+     * @param int $videowidth
+     * @param int $videoheight
+     * @return string HTML to output.
+     */
+    protected function playback_ui($recordingurl, string $mediatype, string $filename,
+            $videowidth, $videoheight): string {
         $output = '';
 
         // Add custom class to original playback ui div, so we can control it by CSS selector easily.
@@ -92,7 +109,13 @@ class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
         return html_writer::div(get_string('response_recorded', 'quiz_answersheets', $filename), 'interactive-content-warning');
     }
 
-    protected function general_feedback(question_attempt $qa) {
+    /**
+     * Render the general feedback for the question.
+     *
+     * @param question_attempt $qa
+     * @return string HTML to output.
+     */
+    protected function general_feedback(question_attempt $qa): string {
         $generalfeedback = $qa->get_question()->generalfeedback;
 
         if (!empty($generalfeedback) && $qa->get_question()->generalfeedbackformat == FORMAT_HTML) {
@@ -111,7 +134,7 @@ class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
     private function process_feedback_interactive_content(string $feedback): string {
         $doc = new DOMDocument;
         libxml_use_internal_errors(true);
-        $doc->loadHTML(mb_convert_encoding($feedback, 'HTML-ENTITIES', 'UTF-8'));
+        $doc->loadHTML(html_entity_decode($feedback));
         libxml_clear_errors();
         $finder = new DomXPath($doc);
 
@@ -119,11 +142,11 @@ class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
 
         $audioelements = $doc->getElementsByTagName('audio');
         $videoselements = $doc->getElementsByTagName('video');
-        $mediacollectionelements = $finder->query("//a[contains(concat(' ', normalize-space(@class), ' '), 'atto_oulinktofile')]");
+        $mediacolelems = $finder->query("//a[contains(concat(' ', normalize-space(@class), ' '), 'atto_oulinktofile')]");
 
         $interactiveelements = array_merge($interactiveelements, iterator_to_array($audioelements));
         $interactiveelements = array_merge($interactiveelements, iterator_to_array($videoselements));
-        $interactiveelements = array_merge($interactiveelements, iterator_to_array($mediacollectionelements));
+        $interactiveelements = array_merge($interactiveelements, iterator_to_array($mediacolelems));
 
         foreach ($interactiveelements as $interactiveelement) {
             $fragment = $doc->createDocumentFragment();

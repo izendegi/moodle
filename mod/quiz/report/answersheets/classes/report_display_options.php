@@ -24,9 +24,11 @@
 
 namespace quiz_answersheets;
 
+use cm_info;
 use context_module;
-use mod_quiz\local\reports\attempts_report_options;
 use mod_quiz\local\reports\attempts_report;
+use mod_quiz\local\reports\attempts_report_options;
+use stdClass;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -54,6 +56,17 @@ class report_display_options extends attempts_report_options {
      */
     public $questioninstruction = true;
 
+    /**
+     * @var bool whether marks has been displayed.
+     */
+    public $marks = true;
+
+    /**
+     * @var bool whether right answer has been displayed.
+     */
+    public $rightanswer = true;
+
+    #[\Override]
     public function __construct($mode, $quiz, $cm, $course) {
         parent::__construct($mode, $quiz, $cm, $course);
         $this->attempts = attempts_report::ENROLLED_ALL;
@@ -61,6 +74,7 @@ class report_display_options extends attempts_report_options {
         $this->userinfovisibility = self::possible_user_info_visibility_settings($cm);
     }
 
+    #[\Override]
     public function resolve_dependencies() {
         parent::resolve_dependencies();
         // We only want to show the checkbox to delete attempts
@@ -69,55 +83,63 @@ class report_display_options extends attempts_report_options {
                 && ($this->attempts != attempts_report::ENROLLED_WITHOUT);
     }
 
+    #[\Override]
     public function setup_from_params() {
         parent::setup_from_params();
         $this->lastchanged = optional_param('lastchanged', 0, PARAM_INT);
-        $fields = optional_param('userinfo', null, PARAM_ALPHAEXT);
+        // Because phone and mobile is separated by number(phone1 and phone2).
+        $fields = optional_param('userinfo', null, PARAM_ALPHANUMEXT);
         if ($fields !== null) {
             $this->parse_user_info_visibility($fields);
         }
         $this->questioninstruction = optional_param('instruction', true, PARAM_BOOL);
+        $this->marks = optional_param('marks', true, PARAM_BOOL);
+        $this->rightanswer = optional_param('rightanswer', false, PARAM_BOOL);
     }
 
-    protected function get_url_params() {
+    #[\Override]
+    protected function get_url_params(): array {
         $params = parent::get_url_params();
         $params['userinfo'] = $this->combine_user_info_visibility();
         $params['instruction'] = $this->questioninstruction;
+        $params['marks'] = $this->marks;
+        $params['rightanswer'] = $this->rightanswer;
         return $params;
     }
 
-    public function process_settings_from_form($fromform) {
-        foreach ($this->userinfovisibility as $name => $notused) {
-            $this->userinfovisibility[$name] = (bool) $fromform->{'show' . $name};
+    #[\Override]
+    public function process_settings_from_form($fromform): void {
+        foreach (array_keys($this->userinfovisibility) as $name) {
+            // Unused field of userinfovisibility in filter form should not be added to report link.
+            $this->userinfovisibility[$name] = !empty($fromform->{'show' . $name});
         }
         $this->questioninstruction = (bool) $fromform->questioninstruction;
-
+        $this->marks = (bool) $fromform->marks;
         parent::process_settings_from_form($fromform);
     }
 
-    public function get_initial_form_data(): \cm_info| \stdClass
-    {
+    #[\Override]
+    public function get_initial_form_data(): stdClass {
         $toform = parent::get_initial_form_data();
 
         foreach ($this->userinfovisibility as $name => $show) {
             $toform->{'show' . $name} = $show;
         }
         $toform->questioninstruction = $this->questioninstruction;
+        $toform->marks = $this->marks;
 
         return $toform;
     }
 
-    public function setup_from_user_preferences() {
+    #[\Override]
+    public function setup_from_user_preferences(): void {
         parent::setup_from_user_preferences();
         $this->parse_user_info_visibility(
                 get_user_preferences('quiz_answersheets_userinfovisibility',
                     $this->combine_user_info_visibility()));
     }
 
-    /**
-     * Update the user preferences so they match the settings in this object.
-     * (For those settings that are backed by user-preferences).
-     */
+    #[\Override]
     public function update_user_preferences() {
         parent::update_user_preferences();
         set_user_preference('quiz_answersheets_userinfovisibility', $this->combine_user_info_visibility());
@@ -145,7 +167,7 @@ class report_display_options extends attempts_report_options {
      */
     protected function parse_user_info_visibility(string $combined): void {
         $fields = explode('-', $combined);
-        foreach ($this->userinfovisibility as $name => $notused) {
+        foreach (array_keys($this->userinfovisibility) as $name) {
             $this->userinfovisibility[$name] = in_array($name, $fields);
         }
     }
@@ -153,15 +175,13 @@ class report_display_options extends attempts_report_options {
     /**
      * Considering the site settings, work out what user info visibility settings there should be.
      *
-     * @param \stdClass $cm the course_module info for this quiz.
+     * @param stdClass|cm_info $cm the course_module info for this quiz.
      * @return array setting name => true
      */
-    public static function possible_user_info_visibility_settings( \cm_info|\stdClass  $cm): array {
-
+    public static function possible_user_info_visibility_settings(stdClass|cm_info $cm): array {
         $settings = ['fullname' => true];
 
-        // TODO Does not support custom user profile fields (MDL-70456).
-        $userfields = \core_user\fields::get_identity_fields(context_module::instance($cm->id), false);
+        $userfields = \core_user\fields::get_identity_fields(context_module::instance($cm->id));
         foreach ($userfields as $field) {
             $settings[$field] = true;
         }

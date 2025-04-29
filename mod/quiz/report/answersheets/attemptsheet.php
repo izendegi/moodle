@@ -22,36 +22,37 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use mod_quiz\quiz_attempt;
 use quiz_answersheets\report_display_options;
 use quiz_answersheets\utils;
-use mod_quiz\quiz_attempt;
 
 require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
 $attemptid = required_param('attempt', PARAM_INT);
 $cmid = optional_param('cmid', null, PARAM_INT);
-$rightanswer = optional_param('rightanswer', 0, PARAM_BOOL);
 
 $attemptobj = quiz_create_attempt_handling_errors($attemptid, $cmid);
-if (isset($attemptobj)) {
-    $reportoptions = new report_display_options('answersheets', $attemptobj->get_quiz(),
-            $attemptobj->get_cm(), $attemptobj->get_course());
-}
+$reportoptions = new report_display_options('answersheets', $attemptobj->get_quiz(),
+        $attemptobj->get_cm(), $attemptobj->get_course());
 $reportoptions->setup_from_params();
 
 // Check login.
 require_login($attemptobj->get_course(), false, $attemptobj->get_cm());
 require_capability('quiz/answersheets:view', context_module::instance($attemptobj->get_cmid()));
-
+$rightanswer = $reportoptions->rightanswer;
 if ($rightanswer) {
     require_capability('quiz/answersheets:viewrightanswers', context_module::instance($attemptobj->get_cmid()));
 }
 
 $url = new moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
-        ['attempt' => $attemptid, 'rightanswer' => $rightanswer,
-                'userinfo' => $reportoptions->combine_user_info_visibility(),
-                'instruction' => $reportoptions->questioninstruction]);
+        [
+            'attempt' => $attemptid,
+            'rightanswer' => $rightanswer,
+            'userinfo' => $reportoptions->combine_user_info_visibility(),
+            'instruction' => $reportoptions->questioninstruction,
+            'marks' => $reportoptions->marks,
+        ]);
 
 // Work out the page title.
 $isattemptfinished = $attemptobj->get_attempt()->state == quiz_attempt::FINISHED;
@@ -75,7 +76,7 @@ if ($rightanswer) {
 $isrightanswer = $rightanswer && $attemptobj->get_state() == quiz_attempt::IN_PROGRESS;
 
 // Fire event.
-$context = context_module::instance((int) $attemptobj->get_cmid());
+$context = context_module::instance($attemptobj->get_cmid());
 $event = $rightanswer && $attemptobj->get_state() == quiz_attempt::IN_PROGRESS ? utils::RIGHT_ANSWER_SHEET_VIEWED :
         utils::ATTEMPT_SHEET_VIEWED;
 utils::create_events($event, $attemptobj->get_attemptid(), $attemptobj->get_userid(), $attemptobj->get_courseid(), $context,
