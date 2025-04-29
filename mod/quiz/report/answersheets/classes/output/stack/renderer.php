@@ -26,6 +26,7 @@ namespace quiz_answersheets\output\stack;
 
 defined('MOODLE_INTERNAL') || die();
 
+use castext2_qa_processor;
 use html_writer;
 use qtype_stack_question;
 use question_attempt;
@@ -45,9 +46,16 @@ require_once($CFG->dirroot . '/question/type/stack/renderer.php');
  */
 class qtype_stack_override_renderer extends \qtype_stack_renderer {
 
-    protected function question_tests_link(qtype_stack_question $question, question_display_options $options) {
+    /**
+     * The code was copied from question/type/stack/renderer.php, with modifications.
+     *
+     * @param qtype_stack_question $question The question object.
+     * @param question_display_options $options The display options.
+     * @return string HTML string.
+     */
+    protected function question_tests_link(qtype_stack_question $question, question_display_options $options): string {
         // Do not show the question test link.
-        return;
+        return '';
     }
 
     /**
@@ -67,34 +75,43 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
 
         $response = $qa->get_last_qt_data();
 
-        $questiontext = $question->questiontextinstantiated;
+        // Based on updating the Moodle-4.0 version of stacks,
+        // we need to provide a processor for the CASText2 post-processing,
+        // basically for targetting pluginfiles.
+        $question->castextprocessor = new castext2_qa_processor($qa);
+
+        if (is_string($question->questiontextinstantiated)) {
+            return $question->questiontextinstantiated;
+        }
+
+        $questiontext = $question->questiontextinstantiated->get_rendered($question->castextprocessor);
         // Replace inputs.
-        $inputstovaldiate = array();
+        $inputstovaldiate = [];
 
         // Get the list of placeholders before format_text.
-        $originalinputplaceholders = array_unique(stack_utils::extract_placeholders($questiontext, 'input'));
-        sort($originalinputplaceholders);
-        $originalfeedbackplaceholders = array_unique(stack_utils::extract_placeholders($questiontext, 'feedback'));
-        sort($originalfeedbackplaceholders);
+        $inputplaceholders = array_unique(stack_utils::extract_placeholders($questiontext, 'input'));
+        sort($inputplaceholders);
+        $feedbackplaceholders = array_unique(stack_utils::extract_placeholders($questiontext, 'feedback'));
+        sort($feedbackplaceholders);
 
         // Now format the questiontext.
         $questiontext = $question->format_text(
                 stack_maths::process_display_castext($questiontext, $this),
-                $question->questiontextformat,
+            FORMAT_HTML,
                 $qa, 'question', 'questiontext', $question->id);
 
         // Get the list of placeholders after format_text.
-        $formatedinputplaceholders = stack_utils::extract_placeholders($questiontext, 'input');
-        sort($formatedinputplaceholders);
-        $formatedfeedbackplaceholders = stack_utils::extract_placeholders($questiontext, 'feedback');
-        sort($formatedfeedbackplaceholders);
+        $fmtinputph = stack_utils::extract_placeholders($questiontext, 'input');
+        sort($fmtinputph);
+        $fmtfbplaceholders = stack_utils::extract_placeholders($questiontext, 'feedback');
+        sort($fmtfbplaceholders);
 
         // We need to check that if the list has changed.
         // Have we lost some of the placeholders entirely?
         // Duplicates may have been removed by multi-lang,
         // No duplicates should remain.
-        if ($formatedinputplaceholders !== $originalinputplaceholders ||
-                $formatedfeedbackplaceholders !== $originalfeedbackplaceholders) {
+        if ($fmtinputph !== $inputplaceholders ||
+                $fmtfbplaceholders !== $feedbackplaceholders) {
             throw new coding_exception('Inconsistent placeholders. Possibly due to multi-lang filtter not being active.');
         }
 
@@ -132,13 +149,14 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
             if ($options->feedback) {
                 $feedback = $this->prt_feedback($index, $response, $qa, $options, $prt->get_feedbackstyle());
 
-            } else if (in_array($qa->get_behaviour_name(), array('interactivecountback', 'adaptivemulipart'))) {
+            } else if (in_array($qa->get_behaviour_name(), ['interactivecountback', 'adaptivemulipart'])) {
                 // The behaviour name test here is a hack. The trouble is that interactive
                 // behaviour or adaptivemulipart does not show feedback if the input
                 // is invalid, but we want to show the CAS errors from the PRT.
                 $result = $question->get_prt_result($index, $response, $qa->get_state()->is_finished());
-                $feedback = html_writer::nonempty_tag('span', $result->errors,
-                        array('class' => 'stackprtfeedback stackprtfeedback-' . $name));
+                $errors = implode(' ', $result->get_errors());
+                $feedback = html_writer::nonempty_tag('span', $errors,
+                    ['class' => 'stackprtfeedback stackprtfeedback-' . $name]);
             }
             $questiontext = str_replace("[[feedback:{$index}]]", $feedback, $questiontext);
         }
@@ -162,8 +180,7 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
 
         if ($qa->get_state() == question_state::$invalid) {
             $result .= html_writer::nonempty_tag('span',
-                    $question->get_validation_error($response),
-                    array('class' => 'validationerror'));
+                $question->get_validation_error($response), ['class' => 'validationerror']);
         }
 
         return $result;
@@ -180,7 +197,7 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
         $quizprintingrenderer = $this->page->get_renderer('quiz_answersheets');
         $answer = utils::get_reflection_property($input, 'ddlvalues');
 
-        foreach ($answer as $key => $value) {
+        foreach (array_keys($answer) as $key) {
             if ($answer[$key]['display']) {
                 $choices[] = $answer[$key]['display'];
             }
