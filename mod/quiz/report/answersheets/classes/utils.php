@@ -25,20 +25,18 @@
 namespace quiz_answersheets;
 
 use action_link;
-use context;
+use cm_info;
 use context_module;
 use html_writer;
+use mod_quiz\quiz_attempt;
 use moodle_page;
 use moodle_url;
 use qtype_renderer;
 use question_attempt;
 use question_display_options;
-use mod_quiz\quiz_attempt;
 use ReflectionClass;
 use stdClass;
 use user_picture;
-
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Quiz answer sheet utils.
@@ -49,23 +47,31 @@ defined('MOODLE_INTERNAL') || die();
  */
 class utils {
 
+    /** @var string Attempt sheet created */
     const ATTEMPT_SHEET_CREATED = 'attempt_created';
+    /** @var string Attempt sheet printed */
     const ATTEMPT_SHEET_PRINTED = 'attempt_printed';
+    /** @var string Attempt sheet viewed */
     const ATTEMPT_SHEET_VIEWED = 'attempt_viewed';
+    /** @var string Right answer sheet printed */
     const RIGHT_ANSWER_SHEET_PRINTED = 'right_answer_printed';
+    /** @var string Right answer sheet viewed */
     const RIGHT_ANSWER_SHEET_VIEWED = 'right_answer_viewed';
+    /** @var string Responses submitted */
     const RESPONSES_SUBMITTED = 'responses_submitted';
+    /** @var string Example tutor */
     const EXAMPLE_TUTOR = 'example tutor';
+    /** @var string Example student */
     const EXAMPLE_STUDENT = 'example student';
     /** @var string[] Supported question types for new combine feedback. */
     const COMBINED_FEEDBACK_QTYPES = [
-            'oumultiresponse',
-            'match',
-            'multichoice',
-            'gapselect',
-            'truefalse',
-            'wordselect',
-            'combined'
+        'oumultiresponse',
+        'match',
+        'multichoice',
+        'gapselect',
+        'truefalse',
+        'wordselect',
+        'combined',
     ];
 
     /**
@@ -77,25 +83,40 @@ class utils {
      * @param report_display_options $reportoptions controls which user info is shown.
      * @return array List of summary information
      */
-    public static function prepare_summary_attempt_information(\mod_quiz\quiz_attempt $attemptobj,
+    public static function prepare_summary_attempt_information(quiz_attempt $attemptobj,
             bool $minimal, report_display_options $reportoptions): array {
 
-        global $CFG, $DB;
+        global $DB;
 
         $sumdata = [];
         $attempt = $attemptobj->get_attempt();
         $quiz = $attemptobj->get_quiz();
         $options = $attemptobj->get_display_options(true);
-        $student = $DB->get_record('user', ['id' => $attemptobj->get_userid()]);
+        $context = context_module::instance($attemptobj->get_cm()->id);
+        // Get student data with custom fields.
+        $userfieldsapi = \core_user\fields::for_identity($context);
+        [
+            'selects' => $userfieldsselects,
+            'joins' => $userfieldsjoin,
+            'params' => $userfieldsparams
+        ] = (array) $userfieldsapi->get_sql('u', false, '', '', false);
+
+        $param = array_merge($userfieldsparams, [$attemptobj->get_userid()]);
+        $sql = "SELECT u.*, $userfieldsselects
+                  FROM {user} u $userfieldsjoin
+                 WHERE u.id = ?";
+        $student = $DB->get_record_sql($sql, $param);
 
         if ($reportoptions->userinfovisibility['fullname']) {
             if (!self::is_example_user($student)) {
                 $userpicture = new user_picture($student);
                 $userpicture->courseid = $attemptobj->get_courseid();
                 $sumdata['user'] = [
-                        'title' => $userpicture,
-                        'content' => new action_link(new moodle_url('/user/view.php',
-                                ['id' => $student->id, 'course' => $attemptobj->get_courseid()]), fullname($student, true))
+                    'title' => $userpicture,
+                    'content' => new action_link(new moodle_url('/user/view.php', [
+                        'id' => $student->id,
+                        'course' => $attemptobj->get_courseid(),
+                    ]), fullname($student, true)),
                 ];
             }
         }
@@ -143,7 +164,7 @@ class utils {
                 // Cannot display grade.
             } else if (is_null($grade)) {
                 $sumdata['grade'] = [
-                        'title' => get_string('grade', 'quiz'),
+                        'title' => get_string('gradenoun'),
                         'content' => quiz_format_grade($quiz, $grade),
                 ];
             } else {
@@ -170,7 +191,7 @@ class utils {
                     $formattedgrade = get_string('outof', 'quiz', $a);
                 }
                 $sumdata['grade'] = [
-                        'title' => get_string('grade', 'quiz'),
+                        'title' => get_string('gradenoun'),
                         'content' => $formattedgrade,
                 ];
             }
@@ -195,12 +216,12 @@ class utils {
      * Get user detail with identity fields
      *
      * @param stdClass $attemptuser User info
-     * @param stdClass $cm quiz course_module.
+     * @param stdClass|cm_info $cm quiz course_module.
      * @param report_display_options|array $fieldoptions which use fields to show, either an options object,
      *      or just a array of field names.
      * @return string User detail string
      */
-    public static function get_user_details(stdClass $attemptuser, \stdClass | \cm_info $cm, $fieldoptions): string {
+    public static function get_user_details(stdClass $attemptuser, stdClass|cm_info $cm, $fieldoptions): string {
         $fields = [];
         if ($fieldoptions instanceof report_display_options) {
             foreach ($fieldoptions->userinfovisibility as $field => $show) {
@@ -295,13 +316,13 @@ class utils {
     private static function prepare_event_data(int $attemptid, int $userid, int $courseid, context_module $context,
             int $quizid): array {
         $params = [
-                'relateduserid' => $userid,
-                'courseid' => $courseid,
-                'context' => $context,
-                'other' => [
-                        'quizid' => $quizid,
-                        'attemptid' => $attemptid
-                ]
+            'relateduserid' => $userid,
+            'courseid' => $courseid,
+            'context' => $context,
+            'other' => [
+                'quizid' => $quizid,
+                'attemptid' => $attemptid,
+            ],
         ];
 
         return $params;
@@ -353,7 +374,6 @@ class utils {
             report_display_options $reportoptions): string {
         $generatedtime = time();
         $attemptuser = \core_user::get_user($attemptobj->get_userid());
-        $context = context_module::instance((int) $attemptobj->get_cmid());
 
         $headerinfo = new \stdClass();
         $headerinfo->courseshortname = $attemptobj->get_course()->shortname;
@@ -440,6 +460,11 @@ class utils {
     public static function should_hide_inline_choice(moodle_page $page): bool {
         $rightanswer = $page->url->get_param('rightanswer');
         $attemptid = $page->url->get_param('attempt');
+
+        if (empty($attemptid)) {
+            return $page->pagetype != 'mod-quiz-report-answersheets-attemptsheet' || $rightanswer;
+        }
+
         $attemptobj = quiz_attempt::create($attemptid);
         $attempt = $attemptobj->get_attempt();
 
