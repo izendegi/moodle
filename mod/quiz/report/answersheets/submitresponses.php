@@ -22,9 +22,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use mod_quiz\output\attempt_summary_information;
+use mod_quiz\quiz_attempt;
 use quiz_answersheets\report_display_options;
 use quiz_answersheets\utils;
-use mod_quiz\quiz_attempt;
 
 require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
@@ -34,6 +35,9 @@ $cmid = optional_param('cmid', null, PARAM_INT);
 $redirect = optional_param('redirect', '', PARAM_LOCALURL);
 
 $attemptobj = quiz_create_attempt_handling_errors($attemptid, $cmid);
+$reportoptions = new report_display_options('answersheets', $attemptobj->get_quiz(),
+    $attemptobj->get_cm(), $attemptobj->get_course());
+$reportoptions->setup_from_params();
 
 // Check login.
 require_login($attemptobj->get_course(), false, $attemptobj->get_cm());
@@ -60,7 +64,7 @@ $slots = $attemptobj->get_slots();
 
 // Check.
 if (empty($slots)) {
-    throw new moodle_quiz_exception($attemptobj->get_quizobj(), 'noquestionsfound');
+    throw new moodle_exception('noquestionsfound', 'quiz', $quizobj->view_url());
 }
 
 // Initialise the JavaScript.
@@ -74,11 +78,9 @@ $quizrenderer = $PAGE->get_renderer('mod_quiz');
 $renderer = $PAGE->get_renderer('quiz_answersheets');
 
 // Add summary table.
-$sumdata = utils::prepare_summary_attempt_information($attemptobj, !$isattemptfinished,
-        new report_display_options('answersheets', $attemptobj->get_quiz(),
-                $attemptobj->get_cm(), $attemptobj->get_course()));
-echo $quizrenderer->review_summary_table($sumdata, 'all');
+$sumdata = utils::prepare_summary_attempt_information($attemptobj, !$isattemptfinished, $reportoptions);
+echo $quizrenderer->review_attempt_summary(attempt_summary_information::create_from_legacy_array($sumdata), 0);
 
-echo $renderer->render_question_attempt_form($attemptobj, $redirect);
+echo $renderer->render_question_attempt_form($attemptobj, $reportoptions, $redirect);
 
 echo $OUTPUT->footer();
