@@ -2,7 +2,7 @@
 This plugin allows for importing Microsoft Word Files (.docx) to Moodle within the new TinyMCE editor.
 
 ## Requirements
-This theme requires Moodle 4.1+
+This theme requires Moodle 4.1+ and the [booktool_wordimport](https://moodle.org/plugins/booktool_wordimport) plugin with minimum version 1.4.14.
 
 ## Installation
 Install the plugin to folder `<moodle_base_directory>/lib/editor/tiny/plugins/wordimport`.
@@ -31,5 +31,5 @@ Your involvement is what drives this plugin forward.
 
 We would like to express our gratitude to the following contributors:
 
-- Bern University of Applied Sciences (BFH), Luca Bösch: Code
-- Dan Marsden: Review
+- Bern University of Applied Sciences (BFH), [Luca Bösch](https://github.com/lucaboesch): Code
+- [Dan Marsden](https://github.com/danmarsden): Review
