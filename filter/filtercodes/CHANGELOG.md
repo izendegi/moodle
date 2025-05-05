@@ -1,6 +1,24 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [2.7.0] 2025-05-05
+### Added
+- New {ifnotingroup} tag (without parameters).
+- Primary/Custom menu text, such as course or category names, can now contain a pipe (|) character.
+- New {firstnamephonetic} tag.
+- New {lastnamephonetic} tag.
+- New {middlename} tag.
+- New Add New User and Upload Users to {menuadmin} tag.
+### Updated
+- Fix-323: Escape arguments used to construct link from button code.
+- Fix-210: {if*rolename*} tags now work correctly.
+- Fix-319: Moodle 4.5 and 5.0 Plugin CI runs.
+- Fix-318: Language tags now work inside {global_...} tags.
+- Performance optimization: Now caches login state.
+- Issue #329: Increase maximum globaltagcount to 100.
+- Issue #335: Refactor text_filter to construct archetypes only once.
+- Fixed several issues relating to Multi-language text.
+
 ## [2.6.3] 2025-04-27
 ### Updated
 - Fixed warning if the {ifprofile_field_shortname} field does not exist.
@@ -20,6 +38,7 @@ All notable changes to this project will be documented in this file.
 
 ## [2.6.1] 2024-11-20
 ### Update
+- Fix-311: Global tags can now include numbers in their name.
 - Fix-308: Fixed compatibility issue with PHP 8.3.
 
 ## [2.6.0] 2024-10-07
