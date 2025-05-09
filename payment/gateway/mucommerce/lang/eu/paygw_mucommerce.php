@@ -7,7 +7,14 @@
  * @copyright  2023 Onenpro <info@onenpro.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
+$string['filterispaid'] = 'Pagatu izana filtroa';
+$string['filteritemid'] = 'Item Id filtroa';
+$string['mucommercereport'] = 'MUCommerce Txostena';
+$string['orderid'] = 'Eskaera ID';
+$string['userid'] = 'Erabiltzaile ID';
+$string['itemid'] = 'Elementu ID';
+$string['courseid'] = 'Ikastaro ID';
+$string['paymentstatus'] = 'Ordainketa Egoera';
 $string['pluginname'] = 'MUCommerce';
 $string['pluginname_desc'] = 'MUCommerce pluginak MUko TPV bidez ordainketak egitea ahalbidetzen du.';
 $string['gatewaydescription'] = 'MUCommerce TPV kreditu-txartel bidezko eragiketak prozesatzeko MUko ordainketa-ataria da.';
@@ -54,7 +61,7 @@ $string['userdatafieldcity'] = 'Hiria/Herria';
 $string['userdatafieldemail'] = 'Helbide elektronikoa';
 $string['userdatafieldphone2'] = 'Telefono zenbakia';
 $string['userdatafieldprofilefieldbillingcif'] = 'IFZ';
-$string['userdatafieldprofilefieldbillingname'] = 'Izena / Izen soziala';
+$string['userdatafieldprofilefieldbillingname'] = 'Izena';
 $string['userdatafieldprofilefieldbillingaddress'] = 'Helbide postala';
 $string['userdatafieldprofilefieldbillingcp'] = 'Posta-kodea';
 $string['userdatafieldprofilefieldbillingcity'] = 'Hiria/Herria';

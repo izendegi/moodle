@@ -7,7 +7,14 @@
  * @copyright  2023 Onenpro <info@onenpro.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
+$string['filterispaid'] = 'Filtro ha sido pagado';
+$string['filteritemid'] = 'Filtro Item ID';
+$string['mucommercereport'] = 'Informe de MUCommerce';
+$string['orderid'] = 'ID de pedido';
+$string['userid'] = 'ID de usuario';
+$string['itemid'] = 'ID de artículo';
+$string['courseid'] = 'ID de curso';
+$string['paymentstatus'] = 'Estado del pago';
 $string['pluginname'] = 'MUCommerce';
 $string['pluginname_desc'] = 'El plugin MUCommerce permite recibir pagos a través del TPV de MU.';
 $string['gatewaydescription'] = 'MUCommerce TPV es un portal de pagos de MU para el procesado de transacciones de tarjeta de crédito.';
@@ -54,7 +61,7 @@ $string['userdatafieldcity'] = 'Ciudad';
 $string['userdatafieldemail'] = 'Dirección de correo electrónico';
 $string['userdatafieldphone2'] = 'Télefono';
 $string['userdatafieldprofilefieldbillingcif'] = 'CIF';
-$string['userdatafieldprofilefieldbillingname'] = 'Nombre / Razón social';
+$string['userdatafieldprofilefieldbillingname'] = 'Nombre';
 $string['userdatafieldprofilefieldbillingaddress'] = 'Dirección postal';
 $string['userdatafieldprofilefieldbillingcp'] = 'Código Postal';
 $string['userdatafieldprofilefieldbillingcity'] = 'Ciudad';
