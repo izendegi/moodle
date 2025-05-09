@@ -38,6 +38,24 @@
     }
 
 }}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.body.classList.contains('has-secondarynavigation')) {
+            const hash = window.location.hash;
+            if (hash === '#mod_book-chapter') {
+                const target = document.querySelector(hash);
+                if (target) {
+                    const offset = 150;
+                    const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                    setTimeout(() => {
+                        window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                    }, 0);
+                }
+            }
+        }
+    });
+</script>
+
 <div class="container-fluid tertiary-navigation">
     <div class="row">
         {{#previous}}
