@@ -24,18 +24,29 @@
  * @author     2023 Andreas Schenkel <andreas.schenkel@schulportal.hessen.de>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-defined('MOODLE_INTERNAL') || die();
 
-$capabilities = [
-    'tiny/orphanedfiles:view' => [
-        'captype' => 'read',
-        // ToDo: is this the correct context? Shouldn't it be CONTEXT_MODULE.
-        // ToDo: check if we need this cap.
-        'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [
-            'manager' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-            'student' => CAP_ALLOW,
-        ],
-    ],
-];
+/**
+ * Upgrade steps.
+ *
+ * @param string $oldversion that is stored in the database
+ * @return true
+ * @throws coding_exception
+ * @throws dml_exception
+ * @throws downgrade_exception
+ * @throws moodle_exception
+ * @throws upgrade_exception
+ */
+function xmldb_tiny_orphanedfiles_upgrade($oldversion) {
+    if ($oldversion < 2025052001) {
+        // Set capability for manager role.
+        $roleid = get_archetype_roles('manager')[0]->id ?? null;
+        if ($roleid) {
+            assign_capability('tiny/orphanedfiles:view',
+                CAP_ALLOW,
+                $roleid,
+                context_system::instance()->id);
+        }
+        upgrade_plugin_savepoint(true, 2025052001, 'tiny', 'orphanedfiles');
+    }
+    return true;
+}
