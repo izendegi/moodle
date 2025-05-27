@@ -42,10 +42,10 @@ class plugininfo extends plugin implements plugin_with_configuration {
      * @throws \dml_exception
      */
     public static function get_plugin_configuration_for_context(
-            \context $context,
-            array $options,
-            array $fpoptions,
-            ?\editor_tiny\editor $editor = null): array {
+        \context             $context,
+        array                $options,
+        array                $fpoptions,
+        ?\editor_tiny\editor $editor = null): array {
         // Here we collect all php-information e.g. configs to be accessible in javascript.
         global $USER;
         $configuration = [];
@@ -72,12 +72,13 @@ class plugininfo extends plugin implements plugin_with_configuration {
      * @throws \dml_exception
      */
     public static function is_enabled(
-            \context $context,
-            array $options,
-            array $fpoptions,
-            ?\editor_tiny\editor $editor = null
+        \context             $context,
+        array                $options,
+        array                $fpoptions,
+        ?\editor_tiny\editor $editor = null
     ): bool {
-        $isenabled = get_config('tiny_orphanedfiles', 'isactive') ||
+        $isenabled = (get_config('tiny_orphanedfiles', 'isactive') && has_capability('tiny/orphanedfiles:view', $context))
+            ||
             (get_config('tiny_orphanedfiles', 'isactiveforsiteadmin') && is_siteadmin());
         return $isenabled;
     }

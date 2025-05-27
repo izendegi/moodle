@@ -35,6 +35,7 @@ $string['isactive'] = 'Is activ for all users';
 $string['isactive_desc'] = 'If activated, then the plugin is enabled for all users.';
 $string['isactiveforsiteadmin'] = 'Is activ for all siteadmin';
 $string['isactiveforsiteadmin_desc'] = 'If activated, the siteadmin can use tiny orphaned files even if the plugin is not activated for all users.';
+$string['orphanedfiles:view'] = 'View and use the feature to see orphaned files';
 $string['orphanedfilescounteronly'] = 'Show only orphaned files counter';
 $string['orphanedfilescounteronly_desc'] = 'If enabled, there will be no table below the editor that shows the list of orphaned files. There will be shown only the number of orphaned files in a context.';
 $string['pluginname'] = 'Tiny orphaned files';
