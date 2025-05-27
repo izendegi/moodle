@@ -1,4 +1,13 @@
 Release Notes
+
+Release Notes
+##### 2.0.0 (Build 2025052000)
+New features / improvements:
+
+* issue #7: reduce ajax calls 
+* issue #8: fix missing langstring for orphendfiles:view
+* Enhance the orphendfiles:view permission to enable more granular access control.
+
 ##### 1.0.4 (Build 2024042600)
 New features / improvements:
 
