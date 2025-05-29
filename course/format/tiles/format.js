@@ -76,46 +76,4 @@ M.course.format.process_sections = function(Y, sectionlist, response, sectionfro
         }
     }
 };
-
 /* jshint camelcase:true */
-M.course.format.expand_modal = function() {
-    console.log('expand_modal function called');
-    
-    YUI().use('node', function(Y) {
-        Y.one('body').delegate('click', function(e) {
-            e.preventDefault();
-            console.log('Expand button clicked');
-            
-            var modalContent = Y.one('.modal-content');
-            var icon = Y.one('a[data-command="expand2"] i');
-            var pdfObject = Y.one('.modal-content object.resourceobject');
-
-            modalContent.toggleClass('modal-content-expanded');
-            
-            if (modalContent.hasClass('modal-content-expanded')) {
-                icon.removeClass('fa-expand').addClass('fa-compress');
-                icon.attr('title', 'Collapse');
-                
-                // Ajustar altura del objeto PDF al expandir
-                if (pdfObject) {
-                    var availableHeight = Y.one(window).get('winHeight');
-                    pdfObject.setAttribute('height', availableHeight + 'px');
-                    pdfObject.setStyle('height', availableHeight + 'px');
-                    pdfObject.setStyle('width', '100%');
-                }
-            } else {
-                icon.removeClass('fa-compress').addClass('fa-expand');
-                icon.attr('title', 'Expand');
-                
-                // Restaurar tamaño original del objeto PDF al contraer
-                if (pdfObject) {
-                    pdfObject.setAttribute('height', '935');
-                    pdfObject.setStyle('height', '935px');
-                    pdfObject.setStyle('width', '100%');
-                }
-            }
-        }, 'a[data-command="expand2"]');
-    });
-};
-
-M.course.format.expand_modal();
