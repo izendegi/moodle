@@ -242,11 +242,12 @@ class custom_view extends \core_question\local\bank\view {
         }
 
         // Build the where clause.
-        $latestversion = 'qv.version = (SELECT MAX(v.version)
-                                          FROM {question_versions} v
-                                          JOIN {question_bank_entries} be
-                                            ON be.id = v.questionbankentryid
-                                         WHERE be.id = qbe.id AND v.status <> :substatus)';
+        $latestversion = '(qv.questionbankentryid,qv.version) in ( SELECT be.id, MAX(v.version)
+                                                                     FROM {question_versions} v
+                                                                     JOIN {question_bank_entries} be
+                                                                          ON be.id = v.questionbankentryid
+                                                                    WHERE v.status <> :substatus
+                                                                    GROUP BY be.id )';
 
         // An additional condition is required in the subquery to account for scenarios
         // where the latest version is hidden. This ensures we retrieve the previous
