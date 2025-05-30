@@ -586,12 +586,12 @@ class question_finder implements data_source_interface {
                  WHERE qbe.questioncategoryid {$qcsql}
                        AND q.parent = 0
                        AND qv.status = :readystatus
-                       AND qv.version = (SELECT MAX(v.version)
-                                          FROM {question_versions} v
-                                          JOIN {question_bank_entries} be
-                                            ON be.id = v.questionbankentryid
-                                         WHERE be.id = qbe.id
-                                           AND v.status = :readystatusqv)
+                       AND (qv.questionbankentryid,qv.version) in ( SELECT be.id, MAX(v.version)
+                                                                      FROM {question_versions} v
+                                                                      JOIN {question_bank_entries} be
+                                                                           ON be.id = v.questionbankentryid
+                                                                      WHERE v.status = :readystatusqv
+                                                                      GROUP BY be.id)
                        {$extraconditions}";
 
         return $DB->get_records_sql_menu($sql, $qcparams + $extraparams);
