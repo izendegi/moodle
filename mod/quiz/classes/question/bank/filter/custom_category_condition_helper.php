@@ -116,10 +116,11 @@ class custom_category_condition_helper extends \qbank_managecategories\helper {
                         $statuscondition
                             AND c.id = qbe.questioncategoryid
                             AND ($showallversions = 1
-                                OR (qv.version = (SELECT MAX(v.version)
-                                                    FROM {question_versions} v
-                                                    JOIN {question_bank_entries} be ON be.id = v.questionbankentryid
-                                                   WHERE be.id = qbe.id AND v.status <> :substatus)
+                                OR ((qv.questionbankentryid,qv.version) in ( SELECT be.id, MAX(v.version)
+                                                                               FROM {question_versions} v
+                                                                               JOIN {question_bank_entries} be ON be.id = v.questionbankentryid
+                                                                              WHERE v.status <> :substatus
+                                                                              GROUP BY be.id)
                                    )
                                 )
                             ) AS questioncount
