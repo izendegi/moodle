@@ -83,11 +83,12 @@ function get_questions_category(object $category, bool $noparent, bool $recurse 
     // Get the latest version of a question.
     $version = '';
     if ($latestversion) {
-        $version = 'AND (qv.version = (SELECT MAX(v.version)
-                                         FROM {question_versions} v
-                                         JOIN {question_bank_entries} be
-                                           ON be.id = v.questionbankentryid
-                                        WHERE be.id = qbe.id) OR qv.version is null)';
+        $version = 'AND ((qv.questionbankentryid,qv.version) in ( SELECT be.id, MAX(v.version)
+                                                                    FROM {question_versions} v
+                                                                    JOIN {question_bank_entries} be
+                                                                         ON be.id = v.questionbankentryid
+                                                                   GROUP BY be.id)
+                        OR qv.version is null)';
     }
     $questions = $DB->get_records_sql("SELECT q.*, qv.status, qc.id AS category
                                          FROM {question} q
