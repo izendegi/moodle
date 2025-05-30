@@ -108,11 +108,11 @@ if ($requestedqtype) {
                               JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
                               JOIN {context} con ON con.id = qc.contextid
                               $sqlqtypetest
-                                   AND qv.version = (SELECT MAX(v.version)
-                                                       FROM {question_versions} v
-                                                       JOIN {question_bank_entries} be
-                                                         ON be.id = v.questionbankentryid
-                                                      WHERE be.id = qbe.id)
+                                   AND (qv.questionbankentryid,qv.version) in ( SELECT be.id, MAX(v.version)
+                                                                                  FROM {question_versions} v
+                                                                                  JOIN {question_bank_entries} be
+                                                                                       ON be.id = v.questionbankentryid
+                                                                                 GROUP BY be.id)
                                    AND (q.parent = 0 OR q.parent = q.id)) data
                   GROUP BY data.contextid, data.versionid) result
               JOIN {context} con ON con.id = result.contextid
