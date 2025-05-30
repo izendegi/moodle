@@ -753,11 +753,12 @@ class view {
             $extracondition = ' AND v.status <> :hiddenstatus';
             $this->sqlparams = array_merge($this->sqlparams, ['hiddenstatus' => question_version_status::QUESTION_STATUS_HIDDEN]);
         }
-        $latestversion = "qv.version = (SELECT MAX(v.version)
-                                          FROM {question_versions} v
-                                          JOIN {question_bank_entries} be
-                                            ON be.id = v.questionbankentryid
-                                         WHERE be.id = qbe.id $extracondition)";
+        $latestversion = "(qv.questionbankentryid,qv.version) in ( SELECT be.id, MAX(v.version)
+                                                                     FROM {question_versions} v
+                                                                     JOIN {question_bank_entries} be
+                                                                          ON be.id = v.questionbankentryid
+                                                                    WHERE 1=1 $extracondition
+                                                                    GROUP BY be.id )";
 
         // Get higher level filter condition.
         $jointype = isset($this->pagevars['jointype']) ? (int)$this->pagevars['jointype'] : condition::JOINTYPE_DEFAULT;
