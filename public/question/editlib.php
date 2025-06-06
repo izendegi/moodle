@@ -81,22 +81,28 @@ function get_questions_category(object $category, bool $noparent, bool $recurse 
     list($usql, $params) = $DB->get_in_or_equal($categorylist);
 
     // Get the latest version of a question.
-    $version = '';
     if ($latestversion) {
-        $version = 'AND (qv.version = (SELECT MAX(v.version)
-                                         FROM {question_versions} v
-                                         JOIN {question_bank_entries} be
-                                           ON be.id = v.questionbankentryid
-                                        WHERE be.id = qbe.id) OR qv.version is null)';
+        $questions = $DB->get_records_sql("SELECT q.*, qv.status, qc.id AS category
+                                             FROM {question} q
+                                             JOIN {question_versions} qv ON qv.questionid = q.id
+                                        LEFT JOIN {question_versions} qv2 ON (   qv2.questionbankentryid = qv.questionbankentryid
+                                                                             AND qv2.version > qv.version
+                                                                             )
+                                             JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
+                                             JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
+                                            WHERE qc.id {$usql} {$npsql}
+                                                  AND (qv2.questionbankentryid IS NULL
+                                                       OR qv.version IS NULL)
+                                         ORDER BY qc.id, q.qtype, q.name", $params);
+    } else {
+        $questions = $DB->get_records_sql("SELECT q.*, qv.status, qc.id AS category
+                                             FROM {question} q
+                                             JOIN {question_versions} qv ON qv.questionid = q.id
+                                             JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
+                                             JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
+                                            WHERE qc.id {$usql} {$npsql}
+                                         ORDER BY qc.id, q.qtype, q.name", $params);
     }
-    $questions = $DB->get_records_sql("SELECT q.*, qv.status, qc.id AS category
-                                         FROM {question} q
-                                         JOIN {question_versions} qv ON qv.questionid = q.id
-                                         JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
-                                         JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
-                                        WHERE qc.id {$usql} {$npsql} {$version}
-                                     ORDER BY qc.id, q.qtype, q.name", $params);
-
     // Iterate through questions, getting stuff we need.
     $qresults = [];
     foreach ($questions as $question) {
