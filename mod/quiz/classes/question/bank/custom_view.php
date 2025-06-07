@@ -243,20 +243,16 @@ class custom_view extends \core_question\local\bank\view {
         }
 
         // Build the where clause.
-        $latestversion = 'qv.version = (SELECT MAX(v.version)
-                                          FROM {question_versions} v
-                                          JOIN {question_bank_entries} be
-                                            ON be.id = v.questionbankentryid
-                                         WHERE be.id = qbe.id AND v.status <> :substatus)';
+        $latestversion = '(qv2.questionbankentryid IS NULL)';
 
         // An additional condition is required in the subquery to account for scenarios
         // where the latest version is hidden. This ensures we retrieve the previous
         // "Ready" version instead of the hidden latest version.
-        $onlyready = '((qv.status = :status))';
-        $this->sqlparams = [
-            'status' => question_version_status::QUESTION_STATUS_READY,
-            'substatus' => question_version_status::QUESTION_STATUS_HIDDEN,
-        ];
+        $onlyready = '((qv.status = ' . question_version_status::QUESTION_STATUS_READY .'))';
+        //$this->sqlparams = [
+        //    'status' => question_version_status::QUESTION_STATUS_READY,
+        //    'substatus' => question_version_status::QUESTION_STATUS_HIDDEN,
+        //];
         $conditions = [];
         foreach ($this->searchconditions as $searchcondition) {
             if ($searchcondition->where()) {
@@ -273,6 +269,10 @@ class custom_view extends \core_question\local\bank\view {
         $separator = ($jointype === datafilter::JOINTYPE_ALL) ? ' AND ' : ' OR ';
         // Build the SQL.
         $sql = ' FROM {question} q ' . implode(' ', $joins);
+        $sql .= ' LEFT JOIN {question_versions} qv2 ON (   qv2.questionbankentryid = qv.questionbankentryid
+                                                       AND qv2.version > qv.version
+                                                       AND qv2.status <> ' . question_version_status::QUESTION_STATUS_HIDDEN .
+                                                       ')';
         $sql .= ' WHERE ' . implode(' AND ', $majorconditions);
         if (!empty($conditions)) {
             $sql .= ' AND ' . $nonecondition . ' ( ';
