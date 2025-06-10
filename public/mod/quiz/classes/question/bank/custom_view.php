@@ -262,8 +262,7 @@ class custom_view extends \core_question\local\bank\view {
                 $this->sqlparams = array_merge($this->sqlparams, $searchcondition->params());
             }
         }
-        $majorconditions = ['q.parent = :parent', $latestversion, $onlyready];
-        $this->sqlparams = array_merge(['parent' => 0], $this->sqlparams);
+        $majorconditions = ["q.parent = '0'", $latestversion, $onlyready];
         // Get higher level filter condition.
         $jointype = isset($this->pagevars['jointype']) ? (int)$this->pagevars['jointype'] : condition::JOINTYPE_DEFAULT;
         $nonecondition = ($jointype === datafilter::JOINTYPE_NONE) ? ' NOT ' : '';
