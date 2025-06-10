@@ -751,9 +751,8 @@ class view {
                                                       AND qv2.version > qv.version' .
                                                       $extracondition .
                                                       ')';
-        $sql .= ' WHERE q.parent = :parent
-                    AND qv2.questionbankentryid IS NULL';
-        $this->sqlparams = array_merge(['parent' => 0], $this->sqlparams);
+        $sql .= " WHERE q.parent = '0'
+                    AND qv2.questionbankentryid IS NULL";
         if (!empty($conditions)) {
             $sql .= ' AND ' . $nonecondition . ' ( ';
             $sql .= implode($separator, $conditions);
