@@ -1,7 +1,7 @@
 TinyMCE multilanguage plugin
 ============================
 
-![Release](https://img.shields.io/badge/Release-1.6-blue.svg)
+![Release](https://img.shields.io/badge/Release-1.7-blue.svg)
 [![Moodle Plugin CI](https://github.com/bfh/moodle-tiny_multilang2/actions/workflows/moodle-plugin-ci.yml/badge.svg)](https://github.com/bfh/moodle-tiny_multilang2/actions/workflows/moodle-plugin-ci.yml)
 [![PHP Support](https://img.shields.io/badge/php-7.4--8.4-blue)](https://github.com/bfh/moodle-tiny_multilang2/actions)
 [![Moodle Support](https://img.shields.io/badge/Moodle-4.1--5.0-orange)](https://github.com/bfh/moodle-tiny_multilang2/actions)
@@ -107,12 +107,19 @@ make the menu having too many options.
 
 The option *Fallback (other)* is available only when the [multilang2 filter][1] is installed
 because the standard Moodle has no fallback option.
+Also you may control in the admin settings in the option `showfallbackother` whether this option
+should be displayed at all when the [multilang2 filter][1] is installed.
 
 The languages are ordered alphabetically when using the installed languages or the option
 `showalllang` is enabled. If the languages are defined via `languageoptions` the order of the
 provided iso codes is preserved.
 
 ## Version History
+
+### 1.7
+- Add a new setting `showfallbackother` to toggle the appearance of the "Fallback (other)"
+menu item in the language list.
+- Update the documentation.
 
 ### 1.6
 - Fix format of deprecated language strings [#20](https://github.com/bfh/moodle-tiny_multilang2/pull/20), thank you [Jason Platts](https://github.com/jason-platts)
