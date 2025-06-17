@@ -59,8 +59,11 @@
             <div class="ml-2">{{>core_course/completion_manual}}</div>
         {{/completionIsManual}}
     {{/hascompletion}}
-
-    <a href="#" class="embed_file_button button_expand ml-2 text-white" 
+    <button type="button" class="close ml-2" data-action="hide" aria-label="{{#str}}close, format_tiles{{/str}}">
+        <span aria-hidden="true">×</span>
+    </button>
+         <!-- Botón de Expansión -->
+    <a href="#" class="embed_file_button button_expand ms-2 text-white" 
        data-cmid="{{cmid}}" 
        data-command="expand2">
         <i class="icon fa fa-expand fa-fw" 
@@ -68,8 +71,5 @@
            role="img" 
            aria-label="{{#str}}expand, format_tiles{{/str}}">
         </i>
-    </a>
-    <button type="button" class="close ml-2" data-action="hide" aria-label="{{#str}}close, format_tiles{{/str}}">
-        <span aria-hidden="true">×</span>
-    </button>
+    </a>    
 </div>
