@@ -19,7 +19,7 @@
  *
  * @package     tiny_fontfamily
  * @category    string
- * @copyright   2025 Mikko Haiku <mikko.haiku@iki.fi>
+ * @copyright   2024 Mikko Haiku <mikko.haiku@mediamaisteri.com>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -32,4 +32,3 @@ $string['privacy:metadata'] = 'Font family plugin does not store any personal da
 $string['fonts'] = "Font families";
 $string['settings'] = "Settings";
 $string['fonts_desc'] = "List of available font families separated by a new line.";
-$string['fontfamily:use'] = "Allow the plugin usage";

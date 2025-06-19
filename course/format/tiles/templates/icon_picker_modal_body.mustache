@@ -42,7 +42,8 @@
         "icon_picker_icons": [],
         "icon_picker_photos": [],
         "showicons": 1,
-        "showphotos": 1
+        "showphotos": 1,
+        "documentationurl": "https://mydocumentationurl.com"
     }
 }}
 <div id="icon-picker-modal-body" data-extra="0">
@@ -104,5 +105,15 @@
             </div>
         </div>
     {{/showphotos}}
+    </div>
+
+    <div>
+        <span>
+            {{#documentationurl}}
+                <a href="{{{documentationurl}}}" target="_blank">
+                        {{#pix}}help, core, {{#str}}documentation, format_tiles{{/str}}{{/pix}}{{#str}}documentation, format_tiles{{/str}}
+                    </a>
+            {{/documentationurl}}
+        </span>
     </div>
 </div>
