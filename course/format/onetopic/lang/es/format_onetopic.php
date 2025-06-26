@@ -121,6 +121,7 @@ $string['settingsheaderstyles'] = 'Estilos predeterminados de las pestañas';
 $string['showfromothers'] = 'Mostrar tema';
 $string['subtopictoright'] = 'Mover a la derecha como pestaña hija';
 $string['tabicon'] = 'Icono';
+$string['tabiconremove'] = 'Quitar icono';
 $string['tabiconselect'] = 'Seleccionar icono';
 $string['tablabelactive'] = 'Pestaña activa';
 $string['tablabeldefault'] = 'Pestaña predeterminada {$a}';
