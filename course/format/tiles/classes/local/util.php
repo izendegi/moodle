@@ -286,7 +286,7 @@ class util {
             $PAGE->requires->js_call_amd('format_tiles/edit_icon_picker', 'init', $editparams);
         }
 
-         $PAGE->requires->js_call_amd('format_tiles/expandmodal', 'init');
+        $PAGE->requires->js_call_amd('format_tiles/expandmodal', 'init');
 
         if ($course->enablecompletion) {
             $PAGE->requires->js_call_amd('format_tiles/completion', 'init', [$course->id]);
