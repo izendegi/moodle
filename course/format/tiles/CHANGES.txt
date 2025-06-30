@@ -721,3 +721,7 @@ Other
 - Issue 277 fix progress count error where no subsection data
 - Issue 276 remove subsection icon in edit mode
 - Simplify legacy excess sections check
+
+5.0.0.19 (2025060269)
+=====================
+- Fix missing activity description in modal for non-subtile activities
