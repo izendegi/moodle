@@ -15,21 +15,21 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin strings are defined here.
+ * Plugin version and other meta-data are defined here.
  *
  * @package     tiny_fontfamily
- * @category    string
  * @copyright   2025 Mikko Haiku <mikko.haiku@iki.fi>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['button_fontfamily'] = 'Font family';
-$string['menuitem_fontfamily'] = 'Font family';
-$string['pluginname'] = 'Font family plugin';
-$string['privacy:metadata'] = 'Font family plugin does not store any personal data';
-$string['fonts'] = "Font families";
-$string['settings'] = "Settings";
-$string['fonts_desc'] = "List of available font families separated by a new line.";
-$string['fontfamily:use'] = "Allow the plugin usage";
+$capabilities = [
+    'tiny/fontfamily:use' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
+            'user' => CAP_ALLOW,
+        ],
+    ],
+];
