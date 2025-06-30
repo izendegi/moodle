@@ -15,18 +15,21 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin strings are defined here.
+ * Plugin version and other meta-data are defined here.
  *
  * @package     tiny_fontsize
- * @category    string
  * @copyright   2025 Mikko Haiku <mikko.haiku@iki.fi>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['button_fontsize'] = 'Font size';
-$string['menuitem_fontsize'] = 'Font size';
-$string['pluginname'] = 'Font size plugin';
-$string['privacy:metadata'] = 'Font size plugin does not store any personal data';
-$string['fontsize:use'] = "Allow the plugin usage";
+$capabilities = [
+    'tiny/fontsize:use' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
+            'user' => CAP_ALLOW,
+        ],
+    ],
+];
