@@ -486,6 +486,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
         if ($config->plagiarism_turnitin_usegrademark && !empty($plagiarismsettings["plagiarism_rubric"])) {
 
             // Update assignment in case rubric is not stored in Turnitin yet.
+            $coursedata = $this->get_course_data($cm->id, $cm->course);
             $this->sync_tii_assignment($cm, $coursedata->turnitin_cid);
 
             if ($CFG->version >= 2023100900) {
@@ -801,9 +802,13 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
             $moodlesubmission = $DB->get_record('assign_submission', array('id' => $itemid), 'id, groupid');
 
             if ((!empty($moodlesubmission->groupid)) && ($cm->modname == "assign")) {
-                $plagiarismfiles = $DB->get_records('plagiarism_turnitin_files', ['itemid' => $itemid, 'cm' => $cm->id,
-                    'identifier' => $identifier],
-                    'lastmodified DESC', '*', 0, 1);
+                $plagiarismfiles = $DB->get_records_sql(
+                    'SELECT * FROM {plagiarism_turnitin_files} 
+                     WHERE identifier IN ( :identifier, :oldidentifier)
+                     AND itemid = :itemid AND cm = :cmid 
+                     ORDER BY lastmodified DESC',
+                    ['identifier' => $identifier, 'oldidentifier' => $oldidentifier,
+                     'itemid' => $itemid, 'cmid' => $cm->id], 0, 1);
                 $plagiarismfile = reset($plagiarismfiles);
                 $author = $plagiarismfile->userid ?? null;
                 $linkarray['userid'] = $author;
