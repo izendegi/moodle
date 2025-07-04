@@ -725,3 +725,8 @@ Other
 5.0.0.19 (2025060269)
 =====================
 - Fix missing activity description in modal for non-subtile activities
+
+5.0.0.20 (2025070360)
+=====================
+- Issue 280 button icon colour darker to match core (accessibility)
+- Remove docs links
