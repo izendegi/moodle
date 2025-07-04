@@ -280,7 +280,6 @@ class util {
                 'courseId' => $course->id,
                 'pageType' => $PAGE->pagetype,
                 'allowPhotoTiles' => get_config('format_tiles', 'allowphototiles'),
-                'documentationurl' => get_config('format_tiles', 'documentationurl'),
                 'maxnumbericons' => self::get_icon_picker_max_number_icons(),
             ];
             $PAGE->requires->js_call_amd('format_tiles/edit_icon_picker', 'init', $editparams);
