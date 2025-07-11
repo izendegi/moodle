@@ -194,17 +194,20 @@ final class notification_helper_test extends \advanced_testcase {
         $sink = $this->redirectMessages();
 
         // Create a course and enrol a user.
-        $course = $generator->create_course();
+        $coursename = 'My Custom Course';
+        $course = $generator->create_course(['fullname' => $coursename]);
         $user1 = $generator->create_user();
         $generator->enrol_user($user1->id, $course->id, 'student');
 
         /** @var \mod_quiz_generator $quizgenerator */
         $quizgenerator = $generator->get_plugin_generator('mod_quiz');
+        $quizname = 'Special Quiz Name';
 
         // Create a quiz with an open date < 48 hours.
         $timeopen = $clock->time() + DAYSECS;
         $quiz = $quizgenerator->create_instance([
             'course' => $course->id,
+            'name' => $quizname,
             'timeopen' => $timeopen,
         ]);
         $clock->bump(5);
@@ -228,6 +231,10 @@ final class notification_helper_test extends \advanced_testcase {
         $stringparams = ['timeopen' => userdate($users[$user1->id]->timeopen), 'quizname' => $quiz->name];
         $expectedsubject = get_string('quizopendatesoonsubject', 'mod_quiz', $stringparams);
         $this->assertEquals($expectedsubject, $message->subject);
+
+        // Check that the subject contains the custom quiz and course names.
+        $this->assertStringContainsString($coursename, $message->fullmessage);
+        $this->assertStringContainsString($quizname, $message->subject);
 
         // Clear sink.
         $sink->clear();
