@@ -234,10 +234,12 @@ final class notification_helper_test extends \advanced_testcase {
 
         // Check that the subject contains the custom quiz and course names filtered.
         $this->assertStringContainsString(format_string($coursename, 
-                                                        options: ['context' => \context_course::instance($course->id)]),
+                                                        null // options: ['context' => \context_course::instance($course->id)]
+                                                    ),
                                           $message->fullmessage);
         $this->assertStringContainsString(format_string($quizname,
-                                                        options: ['context' => $quizobj->get_context()]),
+                                                        null // options: ['context' => $quizobj->get_context()]
+                                                    ),
                                           $message->subject);
 
         // Check that the subject doesn't contain the custom quiz and course names unfiltered.
