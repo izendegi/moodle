@@ -232,9 +232,15 @@ final class notification_helper_test extends \advanced_testcase {
         $expectedsubject = get_string('quizopendatesoonsubject', 'mod_quiz', $stringparams);
         $this->assertEquals($expectedsubject, $message->subject);
 
-        // Check that the subject contains the custom quiz and course names.
-        $this->assertStringContainsString($coursename, $message->fullmessage);
-        $this->assertStringContainsString($quizname, $message->subject);
+        // Check that the subject contains the custom quiz and course names filtered.
+        $this->assertStringContainsString(format_string($coursename, null //options: ['context' => \context_course::instance($course->id)]
+        , $message->fullmessage));
+        $this->assertStringContainsString(format_string($quizname, null //options: ['context' => $quizobj->get_context()])
+        , $message->subject));
+
+        // Check that the subject doesn't contain the custom quiz and course names unfiltered.
+        $this->assertStringNotContainsString($coursename, $message->fullmessage);
+        $this->assertStringNotContainsString($quizname, $message->subject);
 
         // Clear sink.
         $sink->clear();
