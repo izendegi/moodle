@@ -144,7 +144,7 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
 
         $mtype = tiny_medial_checklist('modtypeperm');
         if ($mtype) {
-            if (has_capability('atto/helixatto:visiblemodtype', $context)) {
+            if (has_capability('tiny/medial:visiblemodtype', $context)) {
                 $modtype = $mtype;
                 $linkonly = true;
             }
