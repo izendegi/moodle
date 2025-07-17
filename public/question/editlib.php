@@ -92,7 +92,7 @@ function get_questions_category(object $category, bool $noparent, bool $recurse 
                                              JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
                                             WHERE qc.id {$usql} {$npsql}
                                                   AND (qv2.questionbankentryid IS NULL
-                                                       OR qv.version is null)
+                                                       OR qv.version IS NULL)
                                          ORDER BY qc.id, q.qtype, q.name", $params);
     } else {
         $questions = $DB->get_records_sql("SELECT q.*, qv.status, qc.id AS category
