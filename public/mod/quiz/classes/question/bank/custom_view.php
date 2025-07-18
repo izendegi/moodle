@@ -243,8 +243,6 @@ class custom_view extends \core_question\local\bank\view {
         }
 
         // Build the where clause.
-        $latestversion = 'qv2.questionbankentryid IS NULL';
-
         // An additional condition is required in the subquery to account for scenarios
         // where the latest version is hidden. This ensures we retrieve the previous
         // "Ready" version instead of the hidden latest version.
@@ -262,6 +260,7 @@ class custom_view extends \core_question\local\bank\view {
                 $this->sqlparams = array_merge($this->sqlparams, $searchcondition->params());
             }
         }
+        $latestversion = 'qv2.questionbankentryid IS NULL';
         $majorconditions = ['q.parent = :parent', $latestversion, $onlyready];
         $this->sqlparams = array_merge(['parent' => 0], $this->sqlparams);
         // Get higher level filter condition.
