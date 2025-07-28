@@ -1,8 +1,7 @@
 # Changelog
 
-## mu-4.5.5-01
+## mu-5.0.1-01
 
-Release date: 09/06/2025
+Release date: 30/06/2025
 
-* Added missing capability name.
-* Fixed incorrect redirect on sites in subdirectories.
+* Added support for Moodle 5.0
