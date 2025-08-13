@@ -1,4 +1,11 @@
 Release Notes
+##### 5.0.1 (Build 2025052801)
+
+Fixes:
+
+- Wenn beim Aufruf des Editors verwaiste Dateien vorhanden sind aber KEINE Datei im Editor genutzt wurde, dann werden KEINERLEI verwaiste Dateien gefunden.
+- Wenn man in Medien verwalten Dateien löscht und dann zurück in den Editor wechselt wird die Anzeige der verwaisten Dateien nicht aktualisiert.
+
 ##### 5.0.0 (Build 2025052800)
 
 - New README.md
