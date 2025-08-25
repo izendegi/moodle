@@ -4,16 +4,6 @@ moodle-tool_redis
 Changes
 -------
 
-### v4.5-r3
-
-* 2026-02-07 - Improvement: Connect to Redis with TLS / through a Unix socket / to a Redis cluster if configured in the Moodle caching backend configuration.
-* 2026-02-07 - Update valkey-stats library to version 1.2.0.
-
-### v4.5-r2
-
-* 2025-10-15 - Make codechecker happy again
-* 2025-10-15 - Tests: Switch Github actions workflows to reusable workflows by Moodle an Hochschulen e.V.
-
 ### v4.5-r1
 
 * 2024-10-14 - Upgrade: Adopt changes from MDL-81960 and use new \core\url class

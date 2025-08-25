@@ -17,17 +17,16 @@
 /**
  * This file contains helixmedia mobile config
  *
- * @package    mod_helixmedia
+ * @package    mod
  * @subpackage helixmedia
  * @author     Tim Williams (For Streaming LTD)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @copyright  MEDIAL
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $addons = [
-    'mod_helixmedia' => [ // Plugin identifier.
+    'mod_helixmedia' => [ // Plugin identifier
         'handlers' => [ // Different places where the plugin will display content.
             'coursehelixmedia' => [ // Handler unique name (alphanumeric).
                 'displaydata' => [
@@ -38,12 +37,12 @@ $addons = [
                 'delegate' => 'CoreCourseModuleDelegate', // Delegate (where to display the link to the plugin).
                 'method' => 'mobile_course_view', // Main function in \mod_helixmedia\output\mobile.
                 'offlinefunctions' => [
-                    'mobile_course_view' => [],
+                    'mobile_course_view' => []
                 ], // Function that needs to be downloaded for offline.
             ],
         ],
         'lang' => [ // Language strings that are used in all the handlers.
-            ['pluginname', 'helixmedia'],
+            ['pluginname', 'helixmedia']
         ],
     ],
 ];

@@ -36,7 +36,6 @@ $capabilities = [
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
         ],
-        'clonepermissionsfrom' => 'atto/helixatto:visible',
     ],
     'tiny/medial:visiblemodtype' => [
         'captype' => 'write',
@@ -48,7 +47,6 @@ $capabilities = [
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
         ],
-        'clonepermissionsfrom' => 'atto/helixatto:visiblemodtype',
     ],
     'tiny/medial:addliblink' => [
         'captype' => 'write',
@@ -59,3 +57,4 @@ $capabilities = [
     ],
 
 ];
+

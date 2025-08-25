@@ -57,6 +57,7 @@ function mod_verbalfeedback_view_model_to_instance(stdClass $object): instance {
     if (empty($object->template)) {
         // If we enter here, it's mostly $object->template == ''.
         $instance = new instance((int) $object->course);
+
     } else {
         $template = $templaterepository->get_by_id((int)$object->template);
         $instance = instance::from_template((int) $object->course, $template);
@@ -421,8 +422,8 @@ function verbalfeedback_core_calendar_event_action_shows_item_count(calendar_eve
  * @param string $type optional type (default '')
  * @throws dml_exception
  */
-function verbalfeedback_reset_gradebook($courseid, $type = '') {
-    global $DB;
+function verbalfeedback_reset_gradebook($courseid, $type='') {
+    global $CFG, $DB;
 
     $sql = "SELECT v.*, cm.idnumber as cmidnumber, v.course as courseid
               FROM {verbalfeedback} v, {course_modules} cm, {modules} m
@@ -470,35 +471,23 @@ function verbalfeedback_reset_userdata($data) {
                                                       " vfcat ON vfcri.categoryid = vfcat.id " .
                                                 "JOIN " . tables::INSTANCE_TABLE . " vf ON vfcat.instanceid = vf.id" .
                                                "WHERE vf.course = ?";
-        $DB->delete_records_select(
-            tables::INSTANCE_CRITERION_TABLE,
-            "instanceid IN ($allverbalfeedbackcriteriasql)",
-            [$data->courseid]
-        );
-        $status[] = [
-            'component' => $componentstr,
-            'item' => get_string('removecriteria', 'verbalfeedback'),
-            'error' => false,
-        ];
+        $DB->delete_records_select(tables::INSTANCE_CRITERION_TABLE, "instanceid IN ($allverbalfeedbackcriteriasql)",
+            [$data->courseid]);
+        $status[] = ['component' => $componentstr, 'item' => get_string('removecriteria', 'verbalfeedback'),
+            'error' => false, ];
 
-        $allverbalfeedbacksubratingssql = "SELECT vfsub.id " .
-            "FROM " . tables::INSTANCE_SUBRATING_TABLE . " vfsub " .
-            "JOIN " . tables::INSTANCE_CRITERION_TABLE .
-            " vfcri ON vfcri.id = vfsub.criterionid " .
-            "JOIN " . tables::INSTANCE_CATEGORY_TABLE .
-            " vfcat ON vfcri.categoryid = vfcat.id " .
-            "JOIN " . tables::INSTANCE_TABLE . " vf ON vfcat.instanceid = vf.id" .
-            "WHERE vf.course = ?";
-        $DB->delete_records_select(
-            tables::INSTANCE_SUBRATING_TABLE,
-            "instanceid IN ($allverbalfeedbacksubratingssql)",
-            [$data->courseid]
-        );
-        $status[] = [
-            'component' => $componentstr,
-            'item' => get_string('removesubratings', 'verbalfeedback'),
-            'error' => false,
-        ];
+        $allverbalfeedbacksubratingssql       = "SELECT vfsub.id " .
+                                                  "FROM " . tables::INSTANCE_SUBRATING_TABLE . " vfsub " .
+                                                  "JOIN " . tables::INSTANCE_CRITERION_TABLE .
+                                                        " vfcri ON vfcri.id = vfsub.criterionid " .
+                                                  "JOIN " . tables::INSTANCE_CATEGORY_TABLE .
+                                                        " vfcat ON vfcri.categoryid = vfcat.id " .
+                                                  "JOIN " . tables::INSTANCE_TABLE . " vf ON vfcat.instanceid = vf.id" .
+                                                 "WHERE vf.course = ?";
+        $DB->delete_records_select(tables::INSTANCE_SUBRATING_TABLE, "instanceid IN ($allverbalfeedbacksubratingssql)",
+            [$data->courseid]);
+        $status[] = ['component' => $componentstr, 'item' => get_string('removesubratings', 'verbalfeedback'),
+            'error' => false, ];
     }
 
     return $status;
@@ -527,13 +516,13 @@ function verbalfeedback_grade_item_update($verbalfeedback, $grades = null) {
 
     if ($verbalfeedback->grade > 0) {
         $params['gradetype'] = GRADE_TYPE_VALUE;
-        $params['grademax'] = $verbalfeedback->grade;
-        $params['grademin'] = 0;
-        $params['gradepass'] = $verbalfeedback->gradepass;
+        $params['grademax']  = $verbalfeedback->grade;
+        $params['grademin']  = 0;
+        $params['gradepass']  = $verbalfeedback->gradepass;
     } else if ($verbalfeedback->grade < 0) {
         $params['gradetype'] = GRADE_TYPE_SCALE;
-        $params['scaleid'] = -$verbalfeedback->grade;
-        $params['gradepass'] = $verbalfeedback->gradepass;
+        $params['scaleid']   = -$verbalfeedback->grade;
+        $params['gradepass']  = $verbalfeedback->gradepass;
     } else {
         $params['gradetype'] = GRADE_TYPE_TEXT;
     }
@@ -544,16 +533,14 @@ function verbalfeedback_grade_item_update($verbalfeedback, $grades = null) {
     }
 
     // Itemnumber 0 is the grade.
-    return grade_update(
-        'mod/verbalfeedback',
+    return grade_update('mod/verbalfeedback',
         $verbalfeedback->course,
         'mod',
         'verbalfeedback',
         $verbalfeedback->id,
         0,
         $grades,
-        $params
-    );
+        $params);
 }
 
 /**
@@ -566,7 +553,7 @@ function verbalfeedback_grade_item_update($verbalfeedback, $grades = null) {
  * @param bool $nullifnone If a single user is specified and $nullifnone is true a grade item with a null rawgrade will be inserted
  */
 function verbalfeedback_update_grades($verbalfeedback, $userid = 0, $nullifnone = true) {
-    global $CFG;
+    global $CFG, $DB;
     require_once($CFG->libdir . '/gradelib.php');
 
     // Populate array of grade objects indexed by userid.
@@ -602,83 +589,68 @@ function verbalfeedback_get_user_grades($verbalfeedback, $userid = 0) {
         $params = [$verbalfeedback->id, $verbalfeedback->id, $userid, $verbalfeedback->id, $verbalfeedback->id];
         $usertest = 'AND vfs.touserid = ?';
     }
-    return $DB->get_records_sql(
-        "SELECT subquery1.userid id,
-            subquery1.userid userid,
-            SUM(subquery1.grade) rawgrade
-        FROM
-        (
-            SELECT subquery.userid id,
-                subquery.userid,
-                SUM(subquery.grade),
-                subquery.catid,
-                subquery.catweight,
-                SUM(subquery.grade) * subquery.catweight catsum,
-                (SUM(subquery.grade) * subquery.catweight) / 5 * vf.grade grade
-            FROM
-            (
-                SELECT u.id id,
-                    u.id userid,
-                    vfcri.id criid,
-                    vfcat.id catid,
-                    vfcat.weight catweight,
-                    vfcri.weight criweight,
-                    ctw.criteriatotalweight,
-                    vfcri.weight / ctw.criteriatotalweight criteriaeffweight,
-                    --SUM(vfres.value),
-                    (SUM(vfres.value)/ COUNT(vfres.fromuserid)) * (vfcri.weight / ctw.criteriatotalweight) grade
-                FROM
-                (
-                    SELECT vfcat.id,
-                        SUM(vfcri.weight) criteriatotalweight
-                    FROM {verbalfeedback_i_criterion} vfcri
-                        JOIN {verbalfeedback_i_category} vfcat
-                            ON vfcat.id = vfcri.categoryid
-                        JOIN {verbalfeedback} vf
-                            ON vfcat.instanceid = vf.id
-                    WHERE vf.id = ?
-                    GROUP BY vfcat.id
-                ) AS ctw
-                    JOIN {verbalfeedback_i_category} vfcat
-                        ON vfcat.id = ctw.id
-                    JOIN {verbalfeedback_i_criterion} vfcri
-                        ON vfcri.categoryid = vfcat.id
-                    JOIN {verbalfeedback} vf
-                        ON vf.id = vfcat.instanceid
-                    JOIN {verbalfeedback_submission} vfs
-                        ON vfs.instanceid = vf.id
-                    JOIN {user} u
-                        ON u.id = vfs.touserid
-                    JOIN {verbalfeedback_response} vfres
-                        ON vfres.criterionid = vfcri.id
-                        AND vfres.instanceid = vfs.instanceid
-                        AND vfres.fromuserid = vfs.fromuserid
-                        AND vfres.touserid = vfs.touserid
-                WHERE vfcat.instanceid = ? $usertest
-                  AND vfs.status <> 0 -- pending status excluded, not sure if needed
-                  AND vfres.value is not null -- N/A values should not be taken into account
-                GROUP BY u.id,
-                        vfcat.id,
-                        vfcri.id,
-                        vfcat.weight,
-                        vfcri.weight,
-                        ctw.criteriatotalweight
-            ) subquery
-                JOIN {verbalfeedback} vf
-                    ON vf.id = ?
-            GROUP BY subquery.id,
-                    subquery.userid,
-                    subquery.catid,
-                    vf.grade,
-                    subquery.catweight
-        ) AS subquery1
-            JOIN {verbalfeedback} vf
-                ON vf.id = ?
-        GROUP BY subquery1.userid,
-                subquery1.userid
-        ",
-        $params
-    );
+    return $DB->get_records_sql("SELECT subquery1.userid id,
+                                        subquery1.userid userid,
+                                        SUM(subquery1.grade) rawgrade
+                                 FROM
+                                 (
+                                     SELECT subquery.userid id,
+                                            subquery.userid,
+                                            SUM(subquery.grade),
+                                            subquery.catweight,
+                                            SUM(subquery.grade) * subquery.catweight catsum,
+                                            (SUM(subquery.grade) * subquery.catweight) / 5 * vf.grade grade
+                                     FROM
+                                     (
+                                         SELECT u.id id,
+                                                u.id userid,
+                                                vfcri.id criid,
+                                                vfcat.id catid,
+                                                vfcat.weight catweight,
+                                                vfcri.weight criweight,
+                                                ctw.criteriatotalweight,
+                                                vfcri.weight / ctw.criteriatotalweight criteriaeffweight,
+                                                vfres.value,
+                                                vfcri.weight / ctw.criteriatotalweight * vfres.value grade
+                                         FROM
+                                         (
+                                             SELECT vfcat.id,
+                                                    SUM(vfcri.weight) criteriatotalweight
+                                             FROM {verbalfeedback_i_criterion} vfcri
+                                                 JOIN {verbalfeedback_i_category} vfcat
+                                                     ON vfcat.id = vfcri.categoryid
+                                                 JOIN {verbalfeedback} vf
+                                                     ON vfcat.instanceid = vf.id
+                                             WHERE vf.id = ?
+                                             GROUP BY vfcat.id
+                                         ) AS ctw
+                                             JOIN {verbalfeedback_i_category} vfcat
+                                                 ON vfcat.id = ctw.id
+                                             JOIN {verbalfeedback_i_criterion} vfcri
+                                                 ON vfcri.categoryid = vfcat.id
+                                             JOIN {verbalfeedback} vf
+                                                 ON vf.id = vfcat.instanceid
+                                             JOIN {verbalfeedback_submission} vfs
+                                                 ON vfs.instanceid = vf.id
+                                             JOIN {user} u
+                                                 ON u.id = vfs.touserid
+                                             JOIN {verbalfeedback_response} vfres
+                                                 ON vfres.criterionid = vfcri.id
+                                                    AND vfres.touserid = vfs.touserid
+                                         WHERE vfcat.instanceid = ? $usertest
+                                     ) subquery
+                                         JOIN {verbalfeedback} vf
+                                             ON vf.id = ?
+                                     GROUP BY subquery.id,
+                                              subquery.userid,
+                                              subquery.catid,
+                                              vf.grade,
+                                              subquery.catweight
+                                 ) AS subquery1
+                                     JOIN {verbalfeedback} vf
+                                         ON vf.id = ?
+                                 GROUP BY subquery1.userid,
+                                          subquery1.userid", $params);
 }
 
 /**
@@ -687,7 +659,9 @@ function verbalfeedback_get_user_grades($verbalfeedback, $userid = 0) {
  * @param settings_navigation $settings The settings navigation object
  * @param navigation_node $navigationnode The node to add module settings to
  */
-function verbalfeedback_extend_settings_navigation(settings_navigation $settings, navigation_node $navigationnode) {
+function verbalfeedback_extend_settings_navigation(settings_navigation $settings,
+    navigation_node $navigationnode) {
+
     global $PAGE;
 
     if (!$context = context_module::instance($PAGE->cm->id, IGNORE_MISSING)) {
@@ -695,9 +669,7 @@ function verbalfeedback_extend_settings_navigation(settings_navigation $settings
     }
 
     if (has_capability('mod/verbalfeedback:managetemplates', $context)) {
-        $navigationnode->add(
-            get_string('verbalfeedbacktemplates', 'verbalfeedback'),
-            new moodle_url('/mod/verbalfeedback/template_list.php')
-        );
+        $navigationnode->add(get_string('verbalfeedbacktemplates', 'verbalfeedback'),
+            new moodle_url('/mod/verbalfeedback/template_list.php'));
     }
 }

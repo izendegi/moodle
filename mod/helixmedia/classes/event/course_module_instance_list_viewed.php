@@ -23,6 +23,7 @@
  */
 
 namespace mod_helixmedia\event;
+defined('MOODLE_INTERNAL') || die();
 
 /**
  * The mod_helixmedia instance list viewed event class.
@@ -33,3 +34,4 @@ namespace mod_helixmedia\event;
  */
 class course_module_instance_list_viewed extends \core\event\course_module_instance_list_viewed {
 }
+

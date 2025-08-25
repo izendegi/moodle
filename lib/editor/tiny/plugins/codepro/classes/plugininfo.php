@@ -48,8 +48,9 @@ function tiny_codepro_cfgwithdefault(object $cfg, string $key, $default) {
  */
 class plugininfo extends plugin implements
     plugin_with_buttons,
-    plugin_with_configuration,
-    plugin_with_menuitems {
+    plugin_with_menuitems,
+    plugin_with_configuration {
+
     /**
      * Get the editor buttons for this plugins
      *
@@ -89,8 +90,6 @@ class plugininfo extends plugin implements
         array $fpoptions,
         ?\editor_tiny\editor $editor = null
     ): array {
-        global $CFG;
-
         // Decide if to enable the plugin?
         $showplugin = has_capability('tiny/codepro:viewplugin', $context);
 
@@ -106,7 +105,6 @@ class plugininfo extends plugin implements
             $params['customelements'] = trim(tiny_codepro_cfgwithdefault($cfg, 'customelements', ''));
             $params['extendedvalidelements'] = trim(tiny_codepro_cfgwithdefault($cfg, 'extendedvalidelements', ''));
             $params['validchildren'] = trim(tiny_codepro_cfgwithdefault($cfg, 'validchildren', ''));
-            $params['userprefs'] = get_user_preferences('tiny_codepro_userprefs', '');
         }
         return $params;
     }

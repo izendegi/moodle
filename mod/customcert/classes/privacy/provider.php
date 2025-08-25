@@ -24,13 +24,10 @@
 namespace mod_customcert\privacy;
 
 use core_privacy\local\metadata\collection;
-use core_privacy\local\metadata\provider as metadata_provider;
 use core_privacy\local\request\approved_contextlist;
 use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
-use core_privacy\local\request\core_userlist_provider;
 use core_privacy\local\request\helper;
-use core_privacy\local\request\plugin\provider as plugin_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
@@ -41,7 +38,11 @@ use core_privacy\local\request\writer;
  * @copyright  2018 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class provider implements core_userlist_provider, metadata_provider, plugin_provider {
+class provider implements
+    \core_privacy\local\metadata\provider,
+    \core_privacy\local\request\plugin\provider,
+    \core_privacy\local\request\core_userlist_provider {
+
     /**
      * Return the fields which contain personal data.
      *
@@ -136,7 +137,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         global $DB;
 
         // Filter out any contexts that are not related to modules.
-        $cmids = array_reduce($contextlist->get_contexts(), function ($carry, $context) {
+        $cmids = array_reduce($contextlist->get_contexts(), function($carry, $context) {
             if ($context->contextlevel == CONTEXT_MODULE) {
                 $carry[] = $context->instanceid;
             }
@@ -152,22 +153,18 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         // Get all the customcert activities associated with the above course modules.
         $customcertidstocmids = self::get_customcert_ids_to_cmids_from_cmids($cmids);
 
-        [$insql, $inparams] = $DB->get_in_or_equal(array_keys($customcertidstocmids), SQL_PARAMS_NAMED);
+        list($insql, $inparams) = $DB->get_in_or_equal(array_keys($customcertidstocmids), SQL_PARAMS_NAMED);
         $params = array_merge($inparams, ['userid' => $user->id]);
-        $recordset = $DB->get_recordset_select(
-            'customcert_issues',
-            "customcertid $insql AND userid = :userid",
-            $params,
-            'timecreated, id ASC'
-        );
-        self::recordset_loop_and_export($recordset, 'customcertid', [], function ($carry, $record) {
+        $recordset = $DB->get_recordset_select('customcert_issues', "customcertid $insql AND userid = :userid",
+            $params, 'timecreated, id ASC');
+        self::recordset_loop_and_export($recordset, 'customcertid', [], function($carry, $record) {
             $carry[] = [
                 'code' => $record->code,
                 'emailed' => transform::yesno($record->emailed),
                 'timecreated' => transform::datetime($record->timecreated),
             ];
             return $carry;
-        }, function ($customcertid, $data) use ($user, $customcertidstocmids) {
+        }, function($customcertid, $data) use ($user, $customcertidstocmids) {
             $context = \context_module::instance($customcertidstocmids[$customcertid]);
             $contextdata = helper::get_context_data($context, $user);
             $finaldata = (object) array_merge((array) $contextdata, ['issues' => $data]);
@@ -237,7 +234,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         }
 
         $userids = $userlist->get_userids();
-        [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+        list($usersql, $userparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
 
         $select = "customcertid = :customcertid AND userid $usersql";
         $params = ['customcertid' => $cm->instance] + $userparams;
@@ -253,7 +250,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
     protected static function get_customcert_ids_to_cmids_from_cmids(array $cmids) {
         global $DB;
 
-        [$insql, $inparams] = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
+        list($insql, $inparams) = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
         $sql = "SELECT customcert.id, cm.id AS cmid
                  FROM {customcert} customcert
                  JOIN {modules} m
@@ -277,13 +274,8 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      * @param callable $export The function to export the dataset, receives the last value from $splitkey and the dataset.
      * @return void
      */
-    protected static function recordset_loop_and_export(
-        \moodle_recordset $recordset,
-        $splitkey,
-        $initial,
-        callable $reducer,
-        callable $export
-    ) {
+    protected static function recordset_loop_and_export(\moodle_recordset $recordset, $splitkey, $initial,
+            callable $reducer, callable $export) {
         $data = $initial;
         $lastid = null;
 

@@ -30,6 +30,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class fake_datarange_element extends \customcertelement_daterange\element {
+
     /**
      * Override protected method for testing.
      *

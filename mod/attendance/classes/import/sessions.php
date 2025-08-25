@@ -39,6 +39,7 @@ use stdClass;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class sessions {
+
     /** @var string $error The errors message from reading the xml */
     protected $error = '';
 
@@ -208,16 +209,8 @@ class sessions {
      * @param bool $courseshortname Course shortname for the course level imports.
      * @param bool $attendanceid ID for the attendance activity for course level imports.
      */
-    public function __construct(
-        $text = null,
-        $encoding = null,
-        $delimiter = null,
-        $importid = 0,
-        $mappingdata = null,
-        $useprogressbar = false,
-        $courseshortname = null,
-        $attendanceid = null
-    ) {
+    public function __construct($text = null, $encoding = null, $delimiter = null, $importid = 0,
+                                $mappingdata = null, $useprogressbar = false, $courseshortname = null, $attendanceid = null) {
         global $CFG, $DB;
 
         require_once($CFG->libdir . '/csvlib.class.php');
@@ -399,6 +392,7 @@ class sessions {
                     \mod_attendance_notifyqueue::notify_problem(get_string('error:qrcode', 'attendance'));
                     continue;
                 }
+
             }
 
             $rotateqrcode = $this->get_column_data($row, $mapping['rotateqrcode']);
@@ -440,10 +434,8 @@ class sessions {
             if ($course) {
                 $session->coursestartdate = $course;
             }
-            if (
-                !empty($session->sdays) && !empty($session->period) &&
-                !empty($session->sessionenddate) && !empty($session->coursestartdate)
-            ) {
+            if (!empty($session->sdays) && !empty($session->period) &&
+                !empty($session->sessionenddate) && !empty($session->coursestartdate)) {
                 $session->addmultiply = 1;
             }
 
@@ -495,32 +487,25 @@ class sessions {
         foreach ($this->sessions as $session) {
             $groupids = [];
             // Check course shortname matches.
-            if (
-                $DB->record_exists('course', [
+            if ($DB->record_exists('course', [
                 'shortname' => $session->course,
-                ])
-            ) {
+            ])) {
                 // Get course.
                 $course = $DB->get_record('course', [
                     'shortname' => $session->course,
                 ], '*', MUST_EXIST);
 
                 // Check course has activities.
-                if (
-                    $DB->record_exists('attendance', [
+                if ($DB->record_exists('attendance', [
                     'course' => $course->id,
-                    ])
-                ) {
+                ])) {
                     // Translate group names to group IDs. They are unique per course.
                     if ($session->sessiontype === \mod_attendance_structure::SESSION_GROUP) {
                         foreach ($session->groups as $groupname) {
                             $gid = groups_get_group_by_name($course->id, $groupname);
                             if ($gid === false) {
-                                \mod_attendance_notifyqueue::notify_problem(get_string(
-                                    'sessionunknowngroup',
-                                    'attendance',
-                                    $groupname
-                                ));
+                                \mod_attendance_notifyqueue::notify_problem(get_string('sessionunknowngroup',
+                                                                            'attendance', $groupname));
                             } else {
                                 $groupids[] = $gid;
                             }
@@ -555,7 +540,7 @@ class sessions {
                                 ])));
                                 unset($sessions[$index]);
                             } else {
-                                $okcount++;
+                                $okcount ++;
                             }
                         }
                         if (! empty($sessions)) {
@@ -564,11 +549,8 @@ class sessions {
                     }
                     $activities->close();
                 } else {
-                    mod_attendance_notifyqueue::notify_problem(get_string(
-                        'error:coursehasnoattendance',
-                        'attendance',
-                        $session->course
-                    ));
+                    mod_attendance_notifyqueue::notify_problem(get_string('error:coursehasnoattendance',
+                        'attendance', $session->course));
                 }
             } else {
                 mod_attendance_notifyqueue::notify_problem(get_string('error:coursenotfound', 'attendance', $session->course));

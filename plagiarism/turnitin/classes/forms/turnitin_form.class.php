@@ -30,15 +30,9 @@ global $CFG;
 require_once($CFG->dirroot.'/plagiarism/turnitin/lib.php');
 require_once($CFG->libdir."/formslib.php");
 
-/**
- * Define the form for the Turnitin plugin.
- */
 class turnitin_form extends moodleform {
 
-    /**
-     * Define the form.
-     * @return void
-     */
+    // Define the form.
     public function definition() {
         $mform =& $this->_form;
 
@@ -109,7 +103,7 @@ class turnitin_form extends moodleform {
         }
 
         // Disable the form change checker - added in 2.3.2.
-        if (is_callable([$mform, 'disable_form_change_checker'])) {
+        if (is_callable(array($mform, 'disable_form_change_checker'))) {
             if (isset($this->_customdata["disable_form_change_checker"])) {
                 $mform->disable_form_change_checker();
             }
@@ -117,12 +111,12 @@ class turnitin_form extends moodleform {
 
         // Show multiple submit buttons if needed.
         if (isset($this->_customdata["multi_submit_buttons"])) {
-            $buttonarray = [];
+            $buttonarray = array();
             foreach ($this->_customdata["multi_submit_buttons"] as $btn) {
                 $buttonarray[] = &$mform->createElement('submit', $btn[0], $btn[1]);
             }
 
-            $mform->addGroup($buttonarray, 'buttonar', '', [' '], false);
+            $mform->addGroup($buttonarray, 'buttonar', '', array(' '), false);
         }
 
     }

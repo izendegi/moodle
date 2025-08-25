@@ -34,7 +34,8 @@ namespace tool_deletemessage;
  * @category test
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class tool_deletemessage_test extends \advanced_testcase {
+class tool_deletemessage_test extends \advanced_testcase {
+
     /** @var $messagesink message sink **/
     private $messagesink;
 
@@ -44,7 +45,6 @@ final class tool_deletemessage_test extends \advanced_testcase {
      * This is executed before running any test in this file.
      */
     public function setUp(): void {
-        parent::setUp();
         $this->preventResetByRollback(); // Messaging is not compatible with transactions.
         $this->messagesink = $this->redirectMessages();
         $this->resetAfterTest();
@@ -54,7 +54,7 @@ final class tool_deletemessage_test extends \advanced_testcase {
      * Make message to tests
      * @return int message id
      */
-    private function make_message(): int {
+    private function make_message() {
         global $DB;
 
         $userfrom = $this->getDataGenerator()->create_user();
@@ -106,9 +106,9 @@ final class tool_deletemessage_test extends \advanced_testcase {
      * @return void
      * @covers \hard_delete_message
      */
-    public function test_deleting(): void {
+    public function test_deleting() {
         global $CFG, $DB;
-        require_once($CFG->dirroot . '/admin/tool/deletemessage/locallib.php');
+        require_once($CFG->dirroot.'/admin/tool/deletemessage/locallib.php');
 
         $messageid = $this->make_message();
         $this->assertNotEmpty($DB->get_records('messages', ['id' => $messageid]));
@@ -119,11 +119,11 @@ final class tool_deletemessage_test extends \advanced_testcase {
     /**
      * Test taks of delection to not delete all messages
      * @return void
-     * @covers \tool_deletemessage\task\delete::execute
+     * @covers \tool_deletemessage\tast\delete::execute
      */
-    public function test_taks_isnotdeleting(): void {
+    public function test_taks_isnotdeleting() {
         global $CFG, $DB;
-        require_once($CFG->dirroot . '/admin/tool/deletemessage/locallib.php');
+        require_once($CFG->dirroot.'/admin/tool/deletemessage/locallib.php');
 
         $messageid = $this->make_message();
 

@@ -36,7 +36,11 @@ use stdClass;
  * @copyright 2018 Cameron Ball <cameron@cameron1729.xyz>
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class provider implements \core_privacy\local\request\core_userlist_provider, \core_privacy\local\request\plugin\provider, \core_privacy\local\metadata\provider {
+final class provider implements
+    \core_privacy\local\request\plugin\provider,
+    \core_privacy\local\request\core_userlist_provider,
+    \core_privacy\local\metadata\provider {
+
     /**
      * Returns meta data about this system.
      *
@@ -95,7 +99,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
      * @return contextlist $contextlist The contextlist containing the list of contexts used in this plugin.
      */
     public static function get_contexts_for_userid(int $userid): contextlist {
-        return (new contextlist())->add_from_sql(
+        return (new contextlist)->add_from_sql(
             "SELECT ctx.id
                  FROM {course_modules} cm
                  JOIN {modules} m ON cm.module = m.id AND m.name = :modulename
@@ -150,6 +154,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
                  WHERE ctx.id = :contextid";
 
         $userlist->add_from_sql('takenby', $sql, $params);
+
     }
     /**
      * Delete all data for all users in the specified context.
@@ -229,7 +234,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
 
         // Prepare SQL to gather all completed IDs.
         $userids = $userlist->get_userids();
-        [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+        list($insql, $inparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
 
         // Delete records where user was marked as attending.
         $DB->delete_records_select(
@@ -247,6 +252,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
             if (!empty($warnings)) {
                 attendance_remove_user_from_thirdpartyemails($warnings, $userid);
             }
+
         }
 
         $DB->delete_records_select(
@@ -261,8 +267,8 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
             'takenby',
             2,
             "takenby $insql",
-            $inparams
-        );
+            $inparams);
+
     }
 
     /**
@@ -280,7 +286,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
             'takenby' => $contextlist->get_user()->id,
         ];
 
-        [$contextsql, $contextparams] = $DB->get_in_or_equal($contextlist->get_contextids(), SQL_PARAMS_NAMED);
+        list($contextsql, $contextparams) = $DB->get_in_or_equal($contextlist->get_contextids(), SQL_PARAMS_NAMED);
 
         $sql = "SELECT
                     al.*,
@@ -304,7 +310,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
             get_string('attendancestaken', 'mod_attendance'),
             array_filter(
                 $attendances,
-                function (stdClass $attendance) use ($contextlist): bool {
+                function(stdClass $attendance) use ($contextlist): bool {
                     return $attendance->takenby == $contextlist->get_user()->id;
                 }
             )
@@ -314,7 +320,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
             get_string('attendanceslogged', 'mod_attendance'),
             array_filter(
                 $attendances,
-                function (stdClass $attendance) use ($contextlist): bool {
+                function(stdClass $attendance) use ($contextlist): bool {
                     return $attendance->studentid == $contextlist->get_user()->id;
                 }
             )
@@ -349,7 +355,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
         global $DB;
 
         // Delete records where user was marked as attending.
-        [$sessionsql, $sessionparams] = $DB->get_in_or_equal($sessionids, SQL_PARAMS_NAMED);
+        list($sessionsql, $sessionparams) = $DB->get_in_or_equal($sessionids, SQL_PARAMS_NAMED);
         $DB->delete_records_select(
             'attendance_log',
             "(studentid = :studentid) AND sessionid $sessionsql",
@@ -370,7 +376,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
         }
 
         // Don't delete the record from the log, but update to site admin taking attendance.
-        [$attendancetakensql, $attendancetakenparams] = $DB->get_in_or_equal($attendancetakenids, SQL_PARAMS_NAMED);
+        list($attendancetakensql, $attendancetakenparams) = $DB->get_in_or_equal($attendancetakenids, SQL_PARAMS_NAMED);
         $DB->set_field_select(
             'attendance_log',
             'takenby',
@@ -393,7 +399,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
         global $DB;
 
         // Get all sessions where user was last to mark attendance.
-        [$sessionsql, $sessionparams] = $DB->get_in_or_equal($sessionids, SQL_PARAMS_NAMED);
+        list($sessionsql, $sessionparams) = $DB->get_in_or_equal($sessionids, SQL_PARAMS_NAMED);
         $sessionstaken = $DB->get_records_sql(
             "SELECT * from {attendance_sessions}
             WHERE lasttakenby = :lasttakenbyid AND id $sessionsql",
@@ -405,7 +411,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
         }
 
         // Don't delete the session, but update last taken by to the site admin.
-        [$sessionstakensql, $sessionstakenparams] = $DB->get_in_or_equal(array_keys($sessionstaken), SQL_PARAMS_NAMED);
+        list($sessionstakensql, $sessionstakenparams) = $DB->get_in_or_equal(array_keys($sessionstaken), SQL_PARAMS_NAMED);
         $DB->set_field_select(
             'attendance_sessions',
             'lasttakenby',
@@ -423,7 +429,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
      */
     private static function delete_user_from_attendance_warnings_log(int $userid, int $attendanceid) {
         global $DB, $CFG;
-        require_once($CFG->dirroot . '/mod/attendance/lib.php');
+        require_once($CFG->dirroot.'/mod/attendance/lib.php');
 
         // Get all warnings because the user could have their ID listed in the thirdpartyemails column as a comma delimited string.
         $warnings = $DB->get_records(
@@ -438,7 +444,7 @@ final class provider implements \core_privacy\local\request\core_userlist_provid
         attendance_remove_user_from_thirdpartyemails($warnings, $userid);
 
         // Delete any record of the user being notified.
-        [$warningssql, $warningsparams] = $DB->get_in_or_equal(array_keys($warnings), SQL_PARAMS_NAMED);
+        list($warningssql, $warningsparams) = $DB->get_in_or_equal(array_keys($warnings), SQL_PARAMS_NAMED);
         $DB->delete_records_select(
             'attendance_warning_done',
             "userid = :userid AND notifyid $warningssql",

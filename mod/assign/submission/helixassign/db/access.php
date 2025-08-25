@@ -14,24 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Capability definitions for MEDIAL submission plugin
- * @package  assignsubmission_helixassign
- * @copyright MEDIAL
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = [
-    'assignsubmission/helixassign:can_use' => [
+// Capability definitions for this module.
+
+$capabilities = array(
+    'assignsubmission/helixassign:can_use' => array(
         'riskbitmask' => RISK_XSS,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
-];
+            'manager' => CAP_ALLOW
+        )
+    )
+);

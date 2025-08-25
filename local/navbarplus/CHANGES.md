@@ -4,19 +4,6 @@ moodle-local_navbarplus
 Changes
 -------
 
-### v4.5-r4
-
-* 2025-10-31 - Improvement: Change link to FontAwesome icons documentation in plugin settings from Fontawesome 4 to 6.
-
-### v4.5-r3
-
-* 2025-10-31 - Improvement: Change link to Bootstrap classes documentation in plugin settings from Bootstrap 4 to 5.
-
-### v4.5-r2
-
-* 2025-10-15 - Make codechecker happy again
-* 2025-10-15 - Tests: Switch Github actions workflows to reusable workflows by Moodle an Hochschulen e.V.
-
 ### v4.5-r1
 
 * 2024-10-14 - Upgrade: Adopt changes from MDL-82183 and use new \core\output\html_writer

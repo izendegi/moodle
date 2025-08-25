@@ -39,6 +39,7 @@ require_once($CFG->dirroot . '/course/lib.php');
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class attendance extends base {
+
     /** @var array  */
     private $acronyms = [];
 
@@ -307,7 +308,7 @@ class attendance extends base {
         $thismonday = strtotime('monday this week');
         $lastmonday = strtotime('monday last week');
         foreach ($this->statusacronyms() as $acronym) {
-            [$fieldname, $fieldnamecw, $fieldnamepw] = $this->acronymfieldnames($acronym);
+            list($fieldname, $fieldnamecw, $fieldnamepw) = $this->acronymfieldnames($acronym);
 
             // Status total count column.
             $columns[] = (new column(
@@ -556,7 +557,7 @@ class attendance extends base {
         $thismonday = strtotime('monday this week');
         $lastmonday = strtotime('monday last week');
         foreach ($this->statusacronyms() as $acronym) {
-            [$fieldname, $fieldnamecw, $fieldnamepw] = $this->acronymfieldnames($acronym);
+            list($fieldname, $fieldnamecw, $fieldnamepw) = $this->acronymfieldnames($acronym);
 
             // Status total count filter.
             $filters[] = (new filter(

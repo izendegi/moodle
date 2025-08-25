@@ -103,8 +103,8 @@ abstract class question {
     /** @var boolean $required The required flag. */
     public $required = 'n';
 
-    /** @var int $deleted The deleted flag. */
-    public $deleted = null;
+    /** @var boolean $deleted The deleted flag. */
+    public $deleted = 'n';
 
     /** @var mixed $extradata Any custom data for the question type. */
     public $extradata = '';
@@ -598,7 +598,7 @@ abstract class question {
             // If $responsedata is webform data, check that its not empty.
             $answered = isset($responsedata->{'q'.$this->id}) && ($responsedata->{'q'.$this->id} != '');
         }
-        return !($this->required() && (empty($this->deleted)) && !$answered);
+        return !($this->required() && ($this->deleted == 'n') && !$answered);
     }
 
     /**
@@ -663,8 +663,8 @@ abstract class question {
             // Set the position to the end.
             $sql = 'SELECT MAX(position) as maxpos '.
                    'FROM {questionnaire_question} '.
-                   'WHERE surveyid = ? AND deleted IS NULL';
-            $params = ['surveyid' => $questionrecord->surveyid];
+                   'WHERE surveyid = ? AND deleted = ?';
+            $params = ['surveyid' => $questionrecord->surveyid, 'deleted' => 'n'];
             if ($record = $DB->get_record_sql($sql, $params)) {
                 $questionrecord->position = $record->maxpos + 1;
             } else {

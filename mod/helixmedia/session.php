@@ -14,16 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Session ping file
- *
- * @package    mod_helixmedia
- * @subpackage helixmedia
- * @author     Tim Williams for Streaming LTD
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @copyright  MEDIAL
- */
-
 require_once('../../config.php');
 require_login();
 

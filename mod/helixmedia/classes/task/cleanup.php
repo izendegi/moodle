@@ -17,7 +17,7 @@
 /**
  * This file defines the version of helixmedia
  *
- * @package    mod_helixmedia
+ * @package    mod
  * @subpackage helixmedia
  * @copyright  2013 Tim Williams (For Streaming LTD)
  * @author     Tim Williams
@@ -27,9 +27,10 @@
 namespace mod_helixmedia\task;
 
 /**
- * Cleanup task for HelixMedia.
+ * Cleanup task for HelixMedia;
  */
 class cleanup extends \core\task\scheduled_task {
+
     /**
      * Return the task's name as shown in admin screens.
      *
@@ -44,11 +45,6 @@ class cleanup extends \core\task\scheduled_task {
      */
     public function execute() {
         global $CFG, $DB;
-
-        // Cleanup old LTI 1.3 access tokens.
-        $DB->delete_records_select('helixmedia_access_tokens', 'validuntil < ?', [time()]);
-
-        // Cleanup resource link ID generation.
         $prerecs = $DB->get_records('helixmedia_pre');
 
         // If there is only one entry in the table, leave it alone regardless. This is needed to stop InnoDB from
@@ -75,17 +71,17 @@ class cleanup extends \core\task\scheduled_task {
         }
 
         foreach ($prerecs as $prerec) {
-            $hm = $DB->get_record('helixmedia', ['preid' => $prerec->id]);
+            $hm = $DB->get_record('helixmedia', array('preid' => $prerec->id));
             if (!$hm && $assigninstalled) {
-                $hm = $DB->get_record('assignsubmission_helixassign', ['preid' => $prerec->id]);
+                $hm = $DB->get_record('assignsubmission_helixassign', array('preid' => $prerec->id));
             }
             if (!$hm && $feedinstalled) {
-                $hm = $DB->get_record('assignfeedback_helixfeedback', ['preid' => $prerec->id]);
+                $hm = $DB->get_record('assignfeedback_helixfeedback', array('preid' => $prerec->id));
             }
 
             // Clean out anything with an ID that is now in the main table or older than the session time out.
             if ($hm || $prerec->timecreated + $CFG->sessiontimeout < time()) {
-                $DB->delete_records('helixmedia_pre', ['id' => $prerec->id]);
+                $DB->delete_records('helixmedia_pre', array('id' => $prerec->id));
             }
         }
     }

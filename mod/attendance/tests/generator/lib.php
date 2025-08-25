@@ -36,6 +36,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mod_attendance_generator extends testing_module_generator {
+
     /**
      * Create new attendance module instance
      *
@@ -45,7 +46,7 @@ class mod_attendance_generator extends testing_module_generator {
      */
     public function create_instance($record = null, array $options = null) {
         global $CFG, $DB;
-        require_once($CFG->dirroot . '/mod/attendance/lib.php');
+        require_once($CFG->dirroot.'/mod/attendance/lib.php');
 
         $this->instancecount++;
         $i = $this->instancecount;
@@ -57,7 +58,7 @@ class mod_attendance_generator extends testing_module_generator {
             throw new coding_exception('module generator requires $record->course');
         }
         if (!isset($record->name)) {
-            $record->name = get_string('pluginname', 'attendance') . ' ' . $i;
+            $record->name = get_string('pluginname', 'attendance').' '.$i;
         }
         if (!isset($record->grade)) {
             $record->grade = 100;

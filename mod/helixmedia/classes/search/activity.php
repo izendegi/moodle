@@ -24,6 +24,8 @@
 
 namespace mod_helixmedia\search;
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * Search area for mod_page activities.
  *
@@ -32,6 +34,7 @@ namespace mod_helixmedia\search;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class activity extends \core_search\base_activity {
+
     /**
      * Returns the document associated with this activity.
      *
@@ -42,7 +45,7 @@ class activity extends \core_search\base_activity {
      * @param array    $options
      * @return \core_search\document
      */
-    public function get_document($record, $options = []) {
+    public function get_document($record, $options = array()) {
 
         try {
             $cm = $this->get_cm($this->get_module_name(), $record->id, $record->course);

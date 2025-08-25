@@ -23,6 +23,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
+
 /**
  * restore subplugin class that provides the necessary information needed to restore one assign_feedback subplugin.
  *
@@ -30,13 +33,14 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class restore_assignfeedback_helixfeedback_subplugin extends restore_subplugin {
+
     /**
      * Returns the paths to be handled by the subplugin at workshop level
      * @return array
      */
     protected function define_grade_subplugin_structure() {
 
-        $paths = [];
+        $paths = array();
 
         $elename = $this->get_namefor('grade');
         $elepath = $this->get_pathfor('/feedback_helixfeedback'); // We used get_recommended_name() so this works.

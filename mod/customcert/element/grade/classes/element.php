@@ -24,14 +24,10 @@
 
 namespace customcertelement_grade;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Grade - Course
  */
 define('CUSTOMCERT_GRADE_COURSE', '0');
-
-require_once($CFG->libdir . '/gradelib.php');
 
 /**
  * The customcert element grade's core interaction API.
@@ -41,6 +37,7 @@ require_once($CFG->libdir . '/gradelib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends \mod_customcert\element {
+
     /**
      * This function renders the form elements when adding a customcert element.
      *
@@ -59,12 +56,8 @@ class element extends \mod_customcert\element {
         $mform->addHelpButton('gradeitem', 'gradeitem', 'customcertelement_grade');
 
         // The grade format.
-        $mform->addElement(
-            'select',
-            'gradeformat',
-            get_string('gradeformat', 'customcertelement_grade'),
-            self::get_grade_format_options()
-        );
+        $mform->addElement('select', 'gradeformat', get_string('gradeformat', 'customcertelement_grade'),
+            self::get_grade_format_options());
         $mform->setType('gradeformat', PARAM_INT);
         $mform->addHelpButton('gradeformat', 'gradeformat', 'customcertelement_grade');
 
@@ -112,7 +105,7 @@ class element extends \mod_customcert\element {
         // If we are previewing this certificate then just show a demonstration grade.
         if ($preview) {
             $courseitem = \grade_item::fetch_course_item($courseid);
-            $grade = grade_format_gradevalue('100', $courseitem, true, $gradeinfo->gradeformat);
+            $grade = grade_format_gradevalue('100', $courseitem, true, $gradeinfo->gradeformat);;
         } else {
             if ($gradeitem == CUSTOMCERT_GRADE_COURSE) {
                 $grade = \mod_customcert\element_helper::get_course_grade_info(

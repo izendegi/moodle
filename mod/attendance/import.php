@@ -103,3 +103,5 @@ mod_attendance_notifyqueue::show();
 $form->display();
 
 echo $OUTPUT->footer();
+
+
