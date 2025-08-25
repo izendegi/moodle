@@ -14,34 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
- * Moove.
+ * A login page layout for the boost theme.
  *
  * @package    theme_moove
- * @copyright  2022 Willian Mano - https://conecti.me
+ * @copyright  2025 Willian Mano - willianmanoaraujo@gmail.com
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// This line protects the file from being accessed by a URL directly.
-defined('MOODLE_INTERNAL') || die();
+$themeutil = new \theme_moove\util\settings();
+$extraclasses[] = $themeutil->loginposition ?: 'center';
 
-// This is the component name of the plugin - it always starts with 'theme_'
-// for themes and should be the same as the name of the folder.
-$plugin->component = 'theme_moove';
+$extraclasses[] = 'moove-login';
+$bodyattributes = $OUTPUT->body_attributes($extraclasses);
 
-// This is the version of the plugin.
-$plugin->version = 2025053006;
-
-// This is the named version.
-$plugin->release = '5.30.6';
-
-// This is a stable release.
-$plugin->maturity = MATURITY_STABLE;
-
-// This is the version of Moodle this plugin requires.
-$plugin->requires = 2025040800;
-
-// This is a list of plugins, this plugin depends on (and their versions).
-$plugin->dependencies = [
-    'theme_boost' => 2025041400,
+$templatecontext = [
+    'sitename' => format_string($SITE->shortname, true, ['context' => \core\context\course::instance(SITEID), "escape" => false]),
+    'output' => $OUTPUT,
+    'bodyattributes' => $bodyattributes
 ];
+
+echo $OUTPUT->render_from_template('theme_boost/login', $templatecontext);
+

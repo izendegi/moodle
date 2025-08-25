@@ -85,12 +85,27 @@ class settings {
         $templatecontext = [];
 
         $settings = [
-            'facebook', 'twitter', 'linkedin', 'youtube', 'instagram', 'whatsapp', 'telegram',
-            'website', 'mobile', 'mail',
+            'facebook', 'twitter', 'linkedin', 'youtube', 'instagram', 'whatsapp', 'telegram', 'tiktok', 'pinterest',
+            'website', 'mobile', 'mail', 'disableorangefooter',
         ];
 
+        $templatecontext['hasfootercontact'] = false;
+        $templatecontext['hasfootersocial'] = false;
         foreach ($settings as $setting) {
             $templatecontext[$setting] = $this->$setting;
+
+            if (in_array($setting, ['website', 'mobile', 'mail'])) {
+                if (!empty($templatecontext[$setting])) {
+                    $templatecontext['hasfootercontact'] = true;
+                }
+            }
+
+            if (in_array($setting,
+                ['facebook', 'twitter', 'linkedin', 'youtube', 'instagram', 'whatsapp', 'telegram', 'tiktok', 'pinterest'])) {
+                if (!empty($templatecontext[$setting])) {
+                    $templatecontext['hasfootersocial'] = true;
+                }
+            }
         }
 
         $templatecontext['enablemobilewebservice'] = $CFG->enablemobilewebservice;
@@ -110,6 +125,12 @@ class settings {
             if (!empty($setuplink)) {
                 $templatecontext['mobilesetuplink'] = $setuplink;
             }
+        }
+
+        $license = new license();
+
+        if (!$license->is_active()) {
+            $templatecontext['disableorangefooter'] = false;
         }
 
         return $templatecontext;

@@ -192,6 +192,20 @@ function theme_moove_pluginfile($course, $cm, $context, $filearea, $args, $force
 }
 
 /**
+ * Update key callback.
+ *
+ * @param $keyname
+ *
+ * @return void
+ */
+function theme_moove_update_license_key($keyname) {
+    $license = new \theme_moove\util\license();
+
+    $license->validate_license($_REQUEST[$keyname]);
+}
+
+
+/**
  * Serves the H5P Custom CSS.
  *
  * @param string $filename The filename.

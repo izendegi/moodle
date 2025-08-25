@@ -54,4 +54,12 @@ $functions = [
         'type' => 'read',
         'ajax' => true,
     ],
+    'theme_moove_toggledarkmode' => [
+        'classname' => 'theme_moove\api\darkmode',
+        'classpath' => 'theme_moove/classes/api/darkmode.php',
+        'methodname' => 'toggledarkmode',
+        'description' => 'Toogle dark mode.',
+        'type' => 'write',
+        'ajax' => true
+    ],
 ];
