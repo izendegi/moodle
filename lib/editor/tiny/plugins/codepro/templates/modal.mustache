@@ -1,0 +1,62 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template tiny_codepro/plugin
+
+    Modal to manage components within the Tiny Editor.
+
+    Classes required for JS:
+    * none
+
+    Data attributes required for JS:
+    * none
+
+    Context variables required for this template:
+    elementid - The ID of the element to be edited.
+    canuserswitchui - Whether the user is allowed to switch between dialog and panel UI modes or not.
+    icons - A dictionary of svg icons.
+
+    Example context (json):
+    {
+        "elementid": "id_of_element",
+        "canuserswitchui": true,
+        "icons": {
+            "key": "svg icon"
+        }
+    }
+}}
+{{< core/modal }}
+    {{$title}}
+        {{#str}} pluginname, tiny_codepro {{/str}}
+    {{/title}}
+    {{$body}}
+    
+    {{/body}}
+    {{$footer}}
+        <div class="tiny_codepro-left">
+            {{#canuserswitchui}}<button class="btn btn-sm btn-secondary" data-action="view" title="{{#str}} openpanel, tiny_codepro {{/str}}"><span>{{{icons.eye}}}</span></button>{{/canuserswitchui}}
+            <button class="btn btn-sm btn-secondary" data-action="fs" title="{{#str}} fullscreen, tiny_codepro {{/str}}"><span>{{{icons.fullscreen}}}</span></button>
+            <button class="btn btn-sm btn-secondary" data-action="font-" title="{{#str}} decreasefontsize, tiny_codepro {{/str}}"><span>{{{icons.decreasefontsize}}}</span></button>
+            <button class="btn btn-sm btn-secondary" data-action="font+" title="{{#str}} increasefontsize, tiny_codepro {{/str}}"><span>{{{icons.increasefontsize}}}</span></button>
+            <button class="btn btn-sm btn-secondary" data-action="theme" title="{{#str}} themes, tiny_codepro {{/str}}"><span>{{{icons.sun}}}</span></button>
+            <button class="btn btn-sm btn-secondary" data-action="wrap" title="{{#str}} linewrap, tiny_codepro {{/str}}"><span>{{{icons.exchange}}}</span></button>
+            <button class="btn btn-sm btn-secondary" data-action="prettify" title="{{#str}} prettify, tiny_codepro {{/str}}"><span>{{{icons.magic}}}</span></button>
+        </div>
+        <button class="btn btn-secondary" data-action="cancel">{{#str}} cancel, tiny_codepro {{/str}}</button>
+        <button class="btn btn-primary" data-action="save">{{#str}} save, tiny_codepro {{/str}}</button>
+    {{/footer}}
+{{/ core/modal }}
