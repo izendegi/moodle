@@ -44,6 +44,7 @@ use templatable;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class questionnaire implements renderable, templatable {
+
     /** @var submission The feedback submission data. */
     protected $submission;
 
@@ -108,21 +109,24 @@ class questionnaire implements renderable, templatable {
             case submission_status::IN_PROGRESS: // In Progress.
                 $data->statusclass = 'label-info';
                 $data->status = get_string('statusinprogress', 'verbalfeedback');
-                break;
+            break;
             case submission_status::COMPLETE: // Completed.
                 $data->statusclass = 'label-success';
                 $data->status = get_string('statuscompleted', 'verbalfeedback');
-                break;
+            break;
             case submission_status::DECLINED: // Declined.
                 $data->statusclass = 'label-warning';
                 $data->status = get_string('statusdeclined', 'verbalfeedback');
-                break;
+            break;
             default: // Pending.
                 $data->statusclass = 'label';
                 $data->status = get_string('statuspending', 'verbalfeedback');
-                break;
+            break;
         }
         $data->scales = api::get_scales();
+
+        $instancerepository = new instance_repository();
+        $instance = $instancerepository->get_by_id($submission->get_instance_id());
 
         $data->categories = $this->categories;
 
@@ -130,7 +134,7 @@ class questionnaire implements renderable, templatable {
         // First, let's filter our set of criteria inside the categories.
 
         foreach ($data->categories as $category) {
-                $filteredcriteria = array_filter($category->criteria, function ($criterion) {
+                $filteredcriteria = array_filter($category->criteria, function($criterion) {
                     // Adding our criteria for a valid category.
                     return
                         property_exists($criterion, 'weight') // The property weight exists.
@@ -145,7 +149,7 @@ class questionnaire implements renderable, templatable {
         // Iterate and drop categories with weight 0.
         // Then, let's filter our set of categories.
 
-        $filteredcategories = array_filter($data->categories, function ($category) {
+        $filteredcategories = array_filter($data->categories, function($category) {
             // Adding our criteria for a valid category.
             return
                 property_exists($category, 'weight') // The property weight exists.
@@ -162,11 +166,15 @@ class questionnaire implements renderable, templatable {
             $data->tousername = 'Max Muster';
         } else {
             $data->touserid = $this->touserid;
-            $userfieldsapi = \core_user\fields::for_name();
-            $touser = core_user::get_user(
-                $submission->get_to_user_id(),
-                $userfieldsapi->get_sql('', false, '', '', false)->selects
-            );
+            if (class_exists('core_user\fields')) {
+                // Post Moodle 3.11 way.
+                $userfieldsapi = \core_user\fields::for_name();
+                $touser = core_user::get_user($submission->get_to_user_id(),
+                    $userfieldsapi->get_sql('', false, '', '', false)->selects);
+            } else {
+                // Pre Moodle 3.11 way.
+                $touser = core_user::get_user($submission->get_to_user_id(), get_all_user_name_fields(true));
+            }
             $viewfullnames = has_capability('moodle/site:viewfullnames', \context::instance_by_id($this->contextid));
             $data->tousername = fullname($touser, $viewfullnames);
             $data->fromuserid = $this->fromuserid;

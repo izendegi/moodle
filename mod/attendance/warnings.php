@@ -22,11 +22,11 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(__DIR__ . '/../../config.php');
-require_once($CFG->libdir . '/adminlib.php');
-require_once($CFG->libdir . '/formslib.php');
-require_once($CFG->dirroot . '/mod/attendance/lib.php');
-require_once($CFG->dirroot . '/mod/attendance/locallib.php');
+require_once(__DIR__.'/../../config.php');
+require_once($CFG->libdir.'/adminlib.php');
+require_once($CFG->libdir.'/formslib.php');
+require_once($CFG->dirroot.'/mod/attendance/lib.php');
+require_once($CFG->dirroot.'/mod/attendance/locallib.php');
 
 $action = optional_param('action', '', PARAM_ALPHA);
 $notid = optional_param('notid', 0, PARAM_INT);
@@ -44,6 +44,7 @@ if (empty($id)) {
     echo $OUTPUT->heading(get_string('defaultwarnings', 'mod_attendance'));
     $tabmenu = attendance_print_settings_tabs('defaultwarnings');
     echo $tabmenu;
+
 } else {
     // This is an attendance level config.
     $cm             = get_coursemodule_from_id('attendance', $id, 0, false, MUST_EXIST);
@@ -57,7 +58,7 @@ if (empty($id)) {
     $att = new mod_attendance_structure($att, $cm, $course, $PAGE->context);
 
     $PAGE->set_url($url);
-    $PAGE->set_title($course->shortname . ": " . $att->name);
+    $PAGE->set_title($course->shortname. ": ".$att->name);
     $PAGE->set_heading($course->fullname);
     $PAGE->navbar->add($att->name);
 
@@ -97,6 +98,7 @@ if ($data = $mform->get_data()) {
         } else {
             echo $OUTPUT->notification(get_string('warningfailed', 'mod_attendance'), 'warning');
         }
+
     } else {
         $notify = $DB->get_record('attendance_warning', ['id' => $data->notid]);
         if (!empty($id) && $data->idnumber != $att->id) {
@@ -167,11 +169,9 @@ if ($action == 'update' && !empty($notid)) {
         $idnumber = $att->id;
     }
     echo $OUTPUT->box($warningdesc, 'generalbox attendancedesc', 'notice');
-    $existingnotifications = $DB->get_records(
-        'attendance_warning',
+    $existingnotifications = $DB->get_records('attendance_warning',
         ['idnumber' => $idnumber],
-        'warningpercent'
-    );
+        'warningpercent');
 
     if (!empty($existingnotifications)) {
         $table = new html_table();
@@ -181,15 +181,11 @@ if ($action == 'update' && !empty($notid)) {
             '', ];
         foreach ($existingnotifications as $notification) {
             $url->params(['action' => 'delete', 'notid' => $notification->id, 'id' => $id]);
-            $actionbuttons = $OUTPUT->action_icon($url, new pix_icon(
-                't/delete',
-                get_string('delete', 'attendance')
-            ), null, null);
+            $actionbuttons = $OUTPUT->action_icon($url, new pix_icon('t/delete',
+                get_string('delete', 'attendance')), null, null);
             $url->params(['action' => 'update', 'notid' => $notification->id, 'id' => $id]);
-            $actionbuttons .= $OUTPUT->action_icon($url, new pix_icon(
-                't/edit',
-                get_string('update', 'attendance')
-            ), null, null);
+            $actionbuttons .= $OUTPUT->action_icon($url, new pix_icon('t/edit',
+                get_string('update', 'attendance')), null, null);
             $table->data[] = [$notification->warningpercent, $notification->warnafter,
                                    $notification->emailsubject, $actionbuttons, ];
         }
@@ -197,6 +193,7 @@ if ($action == 'update' && !empty($notid)) {
     }
     $addurl = new moodle_url('/mod/attendance/warnings.php', ['action' => 'add', 'id' => $id]);
     echo $OUTPUT->single_button($addurl, get_string('addwarning', 'mod_attendance'));
+
 }
 
 echo $OUTPUT->footer();

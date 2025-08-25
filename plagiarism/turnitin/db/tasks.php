@@ -15,32 +15,33 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Task definitions for plagiarism_turnitin
- *
  * @package   plagiarism_turnitin
  * @copyright 2012 iParadigms LLC
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/**
+ * @package plagiarism_turnitin
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$tasks = [
-    [
+$tasks = array(
+    array(
         'classname' => 'plagiarism_turnitin\task\update_reports',
         'blocking' => 0,
         'minute' => '*/5',
         'hour' => '*',
         'day' => '*',
         'dayofweek' => '*',
-        'month' => '*',
-    ],
-    [
+        'month' => '*'
+    ),
+    array(
         'classname' => 'plagiarism_turnitin\task\send_submissions',
         'blocking' => 0,
         'minute' => '*/5',
         'hour' => '*',
         'day' => '*',
         'dayofweek' => '*',
-        'month' => '*',
-    ],
-];
+        'month' => '*'
+    ),
+);

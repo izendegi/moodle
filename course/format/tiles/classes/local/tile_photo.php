@@ -30,6 +30,7 @@ namespace format_tiles\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class tile_photo {
+
     /**
      * Which type of tile option we have, e.g. format_option::OPTION_SECTION_PHOTO.
      * @var int
@@ -416,7 +417,7 @@ class tile_photo {
         }
 
         $contextids = [\context_course::instance($courseid)->id];
-        [$contextsql, $params] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
+        list($contextsql, $params) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
 
         $params['userid'] = $USER->id;
         $params['cutofftime'] = strtotime("-36 months");
@@ -464,10 +465,8 @@ class tile_photo {
         $countadded = 0;
         foreach ($records as $record) {
             $setkey = $record->filename . '|' . $record->mimetype;
-            if (
-                !in_array($record->contenthash, $contenthashes) &&
-                (!isset($set[$setkey]) || abs($set[$setkey]->filesize - $record->filesize) > $filesizetolerance)
-            ) {
+            if (!in_array($record->contenthash, $contenthashes) &&
+            (!isset($set[$setkey]) || abs($set[$setkey]->filesize - $record->filesize) > $filesizetolerance)) {
                 // Seems like we don't already have this file in the set - don't have to be precise here given purpose.
                 unset($record->mimetype);  // Don't need to keep this.
                 $set[$setkey] = $record;
@@ -529,3 +528,4 @@ class tile_photo {
         return $newfilename ?? '';
     }
 }
+

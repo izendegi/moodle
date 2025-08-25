@@ -26,30 +26,34 @@ namespace mod_verbalfeedback\privacy;
 
 use context_module;
 use core_privacy\local\metadata\collection;
-use core_privacy\local\metadata\provider as metadata_provider;
 use core_privacy\local\request\approved_contextlist;
 use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
-use core_privacy\local\request\core_userlist_provider as userlist_provider;
-use core_privacy\local\request\plugin\provider as plugin_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
+use mod_verbalfeedback\api;
 use mod_verbalfeedback\helper;
+use mod_verbalfeedback\model\instance_category;
+use mod_verbalfeedback\model\instance_criterion;
 use mod_verbalfeedback\repository\language_repository;
 use mod_verbalfeedback\repository\model\localized_string_type;
 
 /**
  * Implementation of the privacy subsystem plugin provider for the 36o-degree feedback activity module.
  *
- * @package   mod_verbalfeedback
  * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements
-    metadata_provider, // This plugin stores personal data.
-    plugin_provider, // This plugin is a core_user_data_provider.
-    userlist_provider { // This plugin is capable of determining which users have data within it.
+        // This plugin stores personal data.
+        \core_privacy\local\metadata\provider,
+
+        // This plugin is a core_user_data_provider.
+        \core_privacy\local\request\plugin\provider,
+
+        // This plugin is capable of determining which users have data within it.
+        \core_privacy\local\request\core_userlist_provider {
     /**
      * Return the fields which contain personal data.
      *
@@ -79,6 +83,7 @@ class provider implements
             ],
             'privacy:metadata:verbalfeedback_response'
         );
+
         return $items;
     }
 
@@ -103,10 +108,10 @@ class provider implements
                  WHERE ts.fromuserid = :fromuserid OR ts.touserid = :touserid";
 
         $params = [
-            'modname'      => 'verbalfeedback',
-            'contextlevel' => CONTEXT_MODULE,
-            'fromuserid'   => $userid,
-            'touserid'     => $userid,
+            'modname'       => 'verbalfeedback',
+            'contextlevel'  => CONTEXT_MODULE,
+            'fromuserid'      => $userid,
+            'touserid'        => $userid,
         ];
         $contextlist = new contextlist();
         $contextlist->add_from_sql($sql, $params);
@@ -150,7 +155,7 @@ class provider implements
     protected static function export_submission_data($contextids, $user, $respondent = true) {
         global $DB;
 
-        [$contextsql, $contextparams] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
+        list($contextsql, $contextparams) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
         $sql = "
                 SELECT ts.id,
                        cm.id as cmid,
@@ -231,7 +236,7 @@ class provider implements
         $categorystr = [];
         $criterionstr = [];
 
-        [$contextsql, $contextparams] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
+        list($contextsql, $contextparams) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
         $sql = "
                 SELECT tr.id,
                        cm.id as cmid,
@@ -337,7 +342,7 @@ class provider implements
     private static function get_strings(int $id, string $type) {
         global $DB;
 
-        $lang = (new language_repository())->get_by_iso(current_language());
+        $lang = (new language_repository)->get_by_iso(current_language());
         if (!$lang) {
             return [$id => ''];
         }
@@ -349,7 +354,9 @@ class provider implements
                     ON r.criterionid = __c_id__
                  WHERE r.instanceid = :id';
         if ($type === localized_string_type::INSTANCE_CATEGORY_HEADER) {
-            $sql = str_replace('c.id', 'c.categoryid', $sql);
+            $sql = str_replace(
+                'c.id', 'c.categoryid', $sql
+            );
         }
         $sql = str_replace('__c_id__', 'c.id', $sql);
         $params = [
@@ -392,6 +399,7 @@ class provider implements
 
         $userid = $contextlist->get_user()->id;
         foreach ($contextlist->get_contexts() as $context) {
+
             if (!$context instanceof context_module) {
                 continue;
             }
@@ -493,7 +501,7 @@ class provider implements
         }
 
         $userids = $userlist->get_userids();
-        [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+        list($usersql, $userparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
 
         $fromselect = "verbalfeedback = :verbalfeedback AND fromuserid $usersql";
         $toselect = "verbalfeedback = :verbalfeedback AND touserid $usersql";

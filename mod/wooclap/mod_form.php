@@ -26,6 +26,7 @@ require_once($CFG->dirroot . '/course/moodleform_mod.php');
 require_once($CFG->dirroot . '/mod/wooclap/lib.php');
 
 class mod_wooclap_mod_form extends moodleform_mod {
+
     public function definition() {
         global $CFG, $DB, $COURSE, $USER;
 
@@ -40,11 +41,8 @@ class mod_wooclap_mod_form extends moodleform_mod {
         }
         $mform->addRule('name', null, 'required', null, 'client');
         $mform->addRule(
-            'name',
-            get_string('maximumchars', '', 255),
-            'maxlength',
-            255,
-            'client'
+            'name', get_string('maximumchars', '', 255),
+            'maxlength', 255, 'client'
         );
 
         // Add Description input.
@@ -110,7 +108,7 @@ class mod_wooclap_mod_form extends moodleform_mod {
             'version' => get_config('mod_wooclap')->version,
         ];
 
-        $curldata = new StdClass();
+        $curldata = new StdClass;
         $curldata->moodleUsername = $USER->username;
         $curldata->accessKeyId = $accesskeyid;
         $curldata->email = $USER->email;

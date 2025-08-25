@@ -36,6 +36,7 @@ use mod_verbalfeedback\repository\tables;
  * Verbal feedback language repository test class
  */
 final class language_repository_test extends \advanced_testcase {
+
     /** @var language_repository A language repository */
     protected $repo;
 

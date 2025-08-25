@@ -33,6 +33,7 @@ namespace customcertelement_coursefield;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends \mod_customcert\element {
+
     /**
      * This function renders the form elements when adding a customcert element.
      *
@@ -143,6 +144,7 @@ class element extends \mod_customcert\element {
             } else if (!empty($data[$field])) {
                 $value = $data[$field]->export_value();
             }
+
         } else if (!empty($course->$field)) { // Field in the course table.
             $value = $course->$field;
         }

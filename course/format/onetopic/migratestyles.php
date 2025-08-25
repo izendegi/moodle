@@ -175,6 +175,8 @@ if (empty($customstyles)) {
 
     $k = 0;
     foreach ($sections as $sectionid => $section) {
+
+
         $sectionlink = new moodle_url('/course/view.php', ['id' => $section->courseid, 'sectionid' => $sectionid]);
         $sectionlink = html_writer::link($sectionlink, format_string($section->sectioname), ['target' => '_blank']);
 
@@ -204,6 +206,7 @@ if (empty($customstyles)) {
             implode(', ', $cssstyles),
             $newdefined ? get_string('no') : get_string('yes'),
         ];
+
     }
 
     echo html_writer::table($table);

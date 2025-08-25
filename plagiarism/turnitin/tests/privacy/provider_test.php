@@ -23,8 +23,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace plagiarism_turnitin\privacy;
-
 use core_privacy\local\metadata\collection;
 use core_privacy\local\request\deletion_criteria;
 use plagiarism_turnitin\privacy\provider;
@@ -41,26 +39,16 @@ if (!class_exists('\core_privacy\tests\provider_testcase')) {
     return;
 }
 
-use PHPUnit\Framework\Attributes\CoversFunction;
-
-/**
- * Unit tests for plagiarsm/turnitin/privacy
- */
-#[CoversFunction('\core_plagiarism\privacy\legacy_polyfill::_get_metadata')]
-#[CoversFunction('\core_plagiarism\privacy\legacy_polyfill::get_contexts_for_userid')]
-#[CoversFunction('\core_plagiarism\privacy\legacy_polyfill::export_plagiarism_user_data')]
-#[CoversFunction('\core_plagiarism\privacy\legacy_polyfill::delete_plagiarism_for_user')]
-#[CoversFunction('\core_plagiarism\privacy\legacy_polyfill::delete_plagiarism_for_context')]
-final class provider_test extends \core_privacy\tests\provider_testcase {
+class plagiarism_turnitin_privacy_provider_testcase extends \core_privacy\tests\provider_testcase {
 
     /**
      * Test for _get_metadata shim.
      */
-    public function test_get_metadata(): void {
+    public function test_get_metadata() {
         $this->resetAfterTest();
 
         $collection = new collection('plagiarism_turnitin');
-        $newcollection = \plagiarism_turnitin\privacy\provider::_get_metadata($collection);
+        $newcollection = provider::get_metadata($collection);
         $itemcollection = $newcollection->get_collection();
 
         $this->assertCount(4, $itemcollection);
@@ -110,7 +98,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     /**
      * Test that user's contexts are exported.
      */
-    public function test_get_contexts_for_userid(): void {
+    public function test_get_contexts_for_userid() {
         $this->resetAfterTest();
         global $DB;
 
@@ -125,12 +113,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $this->assertCount(1, $contextlist);
     }
 
-    /**
-     * Test that all user data is exported.
-     * @return void
-     * @throws \dml_exception
-     */
-    public function test_export_plagiarism_user_data(): void {
+    public function test_export_plagiarism_user_data() {
         $this->resetAfterTest();
         global $DB;
 
@@ -140,17 +123,12 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $this->assertEquals(1, count($submissions));
 
         // Export all of the data for the user.
-        provider::export_plagiarism_user_data($csresponse["Student"]->id, $csresponse["Context"], [], []);
+        provider::export_plagiarism_user_data($csresponse["Student"]->id, $csresponse["Context"], array(), array());
         $writer = \core_privacy\local\request\writer::with_context($csresponse["Context"]);
         $this->assertTrue($writer->has_any_data());
     }
 
-    /**
-     * Test that all user data is deleted.
-     * @return void
-     * @throws \dml_exception
-     */
-    public function test_delete_plagiarism_for_user(): void {
+    public function test_delete_plagiarism_for_user() {
         $this->resetAfterTest();
         global $DB;
 
@@ -171,12 +149,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $this->assertEquals(0, count($submissions));
     }
 
-    /**
-     * Test that all context data is deleted.
-     * @return void
-     * @throws \dml_exception
-     */
-    public function test_delete_plagiarism_for_context(): void {
+    public function test_delete_plagiarism_for_context() {
         $this->resetAfterTest();
         global $DB;
 
@@ -192,30 +165,22 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $this->assertEquals(0, count($submissions));
     }
 
-    /**
-     * Create a submission for testing.
-     *
-     * @param int $numsubmissions
-     * @return array
-     * @throws \coding_exception
-     * @throws \dml_exception
-     */
     public function create_submission($numsubmissions = 1) {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/mod/assign/tests/base_test.php');
 
-        $libtest = new \plagiarism_turnitin\lib_test("create_submission");
-        $result = $libtest->create_assign_with_student_and_teacher([
+        $libtest = new plagiarism_turnitin_lib_testcase();
+        $result = $libtest->create_assign_with_student_and_teacher(array(
             'assignsubmission_onlinetext_enabled' => 1,
-            'teamsubmission' => 0,
-        ]);
+            'teamsubmission' => 0
+        ));
 
         $assignmodule = $result['assign'];
         $student = $result['student'];
         $cm = get_coursemodule_from_instance('assign', $assignmodule->id);
-        $context = \context_module::instance($cm->id);
+        $context = context_module::instance($cm->id);
 
-        $plagiarismfile = new \stdClass();
+        $plagiarismfile = new stdClass();
         $plagiarismfile->cm = $cm->id;
         $plagiarismfile->userid = $student->id;
         $plagiarismfile->identifier = "abcd";
@@ -235,6 +200,6 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
 
         $this->setUser($student);
 
-        return ["Student" => $student, "Context" => $context];
+        return array("Student" => $student, "Context" => $context);
     }
 }

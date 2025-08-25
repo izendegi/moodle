@@ -33,7 +33,8 @@ namespace tool_mergeusers\local\merger\finder;
  * @copyright 2018 onwards Universitat Rovira i Virgili (https://www.urv.cat)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class in_memory_assign_submission_finder implements assign_submission_finder {
+class in_memory_assign_submission_finder implements assign_submission_finder
+{
     /** @var array list of assign submissions for a given user. */
     private array $memory;
 

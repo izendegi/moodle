@@ -228,20 +228,13 @@ class completion_progress implements \renderable {
                 $rec->percentage = null;
             } else {
                 $this->for_user((object)['id' => $userid]);
-                if (empty($this->visibleactivities)) {
-                    $rec->percentage = null;
-                } else {
-                    $completecount = 0;
-                    foreach ($completions as $cmid => $complete) {
-                        if (!isset($this->visibleactivities[$cmid])) {
-                            continue;
-                        }
-                        if ($complete == COMPLETION_COMPLETE || $complete == COMPLETION_COMPLETE_PASS) {
-                            $completecount++;
-                        }
+                $completecount = 0;
+                foreach ($completions as $complete) {
+                    if ($complete == COMPLETION_COMPLETE || $complete == COMPLETION_COMPLETE_PASS) {
+                        $completecount++;
                     }
-                    $rec->percentage = (int)round(100 * $completecount / count($this->visibleactivities));
                 }
+                $rec->percentage = (int)round(100 * $completecount / count($this->visibleactivities));
             }
             $rec->timemodified = time();
 

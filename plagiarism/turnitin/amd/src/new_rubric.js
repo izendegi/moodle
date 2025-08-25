@@ -67,9 +67,7 @@ define(['jquery',
                     // Attach the hidden event listener to the modal
                     modal.getRoot().on(ModalEvents.hidden, function() {
                         setTimeout(function() {
-                            if ($('#id_plagiarism_rubric').length > 0) {
-                                ModalRubricManagerLaunch.refreshRubricSelect();
-                            }
+                             ModalRubricManagerLaunch.refreshRubricSelect();
                         }, 1500);
                     });
 

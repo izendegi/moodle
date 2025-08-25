@@ -30,6 +30,7 @@ namespace format_tiles\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class course_section_manager {
+
     /**
      * Get the URL the user needs to list problem courses in this environment.
      * @return \moodle_url

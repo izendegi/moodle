@@ -58,10 +58,6 @@ class mod_learningmap_mod_form extends moodleform_mod {
                 if ($CFG->branch >= 500 && !plugin_supports('mod', $module->modname, FEATURE_CAN_DISPLAY, true)) {
                     continue;
                 }
-                if (isset($this->_cm->id) && $this->_cm->id == $cmid) {
-                    // Do not include the learningmap itself.
-                    continue;
-                }
                 // Get only course modules which are not deleted.
                 if ($module->deletioninprogress == 0) {
                     $s['coursemodules'][] = [
@@ -93,13 +89,12 @@ class mod_learningmap_mod_form extends moodleform_mod {
         );
 
         $features = [];
-        foreach (array_merge(LEARNINGMAP_FEATURES, LEARNINGMAP_EXTRA_FEATURES) as $feature) {
+        foreach (LEARNINGMAP_FEATURES as $feature) {
             $features[] = [
                 'name' => $feature,
                 'title' => get_string($feature, 'learningmap'),
                 'text' => get_string($feature . '_help', 'learningmap'),
                 'alt' => get_string('help'),
-                'boolsetting' => in_array($feature, LEARNINGMAP_FEATURES),
             ];
         }
         $mform->addElement(
@@ -136,15 +131,6 @@ class mod_learningmap_mod_form extends moodleform_mod {
         } else {
             $mform->addElement('hidden', 'backlink', 0);
         }
-
-        if ($learningmapformat) {
-            $mform->addElement('hidden', 'usemodal', 1);
-        } else {
-            $mform->addElement('advcheckbox', 'usemodal', get_string('usemodal', 'learningmap'));
-            $mform->addHelpButton('usemodal', 'usemodal', 'learningmap');
-            $mform->setDefault('usemodal', 1);
-        }
-        $mform->setType('usemodal', PARAM_INT);
 
         $mform->addElement(
             'filemanager',

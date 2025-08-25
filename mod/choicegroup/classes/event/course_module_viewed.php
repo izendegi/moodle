@@ -29,6 +29,7 @@ namespace mod_choicegroup\event;
  * The mod_choicegroup activity viewed event.
  */
 class course_module_viewed extends \core\event\course_module_viewed {
+
     /**
      * Init method.
      *
@@ -49,3 +50,4 @@ class course_module_viewed extends \core\event\course_module_viewed {
         return new \moodle_url('/mod/choicegroup/view.php', ['id' => $this->contextinstanceid]);
     }
 }
+

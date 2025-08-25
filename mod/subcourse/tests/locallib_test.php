@@ -36,13 +36,14 @@ require_once($CFG->dirroot . '/mod/subcourse/locallib.php');
  * @copyright 2020 David Mudrák <david@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class locallib_test extends \advanced_testcase {
+class locallib_test extends \advanced_testcase {
+
     /**
      * Test that it is possible to fetch grades from the referenced course.
      *
      * @covers ::subcourse_grades_update
      */
-    public function test_subcourse_grades_update(): void {
+    public function test_subcourse_grades_update() {
 
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -106,7 +107,7 @@ final class locallib_test extends \advanced_testcase {
      *
      * @covers ::subcourse_set_module_viewed
      */
-    public function test_subcourse_set_module_viewed(): void {
+    public function test_subcourse_set_module_viewed() {
 
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -120,7 +121,7 @@ final class locallib_test extends \advanced_testcase {
         ]);
         $generator->enrol_user($student->id, $metacourse->id, 'student');
 
-        [$course, $cm] = get_course_and_cm_from_instance($subcourse->id, 'subcourse');
+        list($course, $cm) = get_course_and_cm_from_instance($subcourse->id, 'subcourse');
         $context = \context_module::instance($cm->id);
 
         subcourse_set_module_viewed($subcourse, $context, $course, $cm);

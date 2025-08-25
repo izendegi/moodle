@@ -34,6 +34,7 @@ use mod_customcert\element_helper;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends \mod_customcert\element {
+
     /**
      * Date - Relative expiry date of 1 year
      */
@@ -193,9 +194,7 @@ class element extends \mod_customcert\element {
             }
         } else {
             return element_helper::render_html_content($this, element_helper::get_date_format_string(
-                strtotime($this->relative[$dateitem], time()),
-                $dateformat
-            ));
+                strtotime($this->relative[$dateitem], time()), $dateformat));
         }
     }
 
@@ -301,12 +300,8 @@ class element extends \mod_customcert\element {
             // Get the customcert this page belongs to.
             $customcert = $DB->get_record('customcert', ['templateid' => $page->templateid], '*', MUST_EXIST);
             // Now we can get the issue for this user.
-            $issue = $DB->get_record(
-                'customcert_issues',
-                ['userid' => $userid, 'customcertid' => $customcert->id],
-                '*',
-                IGNORE_MULTIPLE
-            );
+            $issue = $DB->get_record('customcert_issues', ['userid' => $userid, 'customcertid' => $customcert->id],
+                '*', IGNORE_MULTIPLE);
             $starttime = $issue->timecreated;
         }
 

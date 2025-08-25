@@ -38,6 +38,7 @@ namespace mod_attendance\event;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class session_ip_shared extends \core\event\base {
+
     /**
      * Init method.
      */
@@ -54,7 +55,7 @@ class session_ip_shared extends \core\event\base {
      */
     public function get_description() {
         return 'User with id ' . $this->userid . ' was blocked from taking attendance for sessionid: ' . $this->other['sessionid'] .
-               ' because user with id ' . $this->other['otheruser'] . ' previously marked attendance with the same IP address.';
+               ' because user with id '.$this->other['otheruser'] . ' previously marked attendance with the same IP address.';
     }
 
     /**

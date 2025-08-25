@@ -27,8 +27,6 @@ require_once($CFG->dirroot . '/course/format/lib.php'); // For format_remuiforma
 define ('REMUI_CARD_FORMAT', 0);
 define ('REMUI_LIST_FORMAT', 1);
 
-use core\url;
-
 /**
  * Cards Format - A topics based format that uses card layout to display the activities/section/topics.
  */
@@ -246,7 +244,6 @@ class format_remuiformat extends core_courseformat\base {
      * @return array of options
      */
     public function course_format_options($foreditform = false) {
-        global $CFG;
         static $courseformatoptions = false;
 
         if ($courseformatoptions === false) {
@@ -307,7 +304,7 @@ class format_remuiformat extends core_courseformat\base {
                 'hiddensections' => array(
                     'label' => new lang_string('hiddensections'),
                     'help' => 'hiddensections',
-                    'help_component' => ($CFG->branch >= '501' ? 'format_remuiformat' : 'moodle'),
+                    'help_component' => 'moodle',
                     'element_type' => 'select',
                     'element_attributes' => array(
                         array(
@@ -951,24 +948,12 @@ function formate_get_course_image($corecourselistelement, $islist = false) {
     // Course image.
     foreach ($corecourselistelement->get_course_overviewfiles() as $file) {
         $isimage = $file->is_valid_image();
-        if($CFG->branch>='501') {
-            $courseimage = url::make_pluginfile_url(
-                $file->get_contextid(),
-                $file->get_component(),
-                $file->get_filearea(),
-                null,
-                $file->get_filepath(),
-                $file->get_filename(),
-                !$isimage
-            )->out();
-        } else {
-            $courseimage = file_encode_url(
-                "$CFG->wwwroot/pluginfile.php",
-                '/'. $file->get_contextid(). '/'. $file->get_component(). '/'.
-                $file->get_filearea(). $file->get_filepath(). $file->get_filename(),
-                !$isimage
-            );
-        }
+        $courseimage = file_encode_url(
+            "$CFG->wwwroot/pluginfile.php",
+            '/'. $file->get_contextid(). '/'. $file->get_component(). '/'.
+            $file->get_filearea(). $file->get_filepath(). $file->get_filename(),
+            !$isimage
+        );
         if ($isimage) {
             break;
         }

@@ -15,7 +15,7 @@ Feature: Tiny code pro editor
         | activity | name      | intro     | introformat | course | contentformat | idnumber |
         | page     | PageName1 | PageDesc1 | 1           | C1     | 1             | 1        |
   @javascript @external
-  Scenario: Dialog view in TinyMCE source code
+  Scenario: View HTML in TinyMCE source code view
     Given I log in as "admin"
     When I open my profile in edit mode
     And I set the field "Description" to "Hello tiny!"

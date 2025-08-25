@@ -29,6 +29,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_benchmark_renderer extends plugin_renderer_base {
+
     /**
      * Disclaimer
      *
@@ -48,17 +49,15 @@ class report_benchmark_renderer extends plugin_renderer_base {
 
         // Button to start the test.
         $out .= html_writer::start_div('continuebutton');
-        $out .= html_writer::link(
-            new moodle_url('/report/benchmark/index.php', ['step' => 'run']),
-            get_string('start', 'report_benchmark'),
-            ['class' => 'btn btn-primary']
-        );
+        $out .= html_writer::link(new moodle_url('/report/benchmark/index.php', ['step' => 'run']),
+                get_string('start', 'report_benchmark'), ['class' => 'btn btn-primary']);
         $out .= html_writer::end_div();
 
         // Footer.
         $out .= $this->output->footer();
 
         return $out;
+
     }
 
     /**
@@ -108,8 +107,9 @@ class report_benchmark_renderer extends plugin_renderer_base {
         $table->id = 'benchmarkresult';
 
         foreach ($results as $result) {
+
             $row = new html_table_row();
-            $row->attributes['class'] = 'bench_' . $result['name'];
+            $row->attributes['class'] = 'bench_'.$result['name'];
 
             $cell = new html_table_cell($result['id']);
             $row->cells[] = $cell;
@@ -129,6 +129,7 @@ class report_benchmark_renderer extends plugin_renderer_base {
             $row->cells[] = $cell;
 
             $table->data[] = $row;
+
         }
 
         // Display the table footer.
@@ -177,9 +178,9 @@ class report_benchmark_renderer extends plugin_renderer_base {
         foreach ($fails as $fail) {
             $failurl = new moodle_url($fail['url']);
             $tips .= html_writer::start_tag('h5', null);
-            $tips .= get_string($fail['fail'] . 'label', 'report_benchmark');
+            $tips .= get_string($fail['fail'].'label', 'report_benchmark');
             $tips .= html_writer::end_tag('h5');
-            $tips .= get_string($fail['fail'] . 'solution', 'report_benchmark', $failurl->out());
+            $tips .= get_string($fail['fail'].'solution', 'report_benchmark', $failurl->out());
         }
 
         if (empty($tips)) {
@@ -196,17 +197,11 @@ class report_benchmark_renderer extends plugin_renderer_base {
         // Display the share and redo button.
         $out .= html_writer::start_div('continuebutton');
 
-        $out .= html_writer::link(
-            new moodle_url('https://moodle.org/mod/forum/discuss.php', ['d' => '335282']),
-            get_string('benchshare', 'report_benchmark'),
-            ['class' => 'btn btn-default', 'target' => '_blank']
-        );
+        $out .= html_writer::link(new moodle_url('https://moodle.org/mod/forum/discuss.php', ['d' => '335282']),
+            get_string('benchshare', 'report_benchmark'), ['class' => 'btn btn-default', 'target' => '_blank']);
 
-        $out .= html_writer::link(
-            new moodle_url('/report/benchmark/index.php', ['step' => 'run']),
-            get_string('redo', 'report_benchmark'),
-            ['class' => 'btn btn-primary']
-        );
+        $out .= html_writer::link(new moodle_url('/report/benchmark/index.php', ['step' => 'run']),
+            get_string('redo', 'report_benchmark'), ['class' => 'btn btn-primary']);
 
         $out .= html_writer::end_div();
 
@@ -215,5 +210,7 @@ class report_benchmark_renderer extends plugin_renderer_base {
         $out .= $this->output->footer();
 
         return $out;
+
     }
+
 }

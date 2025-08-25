@@ -26,4 +26,5 @@ use format_topics\courseformat\stateactions as stateactions_format_topics;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class stateactions extends stateactions_format_topics {
+
 }

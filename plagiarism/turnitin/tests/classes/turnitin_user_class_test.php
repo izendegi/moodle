@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace plagiarism_turnitin;
-
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
@@ -37,37 +35,26 @@ require_once($CFG->dirroot . '/mod/assign/externallib.php');
  *
  * @package turnitin
  */
-final class turnitin_user_class_test extends plagiarism_turnitin_test_lib {
+class plagiarism_turnitin_user_class_testcase extends plagiarism_turnitin_test_lib {
 
-    /**
-     * @var \PHPUnit\Framework\MockObject\MockObject|(turnitin_comms&\PHPUnit\Framework\MockObject\MockObject)
-     */
     public $faketiicomms;
 
     /**
      * Set Overwrite mtrace to avoid output during the tests.
      */
     public function setUp(): void {
-        parent::setUp();
-
         // Stub a fake tii comms.
         $this->faketiicomms = $this->getMockBuilder(turnitin_comms::class)
             ->disableOriginalConstructor()
             ->getMock();
     }
 
-    /**
-     * Test that we can get a Moodle use.
-     *
-     * @covers \turnitin_user::get_moodle_user
-     * @return void
-     */
-    public function test_get_moodle_user(): void {
+    public function test_get_moodle_user() {
         $this->resetAfterTest();
 
         $student = $this->getDataGenerator()->create_user();
 
-        $turnitinuser = new \turnitin_user(0, null, null, null, null);
+        $turnitinuser = new turnitin_user(0, null, null, null, null);
         $response = $turnitinuser->get_moodle_user($student->id);
 
         // Check that we have an object back with user details. No need to check all params.
@@ -75,68 +62,42 @@ final class turnitin_user_class_test extends plagiarism_turnitin_test_lib {
         $this->assertEquals('username1', $response->username);
     }
 
-    /**
-     * Test that we can get a pseudo domain.
-     *
-     * @covers \turnitin_user::get_pseudo_domain
-     * @return void
-     */
-    public function test_get_pseudo_domain(): void {
+    public function test_get_pseudo_domain() {
         $this->resetAfterTest();
 
-        $response = \turnitin_user::get_pseudo_domain();
+        $response = turnitin_user::get_pseudo_domain();
         $this->assertEquals(PLAGIARISM_TURNITIN_DEFAULT_PSEUDO_DOMAIN, $response);
     }
 
-    /**
-     * Test that we can get a pseudo first name.
-     *
-     * @covers \turnitin_user::get_pseudo_firstname
-     * @return void
-     */
-    public function test_get_pseudo_firstname(): void {
+    public function test_get_pseudo_firstname() {
         $this->resetAfterTest();
 
-        $turnitinuser = new \turnitin_user(0, null, null, null, null);
+        $turnitinuser = new turnitin_user(0, null, null, null, null);
         $response = $turnitinuser->get_pseudo_firstname();
         $this->assertEquals(PLAGIARISM_TURNITIN_DEFAULT_PSEUDO_FIRSTNAME, $response);
     }
 
-    /**
-     * Test that we can get a pseudo last name.
-     *
-     * @covers \turnitin_user::get_pseudo_lastname
-     * @return void
-     * @throws dml_exception
-     */
-    public function test_get_pseudo_lastname(): void {
+    public function test_get_pseudo_lastname() {
         global $DB;
         $this->resetAfterTest();
 
         $student = $this->getDataGenerator()->create_user();
-        $DB->insert_record('user_info_data', ['userid' => $student->id, 'fieldid' => 1, 'data' => 'Student', 'dataformat' => 0]);
+        $DB->insert_record('user_info_data', array('userid' => $student->id, 'fieldid' => 1, 'data' => 'Student', 'dataformat' => 0));
 
         set_config('plagiarism_turnitin_pseudolastname', 1, 'plagiarism_turnitin');
         set_config('plagiarism_turnitin_lastnamegen', 1, 'plagiarism_turnitin');
 
-        $turnitinuser = new \turnitin_user($student->id, null, null, null, null);
+        $turnitinuser = new turnitin_user($student->id, null, null, null, null);
         $response = $turnitinuser->get_pseudo_lastname();
         $this->assertEquals(PLAGIARISM_TURNITIN_DEFAULT_PSEUDO_FIRSTNAME, $response);
     }
 
-    /**
-     * Test that we can get unlink a user from Turnitin.
-     *
-     * @covers \turnitin_user::unlink_user
-     * @return void
-     * @throws dml_exception
-     */
-    public function test_unlink_user(): void {
+    public function test_unlink_user() {
         global $DB;
 
         $this->resetAfterTest();
 
-        $roles = ["Learner"];
+        $roles = array("Learner");
         $testuser = $this->make_test_users(1, $roles, 1);
 
         // Check that we have a user.
@@ -144,11 +105,11 @@ final class turnitin_user_class_test extends plagiarism_turnitin_test_lib {
         $this->assertEquals(1, $count);
 
         // Unlink the user.
-        $turnitinuser = new \turnitin_user(0, null, null, null, null);
+        $turnitinuser = new turnitin_user(0, null, null, null, null);
         $turnitinuser->unlink_user($testuser["joins"][0]);
 
         // We should have a Turnitin user ID of 0.
-        $user = $DB->get_record('plagiarism_turnitin_users', ['id' => $testuser["joins"][0]]);
+        $user = $DB->get_record('plagiarism_turnitin_users', array('id' => $testuser["joins"][0]));
         $this->assertEquals(0, $user->turnitin_uid);
     }
 }

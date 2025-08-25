@@ -4,19 +4,6 @@ moodle-tool_opcache
 Changes
 -------
 
-### v4.5-r4
-
-* 2025-10-31 - Upgrade OPcache GUI to version 3.6.0
-
-### v4.5-r3
-
-* 2025-10-31 - Withdrawn (just because of a flaw in CHANGES.md)
-
-### v4.5-r2
-
-* 2025-10-15 - Make codechecker happy again
-* 2025-10-15 - Tests: Switch Github actions workflows to reusable workflows by Moodle an Hochschulen e.V.
-
 ### v4.5-r1
 
 * 2024-10-14 - Upgrade: Adopt changes from MDL-81960 and use new \core\url class
@@ -43,7 +30,7 @@ Changes
 
 ### v4.2-r1
 
-* 2023-10-16 - Upgrade OPcache GUI to a CDN-less edition of version 3.5.2
+* 2023-10-16 - Upgrade OPcache GUI to a CDN-less edition of version 3.5.2 
 * 2023-09-01 - Prepare compatibility for Moodle 4.2.
 
 ### v4.1-r2

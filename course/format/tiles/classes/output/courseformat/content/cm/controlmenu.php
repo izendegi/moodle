@@ -32,6 +32,7 @@ namespace format_tiles\output\courseformat\content\cm;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class controlmenu extends \core_courseformat\output\local\content\cm\controlmenu {
+
     /**
      * Generate the edit control items of a course module.
      *

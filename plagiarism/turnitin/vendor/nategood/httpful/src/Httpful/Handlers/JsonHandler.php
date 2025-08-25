@@ -14,7 +14,7 @@ class JsonHandler extends MimeHandlerAdapter
 
     public function init(array $args)
     {
-        $this->decode_as_array = (bool) ($args['decode_as_array'] ?? false);
+        $this->decode_as_array = !!(array_key_exists('decode_as_array', $args) ? $args['decode_as_array'] : false);
     }
 
     /**
@@ -37,7 +37,7 @@ class JsonHandler extends MimeHandlerAdapter
      * @param mixed $payload
      * @return string
      */
-    public function serialize($payload): string
+    public function serialize($payload)
     {
         return json_encode($payload);
     }

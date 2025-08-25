@@ -64,6 +64,7 @@ define('BENCHFAIL_SLOWWEB', 'slowweb');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_benchmark_test extends report_benchmark {
+
     /**
      * Moodle configuration file (config.php) loading time
      *
@@ -79,6 +80,7 @@ class report_benchmark_test extends report_benchmark {
             'fail'  => BENCHFAIL_SLOWSERVER,
             'url'   => '',
         ];
+
     }
 
     /**
@@ -98,6 +100,7 @@ class report_benchmark_test extends report_benchmark {
         }
 
         return ['limit' => .5, 'over' => .8, 'fail' => BENCHFAIL_SLOWPROCESSOR, 'url' => ''];
+
     }
 
     /**
@@ -119,6 +122,7 @@ class report_benchmark_test extends report_benchmark {
         unlink($tempfile);
 
         return ['limit' => .5, 'over' => .8, 'fail' => BENCHFAIL_SLOWHARDDRIVE, 'url' => ''];
+
     }
 
     /**
@@ -142,6 +146,7 @@ class report_benchmark_test extends report_benchmark {
         }
 
         return ['limit' => 1, 'over' => 1.25, 'fail' => BENCHFAIL_SLOWHARDDRIVE, 'url' => ''];
+
     }
 
     /**
@@ -160,6 +165,7 @@ class report_benchmark_test extends report_benchmark {
         }
 
         return ['limit' => .75, 'over' => 1, 'fail' => BENCHFAIL_SLOWDATABASE, 'url' => ''];
+
     }
 
     /**
@@ -171,9 +177,9 @@ class report_benchmark_test extends report_benchmark {
         global $DB;
 
         $uniq = md5(uniqid(rand(), true));
-        $newrecord = new stdClass();
-        $newrecord->shortname = '!!!BENCH-' . $uniq;
-        $newrecord->fullname = '!!!BENCH-' . $uniq;
+        $newrecord = new stdClass;
+        $newrecord->shortname = '!!!BENCH-'.$uniq;
+        $newrecord->fullname = '!!!BENCH-'.$uniq;
         $newrecord->format = 'site';
         $newrecord->visible = 0;
         $newrecord->sortorder = 0;
@@ -188,6 +194,7 @@ class report_benchmark_test extends report_benchmark {
         unset($newrecord);
 
         return ['limit' => 1, 'over' => 1.25, 'fail' => BENCHFAIL_SLOWDATABASE, 'url' => ''];
+
     }
 
     /**
@@ -249,6 +256,7 @@ class report_benchmark_test extends report_benchmark {
         }
 
         return ['limit' => .5, 'over' => .7, 'fail' => BENCHFAIL_SLOWDATABASE, 'url' => ''];
+
     }
 
     /**
@@ -283,6 +291,7 @@ class report_benchmark_test extends report_benchmark {
         }
 
         return ['limit' => .3, 'over' => .5, 'fail' => BENCHFAIL_SLOWDATABASE, 'url' => ''];
+
     }
 
     /**
@@ -297,9 +306,11 @@ class report_benchmark_test extends report_benchmark {
         $pass = 3;
         while ($i < $pass) {
             ++$i;
-            download_file_content($CFG->wwwroot . '/admin/index.php?cache=1');
+            download_file_content($CFG->wwwroot.'/admin/index.php?cache=1');
         }
 
         return ['limit' => .3, 'over' => .8, 'fail' => BENCHFAIL_SLOWWEB, 'url' => '/admin/purgecaches.php'];
+
     }
+
 }

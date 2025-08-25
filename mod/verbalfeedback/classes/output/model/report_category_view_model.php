@@ -23,7 +23,6 @@
  */
 namespace mod_verbalfeedback\output\model;
 
-use mod_verbalfeedback\model\language;
 use mod_verbalfeedback\model\report_category;
 
 /**
@@ -48,7 +47,7 @@ class report_category_view_model {
      * @throws \coding_exception
      */
     public function __construct(report_category $category) {
-        $this->name = $category->get_header(language::map_current_language())->get_string();
+        $this->name = $category->get_header(current_language())->get_string();
         $this->weight = $category->get_weight();
         if ($category->get_weighted_result() === null) {
             $this->percentage = get_string('notapplicableabbr', 'mod_verbalfeedback');

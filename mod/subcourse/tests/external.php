@@ -17,7 +17,6 @@
 /**
  * Provides {@see mod_subcourse_external_testcase} class.
  *
- * @package     mod_subcourse
  * @copyright   2020 David Mudrák <david@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -36,6 +35,7 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mod_subcourse_external_testcase extends externallib_advanced_testcase {
+
     /**
      * Test the external function mod_subcourse_view_subcourse.
      */
@@ -54,7 +54,7 @@ class mod_subcourse_external_testcase extends externallib_advanced_testcase {
         ]);
         $generator->enrol_user($student->id, $metacourse->id, 'student');
 
-        [$course, $cm] = get_course_and_cm_from_instance($subcourse->id, 'subcourse');
+        list($course, $cm) = get_course_and_cm_from_instance($subcourse->id, 'subcourse');
         $context = context_module::instance($cm->id);
 
         $returnvalue = \mod_subcourse\external\view_subcourse::execute($subcourse->id);

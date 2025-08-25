@@ -36,6 +36,7 @@ use core_user\fields;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class helper {
+
     /**
      * A centralised location for the all name fields.
      *

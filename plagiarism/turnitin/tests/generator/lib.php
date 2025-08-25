@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace plagiarism_turnitin;
-
 defined('MOODLE_INTERNAL') || die();
 global $CFG;
 global $DB;
 
 require_once($CFG->dirroot . '/plagiarism/turnitin/classes/turnitin_user.class.php');
-require_once($CFG->dirroot.'/course/lib.php');
-require_once($CFG->dirroot.'/webservice/tests/helpers.php');
+include_once $CFG->dirroot.'/course/lib.php';
+require_once $CFG->dirroot.'/webservice/tests/helpers.php';
 
 /**
  * plagiarism_turnitin module data generator class
@@ -31,31 +29,29 @@ require_once($CFG->dirroot.'/webservice/tests/helpers.php');
  *   - Create a test function and call one of these functions from within it using (for example):
  *     <code>$this->make_test_users(5,"Learner");</code>
  *
- * @category  test
+ * @category  Test
  * @package  plagiarism_turnitin
  * @copyright  2017 Turnitin
  * @license  http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-abstract class plagiarism_turnitin_test_lib extends \advanced_testcase {
+abstract class plagiarism_turnitin_test_lib extends advanced_testcase {
 
     /**
-     * Creates a number of test plagiarism_turnitin users, creates an equivalent moodle user for each, and handles the database
-     * association work.
+     * Creates a number of test plagiarism_turnitin users, creates an equivalent moodle user for each, and handles the database association work.
      *
-     * @param int $numberofusers - the number of users to create.
+     * @param int $number_of_users
      * @param array $roles - an array of strings, each of which should be 'Learner' or 'Instructor'.
-     * @return object $return - object of two arrays of equal length, one full of plagiarism_turnitin_user types and the other with
-     * ids for dbtable plagiarism_turnitin_users. The indices of these arrays DO align.
+     * @return object $return - object of two arrays of equal length, one full of plagiarism_turnitin_user types and the other with ids for dbtable plagiarism_turnitin_users. The indices of these arrays DO align.
      */
-    public function make_test_users($numberofusers, $roles) {
-        $return['plagiarism_turnitin_users'] = [];
-        $return['joins'] = [];
+    public function make_test_users($number_of_users, $roles) {
+        $return['plagiarism_turnitin_users'] = array();
+        $return['joins'] = array();
 
-        for ($i = 0; $i < $numberofusers; $i++) {
+        for ($i=0; $i < $number_of_users; $i++) {
             $role = isset($roles[$i]) ? $roles[$i] : 'Instructor';
-            $newuser = new \turnitin_user( $i + 1, $role, false, 'site', false );
-            array_push($return['plagiarism_turnitin_users'], $newuser);
-            $joinid = $this->join_test_user($newuser);
+            $new_user = new turnitin_user( $i+1, $role, false, 'site', false );
+            array_push($return['plagiarism_turnitin_users'], $new_user);
+            $joinid = $this->join_test_user($new_user);
             array_push($return['joins'], $joinid);
         }
 
@@ -65,21 +61,20 @@ abstract class plagiarism_turnitin_test_lib extends \advanced_testcase {
     /**
      * Creates a moodle user and a corresponding entry in the plagiarism_turnitin_users table
      * for the tii user specified
+     * @param  object $plagiarism_turnitin_user - plagiarism_turnitin user object
      *
-     * @param  object $plagiarismturnitinuser - plagiarism_turnitin user object
-     * @return  int $plagiarism_turnitin_user_id id of plagiarism_turnitin user join (for use in get_record queries on
-     * plagiarism_turnitin_users table)
+     * @return  int $plagiarism_turnitin_user_id id of plagiarism_turnitin user join (for use in get_record queries on plagiarism_turnitin_users table)
      */
-    public function join_test_user($plagiarismturnitinuser) {
+    public function join_test_user($plagiarism_turnitin_user) {
         global $DB;
 
-        $mdluser = $this->getDataGenerator()->create_user();
-        $tiiuserrecord = new \stdClass();
-        $tiiuserrecord->userid = $mdluser->id;
-        $tiiuserrecord->turnitin_uid = $plagiarismturnitinuser->id;
-        $tiiuserrecord->user_agreement_accepted = 1;
-        $plagiarismturnitinuserid = $DB->insert_record('plagiarism_turnitin_users', $tiiuserrecord);
+        $mdl_user = $this->getDataGenerator()->create_user();
+        $tiiUserRecord = new stdClass();
+        $tiiUserRecord->userid = $mdl_user->id;
+        $tiiUserRecord->turnitin_uid = $plagiarism_turnitin_user->id;
+        $tiiUserRecord->user_agreement_accepted = 1;
+        $plagiarism_turnitin_user_id = $DB->insert_record('plagiarism_turnitin_users', $tiiUserRecord);
 
-        return $plagiarismturnitinuserid;
+        return $plagiarism_turnitin_user_id;
     }
 }

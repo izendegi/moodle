@@ -14,7 +14,7 @@ class FormHandler extends MimeHandlerAdapter
      */
     public function parse($body)
     {
-        $parsed = [];
+        $parsed = array();
         parse_str($body, $parsed);
         return $parsed;
     }
@@ -23,7 +23,7 @@ class FormHandler extends MimeHandlerAdapter
      * @param mixed $payload
      * @return string
      */
-    public function serialize($payload): string
+    public function serialize($payload)
     {
         return http_build_query($payload, null, '&');
     }

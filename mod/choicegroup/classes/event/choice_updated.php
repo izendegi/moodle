@@ -81,4 +81,6 @@ class choice_updated extends \core\event\base {
     public function get_url() {
         return new \moodle_url('/mod/choicegroup/view.php', ['id' => $this->contextinstanceid]);
     }
+
 }
+

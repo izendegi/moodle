@@ -34,6 +34,7 @@ use core_courseformat\output\local\content\cm as core_cm;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cm extends core_cm {
+
     /**
      * Add activity information to the data structure.
      *

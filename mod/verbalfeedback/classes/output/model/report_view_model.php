@@ -61,4 +61,5 @@ class report_view_model {
         }
         $this->radar = graph_utils::create_radar_graph($report);
     }
+
 }

@@ -29,11 +29,8 @@ defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
 require_once($CFG->dirroot . '/course/moodleform_mod.php');
 require_once($CFG->dirroot . '/mod/customcert/includes/colourpicker.php');
 
-\MoodleQuickForm::registerElementType(
-    'customcert_colourpicker',
-    $CFG->dirroot . '/mod/customcert/includes/colourpicker.php',
-    'MoodleQuickForm_customcert_colourpicker'
-);
+\MoodleQuickForm::registerElementType('customcert_colourpicker',
+    $CFG->dirroot . '/mod/customcert/includes/colourpicker.php', 'MoodleQuickForm_customcert_colourpicker');
 
 /**
  * The form for handling editing a customcert element.
@@ -43,6 +40,7 @@ require_once($CFG->dirroot . '/mod/customcert/includes/colourpicker.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class edit_element_form extends \moodleform {
+
     /**
      * @var \mod_customcert\element The element object.
      */
@@ -74,10 +72,9 @@ class edit_element_form extends \moodleform {
         // Only the Background image, Image, and Digital signature require the 'Save and continue' button.
         if ($this->element->has_save_and_continue()) {
             $buttonarray[] = $mform->createElement(
-                'submit',
-                'saveandcontinue',
-                get_string('saveandcontinue', 'customcert')
-            );
+                    'submit',
+                    'saveandcontinue',
+                    get_string('saveandcontinue', 'customcert'));
         }
         $buttonarray[] = $mform->createElement('cancel');
         $mform->addGroup($buttonarray, 'buttonar', '', [' '], false);

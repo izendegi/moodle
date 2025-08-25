@@ -32,6 +32,7 @@ namespace customcertelement_code;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends \mod_customcert\element {
+
     /**
      * Handles rendering the element on the pdf.
      *
@@ -50,12 +51,8 @@ class element extends \mod_customcert\element {
             // Get the customcert this page belongs to.
             $customcert = $DB->get_record('customcert', ['templateid' => $page->templateid], '*', MUST_EXIST);
             // Now we can get the issue for this user.
-            $issue = $DB->get_record(
-                'customcert_issues',
-                ['userid' => $user->id, 'customcertid' => $customcert->id],
-                '*',
-                IGNORE_MULTIPLE
-            );
+            $issue = $DB->get_record('customcert_issues', ['userid' => $user->id, 'customcertid' => $customcert->id],
+                '*', IGNORE_MULTIPLE);
             $code = $issue->code;
         }
 

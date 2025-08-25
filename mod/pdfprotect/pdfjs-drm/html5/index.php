@@ -26,7 +26,7 @@ if ($token && !isloggedin()) {
 }
 
 if (!$cm = get_coursemodule_from_id('pdfprotect', $id)) {
-    throw new moodle_exception('invalidcoursemodule');
+    print_error('invalidcoursemodule');
 }
 
 $pdfprotect = $DB->get_record('pdfprotect', ['id' => $cm->instance], '*', MUST_EXIST);

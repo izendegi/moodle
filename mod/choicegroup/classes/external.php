@@ -36,6 +36,7 @@ require_once($CFG->dirroot . '/mod/choicegroup/lib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mod_choicegroup_external extends external_api {
+
     /**
      * Describes the parameters for get_choicegroup_options.
      *
@@ -96,7 +97,6 @@ class mod_choicegroup_external extends external_api {
                 } else {
                     $option['countanswers'] = 0;
                 }
-
                 // Check if the option has been answered previously by the user.
                 $option['checked'] = false;
                 if (is_array($answers)) {
@@ -106,14 +106,13 @@ class mod_choicegroup_external extends external_api {
                         }
                     }
                 }
-
                 // Check if the option has to be disabled because the limit has been reached.
                 $limitreached = $choicegroup->limitanswers && ($option['countanswers'] >= $option['maxanswers']);
                 $stillnotanswered = $option['checked'] === false;
                 $option['disabled'] = $alloptionsdisabled;
                 if ($limitreached && $stillnotanswered) {
                     $option['disabled'] = true;
-                    $option['name'] .= ' ' . get_string('full', 'choicegroup');
+                    $option['name'] .= ' '.get_string('full', 'choicegroup');
                 }
 
                 $returnedoptions[] = $option;
@@ -185,7 +184,7 @@ class mod_choicegroup_external extends external_api {
 
         // Request and permission validation.
         $choicegroup = $DB->get_record('choicegroup', ['id' => $params['choicegroupid']], '*', MUST_EXIST);
-        [$course, $cm] = get_course_and_cm_from_instance($choicegroup, 'choicegroup');
+        list($course, $cm) = get_course_and_cm_from_instance($choicegroup, 'choicegroup');
 
         $context = context_module::instance($cm->id);
         self::validate_context($context);
@@ -228,7 +227,7 @@ class mod_choicegroup_external extends external_api {
      * @return external_function_parameters
      */
     public static function submit_choicegroup_response_parameters() {
-        return new external_function_parameters(
+        return new external_function_parameters (
             [
                 'choicegroupid' => new external_value(PARAM_INT, 'Choice group instance id'),
                 'data' => new external_multiple_structure(
@@ -268,8 +267,7 @@ class mod_choicegroup_external extends external_api {
         if (!$choicegroup = choicegroup_get_choicegroup($choicegroupid)) {
             throw new moodle_exception('invalidcoursemodule', 'error');
         }
-
-        [$course, $cm] = get_course_and_cm_from_instance($choicegroup, 'choicegroup');
+        list($course, $cm) = get_course_and_cm_from_instance($choicegroup, 'choicegroup');
         $context = context_module::instance($cm->id);
         self::validate_context($context);
         require_capability('mod/choicegroup:choose', $context);
@@ -376,7 +374,7 @@ class mod_choicegroup_external extends external_api {
      * @return external_function_parameters
      */
     public static function delete_choicegroup_responses_parameters() {
-        return new external_function_parameters(
+        return new external_function_parameters (
             [
                 'choicegroupid' => new external_value(PARAM_INT, 'Choice group instance id'),
             ]
@@ -405,8 +403,7 @@ class mod_choicegroup_external extends external_api {
         if (!$choicegroup = choicegroup_get_choicegroup($choicegroupid)) {
             throw new moodle_exception('invalidcoursemodule', 'error');
         }
-
-        [$course, $cm] = get_course_and_cm_from_instance($choicegroup, 'choicegroup');
+        list($course, $cm) = get_course_and_cm_from_instance($choicegroup, 'choicegroup');
         $context = context_module::instance($cm->id);
         self::validate_context($context);
         require_capability('mod/choicegroup:choose', $context);
@@ -452,4 +449,5 @@ class mod_choicegroup_external extends external_api {
             ]
         );
     }
+
 }

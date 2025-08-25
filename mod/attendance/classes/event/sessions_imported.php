@@ -39,6 +39,7 @@ namespace mod_attendance\event;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class sessions_imported extends \core\event\base {
+
     /**
      * Init method.
      */

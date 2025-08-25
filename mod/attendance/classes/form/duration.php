@@ -33,6 +33,7 @@ use moodleform;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class duration extends moodleform {
+
     /**
      * Called to define this moodle form
      *
@@ -70,4 +71,5 @@ class duration extends moodleform {
         $submitstring = get_string('update', 'attendance');
         $this->add_action_buttons(true, $submitstring);
     }
+
 }

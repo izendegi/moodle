@@ -26,8 +26,10 @@ require_once(__DIR__ . '/../../../../config.php');
  * Structure step to restore one wooclap activity
  */
 class restore_wooclap_activity_structure_step extends restore_activity_structure_step {
+
     protected function define_structure() {
-        $paths = [];
+
+        $paths = array();
         $userinfo = $this->get_setting_value('userinfo');
 
         $paths[] = new restore_path_element('wooclap', '/activity/wooclap');

@@ -11,8 +11,8 @@ namespace Httpful;
 class Bootstrap
 {
 
-    public const DIR_GLUE = DIRECTORY_SEPARATOR;
-    public const NS_GLUE = '\\';
+    const DIR_GLUE = DIRECTORY_SEPARATOR;
+    const NS_GLUE = '\\';
 
     public static $registered = false;
 
@@ -21,7 +21,7 @@ class Bootstrap
      */
     public static function init()
     {
-        spl_autoload_register(['\\' . \Httpful\Bootstrap::class, 'autoload']);
+        spl_autoload_register(array('\Httpful\Bootstrap', 'autoload'));
         self::registerHandlers();
     }
 
@@ -32,7 +32,7 @@ class Bootstrap
      */
     public static function autoload($classname)
     {
-        self::_autoload(dirname(__FILE__,2), $classname);
+        self::_autoload(dirname(dirname(__FILE__)), $classname);
     }
 
     /**
@@ -40,7 +40,7 @@ class Bootstrap
      */
     public static function pharInit()
     {
-        spl_autoload_register(['\\' . \Httpful\Bootstrap::class, 'pharAutoload']);
+        spl_autoload_register(array('\Httpful\Bootstrap', 'pharAutoload'));
         self::registerHandlers();
     }
 
@@ -78,12 +78,12 @@ class Bootstrap
 
         // @todo check a conf file to load from that instead of
         // hardcoding into the library?
-        $handlers = [
+        $handlers = array(
             \Httpful\Mime::JSON => new \Httpful\Handlers\JsonHandler(),
             \Httpful\Mime::XML  => new \Httpful\Handlers\XmlHandler(),
             \Httpful\Mime::FORM => new \Httpful\Handlers\FormHandler(),
             \Httpful\Mime::CSV  => new \Httpful\Handlers\CsvHandler(),
-        ];
+        );
 
         foreach ($handlers as $mime => $handler) {
             // Don't overwrite if the handler has already been registered

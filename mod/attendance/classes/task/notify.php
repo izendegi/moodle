@@ -75,6 +75,7 @@ class notify extends \core\task\scheduled_task {
                 // Only send one warning to this user from each attendance in this run.
                 // Flag any higher percent notifications as sent.
                 if (empty($sentnotifications[$record->userid]) || !in_array($record->aid, $sentnotifications[$record->userid])) {
+
                     // If has previously been sent a warning, check to see if this user has
                     // attendance updated since the last time the notification was sent.
                     if (!empty($record->timesent)) {
@@ -106,7 +107,7 @@ class notify extends \core\task\scheduled_task {
             $thirdpartyusers = [];
             if (!empty($record->thirdpartyemails)) {
                 $sendto = explode(',', $record->thirdpartyemails);
-                $record->percent = round($record->percent * 100) . "%";
+                $record->percent = round($record->percent * 100)."%";
                 $context = \context_module::instance($record->cmid);
                 foreach ($sendto as $senduser) {
                     if (empty($senduser)) {
@@ -126,7 +127,7 @@ class notify extends \core\task\scheduled_task {
                                 = get_string('thirdpartyemailtext', 'attendance', $record);
                         }
                     } else {
-                        mtrace("user" . $senduser . "does not have capablity in cm" . $record->cmid);
+                        mtrace("user".$senduser. "does not have capablity in cm".$record->cmid);
                     }
                 }
             }
@@ -137,7 +138,7 @@ class notify extends \core\task\scheduled_task {
             $DB->insert_record('attendance_warning_done', $notify);
         }
         if (!empty($numsentusers)) {
-            mtrace($numsentusers . " user emails sent");
+            mtrace($numsentusers ." user emails sent");
         }
         if (!empty($thirdpartynotifications)) {
             foreach ($thirdpartynotifications as $sendid => $notifications) {
@@ -156,7 +157,7 @@ class notify extends \core\task\scheduled_task {
                 $oldforcelang = force_current_language($user->lang);
 
                 $emailcontent = implode("\n", $notifications);
-                $emailcontent .= "\n\n" . get_string('thirdpartyemailtextfooter', 'attendance');
+                $emailcontent .= "\n\n".get_string('thirdpartyemailtextfooter', 'attendance');
                 $emailcontent = format_text($emailcontent);
                 $emailsubject = get_string('thirdpartyemailsubject', 'attendance');
 
@@ -165,7 +166,7 @@ class notify extends \core\task\scheduled_task {
                 $numsentthird++;
             }
             if (!empty($numsentthird)) {
-                mtrace($numsentthird . " thirdparty emails sent");
+                mtrace($numsentthird ." thirdparty emails sent");
             }
         }
     }

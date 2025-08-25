@@ -32,10 +32,9 @@ import Pending from 'core/pending';
  * Renders the learningmap into the correct div.
  *
  * @param {number} cmId the course module id of the learningmap
- * @param {boolean} inmodal whether the learningmap is being rendered in a modal
  * @return {Component} the liveupdater component
  */
-export const init = async(cmId, inmodal = false) => {
+export const init = async(cmId) => {
     const initliveupdaterPendingPromise = new Pending('mod_learningmap/initliveupdater');
     try {
         const data = await Ajax.call(
@@ -50,7 +49,7 @@ export const init = async(cmId, inmodal = false) => {
 
         initliveupdaterPendingPromise.resolve();
         return new LiveUpdater({
-            element: document.getElementById(selectors.LEARNINGMAP_RENDER_CONTAINER_PREFIX + cmId + (inmodal ? '-modal' : '')),
+            element: document.getElementById(selectors.LEARNINGMAP_RENDER_CONTAINER_PREFIX + cmId),
             reactive: getCurrentCourseEditor(),
             cmId: cmId,
             dependingModuleIds: data.dependingModuleIds
