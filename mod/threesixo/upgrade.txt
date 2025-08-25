@@ -1,3 +1,0 @@
-=== 3.2 ===
-
-* Moodle now has a 360-degree feedback feature! Yay!
