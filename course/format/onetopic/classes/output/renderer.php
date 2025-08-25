@@ -27,6 +27,7 @@ use moodle_page;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class renderer extends section_renderer {
+
     /**
      * Constructor method, calls the parent constructor.
      *
@@ -68,10 +69,8 @@ class renderer extends section_renderer {
             $specialrenderers = '/^(?<componentpath>' . $corepath . '|' . $pluginpath . ')\/(?<template>.+)$/';
             $matches = null;
 
-            if (
-                preg_match($specialrenderers, $fullpath, $matches) &&
-                file_exists($CFG->dirroot . '/course/format/onetopic/templates/local/' . $matches['template'])
-            ) {
+            if (preg_match($specialrenderers, $fullpath, $matches)
+                && file_exists($CFG->dirroot . '/course/format/onetopic/templates/local/' . $matches['template'])) {
                 $data = $widget->export_for_template($this);
                 return $this->render_from_template('format_onetopic/local/' . $matches['template'], $data);
             }
@@ -101,35 +100,5 @@ class renderer extends section_renderer {
      */
     public function section_title_without_link($section, $course) {
         return $this->render(course_get_format($course)->inplace_editable_render_section_name($section, false));
-    }
-
-    /**
-     * In Moodle 4.5 we may have sub-sections.
-     * We override this here and use existing local code for subtiles pending full refactoring.
-     * @param \renderable $widget
-     * @return bool|string
-     * @throws \coding_exception
-     * @throws \dml_exception
-     * @throws \moodle_exception
-     */
-    public function render_delegatedsection($widget) {
-
-        $displaymode = $widget->get_displaymode();
-        $template = 'format_onetopic/local/subsectionmodes/';
-
-        if ($this->page->user_is_editing() || empty($displaymode) || $displaymode === 'summary') {
-            // When editing, always use the default summary mode to avoid confusion.
-            $template .= 'summary';
-            $realwidget = $widget;
-        } else {
-            $template .= $displaymode;
-
-            $widget->load_onesection();
-            $realwidget = $widget->onesection;
-        }
-
-        $data = $realwidget->export_for_template($this);
-
-        return $this->render_from_template($template, $data);
     }
 }

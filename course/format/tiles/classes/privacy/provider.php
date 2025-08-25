@@ -56,8 +56,7 @@ use core_privacy\local\metadata\collection;
  * @copyright  2018 David Watson {@link http://evolutioncode.uk}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class provider implements
-    \core_privacy\local\metadata\provider,
+class provider implements \core_privacy\local\metadata\provider,
     \core_privacy\local\request\user_preference_provider {
     /**
      * Indicate that this plugin only uses one user_preference to store personal data
@@ -83,14 +82,11 @@ class provider implements
             $preference = get_user_preferences($prefname, $default, $userid);
             if (isset($preference)) {
                 $value = $preference ? get_string('yes') : get_string('no');
-                \core_privacy\local\request\writer::export_user_preference(
-                    'format_tiles',
-                    $prefname,
-                    $value,
-                    get_string("privacy:metadata:preference:$prefname", 'format_tiles')
-                );
+                \core_privacy\local\request\writer::export_user_preference('format_tiles', $prefname,
+                    $value, get_string("privacy:metadata:preference:$prefname", 'format_tiles'));
             }
         }
+
     }
 
     /**

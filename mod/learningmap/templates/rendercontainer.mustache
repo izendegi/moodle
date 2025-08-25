@@ -34,12 +34,7 @@
         "cmId": "123",
         "enableLiveUpdater": true,
         "contentbeforemap": "<p>Some content before the map</p>",
-        "hascontentbeforemap": true,
-        "mapcontent": "<svg>...</svg>",
-        "usemodal": true,
-        "inmodal": false,
-        "available": true,
-        "title": "Learningmap title"
+        "hascontentbeforemap": true
     }
 }}
 <div class="learningmap-container">
@@ -48,32 +43,17 @@
     {{{contentbeforemap}}}
   </div>
   {{/hascontentbeforemap}}
-  {{#available}}
-  <div id="learningmap-render-container-{{cmId}}{{#inmodal}}-modal{{/inmodal}}" class="learningmap-render-container">
-    {{^mapcontent}}{{> mod_learningmap/loadingplaceholder}}{{/mapcontent}}
-    {{{mapcontent}}}
+  <div id="learningmap-render-container-{{cmId}}" class="learningmap-render-container">
+    {{> mod_learningmap/loadingplaceholder}}
   </div>
-  {{/available}}
-  {{^available}}
-  {{#str}} learningmapnotavailable, mod_learningmap, {{title}} {{/str}}
-  {{/available}}
 </div>
 {{#js}}
-{{#available}}
-  {{^mapcontent}}
   require(['mod_learningmap/renderer'], function(renderer) {
-    renderer.init({{cmId}}, {{inmodal}});
+    renderer.init({{cmId}});
   });
-  {{/mapcontent}}
-  {{#usemodal}}
-  require(['mod_learningmap/linkmodal'], function(linkmodal) {
-    linkmodal.init({{cmId}}, {{inmodal}});
-  });
-  {{/usemodal}}
   {{#enableLiveUpdater}}
       require(['mod_learningmap/initliveupdater'], function(initliveupdater) {
-        initliveupdater.init({{cmId}}, {{inmodal}});
+        initliveupdater.init({{cmId}});
       });
   {{/enableLiveUpdater}}
-{{/available}}
 {{/js}}

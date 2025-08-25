@@ -20,52 +20,53 @@
  * @package    mod_helixmedia
  * @author     Tim Williams (for Streaming LTD)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @copyright  MEDIAL
  */
 
 defined('MOODLE_INTERNAL') || die;
 
-$capabilities = [
+$capabilities = array(
 
-    'mod/helixmedia:view' => [
+    'mod/helixmedia:view' => array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'guest' => CAP_ALLOW,
             'student' => CAP_ALLOW,
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/helixmedia:addinstance' => [
+    'mod/helixmedia:addinstance' => array(
         'riskbitmask' => RISK_XSS,
+
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-        'clonepermissionsfrom' => 'moodle/course:manageactivities',
-    ],
+            'manager' => CAP_ALLOW
+        ),
+        'clonepermissionsfrom' => 'moodle/course:manageactivities'
+    ),
 
-    'mod/helixmedia:manage' => [
+    'mod/helixmedia:manage' => array(
         'riskbitmask' => RISK_XSS,
+
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
-    ],
+            'manager' => CAP_ALLOW
+        )
+    ),
 
-    'mod/helixmedia:myview' => [
+    'mod/helixmedia:myview' => array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
-            'user' => CAP_ALLOW,
-        ],
-    ],
-];
+        'archetypes' => array(
+            'user' => CAP_ALLOW
+        )
+    )
+);

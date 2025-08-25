@@ -76,12 +76,8 @@ class user_data implements renderable {
             $this->statuses = $att->get_statuses(true, true);
 
             if (!$mobile) {
-                $this->summary = new mod_attendance_summary(
-                    $att->id,
-                    [$userid],
-                    $att->pageparams->startdate,
-                    $att->pageparams->enddate
-                );
+                $this->summary = new mod_attendance_summary($att->id, [$userid], $att->pageparams->startdate,
+                    $att->pageparams->enddate);
 
                 $this->filtercontrols = new filter_controls($att);
             }
@@ -113,12 +109,8 @@ class user_data implements renderable {
             }
 
             if (!$mobile) {
-                $this->summary = new mod_attendance_summary(
-                    $att->id,
-                    [$userid],
-                    $att->pageparams->startdate,
-                    $att->pageparams->enddate
-                );
+                $this->summary = new mod_attendance_summary($att->id, [$userid], $att->pageparams->startdate,
+                    $att->pageparams->enddate);
 
                 $this->filtercontrols = new filter_controls($att);
             }
@@ -133,6 +125,7 @@ class user_data implements renderable {
                     unset($this->sessionslog[$sessid]);
                 }
             }
+
         } else {
             $this->coursesatts = attendance_get_user_courses_attendances($userid);
             $this->statuses = [];
@@ -162,7 +155,7 @@ class user_data implements renderable {
      * @param array $excludeparams
      * @return moodle_url
      */
-    public function url($params = [], $excludeparams = []) {
+    public function url($params=[], $excludeparams=[]) {
         $params = array_merge($this->urlparams, $params);
 
         foreach ($excludeparams as $paramkey) {
@@ -210,14 +203,12 @@ class user_data implements renderable {
                     continue;
                 }
 
-                $formkey = 'user' . $stid . 'sess' . $sessid;
+                $formkey = 'user'.$stid.'sess'.$sessid;
                 $attid = $dbsession->attendanceid;
-                $statusset = array_filter(
-                    $this->statuses[$attid],
-                    function ($x) use ($dbsession) {
+                $statusset = array_filter($this->statuses[$attid],
+                    function($x) use($dbsession) {
                         return $x->setnumber === $dbsession->statusset;
-                    }
-                );
+                    });
                 $sessionatt[$sessid] = $attid;
                 $formlog = new stdClass();
                 if (array_key_exists($formkey, $formdata) && is_numeric($formdata[$formkey])) {
@@ -239,22 +230,17 @@ class user_data implements renderable {
 
         $updateatts = [];
         foreach ($sesslog as $stid => $userlog) {
-            $dbstudlog = $DB->get_records(
-                'attendance_log',
-                ['studentid' => $stid],
-                '',
-                'sessionid,statusid,remarks,id,statusset'
-            );
+            $dbstudlog = $DB->get_records('attendance_log', ['studentid' => $stid], '',
+                'sessionid,statusid,remarks,id,statusset');
             foreach ($userlog as $log) {
                 if (array_key_exists($log->sessionid, $dbstudlog)) {
                     $attid = $sessionatt[$log->sessionid];
                     // Check if anything important has changed before updating record.
                     // Don't update timetaken/takenby records if nothing has changed.
-                    if (
-                        $dbstudlog[$log->sessionid]->remarks != $log->remarks ||
+                    if ($dbstudlog[$log->sessionid]->remarks != $log->remarks ||
                         $dbstudlog[$log->sessionid]->statusid != $log->statusid ||
-                        $dbstudlog[$log->sessionid]->statusset != $log->statusset
-                    ) {
+                        $dbstudlog[$log->sessionid]->statusset != $log->statusset) {
+
                         $log->id = $dbstudlog[$log->sessionid]->id;
                         $DB->update_record('attendance_log', $log);
 

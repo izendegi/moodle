@@ -15,16 +15,15 @@ final class Headers implements \ArrayAccess, \Countable {
     }
 
     /**
-     * @param string $string 
+     * @param string $string
      * @return Headers
      */
     public static function fromString($string)
     {
         $headers = preg_split("/(\r|\n)+/", $string, -1, \PREG_SPLIT_NO_EMPTY);
-        $parse_headers = [];
-        $headersCount = count($headers);
-        for ($i = 1; $i < $headersCount; $i++) {
-            [$key, $raw_value] = explode(':', $headers[$i], 2);
+        $parse_headers = array();
+        for ($i = 1; $i < count($headers); $i++) {
+            list($key, $raw_value) = explode(':', $headers[$i], 2);
             $key = trim($key);
             $value = trim($raw_value);
             if (array_key_exists($key, $parse_headers)) {
@@ -43,17 +42,17 @@ final class Headers implements \ArrayAccess, \Countable {
 
     /**
      * @param string $offset
+     * @return bool
      */
-    public function offsetExists($offset): bool
+    public function offsetExists($offset)
     {
         return $this->getCaseInsensitive($offset) !== null;
     }
 
     /**
-     * @param mixed $offset
+     * @param string $offset
      * @return mixed
      */
-    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
         return $this->getCaseInsensitive($offset);
@@ -63,9 +62,7 @@ final class Headers implements \ArrayAccess, \Countable {
      * @param string $offset
      * @param string $value
      * @throws \Exception
-     * @return never
      */
-    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
         throw new \Exception("Headers are read-only.");
@@ -74,9 +71,7 @@ final class Headers implements \ArrayAccess, \Countable {
     /**
      * @param string $offset
      * @throws \Exception
-     * @return never
      */
-    #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
     {
         throw new \Exception("Headers are read-only.");
@@ -85,7 +80,7 @@ final class Headers implements \ArrayAccess, \Countable {
     /**
      * @return int
      */
-    public function count(): int
+    public function count()
     {
         return count($this->headers);
     }

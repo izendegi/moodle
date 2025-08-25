@@ -40,6 +40,7 @@ use advanced_testcase;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class element_helper_test extends advanced_testcase {
+
     /**
      * Test set up.
      */
@@ -141,10 +142,8 @@ final class element_helper_test extends advanced_testcase {
         $element->id = $DB->insert_record('customcert_elements', $element);
 
         // Confirm the correct course module id is returned.
-        $this->assertEquals(
-            context_module::instance($customcert->cmid),
-            element_helper::get_context($element->id)
-        );
+        $this->assertEquals(context_module::instance($customcert->cmid),
+            element_helper::get_context($element->id));
     }
 
     /**

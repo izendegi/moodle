@@ -4,10 +4,6 @@ moodle-mod_etherpadlite
 Changes
 -------
 
-### v4.4.3
-* Improved URL checking in the test tool, suitable for installations in a subdirectory
-* Apply moodle coding style
-
 ### v4.4.2
 * Introduce dedicated connection testing tool by André Menrath (#79)
 * Fix unchecked check_ssl option not being honored by Ilja Rozhko

@@ -39,11 +39,6 @@ class questionnaire {
     public $questions = [];
 
     /**
-     * @var \mod_questionnaire\question\question[] $deletequestions
-     */
-    public $deletequestions = [];
-
-    /**
      * The survey record.
      * @var object $survey
      */
@@ -111,27 +106,6 @@ class questionnaire {
     }
 
     /**
-     * Get all delete questions by survey id.
-     *
-     * @return void
-     * @throws dml_exception
-     */
-    public function get_delete_questions() {
-        global $DB;
-        $sql = "SELECT *
-                  FROM {questionnaire_question}
-                 WHERE deleted IS NOT NULL
-                   AND surveyid = ? AND type_id != ?
-              ORDER BY deleted DESC";
-        if ($records = $DB->get_records_sql($sql, [$this->sid, QUESPAGEBREAK])) {
-            foreach ($records as $record) {
-                $this->deletequestions[$record->id] = \mod_questionnaire\question\question::question_builder($record->type_id,
-                $record, $this->context);
-            }
-        }
-    }
-
-    /**
      * Adding a survey record to the object.
      * @param int $sid
      * @param null $survey
@@ -162,8 +136,9 @@ class questionnaire {
             $this->questionsbysec = [];
         }
 
-        $select = 'surveyid = ? AND deleted IS NULL';
-        if ($records = $DB->get_records_select('questionnaire_question', $select, [$sid], 'position')) {
+        $select = 'surveyid = ? AND deleted = ?';
+        $params = [$sid, 'n'];
+        if ($records = $DB->get_records_select('questionnaire_question', $select, $params, 'position')) {
             $sec = 1;
             $isbreak = false;
             foreach ($records as $record) {
@@ -448,10 +423,6 @@ class questionnaire {
         }
         $pdf = ($outputtarget == 'pdf') ? true : false;
         foreach ($this->questions as $question) {
-            // Only show eligible questions in the response.
-            if (!$question->dependency_fulfilled($rid, $this->questions)) {
-                continue;
-            }
             if ($question->type_id < QUESPAGEBREAK) {
                 $i++;
             }
@@ -914,7 +885,7 @@ class questionnaire {
                     return true;
                 }
             }
-        } else if (key_exists($section, $this->questionsbysec)) {
+        } else {
             foreach ($this->questionsbysec[$section] as $questionid) {
                 if ($this->questions[$questionid]->required()) {
                     return true;
@@ -1355,23 +1326,21 @@ class questionnaire {
             $this->page->add_to_page('progressbar',
                     $this->renderer->render_progress_bar($section, $this->questionsbysec));
         }
-        if (key_exists($section, $this->questionsbysec)) {
-            foreach ($this->questionsbysec[$section] as $questionid) {
-                if ($this->questions[$questionid]->is_numbered()) {
-                    $i++;
-                }
-                // Need questionnaire id to get the questionnaire object in sectiontext (Label) question class.
-                $formdata->questionnaire_id = $this->id;
-                if (isset($formdata->rid) && !empty($formdata->rid)) {
-                    $this->add_response($formdata->rid);
-                } else {
-                    $this->add_response_from_formdata($formdata);
-                }
-                $this->page->add_to_page('questions',
-                    $this->renderer->question_output($this->questions[$questionid],
-                        (isset($this->responses[$formdata->rid]) ? $this->responses[$formdata->rid] : []),
-                        $i, $this->usehtmleditor, []));
+        foreach ($this->questionsbysec[$section] as $questionid) {
+            if ($this->questions[$questionid]->is_numbered()) {
+                $i++;
             }
+            // Need questionnaire id to get the questionnaire object in sectiontext (Label) question class.
+            $formdata->questionnaire_id = $this->id;
+            if (isset($formdata->rid) && !empty($formdata->rid)) {
+                $this->add_response($formdata->rid);
+            } else {
+                $this->add_response_from_formdata($formdata);
+            }
+            $this->page->add_to_page('questions',
+                $this->renderer->question_output($this->questions[$questionid],
+                    (isset($this->responses[$formdata->rid]) ? $this->responses[$formdata->rid] : []),
+                    $i, $this->usehtmleditor, []));
         }
 
         $this->print_survey_end($section, $numsections);
@@ -2033,8 +2002,8 @@ class questionnaire {
         global $DB;
 
         $pos = $this->response_select_max_pos($rid);
-        $select = 'surveyid = ? AND type_id = ? AND position < ? AND deleted IS NULL';
-        $params = [$this->sid, QUESPAGEBREAK, $pos];
+        $select = 'surveyid = ? AND type_id = ? AND position < ? AND deleted = ?';
+        $params = [$this->sid, QUESPAGEBREAK, $pos, 'n'];
         $max = $DB->count_records_select('questionnaire_question', $select, $params) + 1;
 
         return $max;
@@ -2056,7 +2025,7 @@ class questionnaire {
                 'WHERE a.response_id = ? AND '.
                 'q.id = a.question_id AND '.
                 'q.surveyid = ? AND '.
-                'q.deleted IS NULL';
+                'q.deleted = \'n\'';
             if ($record = $DB->get_record_sql($sql, array($rid, $this->sid))) {
                 $newmax = (int)$record->num;
                 if ($newmax > $max) {
@@ -2551,7 +2520,7 @@ class questionnaire {
             $this->page->add_to_page('progressbar',
                     $this->renderer->render_progress_bar(count($this->questionsbysec) + 1, $this->questionsbysec));
         }
-        $this->page->add_to_page('title', format_string($thankhead));
+        $this->page->add_to_page('title', $thankhead);
         $this->page->add_to_page('addinfo',
             format_text(file_rewrite_pluginfile_urls($thankbody, 'pluginfile.php',
                 $this->context->id, 'mod_questionnaire', 'thankbody', $this->survey->id), FORMAT_HTML, ['noclean' => true]));
@@ -2918,23 +2887,6 @@ class questionnaire {
             if ($userview === 'y') {
                 $respondentstring = get_string('submissions', 'questionnaire');
             }
-            if (!$userview) {
-                $completedcount = 0;
-                $inprogresscount = 0;
-
-                foreach ($rows as $row) {
-                    if ($row->complete === 'y') {
-                        $completedcount++;
-                    } else if ($row->complete === 'n') {
-                        $inprogresscount++;
-                    }
-                }
-                $numresps .= ' ' . get_string('responses_breakdown', 'questionnaire',
-                    [
-                        'responses' => $completedcount,
-                        'incomplete' => $inprogresscount,
-                    ]);
-            }
             $this->page->add_to_page('respondentinfo',
                     ' ' . $respondentstring . ': <strong>' . $numresps . '</strong>');
             if (empty($rows)) {
@@ -3060,7 +3012,6 @@ class questionnaire {
             $userfieldsarr = get_all_user_name_fields();
         }
         $userfieldsarr = array_merge($userfieldsarr, ['username', 'department', 'institution']);
-        $userfieldsarr = array_merge($userfieldsarr, ['username', 'department', 'institution', 'idnumber']);
         return $userfieldsarr;
     }
 
@@ -3231,9 +3182,6 @@ class questionnaire {
         if (in_array('id', $options)) {
             array_push($positioned, $uid);
         }
-        if (in_array('useridnumber', $options)) {
-            array_push($positioned, $user->idnumber);
-        }
         if (in_array('fullname', $options)) {
             array_push($positioned, $fullname);
         }
@@ -3293,7 +3241,7 @@ class questionnaire {
         $columns = array();
         $types = array();
         foreach ($options as $option) {
-            if (in_array($option, array('response', 'submitted', 'id', 'useridnumber'))) {
+            if (in_array($option, array('response', 'submitted', 'id'))) {
                 $columns[] = get_string($option, 'questionnaire');
                 $types[] = 0;
             } else if ($option == 'useridentityfields') {

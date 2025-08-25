@@ -54,8 +54,7 @@ echo $OUTPUT->heading(get_string("modulenamepluralformatted", "wooclap"));
 // Get all the appropriate data.
 if (!$wooclaps = get_all_instances_in_course('wooclap', $course)) {
     notice(
-        get_string('nowooclap', 'wooclap'),
-        '../../course/view.php?id=$course->id'
+        get_string('nowooclap', 'wooclap'), '../../course/view.php?id=$course->id'
     );
     die;
 }

@@ -45,6 +45,7 @@ use mod_verbalfeedback\utils\user_utils;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class api {
+
     /** Status when a user has not yet provided feedback to another user. */
     const STATUS_PENDING = 0;
     /** Status when a user has begun providing feedback to another user. */
@@ -117,19 +118,13 @@ class api {
         if (isset($instances[$id])) {
             return $instances[$id];
         }
-        $instances[$id] = $DB->get_record_sql(
-            sprintf(
-                'SELECT vf.* FROM {%s} vf
-                INNER JOIN {%s} cat ON cat.instanceid = vf.id
-                INNER JOIN {%s} crit ON crit.categoryid = cat.id
-                WHERE crit.id = ?',
-                tables::INSTANCE_TABLE,
-                tables::INSTANCE_CATEGORY_TABLE,
-                tables::INSTANCE_CRITERION_TABLE
-            ),
-            [$id],
-            IGNORE_MISSING
-        );
+        $instances[$id] = $DB->get_record_sql(sprintf('
+            SELECT vf.* FROM {%s} vf
+            INNER JOIN {%s} cat ON cat.instanceid = vf.id
+            INNER JOIN {%s} crit ON crit.categoryid = cat.id
+            WHERE crit.id = ?',
+            tables::INSTANCE_TABLE, tables::INSTANCE_CATEGORY_TABLE, tables::INSTANCE_CRITERION_TABLE),
+            [$id], IGNORE_MISSING);
         return $instances[$id];
     }
 
@@ -147,17 +142,12 @@ class api {
         if (isset($instances[$id])) {
             return $instances[$id];
         }
-        $instances[$id] = $DB->get_record_sql(
-            sprintf(
-                'SELECT vf.* FROM {%s} vf
-                INNER JOIN {%s} cat ON cat.instanceid = vf.id
-                WHERE cat.id = ?',
-                tables::INSTANCE_TABLE,
-                tables::INSTANCE_CATEGORY_TABLE
-            ),
-            [$id],
-            IGNORE_MISSING
-        );
+        $instances[$id] = $DB->get_record_sql(sprintf('
+            SELECT vf.* FROM {%s} vf
+            INNER JOIN {%s} cat ON cat.instanceid = vf.id
+            WHERE cat.id = ?',
+            tables::INSTANCE_TABLE, tables::INSTANCE_CATEGORY_TABLE),
+            [$id], IGNORE_MISSING);
         return $instances[$id];
     }
 
@@ -197,19 +187,14 @@ class api {
         $context = context_module::instance($cm->id);
 
         $submissioncandidates =
-            get_enrolled_users(
-                $context,
-                'mod/verbalfeedback:receive_rating', // Capability.
-                0, // Groupid = 0 means all groups.
-                'u.id AS userid,
+            get_enrolled_users($context, $withcapability = 'mod/verbalfeedback:receive_rating', $groupid = 0,
+                $userfields = 'u.id AS userid,
                 u.firstname,
                 u.lastname,
                 u.firstnamephonetic,
                 u.lastnamephonetic,
                 u.middlename,
-                u.alternatename', // Userfields.
-                'u.lastname, u.firstname', // Order by.
-            );
+                u.alternatename', $orderby = 'u.lastname, u.firstname', $limitfrom = 0, $limitnum = 0);
 
         $userssql = "SELECT DISTINCT s.touserid AS touserid, s.id AS submissionid, s.status AS submissionstatus
                      FROM {verbalfeedback_submission} s
@@ -218,7 +203,7 @@ class api {
         $statusrecords = $DB->get_records_sql($userssql, ['instanceid' => $verbalfeedbackid, 'currentuserid' => $currentuserid]);
 
         // Combine sql results and drop current user ($includeself) if necessary.
-        $filtermap = function ($v) use ($currentuserid, $includeself, $statusrecords) {
+        $filtermap = function($v) use ($currentuserid, $includeself, $statusrecords) {
             if ($v->userid == $currentuserid && !$includeself) {
                 return false;
             }
@@ -268,12 +253,8 @@ class api {
             $params['fromuser'] = $fromuserid;
         }
 
-        [$course, $cm] = get_course_and_cm_from_instance(
-            $verbalfeedbackid,
-            'verbalfeedback',
-            $verbalfeedback->course,
-            $fromuserid
-        );
+        list($course, $cm) = get_course_and_cm_from_instance($verbalfeedbackid, 'verbalfeedback', $verbalfeedback->course,
+            $fromuserid);
 
         $groupmode = groups_get_activity_groupmode($cm);
         if ($groupmode != NOGROUPS) {
@@ -283,12 +264,12 @@ class api {
 
             if ($userids) {
                 $userids = array_map(
-                    function ($user) {
+                    function($user) {
                         return $user->id;
                     },
                     $userids
                 );
-                [$sql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+                list($sql, $inparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
                 $params = array_merge($params, $inparams);
                 $wheres[] = "u.id $sql";
             }
@@ -307,6 +288,7 @@ class api {
 
         if ($users = $DB->get_records_sql($usersql, $params)) {
             foreach ($users as $user) {
+
                 $submission = new submission();
                 $submission->set_instance_id($verbalfeedbackid);
                 $submission->set_from_user_id($fromuserid);
@@ -323,6 +305,7 @@ class api {
      * @throws coding_exception
      */
     public static function get_scales() {
+
         $wordscale = [
             'scalestronglydisagree',
             'scaledisagree',
@@ -392,13 +375,11 @@ class api {
 
                 $submission->add_response($response);
 
-                if (
-                    $response->get_value() != null ||
-                    $response->get_student_comment() != "" ||
-                    $response->get_private_comment() != ""
-                ) {
+                if ($response->get_value() != null || $response->get_student_comment() != ""
+                || $response->get_private_comment() != "") {
                     $inprogress = true;
                 }
+
             } else {
                 // There is already a response object on the submission.
                 // $response is here a pointer to this object. Therefore, we dont need to add a response to submission.
@@ -410,11 +391,8 @@ class api {
                 if (isset($resp['privatecomment'])) {
                     $response->set_private_comment($resp['privatecomment']);
                 }
-                if (
-                    $response->get_value() != null ||
-                    $response->get_student_comment() != "" ||
-                    $response->get_private_comment() != ""
-                ) {
+                if ($response->get_value() != null || $response->get_student_comment() != "" ||
+                $response->get_private_comment() != "") {
                     $inprogress = true;
                 }
             }
@@ -475,7 +453,7 @@ class api {
             }
 
             // Count participants awaiting feedback from this user.
-            [$insql, $params] = $DB->get_in_or_equal([self::STATUS_PENDING, self::STATUS_IN_PROGRESS], SQL_PARAMS_NAMED);
+            list($insql, $params) = $DB->get_in_or_equal([self::STATUS_PENDING, self::STATUS_IN_PROGRESS], SQL_PARAMS_NAMED);
             $select = "instance = :verbalfeedback AND fromuser = :fromuser AND status $insql";
             $params['verbalfeedback'] = $verbalfeedbackid;
             $params['fromuser'] = $user;

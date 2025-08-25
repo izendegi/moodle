@@ -29,6 +29,7 @@ use mod_verbalfeedback\model\template\parametrized_template_criterion;
  * The database parametrized criterion class
  */
 class db_parametrized_criterion {
+
     /** @var int Primary key. */
     public $id;
 

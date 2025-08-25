@@ -1,4 +1,5 @@
 <?php
+
 namespace Httpful;
 
 use Httpful\Exception\ConnectionErrorException;
@@ -16,7 +17,7 @@ use Httpful\Exception\ConnectionErrorException;
  * and "chainabilty" of the library.
  *
  * @author Nate Good <me@nategood.com>
- *
+ * 
  * @method self sendsJson()
  * @method self sendsXml()
  * @method self sendsForm()
@@ -46,20 +47,20 @@ class Request
 {
 
     // Option constants
-    public const SERIALIZE_PAYLOAD_NEVER   = 0;
-    public const SERIALIZE_PAYLOAD_ALWAYS  = 1;
-    public const SERIALIZE_PAYLOAD_SMART   = 2;
+    const SERIALIZE_PAYLOAD_NEVER   = 0;
+    const SERIALIZE_PAYLOAD_ALWAYS  = 1;
+    const SERIALIZE_PAYLOAD_SMART   = 2;
 
-    public const MAX_REDIRECTS_DEFAULT     = 25;
+    const MAX_REDIRECTS_DEFAULT     = 25;
 
     public $uri,
            $method                  = Http::GET,
-           $headers                 = [],
+           $headers                 = array(),
            $raw_headers             = '',
-           $strict_ssl              = true,
+           $strict_ssl              = false,
            $content_type,
            $expected_type,
-           $additional_curl_opts    = [],
+           $additional_curl_opts    = array(),
            $auto_parse              = true,
            $serialize_payload_method = self::SERIALIZE_PAYLOAD_SMART,
            $username,
@@ -71,12 +72,7 @@ class Request
            $send_callback,
            $follow_redirects        = false,
            $max_redirects           = self::MAX_REDIRECTS_DEFAULT,
-           $payload_serializers     = [],
-           $timeout                 = null,
-           $client_cert             = null,
-           $client_key              = null,
-           $client_passphrase       = null,
-           $client_encoding         = null;
+           $payload_serializers     = array();
 
     // Options
     // private $_options = array(
@@ -102,8 +98,7 @@ class Request
     {
         if (!is_array($attrs)) return;
         foreach ($attrs as $attr => $value) {
-            if (property_exists($this, $attr))
-                $this->$attr = $value;
+            $this->$attr = $value;
         }
     }
 
@@ -151,33 +146,33 @@ class Request
     /**
      * @return bool does the request have a timeout?
      */
-    public function hasTimeout(): bool
+    public function hasTimeout()
     {
-        return $this->timeout !== null;
+        return isset($this->timeout);
     }
 
     /**
      * @return bool has the internal curl request been initialized?
      */
-    public function hasBeenInitialized(): bool
+    public function hasBeenInitialized()
     {
-        return $this->_ch !== null;
+        return isset($this->_ch);
     }
 
     /**
      * @return bool Is this request setup for basic auth?
      */
-    public function hasBasicAuth(): bool
+    public function hasBasicAuth()
     {
-        return $this->password !== null && $this->username !== null;
+        return isset($this->password) && isset($this->username);
     }
 
     /**
      * @return bool Is this request setup for digest auth?
      */
-    public function hasDigestAuth(): bool
+    public function hasDigestAuth()
     {
-        return $this->password !== null && $this->username !== null && $this->additional_curl_opts[CURLOPT_HTTPAUTH] == CURLAUTH_DIGEST;
+        return isset($this->password) && isset($this->username) && $this->additional_curl_opts[CURLOPT_HTTPAUTH] == CURLAUTH_DIGEST;
     }
 
     /**
@@ -312,9 +307,9 @@ class Request
     /**
      * @return bool is this request setup for client side cert?
      */
-    public function hasClientSideCert(): bool
+    public function hasClientSideCert()
     {
-        return $this->client_cert !== null && $this->client_key !==null;
+        return isset($this->client_cert) && isset($this->client_key);
     }
 
     /**
@@ -400,15 +395,14 @@ class Request
      * @param string $mime
      * @return Request
      */
-    public function expects(?string $mime)
+    public function expects($mime)
     {
         if (empty($mime)) return $this;
         $this->expected_type = Mime::getFullMime($mime);
-
         return $this;
     }
     // @alias of expects
-    public function expectsType(?string $mime)
+    public function expectsType($mime)
     {
         return $this->expects($mime);
     }
@@ -487,7 +481,7 @@ class Request
     {
         $this->addOnCurlOption(CURLOPT_PROXY, "{$proxy_host}:{$proxy_port}");
         $this->addOnCurlOption(CURLOPT_PROXYTYPE, $proxy_type);
-        if (in_array($auth_type, [CURLAUTH_BASIC,CURLAUTH_NTLM])) {
+        if (in_array($auth_type, array(CURLAUTH_BASIC,CURLAUTH_NTLM))) {
             $this->addOnCurlOption(CURLOPT_PROXYAUTH, $auth_type)
                 ->addOnCurlOption(CURLOPT_PROXYUSERPWD, "{$auth_username}:{$auth_password}");
         }
@@ -517,10 +511,10 @@ class Request
     /**
      * @return bool is this request setup for using proxy?
      */
-    public function hasProxy(): bool
+    public function hasProxy()
     {
         /* We must be aware that proxy variables could come from environment also.
-           In curl extension, http proxy can be specified not only via CURLOPT_PROXY option,
+           In curl extension, http proxy can be specified not only via CURLOPT_PROXY option, 
            but also by environment variable called http_proxy.
         */
         return isset($this->additional_curl_opts[CURLOPT_PROXY]) && is_string($this->additional_curl_opts[CURLOPT_PROXY]) ||
@@ -749,7 +743,6 @@ class Request
             //     throw new \Exception("Unsupported Content-Type $mime");
             // }
         }
-
         if (substr($method, 0, 7) === 'expects') {
             $mime = strtolower(substr($method, 7));
             if (Mime::supportsMimeType($mime)) {
@@ -763,7 +756,7 @@ class Request
 
         // This method also adds the custom header support as described in the
         // method comments
-        if ($args === [])
+        if (count($args) === 0)
             return;
 
         // Strip the sugar.  If it leads with "with", strip.
@@ -798,7 +791,7 @@ class Request
         // recusion.  Do not use this syntax elsewhere.
         // It goes against the whole readability
         // and transparency idea.
-        self::$_template = new Request(['method' => Http::GET]);
+        self::$_template = new Request(array('method' => Http::GET));
 
         // This is more like it...
         self::$_template
@@ -825,7 +818,7 @@ class Request
     {
         // TODO add in support for various Loggers that follow
         // PSR 3 https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-3-logger-interface.md
-        if ($this->error_callback !== null) {
+        if (isset($this->error_callback)) {
             $this->error_callback->__invoke($error);
         } else {
             error_log($error);
@@ -867,14 +860,14 @@ class Request
     public function _curlPrep()
     {
         // Check for required stuff
-        if ($this->uri === null)
+        if (!isset($this->uri))
             throw new \Exception('Attempting to send a request before defining a URI endpoint.');
 
-        if ($this->payload !== null) {
+        if (isset($this->payload)) {
             $this->serialized_payload = $this->_serializePayload($this->payload);
         }
 
-        if ($this->send_callback !== null) {
+        if (isset($this->send_callback)) {
             call_user_func($this->send_callback, $this);
         }
 
@@ -928,7 +921,7 @@ class Request
 
         // https://github.com/nategood/httpful/issues/84
         // set Content-Length to the size of the payload if present
-        if ($this->payload !== null) {
+        if (isset($this->payload)) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $this->serialized_payload);
             if (!$this->isUpload()) {
                 $this->headers['Content-Length'] =
@@ -936,7 +929,7 @@ class Request
             }
         }
 
-        $headers = [];
+        $headers = array();
         // https://github.com/nategood/httpful/issues/37
         // Except header removes any HTTP 1.1 Continue from response headers
         $headers[] = 'Expect:';
@@ -969,9 +962,9 @@ class Request
         }
 
         $url = \parse_url($this->uri);
-        $path = ($url['path'] ?? '/').(isset($url['query']) ? '?'.$url['query'] : '');
+        $path = (isset($url['path']) ? $url['path'] : '/').(isset($url['query']) ? '?'.$url['query'] : '');
         $this->raw_headers = "{$this->method} $path HTTP/1.1\r\n";
-        $host = ($url['host'] ?? 'localhost').(isset($url['port']) ? ':'.$url['port'] : '');
+        $host = (isset($url['host']) ? $url['host'] : 'localhost').(isset($url['port']) ? ':'.$url['port'] : '');
         $this->raw_headers .= "Host: $host\r\n";
         $this->raw_headers .= \implode("\r\n", $headers);
         $this->raw_headers .= "\r\n";
@@ -1011,7 +1004,7 @@ class Request
     /**
      * @return bool
      */
-    public function isUpload(): bool
+    public function isUpload()
     {
         return Mime::UPLOAD == $this->content_type;
     }
@@ -1019,7 +1012,7 @@ class Request
     /**
      * @return string
      */
-    public function buildUserAgent(): string
+    public function buildUserAgent()
     {
         $user_agent = 'User-Agent: Httpful/' . Httpful::VERSION . ' (cURL/';
         $curl = \curl_version();
@@ -1049,7 +1042,9 @@ class Request
             $user_agent .= " {$_SERVER['HTTP_USER_AGENT']}";
         }
 
-        return $user_agent . ')';
+        $user_agent .= ')';
+
+        return $user_agent;
     }
 
     /**
@@ -1058,7 +1053,7 @@ class Request
      */
     public function buildResponse($result) {
         if ($result === false) {
-            if (($curlErrorNumber = curl_errno($this->_ch)) !== 0) {
+            if ($curlErrorNumber = curl_errno($this->_ch)) {
                 $curlErrorString = curl_error($this->_ch);
                 $this->_error($curlErrorString);
 

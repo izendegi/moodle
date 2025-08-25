@@ -43,7 +43,6 @@ if ($ADMIN->fulltree) {
         'course' => get_string('course'),
         'group' => get_string('group'),
         'id' => get_string('id', 'questionnaire'),
-        'useridnumber' => get_string('useridnumber', 'questionnaire'),
         'fullname' => get_string('fullname'),
         'username' => get_string('username'),
         'useridentityfields' => get_string('showuseridentity', 'admin')
@@ -54,10 +53,6 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('questionnaire/allowemailreporting',
         get_string('configemailreporting', 'questionnaire'), get_string('configemailreportinglong', 'questionnaire'), 0));
-
-    $settings->add(new admin_setting_configduration('questionnaire_questiondeletion/duration',
-        get_string('deletequestionsolderthan', 'questionnaire'),
-        get_string('deletesettingdescription', 'questionnaire'),  7 * 86400));
 
     // Delete old responses after. The default value is 24 months.
     $options = [

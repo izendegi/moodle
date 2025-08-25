@@ -30,7 +30,7 @@ require_once(dirname(__FILE__) . '/upgradelib.php');
  * @param int $oldversion The old version of the attendance module
  * @return bool
  */
-function xmldb_attendance_upgrade($oldversion = 0) {
+function xmldb_attendance_upgrade($oldversion=0) {
 
     global $DB, $CFG;
     $dbman = $DB->get_manager(); // Loads ddl manager and xmldb classes.
@@ -66,7 +66,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
          * Capabilities with a modifierid = 0 value are installed by default.
          * Only update the user's custom capabilities where modifierid is not zero.
          */
-        $sql = $DB->sql_like('capability', '?') . ' AND modifierid <> 0';
+        $sql = $DB->sql_like('capability', '?').' AND modifierid <> 0';
         $rs = $DB->get_recordset_select('role_capabilities', $sql, ['%mod/attforblock%']);
         foreach ($rs as $cap) {
             $renamedcapability = str_replace('mod/attforblock', 'mod/attendance', $cap->capability);
@@ -123,6 +123,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2015040502) {
+
         // Define field setnumber to be added to attendance_statuses.
         $table = new xmldb_table('attendance_statuses');
         $field = new xmldb_field('setnumber', XMLDB_TYPE_INTEGER, '5', null, XMLDB_NOTNULL, null, '0', 'deleted');
@@ -146,6 +147,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2015040503) {
+
         // Changing type of field grade on table attendance_statuses to number.
         $table = new xmldb_table('attendance_statuses');
         $field = new xmldb_field('grade', XMLDB_TYPE_NUMBER, '5, 2', null, XMLDB_NOTNULL, null, '0', 'description');
@@ -175,6 +177,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2016082900) {
+
         // Define field timemodified to be added to attendance.
         $table = new xmldb_table('attendance');
         $field = new xmldb_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'grade');
@@ -241,6 +244,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2017051101) {
+
         // Define field studentavailability to be added to attendance_statuses.
         $table = new xmldb_table('attendance_statuses');
         $field = new xmldb_field('studentavailability', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'grade');
@@ -336,6 +340,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2017062000) {
+
         // Define table attendance_warning_done to be created.
         $table = new xmldb_table('attendance_warning_done');
 
@@ -361,6 +366,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2017071305) {
+
         // Define table attendance_warning to be created.
         $table = new xmldb_table('attendance_warning');
 
@@ -382,14 +388,15 @@ function xmldb_attendance_upgrade($oldversion = 0) {
 
             // Conditionally launch create table for attendance_warning.
             $dbman->create_table($table);
+
         } else {
             // Key definition is probably incorrect so fix it - drop_key dml function doesn't seem to work.
             $indexes = $DB->get_indexes('attendance_warning');
             foreach ($indexes as $name => $index) {
                 if ($DB->get_dbfamily() === 'mysql') {
-                    $DB->execute("ALTER TABLE {attendance_warning} DROP INDEX " . $name);
+                    $DB->execute("ALTER TABLE {attendance_warning} DROP INDEX ". $name);
                 } else {
-                    $DB->execute("DROP INDEX " . $name);
+                    $DB->execute("DROP INDEX ". $name);
                 }
             }
             $index = new xmldb_key('level_id', XMLDB_KEY_UNIQUE, ['idnumber', 'warningpercent', 'warnafter']);
@@ -473,16 +480,8 @@ function xmldb_attendance_upgrade($oldversion = 0) {
 
     if ($oldversion < 2018022204) {
         $table = new xmldb_table('attendance');
-        $field = new xmldb_field(
-            'showextrauserdetails',
-            XMLDB_TYPE_INTEGER,
-            '1',
-            XMLDB_UNSIGNED,
-            XMLDB_NOTNULL,
-            null,
-            '1',
-            'showsessiondetails'
-        );
+        $field = new xmldb_field('showextrauserdetails', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED,
+            XMLDB_NOTNULL, null, '1', 'showsessiondetails');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
@@ -491,44 +490,20 @@ function xmldb_attendance_upgrade($oldversion = 0) {
 
     if ($oldversion < 2018050100) {
         $table = new xmldb_table('attendance_sessions');
-        $field = new xmldb_field(
-            'preventsharedip',
-            XMLDB_TYPE_INTEGER,
-            '1',
-            XMLDB_UNSIGNED,
-            XMLDB_NOTNULL,
-            null,
-            '0',
-            'absenteereport'
-        );
+        $field = new xmldb_field('preventsharedip', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED,
+            XMLDB_NOTNULL, null, '0', 'absenteereport');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-        $field = new xmldb_field(
-            'preventsharediptime',
-            XMLDB_TYPE_INTEGER,
-            '10',
-            XMLDB_UNSIGNED,
-            null,
-            null,
-            null,
-            'preventsharedip'
-        );
+        $field = new xmldb_field('preventsharediptime', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED,
+            null, null, null, 'preventsharedip');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
 
         $table = new xmldb_table('attendance_log');
-        $field = new xmldb_field(
-            'ipaddress',
-            XMLDB_TYPE_CHAR,
-            '45',
-            null,
-            null,
-            null,
-            '',
-            'remarks'
-        );
+        $field = new xmldb_field('ipaddress', XMLDB_TYPE_CHAR, '45', null,
+            null, null, '', 'remarks');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
@@ -538,16 +513,8 @@ function xmldb_attendance_upgrade($oldversion = 0) {
 
     if ($oldversion < 2018072700) {
         $table = new xmldb_table('attendance_sessions');
-        $field = new xmldb_field(
-            'calendarevent',
-            XMLDB_TYPE_INTEGER,
-            '1',
-            XMLDB_UNSIGNED,
-            XMLDB_NOTNULL,
-            null,
-            '1',
-            'caleventid'
-        );
+        $field = new xmldb_field('calendarevent', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED,
+            XMLDB_NOTNULL, null, '1', 'caleventid');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
             if (empty(get_config('attendance', 'enablecalendar'))) {
@@ -560,16 +527,8 @@ function xmldb_attendance_upgrade($oldversion = 0) {
 
     if ($oldversion < 2018082605) {
         $table = new xmldb_table('attendance_sessions');
-        $field = new xmldb_field(
-            'includeqrcode',
-            XMLDB_TYPE_INTEGER,
-            '1',
-            XMLDB_UNSIGNED,
-            XMLDB_NOTNULL,
-            null,
-            '0',
-            'calendarevent'
-        );
+        $field = new xmldb_field('includeqrcode', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED,
+            XMLDB_NOTNULL, null, '0', 'calendarevent');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
@@ -577,6 +536,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2019012500) {
+
         // Changing precision of field statusset on table attendance_log to (1333).
         $table = new xmldb_table('attendance_log');
         $field = new xmldb_field('statusset', XMLDB_TYPE_CHAR, '1333', null, null, null, null, 'statusid');
@@ -589,18 +549,11 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2019061800) {
+
         // Make sure default value  to '0'.
         $table = new xmldb_table('attendance_sessions');
-        $field = new xmldb_field(
-            'preventsharedip',
-            XMLDB_TYPE_INTEGER,
-            '1',
-            XMLDB_UNSIGNED,
-            XMLDB_NOTNULL,
-            null,
-            '0',
-            'absenteereport'
-        );
+        $field = new xmldb_field('preventsharedip', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED,
+            XMLDB_NOTNULL, null, '0', 'absenteereport');
 
         if ($dbman->field_exists($table, $field)) {
             $dbman->change_field_default($table, $field);
@@ -632,6 +585,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2019062200) {
+
         // Define table attendance_rotate_passwords to be created.
         $table = new xmldb_table('attendance_rotate_passwords');
 
@@ -669,6 +623,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
 
         // Attendance savepoint reached.
         upgrade_mod_savepoint(true, 2019062200, 'attendance');
+
     }
 
     if ($oldversion < 2020072900) {
@@ -697,6 +652,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2021082400) {
+
         // Changing precision of field statusset on table attendance_log to (1333).
         $table = new xmldb_table('attendance_sessions');
         $field = new xmldb_field('automarkcmid', XMLDB_TYPE_CHAR, '10', null, false, null, null, 'rotateqrcodesecret');
@@ -711,6 +667,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2021082401) {
+
         // Changing the default of field automarkcmid on table attendance_sessions to 0.
         $table = new xmldb_table('attendance_sessions');
         $field = new xmldb_field('automarkcmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'rotateqrcodesecret');
@@ -723,6 +680,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2021082402) {
+
         // Changing the default of field ipaddress on table attendance_log to .
         $table = new xmldb_table('attendance_log');
         $field = new xmldb_field('ipaddress', XMLDB_TYPE_CHAR, '45', null, null, null, '', 'remarks');
@@ -745,6 +703,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2022082900) {
+
         // Changing precision of field remarks on table attendance_log to (1333).
         $table = new xmldb_table('attendance_log');
         $field = new xmldb_field('remarks', XMLDB_TYPE_CHAR, '1333', null, null, null, null, 'takenby');
@@ -757,18 +716,11 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2022083100) {
+
         // Define field studentsearlyopentime to be added to attendance_sessions.
         $table = new xmldb_table('attendance_sessions');
-        $field = new xmldb_field(
-            'studentsearlyopentime',
-            XMLDB_TYPE_INTEGER,
-            '10',
-            null,
-            XMLDB_NOTNULL,
-            null,
-            '0',
-            'studentscanmark'
-        );
+        $field = new xmldb_field('studentsearlyopentime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL,
+                                 null, '0', 'studentscanmark');
 
         // Conditionally launch add field studentsearlyopentime.
         if (!$dbman->field_exists($table, $field)) {
@@ -815,6 +767,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2023020100) {
+
         // Define field studentavailability to be added to attendance_statuses.
         $table = new xmldb_table('attendance_statuses');
         $field = new xmldb_field('availablebeforesession', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'studentavailability');
@@ -829,6 +782,7 @@ function xmldb_attendance_upgrade($oldversion = 0) {
     }
 
     if ($oldversion < 2023021700) {
+
         // Define field studentavailability to be added to attendance_statuses.
         $table = new xmldb_table('attendance_sessions');
         $field = new xmldb_field('allowupdatestatus', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'automarkcmid');

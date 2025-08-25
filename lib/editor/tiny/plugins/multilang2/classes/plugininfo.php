@@ -19,9 +19,9 @@ namespace tiny_multilang2;
 use context;
 use editor_tiny\editor;
 use editor_tiny\plugin;
+use editor_tiny\plugin_with_menuitems;
 use editor_tiny\plugin_with_buttons;
 use editor_tiny\plugin_with_configuration;
-use editor_tiny\plugin_with_menuitems;
 
 defined('MOODLE_INTERNAL') || die;
 
@@ -36,7 +36,8 @@ require_once(__DIR__ . '/../../../../../behat/classes/util.php');
  * @copyright   2015 onwards Iñaki Arenaza & Mondragon Unibertsitatea
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class plugininfo extends plugin implements plugin_with_buttons, plugin_with_configuration, plugin_with_menuitems {
+class plugininfo extends plugin implements plugin_with_menuitems, plugin_with_buttons, plugin_with_configuration {
+
     /**
      * There is a config setting that can be set to true for testing purposes so that even though the
      * multilang2 filter is missing, the behat tests can be executed pretending that the multilang2 filter
@@ -98,12 +99,8 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_conf
      * @return array
      * @throws \dml_exception
      */
-    public static function get_plugin_configuration_for_context(
-        context $context,
-        array $options,
-        array $fpoptions,
-        ?editor $editor = null
-    ): array {
+    public static function get_plugin_configuration_for_context(context $context, array $options, array $fpoptions,
+                                                                ?editor $editor = null): array {
 
         // Check, if the multilang2 filter is active.
         if (self::is_multilang2_simulated_for_test()) {
@@ -198,7 +195,7 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_conf
             foreach ($optionlanguages as $option) {
                 if ($haschild = strpos($option, '-')) {
                     // Sub lang, use the 'parent' first lang option for checks.
-                    $parentlang = substr($option, 0, $haschild);
+                    $parentlang = substr($option, 0 , $haschild);
                     if (!isset($langsavailable[$parentlang])) {
                         continue;
                     }
@@ -255,4 +252,5 @@ ru
 bn
         ';
     }
+
 }

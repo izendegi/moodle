@@ -42,7 +42,7 @@ final class enrolments_test extends advanced_testcase {
      * @group tool_mergeusers
      * @group tool_mergeusers_enrolments
      */
-    public function test_merge_enrolments(): void {
+    public function test_mergeenrolments(): void {
         global $DB;
 
         // Setup two users to merge.

@@ -16,52 +16,27 @@
 
 use Integrations\PhpSdk\TiiClass;
 
+// @package   plagiarism_turnitin
+// @copyright 2012 iParadigms LLC
+
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot.'/plagiarism/turnitin/classes/turnitin_comms.class.php');
 
-/**
- * Class turnitin_class
- *
- * @package   plagiarism_turnitin
- * @copyright 2012 iParadigms LLC *
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 class turnitin_class {
 
-    /**
-     * @var int
-     */
     private $id;
-    /**
-     * @var int
-     */
     private $turnitinid;
-    /**
-     * @var string
-     */
     private $title;
-    /**
-     * @var string
-     */
     private $turnitintitle;
-    /**
-     * @var string
-     */
     public $sharedrubrics;
 
-    /**
-     * turnitin_class constructor.
-     *
-     * @param int $id
-     * @throws dml_exception
-     */
     public function __construct($id) {
         global $DB;
 
         $this->id = $id;
 
-        if ($turnitincourse = $DB->get_record('plagiarism_turnitin_courses', ["courseid" => $id])) {
+        if ($turnitincourse = $DB->get_record('plagiarism_turnitin_courses', array("courseid" => $id))) {
             $this->turnitinid = $turnitincourse->turnitin_cid;
             $this->turnitintitle = $turnitincourse->turnitin_ctl;
         }
@@ -70,7 +45,7 @@ class turnitin_class {
     /**
      * Update class from Turnitin, mainly to get shared rubrics
      *
-     * @return void
+     * @return
      */
     public function read_class_from_tii() {
         // Initialise Comms Object.
@@ -85,7 +60,7 @@ class turnitin_class {
             $readclass = $response->getClass();
 
             $rubrics = $readclass->getSharedRubrics();
-            $rubricarray = [];
+            $rubricarray = array();
             foreach ($rubrics as $rubric) {
                 $rubricarray[$rubric->getRubricGroupName()][$rubric->getRubricId()] = $rubric->getRubricName();
             }

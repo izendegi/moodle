@@ -34,6 +34,7 @@ require_once($CFG->libdir . '/filelib.php');
 
 // The Privacy API implements an interface which is not present in older versions of Moodle
 // So we polyfill it.
+
 if (interface_exists('\core_privacy\local\request\userlist')) {
     /**
      * Interface for Wooclap UserList, extending core_privacy's UserList.
@@ -45,16 +46,17 @@ if (interface_exists('\core_privacy\local\request\userlist')) {
      * Interface for Wooclap UserList
      */
     interface wooclap_userlist {
-    }
+    };
 }
 
 /**
  * Provider class for userlist.
  */
 class provider implements
-    \core_privacy\local\metadata\provider,
-    \core_privacy\local\request\plugin\provider,
-    wooclap_userlist {
+        \core_privacy\local\metadata\provider,
+        wooclap_userlist,
+        \core_privacy\local\request\plugin\provider {
+
     /**
      * Return the fields which contain personal data.
      *
@@ -147,6 +149,7 @@ class provider implements
               JOIN {wooclap_completion} wc ON wc.id = w.id
              WHERE cm.id = :instanceid";
         $userlist->add_from_sql('userid', $sql, $params);
+
     }
 
     /**
@@ -233,4 +236,5 @@ class provider implements
     public static function delete_data_for_users(approved_userlist $userlist) {
         debugging('The Wooclap plugin does not currently support the deleting of user data. ', DEBUG_DEVELOPER);
     }
+
 }

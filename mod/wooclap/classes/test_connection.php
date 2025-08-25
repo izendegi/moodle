@@ -23,6 +23,7 @@ require_once($CFG->dirroot . '/mod/wooclap/lib.php');
  *
  */
 class mod_wooclap_test_connection extends admin_setting_heading {
+
     /**
      * Returns an HTML string
      *

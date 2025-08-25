@@ -22,22 +22,17 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace plagiarism_turnitin;
-
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->dirroot . '/plagiarism/turnitin/lib.php');
-
-use PHPUnit\Framework\Attributes\CoversFunction;
 
 /**
  * Tests for API comms class
  *
  * @package turnitin
  */
-#[CoversFunction('\turnitin_forum::set_content')]
-final class turnitin_forum_test extends \advanced_testcase {
+class plagiarism_turnitin_forum_testcase extends advanced_testcase {
 
     /** @var stdClass created in setUp. */
     protected $forum;
@@ -52,24 +47,22 @@ final class turnitin_forum_test extends \advanced_testcase {
      * Create a course and forum module instance
      */
     public function setUp(): void {
-        parent::setUp();
-
         // Create a course, user and a forum.
         $course = $this->getDataGenerator()->create_course();
         $user = $this->getDataGenerator()->create_user();
-        $record = new \stdClass();
+        $record = new stdClass();
         $record->course = $course->id;
         $this->forum = $this->getDataGenerator()->create_module('forum', $record);
 
         // Add discussion to course.
-        $record = new \stdClass();
+        $record = new stdClass();
         $record->course = $course->id;
         $record->userid = $user->id;
         $record->forum = $this->forum->id;
         $this->discussion = $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_discussion($record);
 
         // Add post to discussion.
-        $record = new \stdClass();
+        $record = new stdClass();
         $record->course = $course->id;
         $record->userid = $user->id;
         $record->forum = $this->forum->id;
@@ -80,16 +73,16 @@ final class turnitin_forum_test extends \advanced_testcase {
     /**
      * Test to check that content returned by set content is the same as passed in array.
      */
-    public function test_to_check_content_in_array_is_returned_by_set_content(): void {
+    public function test_to_check_content_in_array_is_returned_by_set_content() {
 
         $this->resetAfterTest(true);
 
         // Create module object.
-        $moduleobject = new \turnitin_forum();
+        $moduleobject = new turnitin_forum();
 
-        $params = [
-            'content' => $this->post->message,
-        ];
+        $params = array(
+            'content' => $this->post->message
+        );
 
         $content = $moduleobject->set_content($params);
         $this->assertEquals($content, $this->post->message);
@@ -99,17 +92,17 @@ final class turnitin_forum_test extends \advanced_testcase {
      * Test to check that content returned by set content is taken from database
      * if post id is passed in.
      */
-    public function test_to_check_content_from_database_is_returned_by_set_content_if_postid_present(): void {
+    public function test_to_check_content_from_database_is_returned_by_set_content_if_postid_present() {
 
         $this->resetAfterTest(true);
 
         // Create module object.
-        $moduleobject = new \turnitin_forum();
+        $moduleobject = new turnitin_forum();
 
-        $params = [
+        $params = array(
             'content' => 'content should not come back',
-            'postid' => $this->post->id,
-        ];
+            'postid' => $this->post->id
+        );
 
         $content = $moduleobject->set_content($params);
         $this->assertEquals($content, $this->post->message);

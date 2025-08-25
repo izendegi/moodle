@@ -32,6 +32,7 @@ namespace mod_customcert;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class page_test extends \advanced_testcase {
+
     /**
      * Set the test up.
      *

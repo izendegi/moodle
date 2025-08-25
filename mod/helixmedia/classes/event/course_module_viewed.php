@@ -23,6 +23,7 @@
  */
 
 namespace mod_helixmedia\event;
+defined('MOODLE_INTERNAL') || die();
 
 /**
  * The mod_helixmedia course module viewed event class.
@@ -32,6 +33,7 @@ namespace mod_helixmedia\event;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class course_module_viewed extends \core\event\course_module_viewed {
+
     /**
      * Init method.
      */
@@ -41,3 +43,4 @@ class course_module_viewed extends \core\event\course_module_viewed {
         $this->data['objecttable'] = 'helixmedia';
     }
 }
+

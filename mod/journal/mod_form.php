@@ -33,11 +33,14 @@ require_once($CFG->dirroot . '/course/moodleform_mod.php');
  * @copyright  2022 Elearning Software SRL http://elearningsoftware.ro
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class mod_journal_mod_form extends moodleform_mod {
+class mod_journal_mod_form extends moodleform_mod
+{
+
     /**
      * Set up the form definition.
      */
-    public function definition() {
+    public function definition()
+    {
         global $COURSE;
 
         $mform = &$this->_form;
@@ -67,64 +70,11 @@ class mod_journal_mod_form extends moodleform_mod {
             $mform->setDefault('days', '0');
         }
 
-        // Notifications settings.
-        $config = get_config('journal');
-
-        $mform->addElement('checkbox', 'notifyteachers', get_string('notifyteachers', 'journal'));
-        $mform->addHelpButton('notifyteachers', 'notifyteachers', 'journal');
-        $mform->setDefault('notifyteachers', isset($config->notifyteachers_default) ? $config->notifyteachers_default : 1);
-
-        $mform->addElement('checkbox', 'notifystudents', get_string('notifystudents', 'journal'));
-        $mform->addHelpButton('notifystudents', 'notifystudents', 'journal');
-        $mform->setDefault('notifystudents', isset($config->notifystudents_default) ? $config->notifystudents_default : 1);
-
         $this->standard_grading_coursemodule_elements();
-
-        // Apply default grade from global settings.
-        // We only apply this for new instances (when $this->_instance is empty).
-        if (empty($this->_instance)) {
-            $defaultgrade = isset($config->defaultgrade) ? $config->defaultgrade : false;
-            // If the setting is missing, fallback to 100 (Standard Moodle default).
-            if ($defaultgrade === false) {
-                $defaultgrade = 100;
-            }
-            $mform->setDefault('grade', $defaultgrade);
-        }
 
         $this->standard_coursemodule_elements();
 
         $this->add_action_buttons();
     }
 
-    /**
-     * Returns whether the custom completion rules are enabled.
-     *
-     * @param array $data form data
-     * @return bool
-     */
-    public function completion_rule_enabled($data): bool {
-        // Compatibility check: get_suffix only exists in Moodle 4.3+.
-        $suffix = method_exists($this, 'get_suffix') ? $this->get_suffix() : '';
-        return (!empty($data['completion_create_entry' . $suffix]));
-    }
-
-    /**
-     * Adds the custom completion rules for mod_journal
-     *
-     * @return array
-     */
-    public function add_completion_rules(): array {
-        $mform = $this->_form;
-
-        // Compatibility check: get_suffix only exists in Moodle 4.3+.
-        $suffix = method_exists($this, 'get_suffix') ? $this->get_suffix() : '';
-        $fieldname = 'completion_create_entry' . $suffix;
-
-        $mform->addElement('advcheckbox', $fieldname, get_string('completiondetail:completion_create_entry', 'journal'));
-
-        $mform->setType($fieldname, PARAM_INT);
-        $mform->hideIf($fieldname, 'completion', 'neq', COMPLETION_TRACKING_AUTOMATIC);
-
-        return ([$fieldname]);
-    }
 }

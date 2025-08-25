@@ -35,6 +35,7 @@ use format_topics\output\courseformat\content\section\controlmenu as controlmenu
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class controlmenu extends controlmenu_format_topics {
+
     /** @var course_format the course format class */
     protected $format;
 
@@ -115,8 +116,7 @@ class controlmenu extends controlmenu_format_topics {
             $sectionlink = new \moodle_url(
                 '/course/view.php',
                 ['id' => $course->id, 'sectionid' => $section->id],
-                'tabs-tree-start'
-            );
+                'tabs-tree-start');
 
             $parentcontrols['permalink']['url'] = $sectionlink;
         }

@@ -24,13 +24,12 @@
 namespace mod_verbalfeedback;
 use Exception;
 use mod_verbalfeedback\model\instance_category;
-use mod_verbalfeedback\model\language;
 use moodle_exception;
 use stdClass;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->libdir . '/weblib.php');
+require_once($CFG->libdir.'/weblib.php');
 
 /**
  * Class containing helper functions for the verbal feedback activity module.
@@ -39,6 +38,7 @@ require_once($CFG->libdir . '/weblib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class helper {
+
     /**
      * Gets the localised string value of a status code.
      *
@@ -85,13 +85,12 @@ class helper {
      * @return array List of items with the average rating/comments given to the user.
      */
     public static function prepare_items_view($categories) {
-        $currentlanguage = language::map_current_language();
+        $currentlanguage = current_language();
         $viewmodel = [];
         /** @var instance_category $category */
         foreach ($categories as $category) {
             $categoryviewmodel = new stdClass();
-            $categoryviewmodel->header = $category->get_header($currentlanguage)
-                ? $category->get_header($currentlanguage)->get_string() : '';
+            $categoryviewmodel->header = $category->get_header($currentlanguage)->get_string();
             $categoryviewmodel->id = $category->get_id();
             $categoryviewmodel->criteria = [];
             $categoryviewmodel->position = $category->get_position();
@@ -103,25 +102,18 @@ class helper {
                 $criterionviewmodel->id = $criterion->get_id();
                 $criterionviewmodel->position = $criterion->get_position();
                 $criterionviewmodel->weight = number_format($criterion->get_weight(), 2);
-                $criterionviewmodel->text = $criterion->get_description($currentlanguage)
-                    ? $criterion->get_description($currentlanguage)->get_string() : '';
+                $criterionviewmodel->text = $criterion->get_description($currentlanguage)->get_string();
 
                 foreach ($criterion->get_subratings() as $subrating) {
                     $subratingviewmodel = new stdClass();
 
                     $subratingviewmodel->id = $subrating->get_id();
-                    $subratingviewmodel->title = $subrating->get_title($currentlanguage)
-                        ? $subrating->get_title($currentlanguage)->get_string() : '';
-                    $subratingviewmodel->description = $subrating->get_description($currentlanguage)
-                        ? $subrating->get_description($currentlanguage)->get_string() : '';
-                    $subratingviewmodel->verynegative = $subrating->get_verynegative($currentlanguage)
-                        ? $subrating->get_verynegative($currentlanguage)->get_string() : '';
-                    $subratingviewmodel->negative = $subrating->get_negative($currentlanguage)
-                        ? $subrating->get_negative($currentlanguage)->get_string() : '';
-                    $subratingviewmodel->positive = $subrating->get_positive($currentlanguage)
-                        ? $subrating->get_positive($currentlanguage)->get_string() : '';
-                    $subratingviewmodel->verypositive = $subrating->get_verypositive($currentlanguage)
-                        ? $subrating->get_verypositive($currentlanguage)->get_string() : '';
+                    $subratingviewmodel->title = $subrating->get_title($currentlanguage)->get_string();
+                    $subratingviewmodel->description = $subrating->get_description($currentlanguage)->get_string();
+                    $subratingviewmodel->verynegative = $subrating->get_verynegative($currentlanguage)->get_string();
+                    $subratingviewmodel->negative = $subrating->get_negative($currentlanguage)->get_string();
+                    $subratingviewmodel->positive = $subrating->get_positive($currentlanguage)->get_string();
+                    $subratingviewmodel->verypositive = $subrating->get_verypositive($currentlanguage)->get_string();
 
                     $criterionviewmodel->subratings[] = $subratingviewmodel;
                 }
@@ -145,9 +137,10 @@ class helper {
      */
     public static function parseyamlfile(string $someyaml, ?int $options = null, ?int $debug = null) {
         if (version_compare(PHP_VERSION, '8.1.14') >= 0) {
-            require_once(implode(DIRECTORY_SEPARATOR, [dirname(__FILE__), 'vendor', 'autoload.php']));
+            require_once(implode(DIRECTORY_SEPARATOR, [dirname(__FILE__), 'vendor', '81x', 'autoload.php']));
             return \Dallgoot\Yaml\Yaml::parseFile($someyaml, $options, $debug);
         }
-        throw new Exception('YAML parsing requires at least PHP 8.1.14');
+        require_once(implode(DIRECTORY_SEPARATOR, [dirname(__FILE__), 'vendor', '74x', 'autoload.php']));
+        return \Dallgoot\Yaml::parseFile($someyaml, $options, $debug);
     }
 }

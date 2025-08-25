@@ -33,6 +33,7 @@ use mod_verbalfeedback\repository\model\db_template;
  * The template repository class.
  */
 class template_repository {
+
     /**
      * Gets all the templates within the database.
      * @return array<int, template> The resulting templates.

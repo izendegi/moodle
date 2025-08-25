@@ -41,7 +41,6 @@ const SELECTORS = {
     QUESTION_CHECKBOX: '.question-checkbox',
     DELETE_QUESTION: '.delete-question-button',
     EDIT_QUESTION: '.edit-question-button',
-    SHOW_OWN_QUESTIONS: '#showOwnQuestions',
 };
 
 // Private variables and functions.
@@ -326,8 +325,6 @@ const registerEvents = function() {
             const addButton = e.target.closest(SELECTORS.ADD_QUESTION);
             const id = parseInt(addButton.dataset.threesixtyid);
             await displayInputDialogue(id, null, addButton);
-        } else if (e.target.closest(SELECTORS.SHOW_OWN_QUESTIONS)) {
-            refreshQuestionsList();
         }
     });
 };
@@ -336,15 +333,11 @@ const registerEvents = function() {
  * Refreshes the list of questions in the question bank.
  */
 function refreshQuestionsList() {
-    const showOwnQuestionsCheckbox = document.querySelector(SELECTORS.SHOW_OWN_QUESTIONS);
-    const showOwnQuestions = showOwnQuestionsCheckbox ? showOwnQuestionsCheckbox.checked : false;
     // Get list of questions through AJAX.
     const promises = ajax.call([
         {
             methodname: 'mod_threesixo_get_questions',
-            args: {
-                ownquestions: showOwnQuestions
-            }
+            args: {}
         }
     ]);
     promises[0].then(response => {

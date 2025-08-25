@@ -39,6 +39,7 @@ use mod_verbalfeedback\repository\model\localized_string_type;
  * The template criterion repository class
  */
 class template_criterion_repository {
+
     /**
      * Gets the category templates
      * @return array<int, template_criterion>.
@@ -52,10 +53,8 @@ class template_criterion_repository {
         foreach ($rs as $dbocriterion) {
             $templatecriterion = self::dbo_to_template_criterion($dbocriterion);
 
-            $criteriondescriptions = $this->get_localized_strings(
-                $templatecriterion->get_id(),
-                localized_string_type::TEMPLATE_CRITERION
-            );
+            $criteriondescriptions = $this->get_localized_strings($templatecriterion->get_id(),
+                localized_string_type::TEMPLATE_CRITERION);
             $templatecriterion->set_descriptions($criteriondescriptions);
 
             $subratings = $this->get_subratings_by_criterion_id($templatecriterion->get_id());
@@ -79,10 +78,8 @@ class template_criterion_repository {
         $rs = $DB->get_recordset(tables::TEMPLATE_CRITERION_TABLE);
         foreach ($rs as $row) {
             $templatecriterion = db_template_criterion::to_template_criterion($row);
-            $criteriondescriptions = $this->get_localized_strings(
-                $templatecriterion->get_id(),
-                localized_string_type::TEMPLATE_CRITERION
-            );
+            $criteriondescriptions = $this->get_localized_strings($templatecriterion->get_id(),
+                localized_string_type::TEMPLATE_CRITERION);
             $templatecriterion->set_descriptions($criteriondescriptions);
             $subratings = $this->get_subratings_by_criterion_id($templatecriterion->get_id());
             $templatecriterion->set_subratings($subratings);
@@ -143,11 +140,8 @@ class template_criterion_repository {
 
             // Criteria description.
             foreach ($templatecriterion->get_descriptions() as $localizedstring) {
-                $dbolocalizedstring = db_localized_string::from_localized_string(
-                    $localizedstring,
-                    localized_string_type::TEMPLATE_CRITERION,
-                    $templatecriterion->get_id()
-                );
+                $dbolocalizedstring = db_localized_string::from_localized_string($localizedstring,
+                    localized_string_type::TEMPLATE_CRITERION, $templatecriterion->get_id());
                 if ($localizedstring->get_id() == 0) {
                     $DB->insert_record(tables::LOCALIZED_STRING_TABLE, $dbolocalizedstring);
                 } else {
@@ -166,11 +160,8 @@ class template_criterion_repository {
                 }
 
                 foreach ($subrating->get_titles() as $title) {
-                    $dbotitle = db_localized_string::from_localized_string(
-                        $title,
-                        localized_string_type::TEMPLATE_SUBRATING_TITLE,
-                        $subrating->get_id()
-                    );
+                    $dbotitle = db_localized_string::from_localized_string($title,
+                        localized_string_type::TEMPLATE_SUBRATING_TITLE, $subrating->get_id());
                     if ($title->get_id() == 0) {
                         $DB->insert_record(tables::LOCALIZED_STRING_TABLE, $dbotitle);
                     } else {
@@ -180,11 +171,8 @@ class template_criterion_repository {
 
                 // Subrating description.
                 foreach ($subrating->get_descriptions() as $description) {
-                    $dbodescription = db_localized_string::from_localized_string(
-                        $description,
-                        localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION,
-                        $subrating->get_id()
-                    );
+                    $dbodescription = db_localized_string::from_localized_string($description,
+                        localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION, $subrating->get_id());
                     if ($description->get_id() == 0) {
                         $DB->insert_record(tables::LOCALIZED_STRING_TABLE, $dbodescription);
                     } else {
@@ -193,11 +181,8 @@ class template_criterion_repository {
                 }
 
                 foreach ($subrating->get_verynegatives() as $verynegative) {
-                    $dboverynegative = db_localized_string::from_localized_string(
-                        $verynegative,
-                        localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE,
-                        $subrating->get_id()
-                    );
+                    $dboverynegative = db_localized_string::from_localized_string($verynegative,
+                        localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE, $subrating->get_id());
                     if ($verynegative->get_id() == 0) {
                         $DB->insert_record(tables::LOCALIZED_STRING_TABLE, $dboverynegative);
                     } else {
@@ -205,11 +190,8 @@ class template_criterion_repository {
                     }
                 }
                 foreach ($subrating->get_negatives() as $negative) {
-                    $dbonegative = db_localized_string::from_localized_string(
-                        $negative,
-                        localized_string_type::TEMPLATE_SUBRATING_NEGATIVE,
-                        $subrating->get_id()
-                    );
+                    $dbonegative = db_localized_string::from_localized_string($negative,
+                        localized_string_type::TEMPLATE_SUBRATING_NEGATIVE, $subrating->get_id());
                     if ($negative->get_id() == 0) {
                         $DB->insert_record(tables::LOCALIZED_STRING_TABLE, $dbonegative);
                     } else {
@@ -217,11 +199,8 @@ class template_criterion_repository {
                     }
                 }
                 foreach ($subrating->get_positives() as $positive) {
-                    $dbopositive = db_localized_string::from_localized_string(
-                        $positive,
-                        localized_string_type::TEMPLATE_SUBRATING_POSITIVE,
-                        $subrating->get_id()
-                    );
+                    $dbopositive = db_localized_string::from_localized_string($positive,
+                        localized_string_type::TEMPLATE_SUBRATING_POSITIVE, $subrating->get_id());
                     if ($positive->get_id() == 0) {
                         $DB->insert_record(tables::LOCALIZED_STRING_TABLE, $dbopositive);
                     } else {
@@ -229,11 +208,8 @@ class template_criterion_repository {
                     }
                 }
                 foreach ($subrating->get_verypositives() as $verypositive) {
-                    $dboverypositive = db_localized_string::from_localized_string(
-                        $verypositive,
-                        localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE,
-                        $subrating->get_id()
-                    );
+                    $dboverypositive = db_localized_string::from_localized_string($verypositive,
+                        localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE, $subrating->get_id());
                     if ($verypositive->get_id() == 0) {
                         $DB->insert_record(tables::LOCALIZED_STRING_TABLE, $dboverypositive);
                     } else {
@@ -241,6 +217,7 @@ class template_criterion_repository {
                     }
                 }
             }
+
             $transaction->allow_commit();
         } catch (Exception $e) {
             $transaction->rollback($e);
@@ -265,59 +242,24 @@ class template_criterion_repository {
             // Delete subratings.
             $dbosubratings = $DB->get_records(tables::TEMPLATE_SUBRATINGS_TABLE, ['criterionid' => $id]);
             foreach ($dbosubratings as $dbosubrating) {
-                $DB->delete_records(
-                    tables::LOCALIZED_STRING_TABLE,
-                    [
-                        'foreignkey' => $dbosubrating->id,
-                        'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_TITLE),
-                    ],
-                );
-                $DB->delete_records(
-                    tables::LOCALIZED_STRING_TABLE,
-                    [
-                        'foreignkey' => $dbosubrating->id,
-                        'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION),
-                    ],
-                );
-                $DB->delete_records(
-                    tables::LOCALIZED_STRING_TABLE,
-                    [
-                        'foreignkey' => $dbosubrating->id,
-                        'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE),
-                    ],
-                );
-                $DB->delete_records(
-                    tables::LOCALIZED_STRING_TABLE,
-                    [
-                        'foreignkey' => $dbosubrating->id,
-                        'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_NEGATIVE),
-                    ],
-                );
-                $DB->delete_records(
-                    tables::LOCALIZED_STRING_TABLE,
-                    [
-                        'foreignkey' => $dbosubrating->id,
-                        'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_POSITIVE),
-                    ],
-                );
-                $DB->delete_records(
-                    tables::LOCALIZED_STRING_TABLE,
-                    [
-                        'foreignkey' => $dbosubrating->id,
-                        'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE),
-                    ],
-                );
+                $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
+                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_TITLE), ], );
+                $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
+                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION), ], );
+                $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
+                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE), ], );
+                $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
+                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_NEGATIVE), ], );
+                $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
+                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_POSITIVE), ], );
+                $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $dbosubrating->id,
+                'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE), ], );
             }
             $DB->delete_records(tables::TEMPLATE_SUBRATINGS_TABLE, ['criterionid' => $id]);
 
             // Delete localized strings.
-            $DB->delete_records(
-                tables::LOCALIZED_STRING_TABLE,
-                [
-                    'foreignkey' => $id,
-                    'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_CRITERION),
-                ],
-            );
+            $DB->delete_records(tables::LOCALIZED_STRING_TABLE, ['foreignkey' => $id,
+            'typeid' => localized_string_type::str2id(localized_string_type::TEMPLATE_CRITERION), ], );
 
             // Delete criterion.
             $DB->delete_records(tables::TEMPLATE_CRITERION_TABLE, ['id' => $id]);
@@ -364,13 +306,7 @@ class template_criterion_repository {
 
         $strings[$cachekey] = [];
 
-        $rs = $DB->get_recordset(
-            tables::LOCALIZED_STRING_TABLE,
-            [
-                'typeid' => $typeid,
-                'foreignkey' => $foreignkey,
-            ]
-        );
+        $rs = $DB->get_recordset(tables::LOCALIZED_STRING_TABLE, ['typeid' => $typeid, 'foreignkey' => $foreignkey]);
         foreach ($rs as $row) {
             $strings[$cachekey][$row->id] = db_localized_string::to_localized_string($row);
         }
@@ -413,42 +349,26 @@ class template_criterion_repository {
 
         $dbosubratings = $DB->get_records(tables::TEMPLATE_SUBRATINGS_TABLE, ['criterionid' => $criterionid]);
         foreach ($dbosubratings as $dbosubrating) {
-            $titles = $this->get_localized_strings($dbosubrating->id, localized_string_type::TEMPLATE_SUBRATING_TITLE);
+            $titles = $this->get_localized_strings($dbosubrating->id,
+                localized_string_type::TEMPLATE_SUBRATING_TITLE);
 
-            $descriptions = $this->get_localized_strings(
-                $dbosubrating->id,
-                localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION
-            );
+            $descriptions = $this->get_localized_strings($dbosubrating->id,
+                localized_string_type::TEMPLATE_SUBRATING_DESCRIPTION);
 
-            $verynegatives = $this->get_localized_strings(
-                $dbosubrating->id,
-                localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE
-            );
+            $verynegatives = $this->get_localized_strings($dbosubrating->id,
+                localized_string_type::TEMPLATE_SUBRATING_VERY_NEGATIVE);
 
-            $negatives = $this->get_localized_strings(
-                $dbosubrating->id,
-                localized_string_type::TEMPLATE_SUBRATING_NEGATIVE
-            );
+            $negatives = $this->get_localized_strings($dbosubrating->id,
+                localized_string_type::TEMPLATE_SUBRATING_NEGATIVE);
 
-            $positives = $this->get_localized_strings(
-                $dbosubrating->id,
-                localized_string_type::TEMPLATE_SUBRATING_POSITIVE
-            );
+            $positives = $this->get_localized_strings($dbosubrating->id,
+                localized_string_type::TEMPLATE_SUBRATING_POSITIVE);
 
-            $verypositives = $this->get_localized_strings(
-                $dbosubrating->id,
-                localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE
-            );
+            $verypositives = $this->get_localized_strings($dbosubrating->id,
+                localized_string_type::TEMPLATE_SUBRATING_VERY_POSITIVE);
 
-            $subrating = new subrating(
-                $dbosubrating->id,
-                $titles,
-                $descriptions,
-                $verynegatives,
-                $negatives,
-                $positives,
-                $verypositives
-            );
+            $subrating = new subrating($dbosubrating->id, $titles, $descriptions, $verynegatives,
+            $negatives, $positives, $verypositives);
 
             $subratings[] = $subrating;
         }

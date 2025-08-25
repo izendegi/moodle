@@ -26,6 +26,7 @@ namespace tool_muloginas\task;
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cron extends \core\task\scheduled_task {
+
     /**
      * Name for this task.
      *

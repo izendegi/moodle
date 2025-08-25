@@ -36,15 +36,12 @@ $url = new moodle_url('/mod/choicegroup/report.php', ['id' => $id]);
 if ($format !== CHOICEGROUP_PUBLISH_NAMES) {
     $url->param('format', $format);
 }
-
 if ($download !== '') {
     $url->param('download', $download);
 }
-
 if ($action !== '') {
     $url->param('action', $action);
 }
-
 $PAGE->set_url($url);
 
 if (! $cm = get_coursemodule_from_id('choicegroup', $id)) {
@@ -86,7 +83,7 @@ if (data_submitted() && $action == 'delete' && has_capability('mod/choicegroup:d
 
 if (!$download) {
     $PAGE->navbar->add($strresponses);
-    $PAGE->set_title(format_string($choicegroup->name) . ": $strresponses");
+    $PAGE->set_title(format_string($choicegroup->name).": $strresponses");
     $PAGE->set_heading(format_string($course->fullname));
     echo $OUTPUT->header();
     echo $OUTPUT->heading(format_string($choicegroup->name));
@@ -94,7 +91,7 @@ if (!$download) {
     $groupmode = groups_get_activity_groupmode($cm);
     if ($groupmode) {
         groups_get_activity_group($cm, true);
-        groups_print_activity_menu($cm, $CFG->wwwroot . '/mod/choicegroup/report.php?id=' . $id);
+        groups_print_activity_menu($cm, $CFG->wwwroot . '/mod/choicegroup/report.php?id='.$id);
     }
 } else {
     $groupmode = groups_get_activity_groupmode($cm);
@@ -104,14 +101,13 @@ if (!$download) {
         $groupsids[] = $group->id;
     }
 }
-
 $users = choicegroup_get_response_data($choicegroup, $cm, $groupmode, $choicegroup->onlyactive);
 
 if ($download == "ods" && has_capability('mod/choicegroup:downloadresponses', $context)) {
     require_once("$CFG->libdir/odslib.class.php");
 
     // Calculate file name.
-    $filename = clean_filename("$course->shortname " . strip_tags(format_string($choicegroup->name, true))) . '.ods';
+    $filename = clean_filename("$course->shortname ".strip_tags(format_string($choicegroup->name, true))).'.ods';
     // Creating a workbook.
     $workbook = new MoodleODSWorkbook("-");
     // Send HTTP headers.
@@ -137,7 +133,6 @@ if ($download == "ods" && has_capability('mod/choicegroup:downloadresponses', $c
                 if (in_array($user->id, $displayed)) {
                     continue;
                 }
-
                 $displayed[] = $user->id;
                 $myxls->write_string($row, 0, $user->lastname);
                 $myxls->write_string($row, 1, $user->firstname);
@@ -152,14 +147,12 @@ if ($download == "ods" && has_capability('mod/choicegroup:downloadresponses', $c
                         }
                     }
                 }
-
                 $myxls->write_string($row, 4, implode(', ', $ug2));
                 $row++;
                 $pos = 5;
             }
         }
     }
-
     // Close the workbook.
     $workbook->close();
 
@@ -171,7 +164,7 @@ if ($download == "xls" && has_capability('mod/choicegroup:downloadresponses', $c
     require_once("$CFG->libdir/excellib.class.php");
 
     // Calculate file name.
-    $filename = clean_filename("$course->shortname " . strip_tags(format_string($choicegroup->name, true))) . '.xls';
+    $filename = clean_filename("$course->shortname ".strip_tags(format_string($choicegroup->name, true))).'.xls';
     // Creating a workbook.
     $workbook = new MoodleExcelWorkbook("-");
     // Send HTTP headers.
@@ -200,7 +193,6 @@ if ($download == "xls" && has_capability('mod/choicegroup:downloadresponses', $c
                 if (in_array($user->id, $displayed)) {
                     continue;
                 }
-
                 $displayed[] = $user->id;
                 $myxls->write_string($row, 0, $user->lastname);
                 $myxls->write_string($row, 1, $user->firstname);
@@ -215,15 +207,12 @@ if ($download == "xls" && has_capability('mod/choicegroup:downloadresponses', $c
                         }
                     }
                 }
-
                 $myxls->write_string($row, 4, implode(', ', $ug2));
                 $row++;
             }
         }
-
         $pos = 5;
     }
-
     // Close the workbook.
     $workbook->close();
     exit;
@@ -231,7 +220,7 @@ if ($download == "xls" && has_capability('mod/choicegroup:downloadresponses', $c
 
 // Print text file.
 if ($download == "txt" && has_capability('mod/choicegroup:downloadresponses', $context)) {
-    $filename = clean_filename("$course->shortname " . strip_tags(format_string($choicegroup->name, true))) . '.txt';
+    $filename = clean_filename("$course->shortname ".strip_tags(format_string($choicegroup->name, true))).'.txt';
 
     header("Content-Type: application/download\n");
     header("Content-Disposition: attachment; filename=\"$filename\"");
@@ -241,10 +230,10 @@ if ($download == "txt" && has_capability('mod/choicegroup:downloadresponses', $c
 
     // Print names of all the fields.
 
-    echo get_string("lastname") . "\t" . get_string("firstname") . "\t" . get_string("idnumber") . "\t";
+    echo get_string("lastname")."\t".get_string("firstname") . "\t". get_string("idnumber") . "\t";
     echo get_string("email") . "\t";
-    echo get_string("group") . "\t";
-    echo get_string("choice", "choicegroup") . "\n";
+    echo get_string("group"). "\t";
+    echo get_string("choice", "choicegroup"). "\n";
 
     // Generate the data for the body of the spreadsheet.
     $i = 0;
@@ -255,16 +244,14 @@ if ($download == "txt" && has_capability('mod/choicegroup:downloadresponses', $c
                 if (in_array($user->id, $displayed)) {
                     continue;
                 }
-
                 $displayed[] = $user->id;
                 echo $user->lastname;
-                echo "\t" . $user->firstname;
+                echo "\t".$user->firstname;
                 $studentid = " ";
                 if (!empty($user->idnumber)) {
                     $studentid = $user->idnumber;
                 }
-
-                echo "\t" . $studentid . "\t";
+                echo "\t". $studentid."\t";
                 echo $user->email . "\t";
                 $ug2 = [];
                 if ($usergrps = groups_get_all_groups($course->id, $user->id)) {
@@ -274,16 +261,13 @@ if ($download == "txt" && has_capability('mod/choicegroup:downloadresponses', $c
                         }
                     }
                 }
-
                 echo implode(', ', $ug2) . "\t";
                 echo "\n";
             }
         }
     }
-
     exit;
 }
-
 // Show those who haven't answered the question.
 if (!empty($choicegroup->showunanswered)) {
     $choicegroup->option[0] = get_string('notanswered', 'choicegroup');
@@ -317,3 +301,4 @@ if (!empty($users) && has_capability('mod/choicegroup:downloadresponses', $conte
 }
 
 echo $OUTPUT->footer();
+

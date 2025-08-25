@@ -140,7 +140,7 @@ class format_remuiformat_list_one_section implements renderable, templatable {
 
         if ($format->is_section_current($section)) {
             $export->iscurrent = true;
-            $export->highlightedlabel = get_string('highlighted');
+            $export->highlightedlabel = get_string('highlight');
         }
 
         if (!$section->visible) {
@@ -191,22 +191,9 @@ class format_remuiformat_list_one_section implements renderable, templatable {
         $export->remuicourseformatlist = true;
         $export->activities = $this->courseformatdatacommontrait->course_section_cm_list(
             $this->course, $section);
-        if ($CFG->branch >= 501) {
-            $format = course_get_format($this->course);
-            $sectioninfo = $format->get_section($this->displaysection);
-
-            $export->activities .= $this->courserenderer->section_add_cm_controls(
-                $format,
-                $sectioninfo
-            );
-        } else {
-            $export->activities .= $this->courserenderer->course_section_add_cm_control(
-                $this->course,
-                $this->displaysection,
-                $this->displaysection
-            );
-        }
-
+        $export->activities .= $this->courserenderer->course_section_add_cm_control(
+            $this->course, $this->displaysection, $this->displaysection
+        );
         $export->courseid = $this->course->id;
         $export->sections = [];
         foreach ($sections as $index => $sectioninfo) {

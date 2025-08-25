@@ -43,11 +43,6 @@ define('LEARNINGMAP_FEATURES', [
 ]);
 
 /**
- * Array with all features that do have non boolean values.
- */
-define('LEARNINGMAP_EXTRA_FEATURES', ['description']);
-
-/**
  * Adds a new learningmap instance
  *
  * @param stdClass $data learningmap record
@@ -129,6 +124,11 @@ function learningmap_delete_instance($id): int {
  * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function learningmap_supports($feature) {
+    // For versions <4.0.
+    if (!defined('FEATURE_MOD_PURPOSE')) {
+        define('FEATURE_MOD_PURPOSE', 'mod_purpose');
+        define('MOD_PURPOSE_CONTENT', 'content');
+    }
     switch ($feature) {
         case FEATURE_IDNUMBER:
             return true;
@@ -246,7 +246,7 @@ function learningmap_cm_info_view(cm_info $cm): void {
     }
 
     // Only show map on course page if showmaponcoursepage is set.
-    if (helper::show_map_on_course_page($cm) || helper::is_ajax_request()) {
+    if (helper::show_map_on_course_page($cm)) {
         if (!empty($cm->groupmode)) {
             $groupdropdown = groups_print_activity_menu(
                 $cm,
@@ -269,13 +269,6 @@ function learningmap_cm_info_view(cm_info $cm): void {
         $contentbeforemap = $groupdropdown . $intro;
         $hascontentbeforemap = !empty($contentbeforemap);
 
-        $mapcontent = null;
-
-        if (helper::is_ajax_request() || \core_useragent::is_moodle_app()) {
-            // If this is an ajax request to get the cm, we need to return only the map code.
-            $mapcontent = learningmap_get_learningmap($cm);
-        }
-
         $mapcontainer = $OUTPUT->render_from_template(
             'mod_learningmap/rendercontainer',
             [
@@ -283,11 +276,6 @@ function learningmap_cm_info_view(cm_info $cm): void {
                 'enableLiveUpdater' => true,
                 'contentbeforemap' => $contentbeforemap,
                 'hascontentbeforemap' => $hascontentbeforemap,
-                'mapcontent' => $mapcontent,
-                'usemodal' => !empty($learningmap->usemodal) || helper::is_learningmap_format($cm),
-                'inmodal' => helper::is_get_cm_request(),
-                'available' => $cm->available || has_capability('moodle/course:ignoreavailabilityrestrictions', $cm->context),
-                'title' => $learningmap->name,
             ]
         );
 
@@ -324,12 +312,6 @@ function learningmap_get_place_cm(cm_info $cm): array {
 function learningmap_get_learningmap(cm_info $cm): string {
     global $DB, $OUTPUT;
 
-    // Don't render learningmap if not available and user has no override capability.
-    // This is just a safety check, should not happen normally.
-    if (!$cm->available && !has_capability('moodle/course:ignoreavailabilityrestrictions', $cm->context)) {
-        return '';
-    }
-
     $context = context_module::instance($cm->id);
 
     $map = $DB->get_record("learningmap", ["id" => $cm->instance]);
@@ -355,8 +337,6 @@ function learningmap_get_learningmap(cm_info $cm): string {
 
     $group = (empty($cm->groupmode) ? 0 : groups_get_activity_group($cm, true));
 
-    $placestore['usemodal'] = $map->usemodal ?? 0;
-
     $worker = new \mod_learningmap\mapworker($svg, $placestore, $cm, false, $group);
     $worker->process_map_objects();
     $worker->remove_tags_before_svg();
@@ -366,11 +346,12 @@ function learningmap_get_learningmap(cm_info $cm): string {
     $filtermanager = filter_manager::instance();
     $skipfilters = array_diff(array_keys(filter_get_active_in_context($cm->context)), $allowedfilters);
 
-    $code = $OUTPUT->render_from_template('mod_learningmap/mapcontainer', ['mapcode' => $worker->get_svgcode()]);
-
     return(
         $filtermanager->filter_text(
-            $code,
+            $OUTPUT->render_from_template(
+                'mod_learningmap/mapcontainer',
+                ['mapcode' => $worker->get_svgcode()]
+            ),
             $cm->context,
             ['trusted' => true, 'noclean' => true],
             $skipfilters

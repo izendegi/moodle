@@ -23,8 +23,6 @@
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_learningmap\helper;
-
 require('../../config.php');
 require_once('lib.php');
 
@@ -63,21 +61,9 @@ if (!empty($cm->groupmode)) {
     $OUTPUT->box($groupdropdown);
 }
 
-$mapcontent = learningmap_get_learningmap($cm);
-
 echo $OUTPUT->render_from_template(
     'mod_learningmap/rendercontainer',
-    [
-        'cmId' => $id,
-        'enableLiveUpdater' => false,
-        'contentbeforemap' => '',
-        'hascontentbeforemap' => false,
-        'mapcontent' => $mapcontent,
-        'usemodal' => !empty($map->usemodal) || helper::is_learningmap_format($cm),
-        'inmodal' => false,
-        // When rendered on view.php, the map is always available because we checked for availability before.
-        'available' => true,
-    ]
+    ['cmId' => $id, 'enableLiveUpdater' => false, 'contentbeforemap' => '', 'hascontentbeforemap' => false]
 );
 
 echo $OUTPUT->footer();
