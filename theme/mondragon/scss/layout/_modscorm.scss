@@ -1,0 +1,544 @@
+$colors: () !default;
+$colors: map-merge(
+    (
+        "blue":       $brand-primary,
+        "primary":    $brand-primary
+    ),
+    $colors
+);
+:root {
+    @each $color, $value in $colors {
+        --#{$color}: #{$value};
+    }
+}
+*:focus {
+    outline-style: none !important;
+    outline-color: transparent !important;
+    outline-offset: unset !important;
+    box-shadow: none !important;
+}
+.btn-primary {
+    background-color: $brand-primary;
+    border-color: $brand-primary;
+}
+.btn-primary:hover {
+    color: #fff;
+    background-color: darken($brand-primary, 10%);
+    border-color: darken($brand-primary, 10%);
+}
+.btn-primary:focus, 
+.btn-primary.focus {
+    color: #fff;
+    background-color: darken($brand-primary, 10%);
+    border-color: darken($brand-primary, 10%);
+    box-shadow: 0 0 0 0.2rem rgba(51, 130, 201, 0.5);
+}
+.btn-primary.disabled, 
+.btn-primary:disabled {
+    color: #fff;
+    background-color: $brand-primary;
+    border-color: $brand-primary;
+}
+.btn-primary:not(:disabled):not(.disabled):active, 
+.btn-primary:not(:disabled):not(.disabled).active, 
+.show > .btn-primary.dropdown-toggle {
+    color: #fff;
+    background-color: darken($brand-primary, 10%);
+    border-color: darken($brand-primary, 10%);
+}
+.btn-link {
+    font-weight: 400;
+    color: $brand-primary;
+    text-decoration: none;
+}
+a:hover,
+.btn-link:hover {
+    color: darken($brand-primary, 10%);
+}
+.btn-outline-primary {
+    color: $brand-primary;
+    border-color: $brand-primary;
+}
+.btn-outline-primary:hover {
+    color: #fff;
+    background-color: $brand-primary;
+    border-color: $brand-primary;
+}
+.btn-outline-primary:focus, 
+.btn-outline-primary.focus {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 50%);
+}
+.btn-outline-primary.disabled, 
+.btn-outline-primary:disabled {
+    color: $brand-primary;
+    background-color: transparent;
+}
+.btn-outline-primary:not(:disabled):not(.disabled):active, 
+.btn-outline-primary:not(:disabled):not(.disabled).active, 
+.show > .btn-outline-primary.dropdown-toggle {
+    color: #fff;
+    background-color: $brand-primary;
+    border-color: $brand-primary;
+}
+.btn-outline-primary:not(:disabled):not(.disabled):active:focus, 
+.btn-outline-primary:not(:disabled):not(.disabled).active:focus, 
+.show > .btn-outline-primary.dropdown-toggle:focus {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 50%);
+}
+.text-primary {
+    color: $brand-primary !important;
+}
+.custom-control-input:checked~.custom-control-label::before {
+    border-color: $brand-primary;
+    background-color: $brand-primary;
+}
+.activity-add, 
+.block-add {
+    color: $brand-primary;
+    background-color: lighten($brand-primary, 80%);
+    border-color: $brand-primary;
+    &:hover {
+        background-color: lighten($brand-primary, 40%);
+    }
+}
+.courseindex .courseindex-item.pageitem {
+    background-color: $brand-primary;
+}
+.courseindex .courseindex-item.pageitem:hover, 
+.courseindex .courseindex-item.pageitem:focus {
+    background-color: darken($brand-primary, 10%);
+}
+.editing .activity-item:hover, .editing .activity-item.selected {
+    border-color: lighten($brand-primary, 10%);
+}
+.activity-add .pluscontainer, 
+.block-add .pluscontainer {
+    border-color: $brand-primary;
+}
+.changenumsections {
+    border-color: $brand-primary;
+}
+.form-control:focus {
+    border-color: lighten($brand-primary, 10%);
+}
+.block_myoverview .whitebutton .btn-secondary {
+    border-color: $brand-primary;
+    color: $brand-primary;
+}
+.page-item.active .page-link {
+    background-color: $brand-primary;
+    border-color: $brand-primary;
+}
+.page-link {
+    color: $brand-primary;
+}
+.custom-select:focus {
+    border-color: lighten($brand-primary, 10%);
+}
+
+#course-category-listings .listitem[data-selected="1"] {
+    border-left: calc(1px + 5px) solid $brand-primary;
+}
+.progress-bar {
+    background-color: $brand-primary;
+}
+.maincalendar .calendarmonth td.today .day-number-circle {
+    background-color: $brand-primary;
+}
+.block .bottom span.footer-link:after {
+    color: $brand-primary;
+}
+.modal-dialog[tabindex="0"].focus .modal-content, 
+.modal-dialog[tabindex="0"]:focus .modal-content {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.aabtn.focus, 
+.aabtn:focus, 
+.btn-link.focus, 
+.btn-link:focus, 
+.nav-link.focus, 
+.nav-link:focus, 
+.editor_atto_toolbar button.focus, 
+.editor_atto_toolbar button:focus, 
+.editor_atto_toolbar .atto_toolbar_row.focus, 
+.editor_atto_toolbar .atto_toolbar_row:focus, 
+[role="button"].focus, 
+[role="button"]:focus, 
+.list-group-item-action.focus, 
+.list-group-item-action:focus, 
+input[type="checkbox"].focus, 
+input[type="checkbox"]:focus, 
+input[type="radio"].focus, 
+input[type="radio"]:focus, 
+input[type="file"].focus, 
+input[type="file"]:focus, 
+input[type="image"].focus, 
+input[type="image"]:focus, 
+.sr-only-focusable.focus, 
+.sr-only-focusable:focus, 
+a.dropdown-toggle.focus, 
+a.dropdown-toggle:focus, 
+.moodle-dialogue-base .closebutton.focus, 
+.moodle-dialogue-base .closebutton:focus, 
+button.close.focus, 
+button.close:focus, 
+.form-autocomplete-selection.focus, 
+.form-autocomplete-selection:focus, 
+[role="treeitem"]:not([aria-expanded="true"]).focus, 
+[role="treeitem"]:not([aria-expanded="true"]):focus {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.custom-control-input:checked ~ .custom-control-label::before {
+    border-color: $brand-primary;
+    background-color: $brand-primary;
+}
+.custom-control-input:focus ~ .custom-control-label::before {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.custom-checkbox .custom-control-input:indeterminate ~ .custom-control-label::before {
+    border-color: $brand-primary;
+    background-color: $brand-primary;
+}
+.custom-checkbox .custom-control-input:disabled:checked ~ .custom-control-label::before {
+    background-color: rgb(from $brand-primary r g b / 50%);
+}
+.custom-checkbox .custom-control-input:disabled:indeterminate ~ .custom-control-label::before {
+    background-color: rgb(from $brand-primary r g b / 50%);
+}
+.page-item.active .page-link {
+    background-color: $brand-primary;
+    border-color: $brand-primary;
+}
+.badge-primary {
+    background-color: $brand-primary;
+}
+.list-group-item.active {
+    background-color: $brand-primary;
+    border-color: $brand-primary;
+}
+[role=treeitem][aria-expanded=true].focus > *:first-child, [role=treeitem][aria-expanded=true]:focus > *:first-child {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.form-autocomplete-suggestions li[aria-selected=true] {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.emoji-picker .category-button.selected {
+    border-bottom: 2px solid $brand-primary;
+}
+.visual-scroll-x {
+    scrollbar-color: $brand-primary #a2cff8;
+}
+.visual-scroll-x::-webkit-scrollbar-thumb {
+    background-color: $brand-primary;
+}
+.overlay-preview {
+    border: 2px dashed $brand-primary;
+}
+.overlay-preview .overlay-preview-content {
+    background-color: $brand-primary;
+}
+.overlay-preview-borders {
+    outline: 2px dashed $brand-primary;
+}
+.dropdown-item.active, 
+.dropdown-item:active, 
+.dropdown-item:hover, 
+.dropdown-item:focus, 
+.dropdown-item:focus-within {
+    background-color: $brand-primary;
+}
+.dropdown-item-outline:focus, .dropdown-item-outline:focus-within {
+    outline: solid $brand-primary;
+}
+.calendar_event_category .commands a,
+.calendar_event_course .commands a,
+.calendar_event_site .commands a,
+.calendar_event_group .commands a,
+.calendar_event_user .commands a,
+.calendar_event_other .commands a {
+    color: $brand-primary;
+}
+.calendar-controls .drop-target {
+    border: 1px dashed $brand-primary;
+}
+.maincalendar .bottom span.footer-link:after {
+    color: $brand-primary;
+}
+.maincalendar .calendarmonth td a.day:focus {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.maincalendar .calendarmonth td.today .day-number-circle {
+    background-color: $brand-primary;
+}
+.maincalendar .calendar_event_category:hover a,
+.maincalendar .calendar_event_course:hover a,
+.maincalendar .calendar_event_site:hover a,
+.maincalendar .calendar_event_group:hover a,
+.maincalendar .calendar_event_user:hover a {
+    color: darken($brand-primary, 10%);
+}
+.block .bottom span.footer-link:after {
+    color: $brand-primary;
+}
+.block .minicalendar td a {
+    color: $brand-primary;
+}
+.course-content .current::before {
+    border-left: $brand-primary 3px solid;
+}
+.dndupload-preview {
+    background-color: $brand-primary;
+}
+#course-category-listings .listitem[data-selected="1"] {
+    border-left: calc(1px + 5px) solid $brand-primary;
+}
+.course-being-dragged-proxy {
+    color: $brand-primary;
+}
+.activity-add,
+.block-add {
+    color: $brand-primary;
+}
+.activity-item .activity-completion button.btn-primary:focus, .activity-item .activity-completion button.btn-primary.focus,
+.activity-item .activity-completion a[role=button].btn-primary:focus,
+.activity-item .activity-completion a[role=button].btn-primary.focus {
+    background-color: $brand-primary;
+}
+.message-app .list-group .list-group-item:hover {
+    background-color: $brand-primary;
+}
+.message-app .list-group .list-group-item:hover .badge-primary {
+    color: $brand-primary;
+}
+#page-mod-quiz-edit .questionbankwindow div.header a:link,
+#page-mod-quiz-edit .questionbankwindow div.header a:visited {
+    color: $brand-primary;
+}
+#page-mod-quiz-edit .questionbankwindow div.header a:hover {
+    color: darken($brand-primary, 10%);
+}
+a#hidebankcmd {
+    color: $brand-primary;
+}
+.form-autocomplete-suggestions li:hover, .form-autocomplete-suggestions li:focus, .form-autocomplete-suggestions li[aria-selected=true] {
+    background-color: $brand-primary;
+}
+.form-autocomplete-selection [data-active-selection=true] {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+@keyframes background-highlight {
+    from {
+        background-color: rgb(from $brand-primary r g b / 50%);
+    }
+    to {
+        background-color: inherit;
+    }
+}
+.path-mod-forum .unified-grader .drawer-button.active::after {
+    background-color: $brand-primary;
+}
+.path-grade-edit-tree .collapse-list .unlist [data-for=sectionnode][data-selected=true] > .collapse-list-item:first-child {
+    color: $brand-primary;
+}
+.path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr td.movehere a.movehere:hover hr {
+    border-top: 2px dashed $brand-primary;
+}
+.content-item-container:hover {
+    background-color: $brand-primary;
+}
+.content-item-container.unread:hover {
+    background-color: $brand-primary;
+}
+.drawer-toggles .drawer-toggler .btn:focus {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.courseindex .courseindex-section.current {
+    border-left: solid 3px $brand-primary;
+}
+.moremenu .nav-link.active {
+    border-bottom-color: $brand-primary;
+}
+.moremenu .nav-link.active:focus, .moremenu .nav-link.active:hover {
+    border-bottom-color: $brand-primary;
+}
+.moremenu .dropdownmoremenu > .dropdown-menu .dropdown-menu .dropdown-item:hover, .moremenu .dropdownmoremenu > .dropdown-menu .dropdown-menu .dropdown-item:focus {
+    background-color: $brand-primary;
+}
+.moremenu .dropdown-item[aria-current=true]:focus-within, 
+.moremenu .dropdown-item[aria-current=true]:hover,
+.moremenu .dropdown-item.active:focus-within,
+.moremenu .dropdown-item.active:hover {
+    background-color: $brand-primary;
+}
+.dropdown-item.active, 
+.dropdown-item:active, 
+.dropdown-item:hover, 
+.dropdown-item:focus, 
+.dropdown-item:focus-within {
+    background-color: $brand-primary;
+}
+.dropdown-item.text-primary {
+    color: $brand-primary;
+}
+.form-autocomplete-selection [data-active-selection=true] {
+    box-shadow: 0 0 0 0.2rem rgb(from $brand-primary r g b / 75%);
+}
+.custom-control-input:not(:disabled):active~.custom-control-label::before {
+    background-color: lighten($brand-primary, 20%);
+    border-color: lighten($brand-primary, 20%);
+}
+
+
+#page-mod-scorm-player.scorm-fullscreen {
+    overflow: hidden;
+    nav.navbar {
+        display: none;
+    }
+    #page-wrapper {
+        #page {
+            padding: 0;
+            margin-top: 0;
+            overflow: hidden;
+            #page-header {
+                display: none;
+            }
+            #topofscroll {
+                max-width: 100%;
+                padding: 0;
+                margin-bottom: 0;
+                #page-content {
+                    margin: 0;
+                    #region-main-box {
+                        padding: 0;
+                        .content_actions {
+                            position: absolute;
+                            display: flex;
+                            flex-flow: row nowrap;
+                            background: rgba(255,255,255,0.9);
+                            width: auto;
+                            z-index: 1;
+                            justify-content: flex-end;
+                            align-items: center;
+                            top: 30px;
+                            right: 30px;
+                            padding: .5em 1em;
+                            border-radius: 25px;
+                            box-shadow: 0 0 20px rgb(0 0 0 / 10%);
+                            &.with-settings {
+                                padding: 0 0 0 1em;
+                            }
+                            #region-main-settings-menu {
+                                position: relative;
+                                float: none;
+                                width: auto;
+                                > div {
+                                    position: relative;
+                                    right: unset;
+                                    z-index: 100;
+                                    padding: 1em;
+                                    margin: unset;
+                                }
+                            }
+                            #back_to_course {
+                                .back-icon {
+                                    display: none;
+                                    .icon {
+                                        height: 24px;
+                                        font-size: 24px;
+                                        width: auto;
+                                        margin-right: 0 !important;
+                                    }
+                                }
+                                .back-text {
+                                    display: block;
+                                }
+                            }
+                        }
+                        #region-main {
+                            overflow: hidden;
+                            padding: 0;
+                            .notifications, #maincontent, .activity-header {
+                                display: none;
+                            }
+                            .card {
+                                .card-body {
+                                    padding: 0;
+                                    .region_main_settings_menu_proxy {
+                                        position: absolute;
+                                        visibility: hidden;
+                                    }
+                                    [role="main"] {
+                                        padding: 0;
+                                        h2,
+                                        .d-flex.flex-row-reverse.mb-2 {
+                                            display: none !important;
+                                        }
+                                        #scormpage {
+                                            #tocbox {
+                                                #toctree {
+                                                    #scorm_layout {
+                                                        #scorm_toc {
+                                                            display: none;
+                                                        }
+                                                        #scorm_toc_toggle {
+                                                            display: none;
+                                                        }
+                                                        #scorm_content {
+                                                            height: 100vh;
+                                                            width: 100vw;
+                                                            iframe#scorm_object {
+                                                                width: 100% !important;
+                                                                height: 100vh !important;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                &.activity-navigation {
+                                    display: none;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .activity-navigation {
+                display: none;
+            }
+        }
+        [data-region="drawer"] {
+            display: none;
+        }
+        #nav-drawer-footer {
+            display: none;
+        }
+    }
+    #top-footer {
+        display: none
+    }
+    #page-footer {
+        display: none;
+    }
+}
+@media (max-width: 960px) {
+    #page-mod-scorm-player.scorm-fullscreen {
+        .content_actions {
+            justify-content: center !important;
+            align-items: center !important;
+            width: 50px !important;
+            height: 50px !important;
+            #back_to_course {
+                .back-icon {
+                    display: block !important;
+                    height: 24px;
+                }
+                .back-text {
+                    display: none !important;
+                }
+            }
+        }
+    }
+}

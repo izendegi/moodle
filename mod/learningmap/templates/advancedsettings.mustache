@@ -1,0 +1,71 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_learningmap/advancedsettings
+
+    Template for displaying the advanced settings in the editor.
+
+    Classes required for JS:
+    * none
+
+    Data attributes required for JS:
+    * none
+
+    Context variables required for this template:
+    * none
+
+
+    Example context (json):
+    {
+        "features" : [
+            {
+                "name": "showtext",
+                "title": "Show activity names",
+                "text": "This option shows the names of the activities as a text besides the places. The text can be moved and is automatically updated when the name changes.",
+                "alt": "Help"
+            },
+            {
+                "name": "slicemode",
+                "title": "Reveal map with places",
+                "text": "This option subsequently reveals the map when new places become reachable. The hidden parts of the map are covered with fog. When all places become reachable, the whole map is visible.",
+                "alt": "Help"
+            }
+        ]
+    }
+}}
+<div id="learningmap-advanced-settings" class="card border border-dark" hidden>
+    <div class="card-body">
+        <div class="card-title alert alert-dark">{{#str}} advancedsettings, learningmap {{/str}}
+            <button type="button" class="ml-2 mb-1 close" aria-label="Close" id="learningmap-advanced-settings-close">
+                <span>&times;</span>
+             </button>
+        </div>
+        <div class="card-text">
+            {{#features}}
+            <div class="row border-top border-bottom border-light">
+                <div class="col-10">
+                    <label for="learningmap-advanced-setting-{{name}}">{{title}}</label>
+                    {{>core/help_icon}}
+                </div>
+                <div class="col">
+                    <input type="checkbox" id="learningmap-advanced-setting-{{name}}">
+                </div>
+            </div>
+            {{/features}}
+        </div>
+    </div>
+</div>
