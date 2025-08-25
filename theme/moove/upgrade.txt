@@ -1,0 +1,11 @@
+This files describes API changes in Moove Premium theme,
+information provided here is intended especially for everyone.
+
+=== 4.5.1 ===
+
+- Fixes #482 - Add Course link to navigation bar while inside activities
+- Fixes #483 - Activity names cut off in Grader Report
+
+=== 4.5 ===
+
+- Release for Moodle 4.5
