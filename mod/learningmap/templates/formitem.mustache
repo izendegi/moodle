@@ -1,0 +1,114 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_learningmap/formitem
+
+    Template for the form item containing the editor.
+
+    Classes required for JS:
+    * none
+
+    Data attributes required for JS:
+    * none
+
+    Context variables required for this template:
+    * none
+
+    Example context (json):
+    {
+    "sections":[
+      {
+         "name":"Section 0",
+         "coursemodules":[
+            {
+               "id":"1039",
+               "name":"Activity 1"
+            },
+            {
+               "id":"1040",
+               "name":"Activity 2"
+            }
+         ]
+      },
+      {
+         "name":"Section 1",
+         "coursemodules":[
+            {
+               "id":"1043",
+               "name":"Activity 3"
+            }
+         ]
+      }
+    ],
+    "help":"This is the help text",
+    "completiondisabled":"false",
+    "features" : [
+            {
+                "name": "showtext",
+                "title": "Show activity names",
+                "text": "This option shows the names of the activities as a text besides the places. The text can be moved and is automatically updated when the name changes.",
+                "alt": "Help"
+            },
+            {
+                "name": "slicemode",
+                "title": "Reveal map with places",
+                "text": "This option subsequently reveals the map when new places become reachable. The hidden parts of the map are covered with fog. When all places become reachable, the whole map is visible.",
+                "alt": "Help"
+            }
+        ]
+    }
+}}
+{{#completiondisabled}}<div class="alert alert-danger row">{{#str}} completiondisabled, learningmap {{/str}}</div>{{/completiondisabled}}
+<div class="form-group row fitem" id="mod_learningmap_editor">
+    <div class="col-md-3 col-form-label d-flex pb-0 pr-md-0">
+        <label class="d-inline word-break">{{#str}} learningmap, learningmap {{/str}}</label>
+        <div class="form-label-addon d-flex align-items-center align-self-start">{{{ help }}}</div>
+    </div>
+    <div class="col-md-9 form-inline align-items-start felement">
+        <div class="learningmap-menubar container border-left border-top border-right border-dark">
+            <div class="row m-1">
+                <div class="col">
+                    <label for="learningmap-color-place">{{#str}} places, learningmap {{/str}}</label>
+                </div>
+                <div class="col border-right border-dark">
+                    <input type="color" id="learningmap-color-place">
+                </div>
+                <div class="col">
+                    <label for="learningmap-color-visited">{{#str}} visited, learningmap {{/str}}</label>
+                </div>
+                <div class="col border-right border-dark">
+                    <input type="color" id="learningmap-color-visited">
+                </div>
+                <div class="col">
+                    <label for="learningmap-color-stroke">{{#str}} paths, learningmap {{/str}}</label>
+                </div>
+                <div class="col border-right border-dark">
+                    <input type="color" id="learningmap-color-stroke">
+                </div>
+                <div class="col-sm text-center">
+                    <i class="fa fa-cog" id="learningmap-advanced-settings-icon"></i>
+                </div>
+            </div>
+        </div>
+        <div class="learningmap-editor-main">
+            {{> mod_learningmap/activityselector }}
+            {{> mod_learningmap/advancedsettings }}
+            <div class="learningmap-mapcontainer learningmap-scaling-svg-container" id="learningmap-editor-map">
+            </div>
+        </div>
+    </div>
+</div>
