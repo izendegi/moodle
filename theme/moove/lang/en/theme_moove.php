@@ -17,15 +17,14 @@
 /**
  * Language file.
  *
- * @package   theme_moove
  * @copyright 2017 Willian Mano - http://conecti.me
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['pluginname'] = 'Moove';
-$string['configtitle'] = 'Moove';
+$string['pluginname'] = 'Moove Premium';
+$string['configtitle'] = 'Moove Premium';
 $string['choosereadme'] = 'Moove is a modern highly-customisable theme. This theme is intended to be used directly, or as a parent theme when creating new themes utilising Bootstrap 4.';
 
 $string['currentinparentheses'] = '(current)';
@@ -77,8 +76,6 @@ $string['rawscss'] = 'Raw SCSS';
 $string['rawscss_desc'] = 'Use this field to provide SCSS or CSS code which will be injected at the end of the style sheet.';
 $string['googleanalytics'] = 'Google Analytics V4 Code';
 $string['googleanalyticsdesc'] = 'Please enter your Google Analytics V4 code to enable analytics on your website. The code format shold be like [G-XXXXXXXXXX]';
-$string['hvpcss'] = 'Raw H5P CSS';
-$string['hvpcss_desc'] = 'Use this field to provide a CSS file which will be injected on mod_hvp plugin pages.';
 
 // Frontpage settings tab.
 $string['frontpagesettings'] = 'Frontpage';
@@ -129,16 +126,20 @@ $string['mobile'] = 'Mobile';
 $string['mobiledesc'] = 'Enter Mobile No. Ex: +5598912341234';
 $string['mail'] = 'E-Mail';
 $string['maildesc'] = 'Company support e-mail';
+$string['tiktok'] = 'TikTok URL';
+$string['tiktokdesc'] = 'Enter the URL of your TikTok. (i.e http://www.tiktok.com/@myinstitution)';
 $string['facebook'] = 'Facebook URL';
 $string['facebookdesc'] = 'Enter the URL of your Facebook. (i.e http://www.facebook.com/myinstitution)';
-$string['twitter'] = 'Twitter URL';
-$string['twitterdesc'] = 'Enter the URL of your twitter. (i.e http://www.twitter.com/myinstitution)';
+$string['twitter'] = 'X URL';
+$string['twitterdesc'] = 'Enter the URL of your X. (i.e http://www.x.com/myinstitution)';
 $string['linkedin'] = 'Linkedin URL';
 $string['linkedindesc'] = 'Enter the URL of your Linkedin. (i.e http://www.linkedin.com/myinstitution)';
 $string['youtube'] = 'Youtube URL';
 $string['youtubedesc'] = 'Enter the URL of your Youtube. (i.e https://www.youtube.com/user/myinstitution)';
 $string['instagram'] = 'Instagram URL';
 $string['instagramdesc'] = 'Enter the URL of your Instagram. (i.e https://www.instagram.com/myinstitution)';
+$string['pinterest'] = 'Pinterest URL';
+$string['pinterestdesc'] = 'Enter the URL of your Pinterest. (i.e http://www.pinterest.com/myinstitution)';
 $string['whatsapp'] = 'Whatsapp number';
 $string['whatsappdesc'] = 'Enter your whatsapp number for contact.';
 $string['telegram'] = 'Telegram';
@@ -182,5 +183,79 @@ $string['privacy:accessibilitystyles_sitecolorclass'] = 'The current preference 
 $string['privacy:thememoovesettings_fonttype'] = 'The current preference for the font type is: {$a}.';
 $string['privacy:thememoovesettings_enableaccessibilitytoolbar'] = 'The current preference for enable accessibility toolbar is to show it.';
 
+// Premium settings.
+$string['premiumsettings'] = 'Premium';
+$string['disableorangefooter'] = 'Disable orange footer';
+$string['darkmode_enable'] = 'Enable dark mode';
+$string['loginposition'] = 'Login box position';
+$string['loginposition_desc'] = 'Where you want to position the login box in the login page.';
+$string['loginposition_left'] = 'Left';
+$string['loginposition_center'] = 'Centered';
+$string['loginposition_right'] = 'Right';
+$string['configreportstitle'] = 'Additional features';
+$string['configreportstext'] = '<div class="alert alert-info"><p>Moove Premium comes with some extra and special reports for you.</p><p class="mb-0">To access them, go to Site Administration > Reports.</p></div>';
+$string['alternativelogin'] = 'Alternative login URL';
+$string['alternativelogin_desc'] = 'Your users will be redirected for this url when access the login page.';
+$string['alternativelogintext'] = 'Alternative login URL text';
+$string['alternativelogintext_desc'] = 'The text displayed in the button for the alternate login URL.';
+
+// License Settings.
+$string['licensingsettings'] = 'Licensing';
+$string['licensenotactive'] = '<b>Alert!</b> License is not activated , please activate your license in the theme settings.';
+$string['licensenotactiveadmin'] = '<b>Alert!</b> License is not activated , please activate your license <a href="'.$CFG->wwwroot.'/admin/settings.php?section=themesettingmoove#theme_moove_licensing" >here</a>.';
+$string['licensekey'] = 'License key';
+$string['licensekey_desc'] = 'Type the license key you get from PluginStore site.';
+$string['licensestatus'] = 'License Status';
+$string['active'] = 'Active';
+$string['invalid'] = 'Invalid license';
+$string['expired'] = 'Expired';
+$string['activationcode'] = 'Activation code';
+
+$string['_msg'] = 'It was not possible to connect with pluginstore site to validate your license. Verify your firewall or any other blocking on your server.';
+$string['active_msg'] = 'Your license is active';
+$string['invalid_msg'] = 'Your license key is invalid';
+$string['expired_msg'] = 'Your license is expired';
+$string['alreadyregistered_msg'] = 'This license is already registered for another site';
+
+// Reports.
+$string['moove:viewreports'] = 'See moove reports';
+$string['reports'] = 'Moove reports';
+$string['report_graphs'] = 'Graphic reports';
+$string['report_period'] = 'Reports by period';
+$string['report_onlineusers'] = 'Online users';
+
+$string['seeperiodreport'] = 'See informations report by period';
+$string['totalusers'] = 'Users';
+$string['onlineusers'] = 'Online Users';
+$string['totalcourses'] = 'Courses';
+$string['totalenrolments'] = 'Enrolments';
+
+$string['graph_newusers'] = 'Graphic of new users';
+$string['graph_newenrolments'] = 'Graphic of new enrolments';
+$string['graph_coursesconclusions'] = 'Graphic of conclusions by course';
+$string['graph_topenrolmentcourses'] = 'Top 10 courses with more enrolments';
+$string['graph_topconclusionscourses'] = 'Top 10 courses with more conclusions';
+
+$string['startdate'] = 'Initial date';
+$string['enddate'] = 'Final date';
+$string['inthisperiodwehad'] = 'In this period we had: ';
+$string['filter'] = 'Filter';
+$string['newusers'] = 'New users';
+$string['newenrolments'] = 'New enrolments';
+$string['conclusions'] = 'Course conclusions';
+$string['enrolmentsbycourse'] = 'Enrolments by course';
+$string['conclusionsbycourse'] = 'Conclusions by course';
+$string['shortname'] = 'Short name';
+$string['qtd'] = 'Quantity';
+$string['siteactivity'] = 'Site acitivity';
+$string['starttime'] = 'Start datetime';
+$string['endtime'] = 'End datetime';
+$string['onlineusers_error'] = 'Error!';
+$string['onlineusers_error_desc'] = 'You can not choose a time interval bigger than an hour.';
+
+$string['hvpcss'] = 'H5P CSS';
+$string['hvpcss_desc'] = 'Custom CSS code to be applied on H5P activities';
+
+// Redirect page
 $string['redirectmessage'] = 'This page should automatically redirect.';
 $string['redirectbtntext'] = 'If nothing is happening please click here to continue.';

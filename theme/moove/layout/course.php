@@ -19,7 +19,7 @@
  *
  * @package    theme_moove
  * @copyright  2025 Willian Mano - willianmanoaraujo@gmail.com
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -56,7 +56,14 @@ $contentblocks = $OUTPUT->custom_block_region('content');
 if (!$hasblocks) {
     $blockdraweropen = false;
 }
-$courseindex = core_course_drawer();
+
+$themesettings = new \theme_moove\util\settings();
+if (!$themesettings->enablecourseindex) {
+    $courseindex = '';
+} else {
+    $courseindex = core_course_drawer();
+}
+
 if (!$courseindex) {
     $courseindexopen = false;
 }
@@ -120,11 +127,4 @@ $themesettings = new \theme_moove\util\settings();
 
 $templatecontext = array_merge($templatecontext, $themesettings->footer());
 
-$template = 'theme_moove/drawers';
-if (!isloggedin()) {
-    $templatecontext = array_merge($templatecontext, $themesettings->frontpage());
-
-    $template = 'theme_moove/frontpage';
-}
-
-echo $OUTPUT->render_from_template($template, $templatecontext);
+echo $OUTPUT->render_from_template('theme_moove/course', $templatecontext);

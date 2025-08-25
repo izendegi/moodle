@@ -389,6 +389,13 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_configtext($name, $title, $description, '');
     $page->add($setting);
 
+    // TikTok url setting.
+    $name = 'theme_moove/tiktok';
+    $title = get_string('tiktok', 'theme_moove');
+    $description = get_string('tiktokdesc', 'theme_moove');
+    $setting = new admin_setting_configtext($name, $title, $description, '');
+    $page->add($setting);
+
     // Facebook url setting.
     $name = 'theme_moove/facebook';
     $title = get_string('facebook', 'theme_moove');
@@ -424,6 +431,13 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_configtext($name, $title, $description, '');
     $page->add($setting);
 
+    // Pinterest url setting.
+    $name = 'theme_moove/pinterest';
+    $title = get_string('pinterest', 'theme_moove');
+    $description = get_string('pinterestdesc', 'theme_moove');
+    $setting = new admin_setting_configtext($name, $title, $description, '');
+    $page->add($setting);
+
     // Whatsapp url setting.
     $name = 'theme_moove/whatsapp';
     $title = get_string('whatsapp', 'theme_moove');
@@ -439,4 +453,95 @@ if ($ADMIN->fulltree) {
     $page->add($setting);
 
     $settings->add($page);
+    $license = new \theme_moove\util\license();
+
+    if ($license->is_active()) {
+        // Premium tab.
+        $page = new admin_settingpage('theme_moove_premium', get_string('premiumsettings', 'theme_moove'));
+
+        // Disable orange footer.
+        $name = 'theme_moove/disableorangefooter';
+        $title = get_string('disableorangefooter', 'theme_moove');
+        $default = 0;
+        $choices = array(0 => get_string('no'), 1 => get_string('yes'));
+        $setting = new admin_setting_configselect($name, $title, '', $default, $choices);
+        $page->add($setting);
+
+        // Enable dark mode footer.
+        $name = 'theme_moove/enabledarkmode';
+        $title = get_string('darkmode_enable', 'theme_moove');
+        $default = 1;
+        $choices = array(0 => get_string('no'), 1 => get_string('yes'));
+        $setting = new admin_setting_configselect($name, $title, '', $default, $choices);
+        $page->add($setting);
+
+        // Login box position.
+        $name = 'theme_moove/loginposition';
+        $title = get_string('loginposition', 'theme_moove');
+        $description = get_string('loginposition_desc', 'theme_moove');
+
+        $choices = [
+            'left' => get_string('loginposition_left', 'theme_moove'),
+            'center' => get_string('loginposition_center', 'theme_moove'),
+            'right' => get_string('loginposition_right', 'theme_moove')
+        ];
+
+        $setting = new admin_setting_configselect($name, $title, $description, 'center', $choices);
+        $page->add($setting);
+
+        // H5P custom CSS.
+        $setting = new admin_setting_configtextarea('theme_moove/hvpcss', get_string('hvpcss', 'theme_moove'), get_string('hvpcss_desc', 'theme_moove'), '');
+        $page->add($setting);
+
+        // Aditional features alert.
+        $setting = new admin_setting_heading('aditionalfeaturesfield', get_string('configreportstitle', 'theme_moove'), get_string('configreportstext', 'theme_moove'));
+        $page->add($setting);
+
+        $settings->add($page);
+    }
+
+    $canseelicensingfields = true;
+    if (isset($OUTPUT) && get_class($OUTPUT) == \core_renderer_maintenance::class) {
+        $canseelicensingfields = false;
+    }
+
+    if ($CFG->theme != 'moove') {
+        $canseelicensingfields = false;
+    }
+
+    if ($canseelicensingfields) {
+        // Licensing tab.
+        $page = new admin_settingpage('theme_moove_licensing', get_string('licensingsettings', 'theme_moove'));
+
+        // License key.
+        $name = 'theme_moove/licensekey';
+        $title = get_string('licensekey', 'theme_moove');
+        $description = get_string('licensekey_desc', 'theme_moove');
+        $default = '';
+        $setting = new admin_setting_configtext($name, $title, $description, $default);
+        $setting->set_updatedcallback('theme_moove_update_license_key');
+        $page->add($setting);
+
+        // License status.
+        $license = new \theme_moove\util\license();
+        $name = 'theme_moove/licensestatus';
+        $title = get_string('licensestatus', 'theme_moove');
+        $licensestatus = $license->get_license_status_badge();
+        $setting = new admin_setting_configempty($name, $title, $licensestatus);
+        $page->add($setting);
+
+        $settings->add($page);
+    }
 }
+
+$ADMIN->add('reports', new admin_category('moovereports', get_string('reports', 'theme_moove')));
+
+// Moove reports links.
+$ADMIN->add('moovereports', new admin_externalpage('reportmoovegraphs', get_string('report_graphs', 'theme_moove'),
+    "$CFG->wwwroot/theme/moove/reports/index.php"));
+
+$ADMIN->add('moovereports', new admin_externalpage('reportmooveperiod', get_string('report_period', 'theme_moove'),
+    "$CFG->wwwroot/theme/moove/reports/period.php"));
+
+$ADMIN->add('moovereports', new admin_externalpage('reportmooveonlineusers', get_string('report_onlineusers', 'theme_moove'),
+    "$CFG->wwwroot/theme/moove/reports/onlineusers.php"));

@@ -29,6 +29,8 @@ use core\context\course as context_course;
 use moodle_url;
 use html_writer;
 use theme_moove\output\core_course\activity_navigation;
+use theme_moove\util\license;
+use theme_moove\util\settings;
 
 /**
  * Renderers to align Moodle's HTML with that expected by Bootstrap
@@ -110,6 +112,12 @@ class core_renderer extends \theme_boost\output\core_renderer {
         $fonttype = get_user_preferences('thememoovesettings_fonttype', '');
         if ($fonttype) {
             $additionalclasses[] = $fonttype;
+        }
+
+        $settings = new settings();
+        $darkmode = get_user_preferences('dark-mode-on', '');
+        if ($settings->enabledarkmode && $darkmode) {
+            $additionalclasses[] = 'moove-darkmode';
         }
 
         if (!is_array($additionalclasses)) {
@@ -449,7 +457,7 @@ class core_renderer extends \theme_boost\output\core_renderer {
                 break;
             case \moodle_page::STATE_PRINTING_HEADER :
                 // We should hopefully never get here.
-                throw new coding_exception('You cannot redirect while printing the page header');
+                throw new \coding_exception('You cannot redirect while printing the page header');
                 break;
             case \moodle_page::STATE_IN_BODY :
                 // We really shouldn't be here but we can deal with this.
@@ -486,5 +494,59 @@ class core_renderer extends \theme_boost\output\core_renderer {
     public function navbar(): string {
         $newnav = new \theme_moove\output\boostnavbar($this->page);
         return $this->render_from_template('core/navbar', $newnav);
+    }
+
+    /**
+     * Show license or update notice
+     *
+     * @return string License notice content.
+     */
+    public function show_license_notice() {
+        $content = '';
+        if (isloggedin() && !isguestuser()) {
+            $license = new license();
+
+            if (!$license->is_active()) {
+                $content = get_string('licensenotactive', 'theme_moove');
+
+                if (is_siteadmin()) {
+                    $content = get_string('licensenotactiveadmin', 'theme_moove');
+                }
+
+                $dismissbtn = '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+
+                $content = html_writer::div($content . $dismissbtn,
+                    'alert alert-danger alert-dismissible fade show',
+                    ['style' => 'position: fixed;z-index: 9999;top: 140px;left: 10px;right: 10px;text-align: center;']);
+
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * Render darkmode controls
+     *
+     * @return string Dark mode controls html content.
+     */
+    public function render_darkmode_controls() {
+        if (!isloggedin() || isguestuser()) {
+            return '';
+        }
+
+        $settings = new settings();
+
+        if (!$settings->enabledarkmode) {
+            return '';
+        }
+
+        $license = new license();
+
+        if (!$license->is_active()) {
+            return '';
+        }
+
+        return $this->render_from_template('theme_moove/darkmode', []);
     }
 }
