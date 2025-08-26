@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-redeclare
 /* global M */
 // eslint-disable-next-line camelcase
 M.mod_attendance = M.mod_attendance || {};

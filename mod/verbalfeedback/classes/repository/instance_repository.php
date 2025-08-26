@@ -309,9 +309,9 @@ class instance_repository {
             $crittab = tables::INSTANCE_CRITERION_TABLE;
             $cattab = tables::INSTANCE_CATEGORY_TABLE;
             $srattab = tables::INSTANCE_SUBRATING_TABLE;
-            $sql = "SELECT srat.id, crit.id AS criterionid
-                    FROM {{$crittab}} crit
-                    LEFT JOIN {{$srattab}} srat
+            $sql = "SELECT srat.*
+                    FROM {{$srattab}} srat
+                    JOIN {{$crittab}} crit
                         ON srat.criterionid = crit.id
                     JOIN {{$cattab}} mvic
                         ON crit.categoryid = mvic.id
@@ -322,9 +322,7 @@ class instance_repository {
                 if (!isset($bycrit[$dbosubrating->criterionid])) {
                     $bycrit[$dbosubrating->criterionid] = [];
                 }
-                if (!empty($dbosubrating->id)) {
-                    $bycrit[$dbosubrating->criterionid][$dbosubrating->id] = db_instance_subrating::to_subrating($dbosubrating);
-                }
+                $bycrit[$dbosubrating->criterionid][$dbosubrating->id] = db_instance_subrating::to_subrating($dbosubrating);
             }
             $rs->close();
             $bycrits[$id] = $bycrit;

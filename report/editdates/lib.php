@@ -57,12 +57,6 @@ class report_editdates_date_setting {
     public $getstep;
     /**
      * Constructor. A quick way to create an initialise an instance.
-     *
-     * @param string $label The label to be displayed on the form.
-     * @param int $currentvalue The current value of this setting, used to initialize the form.
-     * @param string $type One of the constants DATE or DATETIME defined in the class.
-     * @param bool $isoptional Whether this date can be enabled/disabled.
-     * @param int $getstep Only relevant for datetime elements, defines the step value.
      */
     public function __construct($label, $currentvalue, $type, $isoptional, $getstep = 1) {
         $this->label = $label;
@@ -82,9 +76,7 @@ class report_editdates_date_setting {
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class report_editdates_mod_date_extractor {
-    /** Constant for a date selector type. */
     const DATE = 'date_selector';
-    /** Constant for a date-time selector type. */
     const DATETIME = 'date_time_selector';
     /** @var object the course database row. */
     protected $course;
@@ -97,7 +89,7 @@ abstract class report_editdates_mod_date_extractor {
     protected $mods;
 
     /** @var array a static array to cache the objects of child classes */
-    private static $moddateextractor = [];
+    private static $moddateextractor = array();
 
     /**
      * Constructor.
@@ -112,7 +104,6 @@ abstract class report_editdates_mod_date_extractor {
     /**
      * This static function is used to create and cache objects of mod's date extractor classes
      * @param String $modname the name of activity/resource e.g 'assignment', 'quiz'
-     * @param stdClass $course the course object.
      * @return report_editdates_mod_date_extractor|null the extractor
      */
     public static function make($modname, $course) {
@@ -149,7 +140,7 @@ abstract class report_editdates_mod_date_extractor {
      */
     public function load_data() {
         global $DB;
-        $this->mods = $DB->get_records($this->type, ['course' => $this->course->id]);
+        $this->mods = $DB->get_records($this->type,    array('course' => $this->course->id));
     }
 
     /**
@@ -177,7 +168,6 @@ abstract class report_editdates_mod_date_extractor {
     /**
      * Save the new dates for this course_module instance.
      * @param cm_info $cm the activity to save the dates for.
-     * @param array $dates an array of dates to save.
      */
     public function save_dates(cm_info $cm, array $dates) {
         global $DB;
@@ -199,9 +189,7 @@ abstract class report_editdates_mod_date_extractor {
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class report_editdates_block_date_extractor {
-    /** Constant for a date selector type. */
     const DATE = 'date_selector';
-    /** Constant for a date-time selector type. */
     const DATETIME = 'date_time_selector';
     /** @var object the course database row. */
     protected $course;
@@ -214,12 +202,12 @@ abstract class report_editdates_block_date_extractor {
     protected $blocks;
 
     /** @var array a static array to cache the objects of child classes */
-    private static $blockdateextractor = [];
+    private static $blockdateextractor = array();
 
     /**
      * Constructor.
      * @param object $course the course database row.
-     * @param string $type the type of block to handle.
+     * @param $type the type of block to handle.
      */
     public function __construct($course, $type="block_instance") {
         $this->course = $course;
@@ -229,7 +217,6 @@ abstract class report_editdates_block_date_extractor {
     /**
      * This static function is used to create and cache objects of block's date extractor classes
      * @param String $blockname the name of the block e.g 'html'
-     * @param stdClass $course the course object.
      * @return report_editdates_block_date_extractor|null the extractor
      */
     public static function make($blockname, $course) {
@@ -269,13 +256,13 @@ abstract class report_editdates_block_date_extractor {
         global $DB;
         $coursecontext = context_course::instance($this->course->id);
         $this->blocks = $DB->get_records('block_instances',
-                ['blockname' => $this->type, 'parentcontextid' => $coursecontext->id]);
+                array('blockname' => $this->type, 'parentcontextid' => $coursecontext->id));
     }
 
     /**
      * Get a list of the settings required for this course_module instance.
      * (See the quiz example below.)
-     * @param block_base $block The activity to return the settings for.
+     * @param cm_info $cm the activity to return the settings for.
      * @return array The array keys are strings that identif y each setting.
      * The values are report_editdates_date_setting objects.
      */
@@ -284,7 +271,7 @@ abstract class report_editdates_block_date_extractor {
     /**
      * Validate the submitted dates for this course_module instance.
      * (See the quiz example below.)
-     * @param block_base $block The activity to validate the dates for.
+     * @param cm_info $cm the activity to validate the dates for.
      * @param array $dates an array with array keys matching those
      * returned by get_settings(), and the new
      * dates as values.
@@ -296,8 +283,7 @@ abstract class report_editdates_block_date_extractor {
 
     /**
      * Save the new dates for this course_module instance.
-     * @param block_base $block The activity to save the dates for.
-     * @param array $dates an array of dates to save.
+     * @param cm_info $cm the activity to save the dates for.
      */
     public function save_dates(block_base $block, array $dates) {
         global $DB;
@@ -308,7 +294,7 @@ abstract class report_editdates_block_date_extractor {
         }
 
         $DB->set_field('block_instances', 'configdata', base64_encode(serialize($block->config)),
-        ['id' => $block->instance->id]);
+        array('id' => $block->instance->id));
 
     }
 }
@@ -324,7 +310,7 @@ abstract class report_editdates_block_date_extractor {
 function report_editdates_extend_navigation_course($navigation, $course, $context) {
     global $CFG, $OUTPUT;
     if (has_capability('report/editdates:view', $context)) {
-        $url = new moodle_url('/report/editdates/index.php', ['id' => $course->id]);
+        $url = new moodle_url('/report/editdates/index.php', array('id' => $course->id));
         if ($activitytype = optional_param('activitytype', '', PARAM_PLUGIN)) {
             $url->param('activitytype', $activitytype);
         }
@@ -341,11 +327,11 @@ function report_editdates_extend_navigation_course($navigation, $course, $contex
  * @return array
  */
 function report_editdates_page_type_list($pagetype, $parentcontext, $currentcontext) {
-    return [
+    return array(
         '*'                      => get_string('page-x', 'pagetype'),
         'report-*'               => get_string('page-report-x', 'pagetype'),
         'report-editdates-index' => get_string('page-report-editdates-index',  'report_editdates'),
-    ];
+    );
 }
 
 /**
@@ -368,11 +354,11 @@ function report_editdates_update_dates_by_section($courseid, array $sectionnums,
         return false;
     }
 
-    $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+    $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
     $modinfo = get_fast_modinfo($course);
 
-    $forceddatesettings = [];
-    $moddatesettings = [];
+    $forceddatesettings = array();
+    $moddatesettings = array();
 
     // Loop through each section in the course.
     foreach ($sectionnums as $sectionnum => $value) {
