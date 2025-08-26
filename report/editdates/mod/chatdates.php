@@ -14,48 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class report_editdates_mod_chat_date_extractor
- *
- * This class is responsible for extracting, validating, and saving date settings
- * for the "Chat" activity module in Moodle.
- *
- * @package   report_editdates
- * @copyright 2012 The Open University
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class report_editdates_mod_chat_date_extractor
-        extends report_editdates_mod_date_extractor {
+defined('MOODLE_INTERNAL') || die;
 
-    /**
-     * Constructor.
-     *
-     * @param stdClass $course The course database row.
-     */
+
+class report_editdates_mod_chat_date_extractor
+                extends report_editdates_mod_date_extractor {
+
     public function __construct($course) {
         parent::__construct($course, 'chat');
         parent::load_data();
     }
 
-    #[\Override]
     public function get_settings(cm_info $cm) {
         $chat = $this->mods[$cm->instance];
-        return [
-            'chattime' => new report_editdates_date_setting(
-                get_string('chattime', 'chat'),
-                $chat->chattime,
-                self::DATETIME, false
-            ),
-        ];
+        return array('chattime' => new report_editdates_date_setting(
+                                    get_string('chattime', 'chat'),
+                                    $chat->chattime,
+                                    self::DATETIME, false)
+        );
     }
 
-    #[\Override]
     public function validate_dates(cm_info $cm, array $dates) {
-        $errors = [];
+        $errors = array();
         return $errors;
     }
 
-    #[\Override]
     public function save_dates(cm_info $cm, array $dates) {
 
         // Fetch module instance from $mods array.

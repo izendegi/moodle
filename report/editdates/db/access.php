@@ -24,15 +24,15 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-$capabilities = [
-    'report/editdates:view' => [
+$capabilities = array(
+    'report/editdates:view' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => [
+        'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW,
-        ],
+            'manager' => CAP_ALLOW
+        ),
         'clonepermissionsfrom' => 'moodle/site:viewreports',
-    ],
-];
+    )
+);
