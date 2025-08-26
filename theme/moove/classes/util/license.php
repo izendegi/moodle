@@ -8,7 +8,6 @@ class license {
     const PLUGINSTORE = 'https://pluginstore.conecti.me/api/licenses/verify';
     const STATUS = 'license_status';
     const EXPIRES = 'license_expires_at';
-    const LICENSEKEY = 'theme_moove/licensekey';
 
     public function validate_license($key) {
         global $CFG;
@@ -109,5 +108,12 @@ class license {
         $status = $this->get_license_status();
 
         return $status === 'active';
+    }
+
+    public function force_activation($key, $expires = 0)
+    {
+        set_config('licensekey', $key, 'theme_moove');
+        set_config(license::STATUS, 'active', 'theme_moove');
+        set_config(license::EXPIRES, $expires,'theme_moove');
     }
 }
