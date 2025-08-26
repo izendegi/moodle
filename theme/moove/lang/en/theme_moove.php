@@ -205,6 +205,7 @@ $string['licensestatus'] = 'License Status';
 $string['active'] = 'Active';
 $string['invalid'] = 'Invalid license';
 $string['expired'] = 'Expired';
+$string['activationcode'] = 'Activation code';
 
 $string['_msg'] = 'It was not possible to connect with pluginstore site to validate your license. Verify your firewall or any other blocking on your server.';
 $string['active_msg'] = 'Your license is active';
