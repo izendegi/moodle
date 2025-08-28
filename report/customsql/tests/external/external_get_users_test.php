@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 namespace report_customsql\external;
+
+use core_external\external_api;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -34,8 +35,13 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @covers \report_customsql\external\get_users
  * @runTestsInSeparateProcesses
  */
-class external_get_users_test extends \externallib_advanced_testcase {
+final class external_get_users_test extends \externallib_advanced_testcase {
 
+    /**
+     * Sets up test users with specific roles and permissions.
+     *
+     * @return array An array containing the created users: admin, manager, and course creator.
+     */
     protected function setup_users(): array {
         global $DB, $USER;
 
@@ -75,7 +81,7 @@ class external_get_users_test extends \externallib_advanced_testcase {
         [$admin] = $this->setup_users();
 
         $result = get_users::execute('', 'moodle/site:config');
-        $result = \external_api::clean_returnvalue(get_users::execute_returns(), $result);
+        $result = external_api::clean_returnvalue(get_users::execute_returns(), $result);
 
         $this->assertEquals([
             [
@@ -95,7 +101,7 @@ class external_get_users_test extends \externallib_advanced_testcase {
         [$admin, $manager] = $this->setup_users();
 
         $result = get_users::execute('', 'moodle/site:viewreports');
-        $result = \external_api::clean_returnvalue(get_users::execute_returns(), $result);
+        $result = external_api::clean_returnvalue(get_users::execute_returns(), $result);
 
         $this->assertEquals([
             [
@@ -122,7 +128,7 @@ class external_get_users_test extends \externallib_advanced_testcase {
         [$admin, $manager, $coursecreateor] = $this->setup_users();
 
         $result = get_users::execute('', 'report/customsql:view');
-        $result = \external_api::clean_returnvalue(get_users::execute_returns(), $result);
+        $result = external_api::clean_returnvalue(get_users::execute_returns(), $result);
 
         $this->assertEquals([
             [
@@ -158,7 +164,7 @@ class external_get_users_test extends \externallib_advanced_testcase {
         [, $manager] = $this->setup_users();
 
         $result = get_users::execute('Man', 'report/customsql:view');
-        $result = \external_api::clean_returnvalue(get_users::execute_returns(), $result);
+        $result = external_api::clean_returnvalue(get_users::execute_returns(), $result);
 
         $this->assertEquals([
                 [
@@ -178,7 +184,7 @@ class external_get_users_test extends \externallib_advanced_testcase {
         [$admin] = $this->setup_users();
 
         $result = get_users::execute('n U', 'report/customsql:view');
-        $result = \external_api::clean_returnvalue(get_users::execute_returns(), $result);
+        $result = external_api::clean_returnvalue(get_users::execute_returns(), $result);
 
         $this->assertEquals([
             [

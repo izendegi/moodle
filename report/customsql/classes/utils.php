@@ -58,21 +58,12 @@ class utils {
         return $grouppedqueries;
     }
 
+    /**
+     * Retrieves and processes data for the given queries.
+     *
+     * @param array $queries An array of query objects.
+     */
     public function get_queries_data($queries) {
 
     }
-
-    /**
-     * Get queries for each type.
-     *
-     * @param array $queries Array of queries.
-     * @param string $type Type to filter.
-     * @return array All queries of type.
-     */
-    public static function get_number_of_report_by_type(array $queries, string $type) {
-        return array_filter($queries, function($query) use ($type) {
-            return $query->runable == $type;
-        }, ARRAY_FILTER_USE_BOTH);
-    }
-
 }

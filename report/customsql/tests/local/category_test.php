@@ -29,7 +29,7 @@ require_once($CFG->dirroot . '/report/customsql/locallib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \report_customsql\local\category
  */
-class category_test extends \advanced_testcase {
+final class category_test extends \advanced_testcase {
     /**
      * Test create category.
      */
@@ -52,6 +52,8 @@ class category_test extends \advanced_testcase {
      */
     public function test_load_queries_data(): void {
         $this->resetAfterTest();
+        $this->setAdminUser();
+
         $fakerecord = (object) [
             'id' => 1,
             'name' => 'Category 1',
