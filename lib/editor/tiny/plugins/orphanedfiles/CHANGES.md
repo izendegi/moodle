@@ -1,5 +1,10 @@
 
 Release Notes
+##### 2.0.2 (Build 2025052003)
+Fixes:
+* add missing change event
+* fixes problems with grunt
+
 ##### 2.0.1 (Build 2025052000)
 Fixes:  
 * Wenn beim Aufruf des Editors verwaiste Dateien vorhanden sind aber KEINE Datei im Editor genutzt wurde, dann werden KEINERLEI verwaiste Dateien gefunden.
