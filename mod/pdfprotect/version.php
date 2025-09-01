@@ -18,14 +18,14 @@
  * pdfprotect - módulo que bloqueia completamente download/impressão de PDF
  *
  * @package   mod_pdfprotect
- * @copyright 2025 Eduardo kraus (http://eduardokraus.com)
+ * @copyright 2025 Eduardo Kraus {@link https://eduardokraus.com}
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2025061601;
+$plugin->version = 2025082903;
 $plugin->requires = 2021041900;
-$plugin->release = '3.2.5';
+$plugin->release = '3.2.7';
 $plugin->component = 'mod_pdfprotect';
 $plugin->maturity = MATURITY_STABLE;
