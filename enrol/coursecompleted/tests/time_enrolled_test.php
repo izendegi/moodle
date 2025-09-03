@@ -69,7 +69,7 @@ final class time_enrolled_test extends advanced_testcase {
         $plugin->add_instance($course2, $input);
         $instance = $DB->get_record(
             'enrol',
-                [
+            [
                     'courseid' => $course2->id,
                     'customint1' => $course1->id,
                     'enrol' => 'coursecompleted',
@@ -91,7 +91,11 @@ final class time_enrolled_test extends advanced_testcase {
     /**
      * Test if user is enrolled for a specific time after completing a course.
      */
+    #[Large]
     public function test_time_enrolled(): void {
+        if (!PHPUNIT_LONGTEST) {
+            $this->markTestSkipped('PHPUNIT_LONGTEST is not defined');
+        }
         global $DB, $PAGE;
         $generator = $this->getDataGenerator();
         $course1 = $generator->create_course();
