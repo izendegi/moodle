@@ -15,19 +15,27 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Code fragment to define the version of etherpadlite.
+ * External functions and service declaration for Etherpad Lite
  *
- * This fragment is called by moodle_needs_upgrading() and /admin/index.php
+ * Documentation: {@link https://moodledev.io/docs/apis/subsystems/external/description}
  *
  * @package    mod_etherpadlite
- * @author     Timo Welde <tjwelde@gmail.com>
- * @copyright  2012 Humboldt-UniversitÃ¤t zu Berlin <moodle-support@cms.hu-berlin.de>
+ * @category   webservice
+ * @copyright  2025 André Menrath <andre.menrath@uni-graz.at>, University of Graz
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-defined('MOODLE_INTERNAL') || die;
 
-$plugin->version   = 2025041600;  // The current module version (Date: YYYYMMDDXX).
-$plugin->release   = 'v5.0.1 (2025090700)';
-$plugin->requires  = 2025040800;
-$plugin->component = 'mod_etherpadlite';
-$plugin->maturity  = MATURITY_STABLE;
+defined('MOODLE_INTERNAL') || die();
+
+$functions = [
+
+    'mod_etherpadlite_test_tool' => [
+        'classname' => mod_etherpadlite\external\test_tool::class,
+        'description' => 'Connection and API-key test tool for Etherpad Lite',
+        'type' => 'read',
+        'ajax' => true,
+    ],
+];
+
+$services = [
+];

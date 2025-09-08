@@ -104,8 +104,8 @@ class client {
 
         // Should the certificate be verified.
         if (empty($this->config->check_ssl)) {
-            $curloptions['CURLOPT_SSL_VERIFYHOST'] = 0;
-            $curloptions['CURLOPT_SSL_VERIFYPEER'] = 0;
+            $this->curloptions['CURLOPT_SSL_VERIFYHOST'] = 0;
+            $this->curloptions['CURLOPT_SSL_VERIFYPEER'] = 0;
         }
 
         if (empty($this->config->apiversion)) {
@@ -738,6 +738,9 @@ class client {
      * @return string|bool The blocked host or false
      */
     public static function is_url_blocked($urlstring) {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $curl = new \curl(['ignoresecurity' => true]);
         $url  = new \moodle_url($urlstring);
         if ($curl->get_security()->url_is_blocked($url)) {
@@ -745,7 +748,9 @@ class client {
             if ($ips = gethostbynamel($url->get_host())) {
                 $ipstring = implode(', ', $ips);
             }
-
+            if (empty($ipstring)) {
+                return false;
+            }
             return $url->get_host() . '(' . $ipstring . ')';
         }
 
@@ -761,6 +766,8 @@ class client {
      * @return static
      */
     public static function get_instance($apikey, $apiurl = null) {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
         static $client;
         if (empty($client)) {
             if (static::is_testing()) {

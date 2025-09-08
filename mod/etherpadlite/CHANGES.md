@@ -4,6 +4,11 @@ moodle-mod_etherpadlite
 Changes
 -------
 
+### v5.0.1
+* Introduce dedicated connection testing tool by André Menrath (#79)
+* Fix unchecked check_ssl option not being honored by Ilja Rozhko
+* Fix unittest mod_etherpadlite
+
 ### v5.0
 * Tint monologo icon with dark grey as standard, resolves (#77)
 * adjust code for Moodle 5.0 using Bootstrap 5.3
