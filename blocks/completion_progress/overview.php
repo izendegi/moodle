@@ -22,6 +22,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Needed for progress bar output when sorting by percentage.
+define('NO_OUTPUT_BUFFERING', true);
+
 // Include required files.
 require_once(dirname(__FILE__) . '/../../config.php');
 require_once($CFG->dirroot.'/notes/lib.php');
@@ -75,9 +78,10 @@ $PAGE->set_url(
 );
 $PAGE->set_context($context);
 $title = get_string('overview', 'block_completion_progress');
-$PAGE->set_title($title);
-$PAGE->set_heading($title);
-$PAGE->navbar->add($title);
+$PAGE->set_title("$course->shortname: $title");
+$PAGE->set_heading($course->fullname);
+$PAGE->navbar->add($title, new moodle_url('/blocks/completion_progress/overview.php',
+    ['instanceid' => $id, 'courseid' => $courseid]));
 $PAGE->set_pagelayout('report');
 
 $cachevalue = debugging() ? -1 : (int)get_config('block_completion_progress', 'cachevalue');
@@ -147,6 +151,9 @@ $table->is_downloading($download, 'completion_progress-' . $COURSE->shortname);
 $table->setup();
 
 if ($download) {
+    if (array_key_exists('progress', $table->get_sort_columns())) {
+        $progress->compute_overview_percentages(null);
+    }
     $table->query_db($perpage);
     $table->start_output();
     $table->build_table();
@@ -167,6 +174,20 @@ if (!$progress->has_activities()) {
     echo $output->container_end();
     echo $output->footer();
     die();
+}
+
+if (array_key_exists('progress', $table->get_sort_columns())) {
+    core_php_time_limit::raise(0);
+    $computeprogress = new progress_bar('', 500, true);
+    $strcomputeprogress = get_string('computeprogress', 'block_completion_progress');
+    $progress->compute_overview_percentages(fn($pct) => $computeprogress->update_full($pct, $strcomputeprogress));
+    // Delete the progress bar from the page.
+    echo html_writer::script(
+        js_writer::function_call(
+            '(function(id){document.getElementById(id).remove();})',
+            [$computeprogress->get_id()]
+        )
+    );
 }
 
 echo $output->container_start('progressoverviewmenus');
