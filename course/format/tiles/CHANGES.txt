@@ -730,3 +730,14 @@ Other
 =====================
 - Issue 280 button icon colour darker to match core (accessibility)
 - Remove docs links
+
+5.0.0.21 (2025070362)
+=====================
+- Fix bootstrap 5.0 tooltips https://moodledev.io/docs/5.0/guides/bs5migration#bootstrap-5-upgrade
+- Switch on tile badge colour (e.g. 'Restricted') to grey
+
+5.0.0.22 (2025070363)
+=====================
+- Issue 287 fix modal scroll
+- Issue 289 fix page not scrolling when open tile
+- Avoid deprecation warning

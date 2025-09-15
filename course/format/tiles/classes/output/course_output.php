@@ -308,20 +308,12 @@ class course_output implements \renderable, \templatable {
      */
     protected function temp_course_section_cm_availability($mod) {
         if ($this->courseformatoptions['courseusesubtiles']) {
-            // Subtiles show a badge on the tile with a tool tip including full info.
+            // Subtiles show a badge on the tile including full info.
             // This needs not to be truncated, whereas core $availabilityclass below will truncate it.
             // If there are multiple restrictions the tooltip on the subtile then shows them all.
             $ci = new \core_availability\info_module($mod);
             $fullinfo = $ci->get_full_information();
-            $description = \core_availability\info::format_info($fullinfo, $this->course);
-            if ($this->moodlerelease == 4.1) {
-                // In Moodle 4.1 activities with multiple restrictions are shown with a show more link.
-                // As that approach now deprecated, this is a quick/sub-optimal fix to remove "show more" link and un-hide items.
-                $description = str_replace('d-none', '', $description);
-                return str_replace('d-block showmore', 'd-none', $description);
-            } else {
-                return $description;
-            }
+            return \core_availability\info::format_info($fullinfo, $this->course);
         }
         $availabilityclass = $this->format->get_output_classname('content\\cm\\availability');
         $availability = new $availabilityclass(
@@ -483,6 +475,7 @@ class course_output implements \renderable, \templatable {
         // If user can view hidden items, include the explanation as to why an item is hidden.
         if ($this->canviewhidden) {
             $data['availabilitymessage'] = self::temp_section_availability_message($thissection);
+            $data['hasavailability'] = $data['availabilitymessage'] !== null;
         }
         if ($isdelegatedsection) {
             $data['isdelegatedsection'] = true;

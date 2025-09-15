@@ -384,7 +384,8 @@ class util {
         }
         // The core method will return true for both icon and monologo, but we want to check for monlogo only.
         $pattern = '/monologo\.(svg|png)$/i';
-        if (!preg_match($pattern, $svgmonologolocation) && !preg_match($pattern, $pngmonologolocation)) {
+        if ((!$svgmonologolocation || !preg_match($pattern, $svgmonologolocation))
+            && (!$pngmonologolocation || !preg_match($pattern, $pngmonologolocation))) {
             return false;
         }
         return true;

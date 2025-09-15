@@ -37,8 +37,7 @@
 .format-tiles ul.tiles .current .sectiontitle::after {
     background-color: red;
 }
-.format-tiles .sectiontitle::after,
-.format-tiles .badge-info {
+.format-tiles .sectiontitle::after {
     background-color: var(--format-tiles-colour);
 }
 .format-tiles .course-content .single-section .navigation-arrows .navigation-arrow:not(.dimmed):hover {

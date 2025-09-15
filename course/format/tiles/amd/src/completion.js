@@ -155,7 +155,7 @@ define(["jquery", "core/templates", "core/config", "core/ajax", "core/str", "cor
                     } else if (!sec.isavailable && sec.availabilitymessage) {
                         // Sec is not available and we have a message to display.
                         if (availabilityInfoDiv.length > 0) {
-                            availabilityInfoDiv.html = 'NEW' + sec.availabilitymessage;
+                            availabilityInfoDiv.html = sec.availabilitymessage;
                             availabilityInfoDiv.fadeIn();
                         } else {
                             Templates.render("format_tiles/availability_info", {
