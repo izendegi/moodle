@@ -61,5 +61,5 @@ if ($PAGE->pagetype === 'mod-scorm-player' &&
 
     echo $OUTPUT->render_from_template('theme_mondragon/scormfullscreen', $templatecontext);
 } else {
-    include($CFG->dirroot . '/theme/moove/layout/incourse.php');
+    include($CFG->dirroot . '/theme/moove/layout/course.php');
 }
