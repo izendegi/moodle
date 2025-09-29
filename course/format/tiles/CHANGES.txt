@@ -741,3 +741,7 @@ Other
 - Issue 287 fix modal scroll
 - Issue 289 fix page not scrolling when open tile
 - Avoid deprecation warning
+
+5.0.0.23 (2025070364)
+=====================
+- Issue 291 and 292 fix malfunctioning modal iframe URL for file activities
