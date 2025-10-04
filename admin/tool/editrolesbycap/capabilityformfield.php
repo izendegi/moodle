@@ -35,6 +35,14 @@ require_once($CFG->libdir . '/form/selectgroups.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class MoodleQuickForm_capability extends MoodleQuickForm_selectgroups {
+    /**
+     * Constructor
+     *
+     * @param string $elementname Select name attribute
+     * @param mixed $elementlabel Label(s) for the select
+     * @param mixed $attributes Either a typical HTML attribute string or an associative array
+     * @param bool $showchoose add standard moodle "Choose..." option as first item.
+     */
     public function __construct($elementname = null, $elementlabel = null,
             $attributes = [], $showchoose = false) {
 
@@ -97,12 +105,8 @@ class MoodleQuickForm_capability extends MoodleQuickForm_selectgroups {
         global $PAGE;
         $this->_generateId();
         if (!$this->_flagFrozen) {
-            $PAGE->requires->string_for_js('nonematch', 'tool_editrolesbycap');
-            $PAGE->requires->string_for_js('filter', 'moodle');
-            $PAGE->requires->string_for_js('clear', 'moodle');
-            $PAGE->requires->yui_module('moodle-tool_editrolesbycap-capabilityformfield',
-                    'M.tool_editrolesbycap.init_capabilityformfield',
-                    ['#' . $this->getAttribute('id')]);
+            $PAGE->requires->js_call_amd('tool_editrolesbycap/capabilityformfield',
+                'initCapabilityFormField', [$this->getAttribute('id')]);
         }
     }
 
@@ -112,6 +116,12 @@ class MoodleQuickForm_capability extends MoodleQuickForm_selectgroups {
         return parent::toHtml();
     }
 
+    /**
+     * Return data for rendering a template.
+     *
+     * @param renderer_base $output
+     * @return array
+     */
     public function export_for_template(renderer_base $output): array {
         $this->setup_javascript();
         return parent::export_for_template($output);

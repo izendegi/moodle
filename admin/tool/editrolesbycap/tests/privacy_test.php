@@ -14,38 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Privacy provider tests.
- *
- * @package tool_editrolesbycap
- * @copyright 2018 The Open University
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace tool_editrolesbycap;
 
-defined('MOODLE_INTERNAL') || die();
 use tool_editrolesbycap\privacy\provider;
 use core_privacy\tests\provider_testcase;
 use core_privacy\local\request\writer;
+
 /**
  * Privacy provider tests class.
  *
  * @package tool_editrolesbycap
  * @copyright 2018 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @coversDefaultClass \tool_editrolesbycap\privacy\provider
  */
-class tool_editrolesbycap_privacy_provider_testcase extends provider_testcase {
-
+final class privacy_test extends provider_testcase {
     /**
      * Basic setup for these tests.
      */
     public function setUp(): void {
+        parent::setUp();
         $this->resetAfterTest(true);
     }
 
     /**
      * Ensure that export_user_preferences returns single preferences.
+     *
+     * @covers ::export_user_preferences
      */
-    public function test_export_user_preferences_single() {
+    public function test_export_user_preferences_single(): void {
         // Define a user preference.
         $user = $this->getDataGenerator()->create_user();
         $this->setUser($user);
@@ -53,7 +50,7 @@ class tool_editrolesbycap_privacy_provider_testcase extends provider_testcase {
 
         // Validate exported data.
         provider::export_user_preferences($user->id);
-        $context = context_user::instance($user->id);
+        $context = \context_user::instance($user->id);
 
         $writer = writer::with_context($context);
         $this->assertTrue($writer->has_any_data());
@@ -68,11 +65,13 @@ class tool_editrolesbycap_privacy_provider_testcase extends provider_testcase {
 
     /**
      * Ensure that export_user_preferences returns no data if the user has no data.
+     *
+     * @covers ::export_user_preferences
      */
-    public function test_export_user_preferences_not_defined() {
+    public function test_export_user_preferences_not_defined(): void {
         $user = $this->getDataGenerator()->create_user();
         provider::export_user_preferences($user->id);
-        $writer = writer::with_context(context_user::instance($user->id));
+        $writer = writer::with_context(\context_user::instance($user->id));
         $this->assertFalse($writer->has_any_data());
     }
 }

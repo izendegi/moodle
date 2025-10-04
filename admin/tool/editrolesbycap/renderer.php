@@ -22,9 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
-
 /**
  * Renderer for the edit roles by capability tool.
  *
@@ -90,13 +87,13 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
     protected function role_definitions(array $roledata, $showadvanced) {
         $table = new html_table();
         $table->attributes['class'] = 'roledefs generaltable rolecap';
-        $table->head = array(
+        $table->head = [
             get_string('role'),
             get_string('permission', 'role') . ' ' . $this->help_icon('permission', 'role'),
             get_string('roledescription', 'tool_editrolesbycap'),
-        );
+        ];
         if ($showadvanced) {
-            $table->headspan = array(1, 4, 1);
+            $table->headspan = [1, 4, 1];
         }
 
         foreach ($roledata as $role) {
@@ -114,10 +111,10 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
         $output .= html_writer::table($table);
         $output .= $this->save_changes_button();
 
-        $attributes = array(
+        $attributes = [
             'action' => $this->page->url,
             'method' => 'post',
-        );
+        ];
         return html_writer::tag('form', $output, $attributes);
     }
 
@@ -145,11 +142,11 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
     protected function add_permission_cells_basic($row, $role) {
         $output = '';
 
-        $attributes = array(
+        $attributes = [
             'type'  => 'hidden',
             'name'  => $role->shortname,
             'value' => CAP_INHERIT,
-        );
+        ];
         $output .= html_writer::empty_tag('input', $attributes);
 
         $attributes['type']  = 'checkbox';
@@ -161,7 +158,7 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
 
         $output .= html_writer::tag('label',
                 html_writer::empty_tag('input', $attributes) . $this->permission_name(CAP_ALLOW),
-                array('for' => $attributes['id']));
+                ['for' => $attributes['id']]);
         $cell = new html_table_cell($output);
 
         if ($role->defaultpermission == CAP_ALLOW) {
@@ -181,14 +178,14 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
     protected function add_permission_cells_basic_uncommon_permission($row, $role) {
         $output = '';
 
-        $attributes = array(
+        $attributes = [
             'type'  => 'hidden',
             'name'  => $role->shortname,
             'value' => $role->permission,
-        );
+        ];
         $output .= html_writer::empty_tag('input', $attributes);
         $output .= $this->permission_name($role->permission);
-        $output .= html_writer::tag('span', get_string('useshowadvancedtochange', 'role'), array('class' => 'note'));
+        $output .= html_writer::tag('span', get_string('useshowadvancedtochange', 'role'), ['class' => 'note']);
 
         $cell = new html_table_cell($output);
         $cell->attributes['class'] = 'allow';
@@ -206,20 +203,20 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
         foreach ($this->permission_names() as $permission => $permissionname) {
             $output = '';
 
-            $attributes = array(
+            $attributes = [
                 'type'  => 'radio',
                 'name'  => $role->shortname,
                 'value' => $permission,
                 'id'    => 'id_' . $role->shortname . $permission,
-            );
+            ];
             if ($permission == $role->permission) {
                 $attributes['checked'] = 'checked';
             }
 
             $output .= html_writer::tag('label',
                     html_writer::empty_tag('input', $attributes) .
-                    html_writer::tag('span', $permissionname, array('class' => 'note')),
-                    array('for' => $attributes['id']));
+                    html_writer::tag('span', $permissionname, ['class' => 'note']),
+                    ['for' => $attributes['id']]);
 
             $cell = new html_table_cell($output);
 
@@ -241,11 +238,11 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
      * @return string the HTML to output.
      */
     protected function show_hide_advanced_button($showadvanced) {
-        $attributes = array(
+        $attributes = [
             'type'  => 'submit',
             'name'  => 'toggleadvanced',
             'class'  => 'btn btn-secondary',
-        );
+        ];
 
         if ($showadvanced) {
             $attributes['value'] = get_string('hideadvanced', 'form');
@@ -253,7 +250,7 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
             $attributes['value'] = get_string('showadvanced', 'form');
         }
 
-        return html_writer::tag('div', html_writer::empty_tag('input', $attributes), array('class' => 'advancedbutton'));
+        return html_writer::tag('div', html_writer::empty_tag('input', $attributes), ['class' => 'advancedbutton']);
     }
 
     /**
@@ -263,22 +260,22 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
     protected function save_changes_button() {
         $ouput = '';
 
-        $attributes = array(
+        $attributes = [
             'type'  => 'hidden',
             'name'  => 'sesskey',
             'value' => sesskey(),
-        );
+        ];
         $ouput .= html_writer::empty_tag('input', $attributes);
 
-        $attributes = array(
+        $attributes = [
             'type'  => 'submit',
             'name'  => 'savechanges',
             'value' => get_string('savechanges'),
             'class'  => 'btn btn-primary',
-        );
+        ];
         $ouput .= html_writer::empty_tag('input', $attributes);
 
-        return html_writer::tag('div', $ouput, array('class' => 'submitbutton'));
+        return html_writer::tag('div', $ouput, ['class' => 'submitbutton']);
     }
 
     /**
@@ -289,12 +286,12 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
     protected function permission_names() {
         static $permissionnames = null;
         if (is_null($permissionnames)) {
-            $permissionnames = array(
+            $permissionnames = [
                 CAP_INHERIT  => get_string('notset', 'role'),
                 CAP_ALLOW    => get_string('allow', 'role'),
                 CAP_PREVENT  => get_string('prevent', 'role'),
                 CAP_PROHIBIT => get_string('prohibit', 'role'),
-            );
+            ];
         }
         return $permissionnames;
     }
@@ -319,10 +316,10 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
     protected function capability_name_full($capability) {
         $a = new stdClass;
         $a->name = get_capability_docs_link($capability);
-        $a->capabilityname = html_writer::tag('span', $capability->name, array('class' => 'cap-name'));
+        $a->capabilityname = html_writer::tag('span', $capability->name, ['class' => 'cap-name']);
         $a->risks = $this->risk_icons($capability);
         return html_writer::tag('span', get_string('capabilitynamewithrisks', 'tool_editrolesbycap', $a),
-                array('class' => 'cap-desc'));
+                ['class' => 'cap-desc']);
     }
 
     /**
@@ -331,7 +328,7 @@ class tool_editrolesbycap_renderer extends plugin_renderer_base {
      * @return string the HTML to output.
      */
     protected function risk_icons($capability) {
-        $icons = array();
+        $icons = [];
         foreach (get_all_risks() as $riskname => $risk) {
             if ($risk & (int)$capability->riskbitmask) {
                 $icons[] = $this->risk_icon($riskname);

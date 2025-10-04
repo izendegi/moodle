@@ -23,7 +23,7 @@
  */
 
 namespace tool_editrolesbycap\privacy;
-defined('MOODLE_INTERNAL') || die();
+
 use core_privacy\local\metadata\collection;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\writer;
@@ -44,7 +44,7 @@ class provider implements
      * @param collection $collection The initialised collection to add items to.
      * @return collection A listing of user data stored through this system.
      */
-    public static function get_metadata(collection $collection) : collection {
+    public static function get_metadata(collection $collection): collection {
         $collection->add_user_preference('definerole_showadvanced', 'privacy:metadata:preference:definerole_showadvanced');
         return $collection;
     }

@@ -46,7 +46,7 @@ if (optional_param('toggleadvanced', false, PARAM_BOOL)) {
     set_user_preference('definerole_showadvanced', $showadvanced);
 }
 
-$params = array();
+$params = [];
 if ($capability) {
     $capability->name = $cap;
     $params['cap'] = $capability->name;
@@ -58,7 +58,7 @@ $form = new tool_editrolesbycap_capability_form(
 $form->set_data($params);
 
 if ($data = $form->get_data()) {
-    redirect(new moodle_url('/admin/tool/editrolesbycap/index.php', array('cap' => $data->cap)));
+    redirect(new moodle_url('/admin/tool/editrolesbycap/index.php', ['cap' => $data->cap]));
 }
 
 $renderer = $PAGE->get_renderer('tool_editrolesbycap');

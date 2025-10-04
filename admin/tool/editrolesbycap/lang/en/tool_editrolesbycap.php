@@ -22,15 +22,14 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 $string['capabilityandname'] = '{$a->name} ({$a->capabilityname})';
 $string['capabilitynamewithrisks'] = '{$a->name} ({$a->capabilityname}) {$a->risks}';
 $string['checkandeditroles'] = 'Check and edit role definitions';
 $string['editrolesfor'] = 'Edit role definitions for capability {$a}';
 $string['nonematch'] = 'No capabilities match the filter';
 $string['pluginname'] = 'Edit roles by capability';
+$string['privacy:metadata:preference:definerole_showadvanced'] = 'Define role show advanced preference';
 $string['roledescription'] = 'Role description';
 $string['rolenameandshortname'] = '{$a->name} ({$a->shortname})';
 $string['selectacapability'] = 'Select a capability';
 $string['selectadifferentcapability'] = 'Select a different capability';
-$string['privacy:metadata:preference:definerole_showadvanced'] = 'Define role show advanced preference';

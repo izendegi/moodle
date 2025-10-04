@@ -39,6 +39,9 @@ MoodleQuickForm::registerElementType('capability',
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class tool_editrolesbycap_capability_form extends moodleform {
+    /**
+     * Defines the form.
+     */
     protected function definition() {
         if (empty($this->_customdata['cap'])) {
             $label = get_string('selectacapability', 'tool_editrolesbycap');
@@ -46,7 +49,7 @@ class tool_editrolesbycap_capability_form extends moodleform {
             $label = get_string('selectadifferentcapability', 'tool_editrolesbycap');
         }
 
-        $this->_form->addElement('capability', 'cap', $label, array("size" => 10));
+        $this->_form->addElement('capability', 'cap', $label, ["size" => 10]);
         $this->_form->addRule('cap', null, 'required', null, 'client');
 
         $this->add_action_buttons(false, get_string('checkandeditroles', 'tool_editrolesbycap'));
@@ -61,7 +64,7 @@ class tool_editrolesbycap_capability_form extends moodleform {
  * @return int one of the CAP_... constants.
  */
 function tool_editrolesbycap_get_default_permission($role, $capability) {
-    static $cache = array();
+    static $cache = [];
 
     if (empty($role->archetype)) {
         return CAP_INHERIT;
@@ -103,8 +106,8 @@ function tool_editrolesbycap_load_role_definitions($capability) {
                                              AND rc.capability = :capability
                                              AND rc.contextid = :syscontextid
               ORDER BY r.sortorder, r.name',
-          array('capability' => $capability->name,
-                'syscontextid' => context_system::instance()->id));
+          ['capability' => $capability->name,
+                'syscontextid' => context_system::instance()->id]);
 
     foreach ($data as $role) {
         $role->name = role_get_name($role);

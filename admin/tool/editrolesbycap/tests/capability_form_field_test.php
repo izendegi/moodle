@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace tool_editrolesbycap;
+
 defined('MOODLE_INTERNAL') || die();
+
+use advanced_testcase;
 
 global $CFG;
 require_once($CFG->dirroot . '/admin/tool/editrolesbycap/capabilityformfield.php');
@@ -26,13 +30,19 @@ require_once($CFG->dirroot . '/admin/tool/editrolesbycap/capabilityformfield.php
  * @package tool_editrolesbycap
  * @copyright 2021 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @coversDefaultClass \core\context_helper
  */
-class capability_form_field_test extends advanced_testcase {
+final class capability_form_field_test extends advanced_testcase {
 
-    public function test_all_capabilities_included() {
-        $field = new MoodleQuickForm_capability('cap');
+    /**
+     * Tests that a required capability is included in the correct capability group.
+     *
+     * @covers ::get_level_name
+     */
+    public function test_all_capabilities_included(): void {
+        $field = new \MoodleQuickForm_capability('cap');
 
-        $groupname = context_helper::get_level_name(CONTEXT_MODULE) . ': ' .
+        $groupname = \context_helper::get_level_name(CONTEXT_MODULE) . ': ' .
                 get_component_string('mod_h5pactivity', CONTEXT_COURSE);
         $hvpcourselevelcaps = null;
         foreach ($field->_optGroups as $group) {
