@@ -1,0 +1,167 @@
+$bg-primary-darkmode: #151515 !default;
+$bg-blocksheader-darkmode: #1b1b1b !default;
+$bg-blocksbody-darkmode: #292929 !default;
+$bg-searchinput-darkmode: #0f0f0f !default;
+$primary-darkmode: #617f89 !default;
+$primary-links-darkmode: #51636f;
+$primary-color-darkmode: #ced4da !default;
+
+#sidepre-blocks .blocks-header {
+  padding: 1rem;
+}
+
+body.moove-darkmode {
+  color: $primary-color-darkmode;
+
+  .table,
+  table.collection,
+  table.flexible,
+  .generaltable {
+    color: $primary-darkmode;
+    background-color: $bg-primary-darkmode;
+  }
+
+  a {
+    color: $primary-links-darkmode;
+  }
+
+  .primary-navigation .navigation .nav-link,
+  .navbar-nav .show > .nav-link,
+  .navbar-nav .active>.nav-link,
+  .navbar-nav .nav-link.show,
+  .navbar-nav .nav-link.active {
+    color: $primary-links-darkmode !important;
+  }
+
+  .secondary-navigation {
+    background-color: #000;
+
+    .moremenu .nav-tabs .nav-link {
+      color: $primary-color-darkmode;
+    }
+  }
+
+  .moove-searchinput {
+    .input-group-text {
+      background-color: $bg-searchinput-darkmode;
+    }
+
+    input {
+      background-color: $bg-searchinput-darkmode;
+    }
+  }
+
+  #page,
+  #region-main,
+  #page.drawers .main-inner {
+    background-color: $bg-primary-darkmode;
+  }
+
+  #page.drawers .main-inner {
+    padding: 0;
+    border-radius: .5rem;
+  }
+
+  #page-footer,
+  div[role="main"] {
+    background-color: $bg-blocksbody-darkmode;
+  }
+
+  #sidepre-blocks {
+    background-color: $bg-blocksbody-darkmode;
+
+    .blocks-header {
+      background-color: $bg-blocksheader-darkmode;
+    }
+
+    #block-region-side-pre {
+      background-color: $bg-blocksbody-darkmode;
+    }
+  }
+
+  .navbar {
+    background-color: $bg-primary-darkmode !important;
+
+    .navbar-nav {
+      .popover-region,
+      .dropdown {
+        .popover-region-toggle,
+        .dropdown-toggle {
+          .icon {
+            color: $primary-links-darkmode;
+          }
+        }
+      }
+    }
+  }
+
+  .message-app,
+  .navbar .popover-region-container {
+    background-color: $bg-blocksbody-darkmode;
+  }
+
+  .nav-tabs .nav-link.active,
+  .nav-tabs .nav-item.show .nav-link {
+    background-color: $bg-primary-darkmode;
+  }
+
+  #page-navbar .breadcrumb {
+    li {
+      > * {
+        background-color: $bg-primary-darkmode;
+        border-color: $bg-primary-darkmode;
+        color: $primary-color-darkmode;
+      }
+
+      &:after {
+        border-left-color: $bg-blocksbody-darkmode;
+      }
+    }
+  }
+
+  .form-control {
+    background-color: $bg-primary-darkmode;
+    color: $primary-color-darkmode;
+  }
+
+  #top-footer {
+    background-color: $bg-blocksbody-darkmode ;
+  }
+
+  .card, #page-enrol-users #filterform,
+  .que .history,
+  .userprofile .profile_tree section,
+  .groupinfobox,
+  .well {
+    background-color: $bg-blocksbody-darkmode;
+    -webkit-box-shadow: 0 .125rem .25rem rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .5)!important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .h1,
+  .h2,
+  .h3,
+  .h4,
+  .h5,
+  .h6,
+  .path-calendar .maincalendar .calendar-controls .current,
+  .course-content .single-section .sectionname,
+  .course-content .single-section .sectionname a,
+  .course-content .section .sectionname,
+  .course-content .section .sectionname a {
+    color: $primary-darkmode !important;
+  }
+
+  .dashboard-card-deck .dashboard-card .dashboard-card-footer,
+  #region-main .section.main,
+  .course-content .single-section .sectionname,
+  .course-content .section .sectionname {
+    background-color: $bg-blocksbody-darkmode !important;
+  }
+}
