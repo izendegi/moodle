@@ -70,10 +70,20 @@ class text_filter extends \filter_gitquotes_base_text_filter {
         }
 
         // Replace the custom quotes with the git-style quotes.
-        $replacementhtml = '<blockquote class="gitquote $1"><div class="gitquote_name">';
-        $replacementhtml .= '<strong class="quote-type $1">$1</strong></div><span class="quote-content">$2</span></blockquote>';
+        $text = preg_replace_callback(
+            self::PATTERN_HTML,
+            function($matches) {
+                $type = $matches[1];
+                $content = $matches[2];
+                $translatedtype = get_string(strtolower($type), 'filter_gitquotes');
 
-        $text = preg_replace(self::PATTERN_HTML, $replacementhtml, $text);
+                $replacementhtml = '<blockquote class="gitquote ' . $type . '"><div class="gitquote_name">';
+                $replacementhtml .= '<strong class="quote-type ' . $type . ' froga">' . $translatedtype . '</strong></div>';
+                $replacementhtml .= '<span class="quote-content">' . $content . '</span></blockquote>';
+                return $replacementhtml;
+            },
+            $text
+        );
 
         return $text;
     }
