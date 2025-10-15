@@ -23,9 +23,9 @@
  */
 
 $string['filtername'] = 'Git flavored markdown quotes filter';
-$string['important'] = 'Important';
-$string['note'] = 'Note';
+$string['important'] = 'Garrantzitsua';
+$string['note'] = 'Oharra';
 $string['pluginname'] = 'Git flavored markdown quotes filter';
 $string['pluginname_desc'] = 'This filter allows you to use Git flavored markdown quotes in your text.';
-$string['tip'] = 'Tip';
-$string['warning'] = 'Warning';
+$string['tip'] = 'Aholkua';
+$string['warning'] = 'Kontuz';

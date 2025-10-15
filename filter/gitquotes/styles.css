@@ -75,16 +75,36 @@
     color: #0366d6;
 }
 
+.gitquote .quote-type.NOTE::before {
+    content: "\f05a"; /* FontAwesome fa-circle-info */
+    font-family: "Font Awesome 6 Free";
+}
+
 .gitquote .quote-type.IMPORTANT {
     color: #800080;
+}
+
+.gitquote .quote-type.IMPORTANT::before {
+    content: "\f06a"; /* FontAwesome exclamation-circle icon */
+    font-family: "Font Awesome 6 Free";
 }
 
 .gitquote .quote-type.WARNING {
     color: #d73a49;
 }
 
+.gitquote .quote-type.WARNING::before {
+    content: "\f071"; /* FontAwesome exclamation-triangle icon */
+    font-family: "Font Awesome 6 Free";
+}
+
 .gitquote .quote-type.TIP {
     color: #28a745;
+}
+
+.gitquote .quote-type.TIP::before {
+    content: "\f05a"; /* FontAwesome lightbulb icon */
+    font-family: "Font Awesome 6 Free";
 }
 
 .gitquote .quote-content,
