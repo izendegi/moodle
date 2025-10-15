@@ -25,12 +25,3 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Function to add the CSS file for the filter.
  */
-/*
-function filter_gitquotes_before_standard_html_head() {
-    global $PAGE;
-
-    // Add the CSS file for the filter.
-    $csspath = new moodle_url('/filter/gitquotes/styles.css');
-    $PAGE->requires->css($csspath);
-}
-*/
