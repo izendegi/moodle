@@ -23,10 +23,10 @@ ifndef docker-with-xdebug:
 docker-with-xdebug := docker exec -e XDEBUG_SESSION=1 -it $(container_name)
 endif
 ifndef phpcs:
-phpcs := $(docker) local/codechecker/vendor/bin/phpcs
+phpcs := $(docker) php local/codechecker/vendor/bin/phpcs
 endif
 ifndef phpcbf:
-phpcbf := $(docker) local/codechecker/vendor/bin/phpcbf
+phpcbf := $(docker) php local/codechecker/vendor/bin/phpcbf
 endif
 
 .PHONY: start
@@ -40,11 +40,11 @@ stop:
 .PHONY: pass-tests
 pass-tests: options =
 pass-tests:
-	$(docker) vendor/bin/phpunit -c admin/tool/mergeusers --testdox $(options)
+	$(docker) php vendor/bin/phpunit -c admin/tool/mergeusers --testdox $(options)
 
 .PHONY: pass-tests-with-xdebug
 pass-tests-with-xdebug:
-	$(docker-with-xdebug) vendor/bin/phpunit -c admin/tool/mergeusers --testdox $(options)
+	$(docker-with-xdebug) php vendor/bin/phpunit -c admin/tool/mergeusers --testdox $(options)
 
 .PHONY: build-phpunit-xml
 build-phpunit-xml:
