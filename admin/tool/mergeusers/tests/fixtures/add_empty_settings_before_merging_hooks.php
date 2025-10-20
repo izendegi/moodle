@@ -15,24 +15,23 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information.
+ * Definition of the callback for the add_setting_before_merging hook.
  *
  * @package   tool_mergeusers
- * @author    Nicolas Dunand <Nicolas.Dunand@unil.ch>
- * @author    Mike Holzer
- * @author    Forrest Gaston
- * @author    Juan Pablo Torres Herrera
- * @author    Jordi Pujol-Ahulló, SREd, Universitat Rovira i Virgili
- * @author    John Hoopes <hoopes@wisc.edu>, University of Wisconsin - Madison
- * @copyright Universitat Rovira i Virgili (https://www.urv.cat)
+ * @author    Jordi Pujol Ahulló <jordi.pujol@urv.cat>
+ * @copyright 2025 onwards to Universitat Rovira i Virgili (https://www.urv.cat)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die;
+use tool_mergeusers\fixtures\add_empty_settings_before_merging_callbacks;
+use tool_mergeusers\hook\add_settings_before_merging;
 
-$plugin->version = 2025101701;
-$plugin->release = '(Focus on stability and extensibility)';
-$plugin->requires = 2024100700; // Moodle 4.5+, https://moodledev.io/general/releases#moodle-45-lts.
-$plugin->component = 'tool_mergeusers';
-$plugin->maturity = MATURITY_STABLE;
-$plugin->supported = [405, 501];
+$callbacks = [
+    [
+        'hook' => add_settings_before_merging::class,
+        'callback' => [
+            add_empty_settings_before_merging_callbacks::class,
+            'add_settings_before_merging',
+        ],
+    ],
+];
