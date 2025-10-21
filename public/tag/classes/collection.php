@@ -392,6 +392,10 @@ class core_tag_collection {
                 ORDER BY count DESC, tg.name ASC",
             $params, 0, $limit);
 
+        foreach ($tagsincloud as $tag) {
+            $tag->rawname = format_string($tag->rawname);
+        }
+
         $tagscount = count($tagsincloud);
         if ($tagscount == $limit) {
             $tagscount = $DB->get_field_sql("SELECT COUNT(DISTINCT tg.id) $fromclause $whereclause", $params);
