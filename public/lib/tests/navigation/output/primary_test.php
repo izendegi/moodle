@@ -124,7 +124,7 @@ final class primary_test extends \advanced_testcase {
                 true, false, '', ['mobileprimarynav', 'moremenu', 'user']
             ],
             "Export the menu data when: custom menu exists; multiple langs installed; logged in as admin." => [
-                true, true, 'admin', ['mobileprimarynav', 'moremenu', 'user']
+                true, true, 'admin', ['mobileprimarynav', 'moremenu', 'lang', 'user']
             ],
             "Export the menu data when: custom menu exists; langs not installed; logged in as admin." => [
                 true, false, 'admin', ['mobileprimarynav', 'moremenu', 'user']
@@ -139,7 +139,7 @@ final class primary_test extends \advanced_testcase {
                 false, true, 'guest', ['mobileprimarynav', 'moremenu', 'lang', 'user']
             ],
             "Export the menu data when: custom menu does not exist; multiple langs installed; logged in as admin." => [
-                false, true, 'admin', ['mobileprimarynav', 'moremenu', 'user']
+                false, true, 'admin', ['mobileprimarynav', 'moremenu', 'lang', 'user']
             ],
             "Export the menu data when: custom menu does not exist; langs not installed; user is not logged in." => [
                 false, false, '', ['mobileprimarynav', 'moremenu', 'user']
