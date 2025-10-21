@@ -28,7 +28,7 @@ Feature: The course index language should change according to user preferences.
     Given I am on the "C1" "Course" page logged in as "<user>"
     When I follow "Language" in the user menu
     Then I should see "Language selector" user submenu
-    And I follow "Français ‎(fr)‎"
+    And I click on "Français ‎(fr)‎" "link" in the ".usermenu .submenu[aria-label='Language selector']" "css_element"
     Then I should see "Généralités" in the "courseindex-content" "region"
     Examples:
       | user     |
