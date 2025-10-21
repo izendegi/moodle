@@ -71,7 +71,7 @@ class primary implements renderable, templatable {
         return [
             'mobileprimarynav' => $mobileprimarynav,
             'moremenu' => $moremenudata,
-            'lang' => !isloggedin() || isguestuser() ? $languagemenu->export_for_template($output) : [],
+            'lang' => $languagemenu->export_for_template($output),
             'user' => $this->get_user_menu($output),
         ];
     }
