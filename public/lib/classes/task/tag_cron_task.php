@@ -190,7 +190,8 @@ class tag_cron_task extends scheduled_task {
                       FROM {tag_instance} ti
                  LEFT JOIN {' . $tagarea->itemtype . '} it ON it.id = ti.itemid
                      WHERE it.id IS null
-                     AND ti.itemtype = ? AND ti.component = ?';
+                     AND ti.itemtype = ? AND ti.component = ?
+                     LIMIT 60000';
             $tagids = $DB->get_records_sql($sql, array($tagarea->itemtype, $tagarea->component));
             foreach ($tagids as $tagid) {
                 $tagarray[] = $tagid->id;
