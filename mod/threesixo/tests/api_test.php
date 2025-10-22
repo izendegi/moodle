@@ -18,6 +18,7 @@ namespace mod_threesixo;
 
 use advanced_testcase;
 use DateTime;
+use mod_threesixo_generator;
 
 /**
  * API tests.
@@ -237,5 +238,205 @@ final class api_test extends advanced_testcase {
         }
         $result = api::validate_responses($threesixo->id, $responses);
         $this->assertEquals($message, $result);
+    }
+
+    /**
+     * Test for \mod_threesixo\api::can_delete_question().
+     *
+     * @covers ::can_delete_question
+     */
+    public function test_can_delete_question(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+
+        // Create a course.
+        $course = $generator->create_course();
+
+        // Create the instance.
+        $params = [
+            'course' => $course->id,
+        ];
+        $threesixo = $this->getDataGenerator()->create_module('threesixo', $params);
+
+        /** @var mod_threesixo_generator $threesixogenerator */
+        $threesixogenerator = $generator->get_plugin_generator('mod_threesixo');
+        // Create a question.
+        $q1 = $threesixogenerator->create_question([
+            'question' => 'q1',
+            'type' => api::QTYPE_RATED,
+        ]);
+
+        // Unused questions can be deleted.
+        $this->assertTrue(api::can_delete_question($q1));
+
+        // Questions in use cannot be deleted.
+        $items = api::get_items($threesixo->id);
+        $item = reset($items);
+        $this->assertFalse(api::can_delete_question($item->questionid));
+    }
+
+    /**
+     * Test for \mod_threesixo\api::get_question().
+     *
+     * @covers ::get_question
+     */
+    public function test_get_question(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+        /** @var mod_threesixo_generator $threesixogenerator */
+        $threesixogenerator = $generator->get_plugin_generator('mod_threesixo');
+        // Create a question.
+        $q1 = $threesixogenerator->create_question([
+           'question' => 'q1',
+           'type' => api::QTYPE_RATED,
+        ]);
+        $question = api::get_question($q1);
+        $this->assertEquals($q1, $question->id);
+
+        $this->expectException(\dml_exception::class);
+        $nonexistentid = $q1 + 1;
+        api::get_question($nonexistentid);
+    }
+
+    /**
+     * Data provider for test_get_questions.
+     *
+     * @return array[]
+     */
+    public static function get_questions_provider(): array {
+        return [
+            'Admin, all questions' => [
+                'admin',
+                false,
+            ],
+            'Admin, own questions' => [
+                'admin',
+                true,
+            ],
+            'User, all questions' => [
+                'u1',
+                true,
+            ],
+            'User, own questions' => [
+                'u1',
+                false,
+            ],
+        ];
+    }
+
+    /**
+     * Test for \mod_threesixo\api::get_questions().
+     *
+     * @dataProvider get_questions_provider
+     * @covers ::get_questions
+     * @param string $user The user to set for the test. Can be 'admin' or 'u1'.
+     * @param bool $ownquestions If true, only questions created by the user will be returned.
+     * @return void
+     */
+    public function test_get_questions(string $user, bool $ownquestions): void {
+        global $USER;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+        $u1 = $generator->create_user(['username' => 'u1']);
+        /** @var mod_threesixo_generator $threesixogenerator */
+        $threesixogenerator = $generator->get_plugin_generator('mod_threesixo');
+        // Create a question.
+        $threesixogenerator->create_question([
+            'question' => 'q1',
+            'type' => api::QTYPE_RATED,
+            'createdby' => $u1->id,
+        ]);
+        $threesixogenerator->create_question([
+            'question' => 'q1',
+            'type' => api::QTYPE_RATED,
+        ]);
+
+        switch ($user) {
+            case 'admin':
+                $this->setAdminUser();
+                break;
+            case 'u1':
+                $this->setUser($u1);
+                break;
+            default:
+                break;
+        }
+        $questions = api::get_questions($ownquestions);
+
+        if ($ownquestions) {
+            $this->assertCount(1, $questions);
+        } else {
+            $this->assertCount(2, $questions);
+        }
+        foreach ($questions as $question) {
+            if ($ownquestions) {
+                $this->assertEquals($USER->id, $question->createdby);
+                $this->assertTrue($question->canDelete);
+                $this->assertTrue($question->canEdit);
+            }
+
+            if ($USER->id != $question->createdby) {
+                if ($user === 'admin') {
+                    $this->assertTrue($question->canDelete);
+                    $this->assertTrue($question->canEdit);
+                } else {
+                    $this->assertFalse($question->canDelete);
+                    $this->assertFalse($question->canEdit);
+                }
+            }
+        }
+    }
+
+    /**
+     * Test for \mod_threesixo\api::add_question().
+     *
+     * @covers ::add_question
+     */
+    public function test_add_question(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $questiondata = (object)[
+            'question' => 'New question text',
+            'type' => api::QTYPE_RATED,
+        ];
+        $result = api::add_question($questiondata);
+        $this->assertIsInt($result);
+        $question = api::get_question($result);
+        $this->assertEquals($questiondata->question, $question->question);
+        $this->assertEquals($questiondata->type, $question->type);
+        $this->assertEquals(2, $question->createdby);
+    }
+
+    /**
+     * Test for \mod_threesixo\api::update_question().
+     *
+     * @covers ::update_question
+     */
+    public function test_update_question(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+        $u1 = $generator->create_user(['username' => 'u1']);
+        /** @var mod_threesixo_generator $threesixogenerator */
+        $threesixogenerator = $generator->get_plugin_generator('mod_threesixo');
+        // Create a question.
+        $q1id = $threesixogenerator->create_question([
+            'question' => 'q1',
+            'type' => api::QTYPE_RATED,
+            'createdby' => $u1->id,
+        ]);
+        $q1 = api::get_question($q1id);
+        $q1->question = 'Updated question text';
+        $q1->editedby = $u1->id;
+        $result = api::update_question($q1);
+        $this->assertTrue($result);
+        $updatedq1 = api::get_question($q1id);
+        $this->assertEquals('Updated question text', $updatedq1->question);
+        $this->assertEquals($u1->id, $updatedq1->editedby);
     }
 }
