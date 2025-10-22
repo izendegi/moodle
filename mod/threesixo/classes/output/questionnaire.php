@@ -73,19 +73,19 @@ class questionnaire implements renderable, templatable {
         $threesixty = api::get_instance($submission->threesixo);
         switch ($submission->status) {
             case api::STATUS_IN_PROGRESS: // In Progress.
-                $data->statusclass = 'text-bg-info';
+                $data->statusclass = 'badge-info';
                 $data->status = get_string('statusinprogress', 'threesixo');
                 break;
             case api::STATUS_COMPLETE: // Completed.
-                $data->statusclass = 'text-bg-success';
+                $data->statusclass = 'badge-success';
                 $data->status = get_string('statuscompleted', 'threesixo');
                 break;
             case api::STATUS_DECLINED: // Declined.
-                $data->statusclass = 'text-bg-warning';
+                $data->statusclass = 'badge-warning';
                 $data->status = get_string('statusdeclined', 'threesixo');
                 break;
             default: // Pending.
-                $data->statusclass = 'text-bg-secondary';
+                $data->statusclass = 'badge-secondary';
                 $data->status = get_string('statuspending', 'threesixo');
                 break;
         }
