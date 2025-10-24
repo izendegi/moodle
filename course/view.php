@@ -303,7 +303,9 @@ if (!empty($bulkbutton)) {
     $PAGE->add_header_action($bulkbutton);
 }
 
-$PAGE->set_heading($course->fullname);
+$visible = $course->visible ? '' : ' ('. get_string('coursehidden') . ')';
+$PAGE->set_heading($course->fullname . $visible);
+
 echo $OUTPUT->header();
 
 // Show communication room status notification.
