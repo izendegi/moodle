@@ -4,6 +4,11 @@ moodle-tool_opcache
 Changes
 -------
 
+### v5.0-r2
+
+* 2025-10-15 - Make codechecker happy again
+* 2025-10-15 - Tests: Switch Github actions workflows to reusable workflows by Moodle an Hochschulen e.V.
+
 ### v5.0-r1
 
 * 2025-04-14 - Prepare compatibility for Moodle 5.0.
@@ -34,7 +39,7 @@ Changes
 
 ### v4.2-r1
 
-* 2023-10-16 - Upgrade OPcache GUI to a CDN-less edition of version 3.5.2 
+* 2023-10-16 - Upgrade OPcache GUI to a CDN-less edition of version 3.5.2
 * 2023-09-01 - Prepare compatibility for Moodle 4.2.
 
 ### v4.1-r2
