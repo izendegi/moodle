@@ -319,7 +319,8 @@ if (!empty($bulkbutton)) {
     $PAGE->add_header_action($bulkbutton);
 }
 
-$PAGE->set_heading($course->fullname);
+$visible = $course->visible ? '' : ' ('. get_string('coursehidden') . ')';
+$PAGE->set_heading($course->fullname . $visible);
 
 // Make sure that section 0 exists (this function will create one if it is missing).
 course_create_sections_if_missing($course, 0);
