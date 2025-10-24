@@ -15,28 +15,25 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Privacy Subsystem for reports_advancedgrading implementing null_provider.
- * @package report_advancedgrading
- * @copyright  2022 Marcus Green
+ * Capabilities list.
+ *
+ * @package    report_advancedgrading
+ * @copyright  Universitat Rovira i Virgili (https://www.urv.cat)
+ * @author     2025 Jordi Pujol Ahulló <jordi.pujol@urv.cat>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace report_advancedgrading\privacy;
+defined('MOODLE_INTERNAL') || die();
 
-/**
- * Privacy Subsystem for reports_advancedgrading implementing null_provider.
- * @package report_advancedgrading
- * @copyright  2022 Marcus Green
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class provider implements \core_privacy\local\metadata\null_provider {
-    /**
-     * Get the language string identifier with the component's language
-     * file to explain why this plugin stores no data.
-     *
-     * @return  string
-     */
-    public static function get_reason(): string {
-        return 'privacy:metadata';
-    }
-}
+$capabilities = [
+    'report/advancedgrading:view' => [
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => [
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+];

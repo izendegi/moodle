@@ -23,6 +23,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['advancedgrading:view'] = 'Allow the user to see the rubric detail';
 $string['assignment'] = 'Assignment';
 $string['btecgrades'] = 'BTEC breakdown report';
 $string['btecreportname'] = 'BTEC report';
