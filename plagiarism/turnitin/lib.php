@@ -866,9 +866,13 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
             $plagiarismfile = null;
             $moodlesubmission = $DB->get_record('assign_submission', ['id' => $itemid], 'id, groupid');
             if ((!empty($moodlesubmission->groupid)) && ($cm->modname == "assign")) {
-                $plagiarismfiles = $DB->get_records('plagiarism_turnitin_files', ['itemid' => $itemid, 'cm' => $cm->id,
-                    'identifier' => $identifier],
-                    'lastmodified DESC', '*', 0, 1);
+                $plagiarismfiles = $DB->get_records_sql(
+                    'SELECT * FROM {plagiarism_turnitin_files} 
+                     WHERE identifier IN ( :identifier, :oldidentifier)
+                     AND itemid = :itemid AND cm = :cmid 
+                     ORDER BY lastmodified DESC',
+                    ['identifier' => $identifier, 'oldidentifier' => $oldidentifier,
+                     'itemid' => $itemid, 'cmid' => $cm->id], 0, 1);
                 $plagiarismfile = reset($plagiarismfiles);
                 $author = $plagiarismfile->userid ?? null;
                 $linkarray['userid'] = $author;
@@ -2196,7 +2200,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
         $submissionids = array();
         $reportsexpected = array();
         $assignmentids = array();
-        
+
         // Grab all plagiarism files where all the following conditions are met:
         // 1. The file has been successfully sent to TII
         // 2. The submission is ready to recieve a similarity score (either it doesn't already have a similarity score or it's set to regenerate)
