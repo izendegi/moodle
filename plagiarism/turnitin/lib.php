@@ -276,6 +276,11 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
     public function add_settings_form_to_activity_page($mform, $context, $modulename = "") {
         global $DB, $PAGE, $COURSE;
 
+        // Don't allow this plugin to be used on the site home page
+        if ($COURSE->id == 1) {
+            return;
+        }
+
         if (has_capability('plagiarism/turnitin:enable', $context)) {
             // Get Course module id and values.
             $cmid = optional_param('update', null, PARAM_INT);
@@ -555,7 +560,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
             $user = new turnitin_user($USER->id, "Learner");
             $user->join_user_to_class($coursedata->turnitin_cid);
             $eulaaccepted = ($user->useragreementaccepted == 0) ?
-                $user->get_accepted_user_agreement() : $user->useragreementaccepted;
+            $user->get_accepted_user_agreement() : $user->useragreementaccepted;
 
             if ($eulaaccepted != 1) {
                 $eulalink = html_writer::tag('span',
@@ -838,7 +843,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
                   } else {
                       $quizattemptclass = 'quiz_attempt';
                   }
-                  $attempt = $quizattemptclass::create($linkarray["area"]);
+                  $attempt = $quizattemptclass::create_from_usage_id($linkarray["area"]);
 
                   $identifier = sha1('quiz_attempt user'.$attempt->get_userid().' cm'.$cm->id.
                                      ' slot'.$linkarray["itemid"].' attempt'.$attempt->get_attempt_number());
@@ -974,14 +979,12 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
                 // Get turnitin file details.
                 if (is_null($plagiarismfile)) {
                     $params = [
-                        'userid' => $linkarray["userid"],
                         'cm' => $linkarray["cmid"],
                         'identifier1' => $identifier,
                         'identifier2' => $oldidentifier,
                     ];
                     $sql = 'SELECT * FROM {plagiarism_turnitin_files}
-                            WHERE userid = :userid
-                            AND cm = :cm
+                            WHERE cm = :cm
                             AND (identifier = :identifier1 OR identifier = :identifier2)
                             ORDER BY lastmodified DESC';
                     $plagiarismfiles = $DB->get_records_sql($sql, $params, 0, 1);
@@ -2050,9 +2053,15 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
             $dtpost = strtotime('+6 months');
         }
 
-        // Ensure post date can't be before start date.
-        if ($dtpost < $dtstart) {
-            $dtpost = $dtstart;
+        // Ensure post date is at least 1 second after the start date.
+        if ($dtstart instanceof DateTime) {
+            $dtstart_plus_1_sec = clone $dtstart;
+        } else {
+            $dtstart_plus_1_sec = new DateTime("@$dtstart");
+        }
+        $dtstart_plus_1_sec->add(new DateInterval('PT1S'));
+        if ($dtpost < $dtstart_plus_1_sec->getTimestamp()) {
+            $dtpost = $dtstart_plus_1_sec->getTimestamp();
         }
 
         // Set due date, dependent on various things.
@@ -3441,7 +3450,7 @@ function plagiarism_turnitin_send_queued_submissions() {
                             $userid = ($moduledata->teamsubmission) ? 0 : $queueditem->userid;
 
                             $moodlesubmission = $DB->get_record('assign_submission', ['assignment' => $cm->instance,
-                                            'userid' => $queueditem->userid, 'id' => $queueditem->itemid, ], 'id');
+                                            'userid' => $userid, 'id' => $queueditem->itemid, ], 'id');
                             $moodletextsubmission = $DB->get_record('assignsubmission_onlinetext',
                                             ['submission' => $moodlesubmission->id], 'onlinetext');
                             $textcontent = $moodletextsubmission->onlinetext;
@@ -3778,7 +3787,7 @@ function plagiarism_turnitin_activitylog($string, $activity) {
         $config = plagiarism_plugin_turnitin::plagiarism_turnitin_admin_config();
     }
 
-    if (isset($config->plagiarism_turnitin_enablediagnostic)) {
+    if (!empty($config->plagiarism_turnitin_enablediagnostic)) {
         // We only keep 10 log files, delete any additional files.
         $prefix = "activitylog_";
 
