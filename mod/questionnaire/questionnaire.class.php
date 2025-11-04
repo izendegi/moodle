@@ -423,6 +423,10 @@ class questionnaire {
         }
         $pdf = ($outputtarget == 'pdf') ? true : false;
         foreach ($this->questions as $question) {
+            // Only show eligible questions in the response.
+            if (!$question->dependency_fulfilled($rid, $this->questions)) {
+                continue;
+            }
             if ($question->type_id < QUESPAGEBREAK) {
                 $i++;
             }
@@ -2520,7 +2524,7 @@ class questionnaire {
             $this->page->add_to_page('progressbar',
                     $this->renderer->render_progress_bar(count($this->questionsbysec) + 1, $this->questionsbysec));
         }
-        $this->page->add_to_page('title', $thankhead);
+        $this->page->add_to_page('title', format_string($thankhead));
         $this->page->add_to_page('addinfo',
             format_text(file_rewrite_pluginfile_urls($thankbody, 'pluginfile.php',
                 $this->context->id, 'mod_questionnaire', 'thankbody', $this->survey->id), FORMAT_HTML, ['noclean' => true]));
@@ -2887,6 +2891,23 @@ class questionnaire {
             if ($userview === 'y') {
                 $respondentstring = get_string('submissions', 'questionnaire');
             }
+            if (!$userview) {
+                $completedcount = 0;
+                $inprogresscount = 0;
+
+                foreach ($rows as $row) {
+                    if ($row->complete === 'y') {
+                        $completedcount++;
+                    } else if ($row->complete === 'n') {
+                        $inprogresscount++;
+                    }
+                }
+                $numresps .= ' ' . get_string('responses_breakdown', 'questionnaire',
+                    [
+                        'responses' => $completedcount,
+                        'incomplete' => $inprogresscount,
+                    ]);
+            }
             $this->page->add_to_page('respondentinfo',
                     ' ' . $respondentstring . ': <strong>' . $numresps . '</strong>');
             if (empty($rows)) {
@@ -3012,6 +3033,7 @@ class questionnaire {
             $userfieldsarr = get_all_user_name_fields();
         }
         $userfieldsarr = array_merge($userfieldsarr, ['username', 'department', 'institution']);
+        $userfieldsarr = array_merge($userfieldsarr, ['username', 'department', 'institution', 'idnumber']);
         return $userfieldsarr;
     }
 
@@ -3182,6 +3204,9 @@ class questionnaire {
         if (in_array('id', $options)) {
             array_push($positioned, $uid);
         }
+        if (in_array('useridnumber', $options)) {
+            array_push($positioned, $user->idnumber);
+        }
         if (in_array('fullname', $options)) {
             array_push($positioned, $fullname);
         }
@@ -3241,7 +3266,7 @@ class questionnaire {
         $columns = array();
         $types = array();
         foreach ($options as $option) {
-            if (in_array($option, array('response', 'submitted', 'id'))) {
+            if (in_array($option, array('response', 'submitted', 'id', 'useridnumber'))) {
                 $columns[] = get_string($option, 'questionnaire');
                 $types[] = 0;
             } else if ($option == 'useridentityfields') {
