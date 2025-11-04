@@ -649,3 +649,13 @@ td.selected {
         border-radius: 5px;
     }
 }
+
+/* Fix for tiny move location icons in Moodle 5.0 Questionnaire */
+#page-mod-questionnaire-questions input[type="image"][title="Move here"],
+#page-mod-questionnaire-questions input[type="image"][alt="Move here"] {
+width: 32px !important;
+height: 32px !important;
+max-width: 32px !important;
+max-height: 32px !important;
+padding: 2px;
+}
