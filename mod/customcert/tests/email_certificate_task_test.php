@@ -43,7 +43,6 @@ use mod_customcert\task\issue_certificates_task;
  * @coversDefaultClass \mod_customcert\task\email_certificate_task
  */
 final class email_certificate_task_test extends advanced_testcase {
-
     /**
      * Test set up.
      */
@@ -282,14 +281,15 @@ final class email_certificate_task_test extends advanced_testcase {
             $this->assertEquals(1, $issue->emailed);
         }
 
-        // Confirm that we sent out emails to the two users.
+        // Confirm that we sent out emails to the users. This includes the site admin.
         $this->assertCount(3, $emails);
+        $expectedemails = [get_admin()->email, $user1->email, $user2->email];
 
-        $this->assertEquals($CFG->noreplyaddress, $emails[1]->from);
-        $this->assertEquals($user1->email, $emails[1]->to);
-
-        $this->assertEquals($CFG->noreplyaddress, $emails[2]->from);
-        $this->assertEquals($user2->email, $emails[2]->to);
+        foreach ($emails as $email) {
+            $this->assertEquals($CFG->noreplyaddress, $email->from);
+            $this->assertContains($email->to, $expectedemails);
+            $expectedemails = array_diff($expectedemails, [$email->to]);
+        }
 
         // Now, run the task again and ensure we did not issue any more certificates.
         $sink = $this->redirectEmails();
@@ -842,8 +842,10 @@ final class email_certificate_task_test extends advanced_testcase {
         $DB->insert_record('customcert_elements', $element);
 
         // Verify that no certificate issues exist before task execution.
-        $this->assertEmpty($DB->get_records('customcert_issues'),
-            'No certificate issues should exist before executing the task.');
+        $this->assertEmpty(
+            $DB->get_records('customcert_issues'),
+            'No certificate issues should exist before executing the task.'
+        );
 
         // Redirect emails to a sink so we can capture any outgoing messages.
         $sink = $this->redirectEmails();
@@ -856,11 +858,17 @@ final class email_certificate_task_test extends advanced_testcase {
 
         // After executing the task, verify that a certificate issue record was created.
         $issues = $DB->get_records('customcert_issues');
-        $this->assertCount(1, $issues,
-            'A certificate issue record should have been created by the task.');
+        $this->assertCount(
+            1,
+            $issues,
+            'A certificate issue record should have been created by the task.'
+        );
         $issue = reset($issues);
-        $this->assertEquals(1, $issue->emailed,
-            'The certificate issue should be marked as emailed.');
+        $this->assertEquals(
+            1,
+            $issue->emailed,
+            'The certificate issue should be marked as emailed.'
+        );
 
         // Verify that an email was sent to the student.
         $emails = $sink->get_messages();
@@ -869,4 +877,72 @@ final class email_certificate_task_test extends advanced_testcase {
         $this->assertEquals($student->email, $emails[0]->to, 'Email recipient is incorrect.');
     }
 
+    /**
+     * The email_certificate_task should no-op (not fatal) when custom data is missing.
+     *
+     * @covers \mod_customcert\task\email_certificate_task
+     */
+    public function test_email_adhoc_task_ignores_missing_customdata(): void {
+        // No setup; call the adhoc task with no custom data.
+        $sink = $this->redirectEmails();
+
+        $task = new \mod_customcert\task\email_certificate_task();
+        // Intentionally DO NOT call set_custom_data().
+        $task->execute();
+
+        // Should not throw; should not send any email.
+        $emails = $sink->get_messages();
+        $this->assertCount(0, $emails);
+    }
+
+    /**
+     * The email_certificate_task should no-op when customcert id is invalid.
+     *
+     * @covers \mod_customcert\task\email_certificate_task
+     */
+    public function test_email_adhoc_task_invalid_customcertid(): void {
+        $sink = $this->redirectEmails();
+
+        $task = new \mod_customcert\task\email_certificate_task();
+
+        // Point to bogus ids; both should be integers but not exist.
+        $task->set_custom_data((object)['issueid' => 999999, 'customcertid' => 999998]);
+        $task->execute();
+
+        $emails = $sink->get_messages();
+        $this->assertCount(0, $emails);
+    }
+
+    /**
+     * The email_certificate_task should no-op when issue id is invalid (even if customcert exists).
+     *
+     * @covers \mod_customcert\task\email_certificate_task
+     */
+    public function test_email_adhoc_task_invalid_issueid_with_valid_customcert(): void {
+        global $DB;
+
+        // Minimal valid customcert (with one element) so the customcert lookup succeeds.
+        $course = $this->getDataGenerator()->create_course();
+        $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
+
+        // Make the template valid.
+        $template = new \stdClass();
+        $template->id = $customcert->templateid;
+        $template->name = 'T';
+        $template->contextid = \context_course::instance($course->id)->id;
+        $template = new \mod_customcert\template($template);
+        $pageid = $template->add_page();
+        $DB->insert_record('customcert_elements', (object)['pageid' => $pageid, 'name' => 'E']);
+
+        $sink = $this->redirectEmails();
+
+        $task = new \mod_customcert\task\email_certificate_task();
+
+        // Valid customcertid, but bogus issueid.
+        $task->set_custom_data((object)['issueid' => 123456789, 'customcertid' => $customcert->id]);
+        $task->execute();
+
+        $emails = $sink->get_messages();
+        $this->assertCount(0, $emails);
+    }
 }
