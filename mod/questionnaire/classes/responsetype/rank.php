@@ -641,7 +641,8 @@ class rank extends responsetype {
         foreach ($this->question->nameddegrees as $degree) {
             // To take into account languages filter.
             $content = (format_text($degree, FORMAT_HTML, ['noclean' => true]));
-            $n[$nameddegrees] = $degree;
+            //$n[$nameddegrees] = $degree;
+            $n[$nameddegrees] = $content;
             $nameddegrees++;
         }
         for ($j = 0; $j < $this->question->length; $j++) {
@@ -952,7 +953,8 @@ class rank extends responsetype {
         foreach ($this->question->choices as $choice) {
             $contents = questionnaire_choice_values($choice->content);
             if ($contents->modname) {
-                $choice->content = $contents->text;
+                //$choice->content = $contents->text;
+                $choice->content = format_text($contents->text, FORMAT_HTML, ['noclean' => true]);
             }
         }
 
@@ -1016,6 +1018,7 @@ class rank extends responsetype {
                     if ($contents->modname) {
                         $content = $contents->text;
                     }
+                    $content = format_text($contents->text, FORMAT_HTML, ['noclean' => true]);
                     if (isset($rows[$content]) && isset($rows[$content]->isother) && $rows[$content]->isother) {
                         $content = get_string('other', 'questionnaire') . ' ' . $content;
                     }
