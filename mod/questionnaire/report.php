@@ -726,6 +726,7 @@ switch ($action) {
                 }
             }
         }
+
         // Add group filter dropdown.
         if ($groupmode > 0) {
             $groupselect = groups_print_activity_menu($cm, $url->out(), true);
@@ -771,12 +772,7 @@ switch ($action) {
             $rid = $rids[0];
         }
 
-        if ($noresponses) {
-            $questionnaire->page->add_to_page('respondentinfo',
-                get_string('group') . ' <strong>' . groups_get_group_name($currentgroupid) . '</strong>: ' .
-                get_string('noresponses', 'questionnaire'));
-
-        } else if ($outputtarget == 'pdf') {
+        if ($outputtarget == 'pdf') {
             $pdf = questionnaire_report_start_pdf();
             if ($currentgroupid > 0) {
                 $groupname = get_string('group') . ': <strong>' . groups_get_group_name($currentgroupid) . '</strong>';
@@ -795,6 +791,12 @@ switch ($action) {
             error_reporting($errorreporting);
 
         } else { // Default to HTML.
+            if ($noresponses) {
+                $questionnaire->page->add_to_page('respondentinfo',
+                    get_string('group') . ' <strong>' . groups_get_group_name($currentgroupid) . '</strong>: ' .
+                    get_string('noresponses', 'questionnaire'));
+            }
+
             // Print the page header.
             $PAGE->set_title(get_string('questionnairereport', 'questionnaire'));
             $PAGE->set_heading(format_string($course->fullname));
