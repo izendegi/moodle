@@ -25,6 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/attendance/backup/moodle2/restore_attendance_stepslib.php');
+require_once($CFG->dirroot . '/mod/attendance/locallib.php');
 
 /**
  * Attendance restore task that provides all the settings and steps to perform one complete restore of the activity
@@ -33,7 +34,6 @@ require_once($CFG->dirroot . '/mod/attendance/backup/moodle2/restore_attendance_
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class restore_attendance_activity_task extends restore_activity_task {
-
     /**
      * Define (add) particular settings this activity can have
      */
@@ -55,8 +55,11 @@ class restore_attendance_activity_task extends restore_activity_task {
         $contents = [];
 
         $contents[] = new restore_decode_content('attendance', ['intro'], 'attendance');
-        $contents[] = new restore_decode_content('attendance_sessions',
-                          ['description'], 'attendance_session');
+        $contents[] = new restore_decode_content(
+            'attendance_sessions',
+            ['description'],
+            'attendance_session'
+        );
 
         return $contents;
     }
@@ -68,19 +71,30 @@ class restore_attendance_activity_task extends restore_activity_task {
     public static function define_decode_rules() {
         $rules = [];
 
-        $rules[] = new restore_decode_rule('ATTENDANCEVIEWBYID',
-                    '/mod/attendance/view.php?id=$1', 'course_module');
-        $rules[] = new restore_decode_rule('ATTENDANCEVIEWBYIDSTUD',
-                    '/mod/attendance/view.php?id=$1&studentid=$2', ['course_module', 'user']);
+        $rules[] = new restore_decode_rule(
+            'ATTENDANCEVIEWBYID',
+            '/mod/attendance/view.php?id=$1',
+            'course_module'
+        );
+        $rules[] = new restore_decode_rule(
+            'ATTENDANCEVIEWBYIDSTUD',
+            '/mod/attendance/view.php?id=$1&studentid=$2',
+            ['course_module', 'user']
+        );
 
         // Older style backups using previous plugin name.
-        $rules[] = new restore_decode_rule('ATTFORBLOCKVIEWBYID',
-            '/mod/attendance/view.php?id=$1', 'course_module');
-        $rules[] = new restore_decode_rule('ATTFORBLOCKVIEWBYIDSTUD',
-            '/mod/attendance/view.php?id=$1&studentid=$2', ['course_module', 'user']);
+        $rules[] = new restore_decode_rule(
+            'ATTFORBLOCKVIEWBYID',
+            '/mod/attendance/view.php?id=$1',
+            'course_module'
+        );
+        $rules[] = new restore_decode_rule(
+            'ATTFORBLOCKVIEWBYIDSTUD',
+            '/mod/attendance/view.php?id=$1&studentid=$2',
+            ['course_module', 'user']
+        );
 
         return $rules;
-
     }
 
     /**
@@ -135,6 +149,20 @@ class restore_attendance_activity_task extends restore_activity_task {
                                                                                        WHERE a.course = :courseid2)";
             $params = ['courseid' => $courseid, 'courseid2' => $courseid];
             $DB->delete_records_select('event', $sql, $params);
+        }
+        if (!empty(get_config('attendance', 'randomizepasscodesonrestore'))) {
+            // Only touch sessions that already had a passcode set.
+            $sessions = $DB->get_records_select(
+                'attendance_sessions',
+                'attendanceid = :aid AND studentpassword IS NOT NULL AND studentpassword <> :empty',
+                ['aid' => $attendanceid, 'empty' => ''],
+                '',
+                'id'
+            );
+
+            foreach ($sessions as $s) {
+                $DB->set_field('attendance_sessions', 'studentpassword', attendance_random_string(), ['id' => $s->id]);
+            }
         }
     }
 }

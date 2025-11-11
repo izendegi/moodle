@@ -24,10 +24,9 @@
 
 define('NO_OUTPUT_BUFFERING', true);
 
-require_once(dirname(__FILE__).'/../../config.php');
-require_once(dirname(__FILE__).'/locallib.php');
-require_once(dirname(__FILE__).'/renderhelpers.php');
-require_once($CFG->libdir.'/formslib.php');
+require_once(dirname(__FILE__) . '/../../config.php');
+require_once(dirname(__FILE__) . '/locallib.php');
+require_once($CFG->libdir . '/formslib.php');
 
 $id             = required_param('id', PARAM_INT);
 
@@ -43,7 +42,7 @@ require_capability('mod/attendance:export', $context);
 $att = new mod_attendance_structure($att, $cm, $course, $context);
 
 $PAGE->set_url($att->url_export());
-$PAGE->set_title($course->shortname. ": ".$att->name);
+$PAGE->set_title($course->shortname . ": " . $att->name);
 $PAGE->set_heading($course->fullname);
 $PAGE->force_settings_menu(true);
 $PAGE->set_cacheable(true);
@@ -81,12 +80,12 @@ if ($formdata = $mform->get_data()) {
 
     $reportdata = new mod_attendance\output\report_data($att);
     if ($reportdata->users) {
-        $filename = clean_filename($course->shortname.'_'.
-            get_string('modulenameplural', 'attendance').
-            '_'.userdate(time(), '%Y%m%d-%H%M'));
+        $filename = clean_filename($course->shortname . '_' .
+            get_string('modulenameplural', 'attendance') .
+            '_' . userdate(time(), '%Y%m%d-%H%M'));
 
         $group = $formdata->group ? $reportdata->groups[$formdata->group] : 0;
-        $data = new stdClass;
+        $data = new stdClass();
         $data->tabhead = [];
         $data->course = $att->course->fullname;
         $data->group = $group ? $group->name : get_string('allparticipants');
@@ -126,7 +125,7 @@ if ($formdata = $mform->get_data()) {
                     $text .= $sess->groupid ? $reportdata->groups[$sess->groupid]->name : get_string('commonsession', 'attendance');
                 }
                 if (isset($formdata->includedescription) && !empty($sess->description)) {
-                    $text .= " ". strip_tags($sess->description);
+                    $text .= " " . strip_tags($sess->description);
                 }
                 $data->tabhead[] = $text;
                 if (isset($formdata->includeremarks)) {
@@ -162,7 +161,8 @@ if ($formdata = $mform->get_data()) {
                 $groupsraw = groups_get_all_groups($course->id, $user->id, 0, 'g.name');
                 $groups = [];
                 foreach ($groupsraw as $group) {
-                    $groups[] = $group->name;;
+                    $groups[] = $group->name;
+                    ;
                 }
                 $data->table[$i][] = implode(', ', $groups);
             }
@@ -182,7 +182,7 @@ if ($formdata = $mform->get_data()) {
                 }
             }
 
-            $cellsgenerator = new user_sessions_cells_text_generator($reportdata, $user);
+            $cellsgenerator = new \mod_attendance\output\user_sessions_cells_text($reportdata, $user);
             $data->table[$i] = array_merge($data->table[$i], $cellsgenerator->get_cells(isset($formdata->includeremarks)));
 
             $usersummary = $reportdata->summary->get_taken_sessions_summary_for($user->id);
@@ -219,6 +219,3 @@ echo $output->header();
 $mform->display();
 
 echo $OUTPUT->footer();
-
-
-
