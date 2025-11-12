@@ -1,0 +1,10 @@
+{
+  "name": "moodle-availability_enrolmentmethod-form",
+  "builds": {
+    "moodle-availability_enrolmentmethod-form": {
+      "jsfiles": [
+        "form.js"
+      ]
+    }
+  }
+}
