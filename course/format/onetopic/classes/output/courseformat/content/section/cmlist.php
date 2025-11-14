@@ -41,7 +41,6 @@ use stdClass;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cmlist extends cmlist_base {
-
     /**
      * Export this data so it can be used as the context for a mustache template.
      *
@@ -83,10 +82,11 @@ class cmlist extends cmlist_base {
         }
 
         foreach ($modinfo->sections[$section->section] as $modnumber) {
-
-            if (!$format->show_editor() &&
-                    $course->templatetopic == \format_onetopic::TEMPLATETOPIC_LIST &&
-                    in_array($modnumber, $format->tplcmsused)) {
+            if (
+                !$format->show_editor() &&
+                $course->templatetopic == \format_onetopic::TEMPLATETOPIC_LIST &&
+                in_array($modnumber, $format->tplcmsused)
+            ) {
                 continue;
             }
 
@@ -95,7 +95,7 @@ class cmlist extends cmlist_base {
             if ($showmovehere && $USER->activitycopy == $mod->id) {
                 continue;
             }
-            if ($mod->is_visible_on_course_page()) {
+            if ($mod->is_visible_on_course_page() && $mod->is_of_type_that_can_display()) {
                 $item = new $this->itemclass($format, $section, $mod, $this->displayoptions);
                 $data->cms[] = (object)[
                     'cmitem' => $item->export_for_template($output),
