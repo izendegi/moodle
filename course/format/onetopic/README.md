@@ -16,6 +16,9 @@ Download zip package, extract the onetopic folder and upload this folder into co
 
 ## IN VERSION
 
+### 2025021903:
+* New feature: Subsection display mode.
+
 ### 2025021902:
 * Compatibility with changes in 5.0
 
@@ -55,8 +58,6 @@ Download zip package, extract the onetopic folder and upload this folder into co
 * Support bulk edit tools.
 
 ### 2022081610:
-* New tabs view option: course index
-  * ![Tabs view Course index](https://boa.nuestroscursos.net/api/c/web/resources/NDU1MEVCNjAtODQ4Qy00RTk3LUI2NzUtOUJBN0E5ODk0QTkyQGJvYS51ZGVhLmVkdS5jbw==/!/onetopic/tabsview_courseindex.png)
 * New scope to show tabs: modules. Included admin setting to enable it. Funded by [Ecole hôtelière de Lausanne](https://www.ehl.edu/)
   * ![Scope modules](https://boa.nuestroscursos.net/api/c/web/resources/NDU1MEVCNjAtODQ4Qy00RTk3LUI2NzUtOUJBN0E5ODk0QTkyQGJvYS51ZGVhLmVkdS5jbw==/!/onetopic/tabs_scopemodules.png)
 
