@@ -130,4 +130,34 @@ if ($ADMIN->fulltree) {
         get_string('defaultcategory_desc', 'enrol_database'), 1));
 
     $settings->add(new admin_setting_configtext('enrol_database/templatecourse', get_string('templatecourse', 'enrol_database'), get_string('templatecourse_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_heading('enrol_database_newgroupsheader', get_string('settingsheadernewgroups', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newgrouptable', get_string('newgrouptable', 'enrol_database'), get_string('newgrouptable_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newgroupcourse', get_string('newgroupcourse', 'enrol_database'), get_string('newgroupcourse_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newgroupname', get_string('newgroupname', 'enrol_database'), '', ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newgroupidnumber', get_string('newgroupidnumber', 'enrol_database'), '', ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newgroupdesc', get_string('newgroupdesc', 'enrol_database'), '', ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newgroupgroupings', get_string('newgroupgroupings', 'enrol_database'), get_string('newgroupgroupings_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configcheckbox('enrol_database/groupingcreation', get_string('groupingcreation', 'enrol_database'), get_string('groupingcreation_desc', 'enrol_database'), 1));
+
+    $settings->add(new admin_setting_configcheckbox('enrol_database/groupmessaging', get_string('groupmessaging', 'enrol_database'), get_string('groupmessaging_desc', 'enrol_database'), 1));
+
+    //--- remote group enrolment mapping -------------------------------------------------------------------
+    $settings->add(new admin_setting_heading('enrol_database_groupenrolheader', get_string('settingsheadergroupenrol', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/groupenroltable', get_string('groupenroltable', 'enrol_database'), get_string('groupenroltable_desc', 'enrol_database'), ''));
+    
+    $settings->add(new admin_setting_configtext('enrol_database/userfield', get_string('userfield', 'enrol_database'), get_string('userfield_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/groupfield', get_string('groupfield', 'enrol_database'), get_string('groupfield_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configcheckbox('enrol_database/groupupgrading', get_string('groupupgrading', 'enrol_database'), get_string('groupupgrading_desc', 'enrol_database'), 0));
+
 }
