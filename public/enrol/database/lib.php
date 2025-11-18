@@ -115,6 +115,8 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
+        $manual_enrol_check = $this->get_config('manualenrol_cleaning');
+        $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
 
         $ignorehidden     = $this->get_config('ignorehiddencourses');
 
@@ -313,6 +315,142 @@ class enrol_database_plugin extends enrol_plugin {
             }
         }
         $rs->close();
+        $this->sync_user_group_enrolments($user);
+    }
+
+    /**
+     * Forces synchronisation of user group enrolments with external database,
+     * does not create new groups.
+     *
+     * @param stdClass $user user record
+     * @return void
+     */
+    public function sync_user_group_enrolments($user) {
+        global $CFG, $DB;
+
+        if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
+                or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
+            return;
+        }
+
+        if (!$extdb = $this->db_init()) {
+            return;
+        }
+
+        $table  = trim($this->get_config('groupenroltable'));
+        $grouptable = trim($this->get_config('newgrouptable'));
+        $idnumber = trim($this->get_config('newgroupidnumber'));
+        $groupcoursefield = trim($this->get_config('newgroupcourse'));
+        $userfield  = trim($this->get_config('userfield'));
+        $localuserfield  = trim($this->get_config('localuserfield'));
+        $localcoursefield = trim($this->get_config('localcoursefield'));
+        $groupfield  = trim($this->get_config('groupfield'));
+
+        // Warning: postgres_fdw is needed to join Moodle tables and external database tables
+        $enrolsql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                            mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                            mg.idnumber as groupfield, c.id as courseid
+                       FROM $table ge
+                       JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                       JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                       JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                      WHERE mu.deleted = 0
+                        AND mu.id = :userid
+                        AND not exists (SELECT 1
+                                          FROM {groups_members} mgm
+                                         WHERE mgm.groupid = mg.id
+                                           AND mgm.userid = mu.id);";
+
+        if ($result = $DB->get_records_sql($enrolsql, array('userid' => $user->id))) {
+            foreach ($result as $rs){
+                $group['userid'] = $rs->userid;
+                $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['localcoursefield'] = $rs->localcoursefield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
+                $requestedgroups[$rs->index] = $group;
+            }
+            // Adding users to their respective groups.
+            foreach ($requestedgroups as $group) {
+                require_once($CFG->dirroot.'/group/lib.php');
+                
+                groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
+            }
+            unset($requestedgroups);
+        }
+
+        // Upgrade group membership component if the setting is enabled
+        $groupupgrading = $this->get_config('groupupgrading');
+        if ($groupupgrading) {
+            $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                                mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                                ge.$groupfield as groupfield, c.id as courseid
+                            FROM $table ge
+                            JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                            JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                            JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                        WHERE mu.deleted = 0
+                            AND mu.id = :userid
+                            AND exists (SELECT 1
+                                        FROM {groups_members} mgm
+                                        WHERE mgm.groupid = mg.id
+                                            AND mgm.userid = mu.id
+                                            AND mgm.component='');";
+            if ($result = $DB->get_records_sql($updatesql, array('userid' => $user->id))) {
+                foreach ($result as $rs){
+                    $group['userid'] = $rs->userid;
+                    $group['groupid'] = $rs->groupid;
+                    $group['localuserfield'] = $rs->localuserfield;
+                    $group['localcoursefield'] = $rs->localcoursefield;
+                    $group['groupfield'] = $rs->groupfield;
+                    $group['courseid'] = $rs->courseid;
+                    $requestedgroups[$rs->index] = $group;
+                }
+                // Removing users without component from groups and adding them back.
+                foreach ($requestedgroups as $group) {
+                    require_once($CFG->dirroot.'/group/lib.php');
+
+                    groups_remove_member($group['groupid'], $group['userid']);
+                    groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
+                }
+                unset($requestedgroups);
+            }
+        }
+
+        $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
+                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield, mg.courseid as courseid
+                         FROM {groups_members} mgm
+                         JOIN {user} mu on (mu.id = mgm.userid)
+                         JOIN {groups} mg on (mgm.groupid = mg.id)
+                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
+                        WHERE mu.deleted = 0
+                          AND mu.id = :userid
+                          AND mgm.component = 'enrol_database'
+                          AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
+                                                                          FROM $table ge2
+                                                                          JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
+                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber)
+                                                                          JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
+        if ($result = $DB->get_records_sql($unenrolsql, array('userid' => $user->id))) {
+            foreach ($result as $rs){
+                $group['userid'] = $rs->userid;
+                $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
+                $requestedunenrolments[$rs->index] = $group;
+            }
+            // Deletes the link between the specified user and group.
+            foreach ($requestedunenrolments as $group) {
+                require_once($CFG->dirroot.'/group/lib.php');
+                groups_remove_member($group['groupid'], $group['userid']);
+            }
+            unset($requestedunenrolments);
+        }
+
+        // Close db connection.
+        $extdb->Close();
     }
 
     /**
@@ -362,6 +500,9 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
+        
+        $manual_enrol_check = $this->get_config('manualenrol_cleaning');
+        $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
 
         // Create roles mapping.
         $allroles = get_all_roles();
@@ -581,6 +722,93 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentenrols[$userid][$roleid] = $roleid;
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
                         $trace->output("enrolling: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+
+                        // If new mode is enabled, check if there is a manual enrolment for the recently enrolled user-course and remove the duplicated manual enrolment
+                        if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'new') {
+                            // If there are more roles assigned to the user in that course, in order to remove the manual enrolment those roles and their archetypes must have higher sortorders
+                            $sql_check_manual_enrol = "SELECT e.id AS enrolid, ctx.id as contextid, ctx.instanceid as instanceid
+                                                         FROM {enrol} e
+                                                         JOIN {user_enrolments} ue ON (e.id = ue.enrolid)
+                                                         JOIN {role_assignments} ra ON (ue.userid=ra.userid AND (ue.enrolid=ra.itemid OR (e.enrol='manual' AND ra.itemid=0)))
+                                                         JOIN {context} ctx ON (ra.contextid=ctx.id AND ctx.contextlevel=50)
+                                                         JOIN {course} c ON (ctx.instanceid=c.id AND e.courseid = c.id)
+                                                         JOIN {role} r ON (ra.roleid=r.id)
+                                                        WHERE e.enrol = 'manual'
+                                                          AND ra.itemid=0
+                                                          AND ue.userid = :userid
+                                                          AND e.courseid = :courseid
+                                                          AND NOT EXISTS (SELECT r2.id
+                                                                            FROM {role_assignments} ra2
+                                                                            JOIN {role} r2 ON (ra2.roleid=r2.id)
+                                                                            JOIN {role} r3 ON (r2.archetype = r3.shortname)
+                                                                            JOIN {context} ctx2 ON (ra2.contextid=ctx2.id AND ctx2.contextlevel=50)
+                                                                            JOIN {course} c2 ON (ctx2.instanceid=c2.id ),
+                                                                                 {role} externalrole
+                                                                           WHERE ra2.userid=ra.userid
+                                                                             AND c2.id = e.courseid
+                                                                             AND externalrole.id= :roleid
+                                                                             AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder) 
+                                                                         )
+                                                    ";
+                            $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
+                            $manual_enrol = $DB->get_record_sql($sql_check_manual_enrol, $params_check_manual);
+                            if ($manual_enrol) {
+                                $enrol_plugin = enrol_get_plugin('manual');
+                                $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
+                        
+                                if ($manual_instance) {
+                                    role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
+                                    $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
+                                    $enrol_plugin->unenrol_user($manual_instance, $userid);
+                                    $trace->output("manual enrolment removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
+                                } else {
+                                    $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.",1);
+                                }
+                            }
+                        } 
+                    }
+                    // If full mode is enabled, check if there is a manual enrolment for every user in the external db and remove the duplicated manual enrolment
+                    if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'full') {
+                        // If there are more roles assigned to the user in that course, in order to remove the manual enrolment those roles and their archetypes must have higher sortorders
+                        $sql_check_manual_enrol = "SELECT e.id AS enrolid, ctx.id as contextid, ctx.instanceid as instanceid
+                                                     FROM {enrol} e
+                                                     JOIN {user_enrolments} ue ON (e.id = ue.enrolid)
+                                                     JOIN {role_assignments} ra ON (ue.userid=ra.userid AND (ue.enrolid=ra.itemid OR (e.enrol='manual' AND ra.itemid=0)))
+                                                     JOIN {context} ctx ON (ra.contextid=ctx.id AND ctx.contextlevel=50)
+                                                     JOIN {course} c ON (ctx.instanceid=c.id AND e.courseid = c.id)
+                                                     JOIN {role} r ON (ra.roleid=r.id)
+                                                    WHERE e.enrol = 'manual'
+                                                      AND ra.itemid=0
+                                                      AND ue.userid = :userid
+                                                      AND e.courseid = :courseid
+                                                      AND NOT EXISTS (SELECT r2.id
+                                                                        FROM {role_assignments} ra2
+                                                                        JOIN {role} r2 ON (ra2.roleid=r2.id)
+                                                                        JOIN {role} r3 ON (r2.archetype = r3.shortname)
+                                                                        JOIN {context} ctx2 ON (ra2.contextid=ctx2.id AND ctx2.contextlevel=50)
+                                                                        JOIN {course} c2 ON (ctx2.instanceid=c2.id ),
+                                                                             {role} externalrole
+                                                                       WHERE ra2.userid=ra.userid
+                                                                         AND c2.id = e.courseid
+                                                                         AND externalrole.id= :roleid
+                                                                         AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder) 
+                                                                        )
+                                                    ";
+                        $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
+                        $manual_enrol = $DB->get_record_sql($sql_check_manual_enrol, $params_check_manual);
+                        if ($manual_enrol) {
+                            $enrol_plugin = enrol_get_plugin('manual');
+                            $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
+                    
+                            if ($manual_instance) {
+                                role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
+                                $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
+                                $enrol_plugin->unenrol_user($manual_instance, $userid);
+                                $trace->output("manual enrolment removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
+                            } else {
+                                $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.",1);
+                            }
+                        }
                     }
                 }
 
@@ -704,6 +932,8 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname  = trim($this->get_config('newcoursefullname'));
         $shortname = trim($this->get_config('newcourseshortname'));
         $idnumber  = trim($this->get_config('newcourseidnumber'));
+        $summary =   trim($this->get_config('newcoursesummary'));
+        $template =  trim($this->get_config('newcoursetemplate') ?? '');
         $category  = trim($this->get_config('newcoursecategory'));
 
         $startdate = trim($this->get_config('newcoursestartdate'));
@@ -713,6 +943,8 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname_l  = strtolower($fullname);
         $shortname_l = strtolower($shortname);
         $idnumber_l  = strtolower($idnumber);
+        $summary_l   = strtolower($summary);
+        $template_l  = strtolower($template);
         $category_l  = strtolower($category);
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
@@ -730,6 +962,12 @@ class enrol_database_plugin extends enrol_plugin {
         $sqlfields = array($fullname, $shortname);
         if ($category) {
             $sqlfields[] = $category;
+        }
+        if ($summary) {
+            $sqlfields[] = $summary_l;
+        }
+        if ($template) {
+            $sqlfields[] = $template_l;
         }
         if ($idnumber) {
             $sqlfields[] = $idnumber;
@@ -765,6 +1003,8 @@ class enrol_database_plugin extends enrol_plugin {
                     $course->fullname  = $fields[$fullname_l];
                     $course->shortname = $fields[$shortname_l];
                     $course->idnumber  = $idnumber ? $fields[$idnumber_l] : '';
+                    $course->summary = $summary_l ? $fields[$summary_l] : '';
+                    $course->template = $template_l ? trim($fields[$template_l]) : '';
 
                     if ($category) {
                         if (empty($fields[$category_l])) {
@@ -826,48 +1066,75 @@ class enrol_database_plugin extends enrol_plugin {
 
             $templatecourse = $this->get_config('templatecourse');
 
-            $template = false;
+            $defaulttemplate = false;
+            $defaulttemplateid = 0;
             if ($templatecourse) {
-                if ($template = $DB->get_record('course', array('shortname'=>$templatecourse))) {
-                    $template = fullclone(course_get_format($template)->get_course());
-                    if (!isset($template->numsections)) {
-                        $template->numsections = course_get_format($template)->get_last_section_number();
+                // We don't set $defaulttemplateid here (and keep it as 0), because we can't import
+                // content from this template (as it's not really a course!).
+                // The next line has been removed on Moodle 4.5 core
+                //$courseconfig = get_config('moodlecourse');
+                if ($defaulttemplate = $DB->get_record('course', array('shortname'=>$templatecourse))) {
+                    $defaulttemplate = fullclone(course_get_format($defaulttemplate)->get_course());
+                    $defaulttemplateid = $defaulttemplate->id;
+                    if (!isset($defaulttemplate->numsections)) {
+                        $defaulttemplate->numsections = course_get_format($defaulttemplate)->get_last_section_number();
                     }
-                    unset($template->id);
-                    unset($template->fullname);
-                    unset($template->shortname);
-                    unset($template->idnumber);
+                    unset($defaulttemplate->id);
+                    unset($defaulttemplate->fullname);
+                    unset($defaulttemplate->shortname);
+                    unset($defaulttemplate->idnumber);
+                    unset($defaulttemplate->summary);
                 } else {
                     $trace->output("can not find template for new course!", 1);
                 }
             }
-            if (!$template) {
-                $template = new stdClass();
-                $template->summary        = '';
-                $template->summaryformat  = FORMAT_HTML;
-                $template->format         = $courseconfig->format;
-                $template->numsections    = $courseconfig->numsections;
-                $template->newsitems      = $courseconfig->newsitems;
-                $template->showgrades     = $courseconfig->showgrades;
-                $template->showreports    = $courseconfig->showreports;
-                $template->maxbytes       = $courseconfig->maxbytes;
-                $template->groupmode      = $courseconfig->groupmode;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->visible        = $courseconfig->visible;
-                $template->lang           = $courseconfig->lang;
-                $template->enablecompletion = $courseconfig->enablecompletion;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->startdate      = usergetmidnight(time());
+            if (!$defaulttemplate) {
+                $defaulttemplate = new stdClass();
+                $defaulttemplate->summary        = '';
+                $defaulttemplate->summaryformat  = FORMAT_HTML;
+                $defaulttemplate->format         = $courseconfig->format;
+                $defaulttemplate->numsections    = $courseconfig->numsections;
+                $defaulttemplate->newsitems      = $courseconfig->newsitems;
+                $defaulttemplate->showgrades     = $courseconfig->showgrades;
+                $defaulttemplate->showreports    = $courseconfig->showreports;
+                $defaulttemplate->maxbytes       = $courseconfig->maxbytes;
+                $defaulttemplate->groupmode      = $courseconfig->groupmode;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->visible        = $courseconfig->visible;
+                $defaulttemplate->lang           = $courseconfig->lang;
+                $defaulttemplate->enablecompletion = $courseconfig->enablecompletion;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->startdate      = usergetmidnight(time());
                 if ($courseconfig->courseenddateenabled) {
-                    $template->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
+                    $defaulttemplate->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
                 }
             }
 
             foreach ($createcourses as $fields) {
-                $newcourse = clone($template);
+                $templateid = $defaulttemplateid;
+                if ($fields->template) {
+                    if ($coursetemplate = $DB->get_record('course',
+                            array($this->get_config('localtemplatefield') => $fields->template))) {
+                        $newcourse = fullclone(course_get_format($coursetemplate)->get_course());
+                        $templateid = $newcourse->id;
+                        unset($newcourse->id);
+                        unset($newcourse->fullname);
+                        unset($newcourse->shortname);
+                        unset($newcourse->idnumber);
+                        unset($newcourse->summary);
+                        unset($newcourse->category);
+                    } else {
+                        $newcourse = clone($defaulttemplate);
+                        $trace->output('can not find template for new course! Using default template.', 1);
+                    }
+                } else {
+                    $newcourse = clone($defaulttemplate);
+                }
+
                 $newcourse->fullname  = $fields->fullname;
                 $newcourse->shortname = $fields->shortname;
                 $newcourse->idnumber  = $fields->idnumber;
+                $newcourse->summary   = $fields->summary;
                 $newcourse->category  = $fields->category;
 
                 if (isset($fields->startdate)) {
@@ -898,12 +1165,45 @@ class enrol_database_plugin extends enrol_plugin {
                     $trace->output("can not insert new course, duplicate idnumber detected: ".$newcourse->idnumber, 1);
                     continue;
                 }
-                $c = create_course($newcourse);
-                $trace->output("creating course: $c->id, $c->fullname, $c->shortname, $c->idnumber, $c->category", 1);
+                $trace->output("creating course: $newcourse->idnumber, $newcourse->fullname, $newcourse->shortname, ".
+                               "$newcourse->category", 1);
+
+                if ($templateid) {
+                    // If we have a real template (i.e., based on an existing course) duplicate it (including all activities,
+                    // blocks, filters and enrolments) and update the resulting course with the new course fields.
+                    require_once("$CFG->dirroot/course/externallib.php");
+                    require_once("$CFG->dirroot/group/lib.php");
+
+                    // This requires special permissions. Temporarily elevate our privileges.
+                    // And remember to drop the elevated privileges as soon as they are not needed.
+                    global $USER;
+                    $olduser = $USER;
+                    $USER = get_admin();
+
+                    static $backupsettings = array(
+                        array('name' => 'users', 'value' => 0)
+                    );
+
+                    $duplicatecoursereturns = core_course_external::duplicate_course($templateid, $newcourse->fullname,
+                            $newcourse->shortname, $newcourse->category, 1, $backupsettings);
+
+                    $updatecourse = array('courses' => array(
+                            'id' => $duplicatecoursereturns['id'],
+                            'idnumber' => $newcourse->idnumber,
+                            'summary' => $newcourse->summary));
+                    core_course_external::update_courses($updatecourse);
+                    groups_delete_groups($duplicatecoursereturns['id'], $showfeedback=false);
+                    groups_delete_groupings($duplicatecoursereturns['id'], $showfeedback=false);
+
+                    $USER = $olduser;
+                } else {
+                    // Course creation without a template.
+                    create_course($newcourse);
+                }
             }
 
             unset($createcourses);
-            unset($template);
+            unset($defaulttemplate);
         }
 
         // Close db connection.
@@ -912,6 +1212,327 @@ class enrol_database_plugin extends enrol_plugin {
         $trace->output('...course synchronisation finished.');
         $trace->finished();
 
+        return 0;
+    }
+
+    /**
+     * It synchronizes user groups with external database,
+     * creating new ones if necessary.
+     * Groups can be added to groupings if defined, and if groupingcreation
+     * setting is enabled defined new groupings are created.
+     *
+     * @param progress_trace $trace
+     * @return int 0 means success, 1 db connect failure, 4 db read failure
+     * @throws dml_exception
+     */
+    public function sync_groups(progress_trace $trace) {
+        global $CFG, $DB;
+
+        if (!$this->get_config('dbtype') or !$this->get_config('newgrouptable') or
+                !$this->get_config('newgroupname') or !$this->get_config('newgroupidnumber') or
+                !$this->get_config('newgroupcourse')) {
+            $trace->output('Groups synchronisation skipped.');
+            $trace->finished();
+            return 0;
+        }
+
+        $trace->output("\nStarting group synchronisation...");
+
+        // We may need a lot of memory here.
+        core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_HUGE);
+
+        if (!$extdb = $this->db_init()) {
+            $trace->output('Error while communicating with external enrolment database');
+            $trace->finished();
+            return 1;
+        }
+
+        $table = trim($this->get_config('newgrouptable'));
+        $name = trim($this->get_config('newgroupname'));
+        $idnumber = trim($this->get_config('newgroupidnumber'));
+        $description = trim($this->get_config('newgroupdesc'));
+        $course = trim($this->get_config('newgroupcourse'));
+        $grouping = trim($this->get_config('newgroupgroupings'));
+        $groupingcreation = $this->get_config('groupingcreation');
+        $messaging = $this->get_config('groupmessaging');
+
+        $namelow = strtolower($name);
+        $idnumberlow = strtolower($idnumber);
+        $courselow = strtolower($course);
+        $descriptionlow = strtolower($description);
+        $groupinglow = strtolower($grouping);
+        
+        $extdbgroups = array();
+        $dbgroups = array();
+
+        // External db groups.
+        $sqlfields = array($namelow, $idnumberlow, $courselow);
+        if ($description) {
+            $sqlfields[] = $descriptionlow;
+        }
+        if ($grouping) {
+            $sqlfields[] = $groupinglow;
+        }
+        $sql = $this->db_get_sql($table, array(), $sqlfields, true);
+        if ($rs = $extdb->Execute($sql)) {
+            if (!$rs->EOF) {
+                while ($fields = $rs->FetchRow()) {
+                    $fields = $this->db_decode($fields);
+                    if (empty($fields[$namelow]) or empty($fields[$idnumberlow]) or empty($fields[$courselow])) {
+                        $trace->output('error: invalid external group record, name, id number and course shortname are mandatory:
+                         '.json_encode($fields), 1);
+                        continue;
+                    }
+                    $extdbgroups[$fields[$courselow].$fields[$idnumberlow]] = $fields;
+                }
+            }
+        } else {
+            $extdb->Close();
+            $trace->output('Error reading data from the external groups table');
+            $trace->finished();
+            return 4;
+        }
+
+        // Moodle db groups (existing groups).
+        $dbsql = "SELECT c.shortname||g.idnumber as index, g.idnumber, g.name, g.description, c.shortname as coursename
+                    FROM {groups} g 
+                         JOIN {course} c on (g.courseid=c.id)
+                   WHERE g.idnumber is not null 
+                     AND g.idnumber<>''";
+        if ($result = $DB->get_records_sql($dbsql)) {
+            foreach ($result as $rs) {
+                $group[$idnumberlow] = $rs->idnumber;
+                $group[$namelow] = $rs->name;
+                $group[$descriptionlow] = $rs->description;
+                $group[$courselow] = $rs->coursename;
+                $dbgroups[$rs->index] = $group;
+            }
+        }
+
+        error_reporting(E_ALL & ~E_NOTICE); // Avoids showing the php notice thrown by the next function:
+        $creategroups = array_udiff($extdbgroups, $dbgroups, function($a, $b) {
+            return strcmp(serialize($a), serialize($b));
+        });
+        error_reporting($CFG->debug); // Set again the debug messaging level configured in the site administration.
+
+        if ($creategroups) {
+            require_once("$CFG->dirroot/group/lib.php");
+            foreach ($creategroups as $group) {
+                // The course to which the group will belong must exist.
+                if (!$DB->record_exists('course', array('shortname' => $group[$courselow]))) {
+                    $trace->output("  [x] Course shortname " . $group[$courselow] . " to which the group ID number "
+                                   . $group[$idnumberlow] ." should belong doesn't exist, group will not be created.");
+                    continue;
+                }
+
+                $courseid = $DB->get_field_sql("SELECT id 
+                                                  FROM {course} 
+                                                 WHERE shortname="."'".$group[$courselow]."'");
+                if ($DB->record_exists('groups', array('idnumber' => $group[$idnumberlow], 'courseid' => $courseid))) {
+                    // Already exists, skip.
+                    //$trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
+                    //               .$group[$courselow].", but with a different name.");
+                    continue;
+                }
+
+                $newgroup = new stdClass();
+                $newgroup->courseid = $courseid;
+                $newgroup->name = $group[$namelow];
+                $newgroup->idnumber = $group[$idnumberlow];
+                $newgroup->description = $group[$descriptionlow];
+                $newgroup->course = $group[$courselow];
+                $newgroup->enablemessaging = $messaging;
+
+                $trace->output("  creating group: $newgroup->name, $newgroup->idnumber, $newgroup->description, in course "
+                .$newgroup->course);
+                $newgroupid = groups_create_group($newgroup);
+
+                if ($group[$groupinglow]){
+                    $recordset = $DB->get_record('groupings', array('idnumber' => $group[$groupinglow]));
+                    if(!$recordset and $groupingcreation) {
+                        $newgrouping = new stdClass();
+                        $newgrouping->idnumber = $group[$groupinglow];
+                        $newgrouping->courseid = $courseid;
+                        $newgrouping->name = $group[$groupinglow];
+                        $newgroupingid = groups_create_grouping($newgrouping);
+
+                        groups_assign_grouping($newgroupingid, $newgroupid);
+                    } else {
+                        groups_assign_grouping($recordset->id, $newgroupid);
+                    }
+                }
+            }
+            unset($creategroups);
+        }
+
+        // Close db connection.
+        $extdb->Close();
+
+        $trace->output('...group synchronisation finished.');
+        $trace->finished();
+        return 0;
+    }
+
+    /**
+     * Forces synchronisation of group enrolments with external database,
+     *
+     * @param progress_trace $trace
+     * @return void
+     */
+    public function sync_group_enrolments(progress_trace $trace) {
+        global $CFG, $DB;
+
+        if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
+                or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
+            $trace->output('Group enrolments synchronisation skipped.');
+            $trace->finished();
+            return 0;
+        }
+
+        $trace->output("\nStarting group enrolment synchronisation...");
+
+        if (!$extdb = $this->db_init()) {
+            $trace->output('Error while communicating with external enrolment database');
+            $trace->finished();
+            return 1;
+        }
+
+        // We may need a lot of memory here.
+        core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_HUGE);
+
+        $table  = trim($this->get_config('groupenroltable'));
+        $grouptable = trim($this->get_config('newgrouptable'));
+        $idnumber = trim($this->get_config('newgroupidnumber'));
+        $groupcoursefield = trim($this->get_config('newgroupcourse'));
+        $userfield  = trim($this->get_config('userfield'));
+        $localuserfield  = trim($this->get_config('localuserfield'));
+        $localcoursefield = trim($this->get_config('localcoursefield'));
+        $groupfield  = trim($this->get_config('groupfield'));
+
+        // Warning: postgres_fdw is needed to join Moodle tables and external database tables
+        $enrolsql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                            mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                            mg.idnumber as groupfield, c.id as courseid
+                       FROM $table ge
+                       JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                       JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                       JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                      WHERE mu.deleted = 0
+                        AND not exists (SELECT 1
+                                          FROM {groups_members} mgm
+                                         WHERE mgm.groupid = mg.id
+                                           AND mgm.userid = mu.id);";
+        if ($result = $DB->get_records_sql($enrolsql)) {
+            foreach ($result as $rs){
+                $group['userid'] = $rs->userid;
+                $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['localcoursefield'] = $rs->localcoursefield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
+                $requestedgroups[$rs->index] = $group;
+            }
+            // Adding users to their respective groups.
+            foreach ($requestedgroups as $group) {
+                require_once($CFG->dirroot.'/group/lib.php');
+
+                if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
+                    $trace->output("  adding user ".$group['localuserfield']." to group: ".$group['groupfield'].
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                } else {
+                    $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
+                    $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ID ".$errorcourse->courseid.
+                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                }
+            }
+            unset($requestedgroups);
+        }
+
+        // Upgrade group membership component if the setting is enabled
+        $groupupgrading = $this->get_config('groupupgrading');
+        if ($groupupgrading) {
+            $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
+                                mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
+                                ge.$groupfield as groupfield, c.id as courseid
+                            FROM $table ge
+                            JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
+                            JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
+                            JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
+                        WHERE mu.deleted = 0
+                            AND exists (SELECT 1
+                                        FROM {groups_members} mgm
+                                        WHERE mgm.groupid = mg.id
+                                            AND mgm.userid = mu.id
+                                            AND mgm.component='');";
+            if ($result = $DB->get_records_sql($updatesql)) {
+                foreach ($result as $rs){
+                    $group['userid'] = $rs->userid;
+                    $group['groupid'] = $rs->groupid;
+                    $group['localuserfield'] = $rs->localuserfield;
+                    $group['localcoursefield'] = $rs->localcoursefield;
+                    $group['groupfield'] = $rs->groupfield;
+                    $group['courseid'] = $rs->courseid;
+                    $requestedgroups[$rs->index] = $group;
+                }
+                // Removing users without component from groups and adding them back.
+                foreach ($requestedgroups as $group) {
+                    require_once($CFG->dirroot.'/group/lib.php');
+
+                    $trace->output("  removing user ".$group['localuserfield']." with empty component from group ".$group['groupfield'].
+                                ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                    groups_remove_member($group['groupid'], $group['userid']);
+                    if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
+                        $trace->output("  adding back the user ".$group['localuserfield']." to group: ".$group['groupfield'].
+                                    ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                    } else {
+                        $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
+                        $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ".$errorcourse->courseid.
+                                    ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                    }
+                }
+                unset($requestedgroups);
+            }
+        }
+
+        $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
+                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield, mg.courseid as courseid
+                         FROM {groups_members} mgm
+                         JOIN {user} mu on (mu.id = mgm.userid)
+                         JOIN {groups} mg on (mgm.groupid = mg.id)
+                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
+                        WHERE mu.deleted = 0
+                          AND mgm.component = 'enrol_database'
+                          AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
+                                                                          FROM $table ge2
+                                                                          JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
+                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber)
+                                                                          JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
+        if ($result = $DB->get_records_sql($unenrolsql)) {
+            foreach ($result as $rs){
+                $group['userid'] = $rs->userid;
+                $group['groupid'] = $rs->groupid;
+                $group['localuserfield'] = $rs->localuserfield;
+                $group['groupfield'] = $rs->groupfield;
+                $group['courseid'] = $rs->courseid;
+                $requestedunenrolments[$rs->index] = $group;
+            }
+            // Deletes the link between the specified user and group.
+            foreach ($requestedunenrolments as $group) {
+                require_once($CFG->dirroot.'/group/lib.php');
+                $trace->output("  removing user ".$group['localuserfield']." from group ".$group['groupfield'].
+                               ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
+                groups_remove_member($group['groupid'], $group['userid']);
+            }
+            unset($requestedunenrolments);
+        }
+
+        // Close db connection.
+        $extdb->Close();
+
+        $trace->output("...group enrolment synchronisation finished.\n");
+        $trace->finished();
         return 0;
     }
 
@@ -1164,4 +1785,14 @@ class enrol_database_plugin extends enrol_plugin {
         error_reporting($CFG->debug);
         ob_end_flush();
     }
+}
+/**
+ * Prevent removal of enrol_database group member allocation.
+ * @param int $itemid
+ * @param int $groupid
+ * @param int $userid
+ * @return bool
+ */
+function enrol_database_allow_group_member_remove($itemid, $groupid, $userid) {
+    return false;
 }
