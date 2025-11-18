@@ -67,6 +67,10 @@ if ($ADMIN->fulltree) {
     $options = array('id'=>'id', 'idnumber'=>'idnumber');
     $settings->add(new admin_setting_configselect('enrol_database/localcategoryfield', get_string('localcategoryfield', 'enrol_database'), '', 'id', $options));
 
+    $options = array('id'=>'id', 'idnumber'=>'idnumber', 'shortname'=>'shortname');
+    $settings->add(new admin_setting_configselect('enrol_database/localtemplatefield', get_string('localtemplatefield', 'enrol_database'), '', 'idnumber', $options));
+
+    //--- remote field mapping -------------------------------------------------------------------------------
 
     $settings->add(new admin_setting_heading('enrol_database_remoteheader', get_string('settingsheaderremote', 'enrol_database'), ''));
 
@@ -80,6 +84,7 @@ if ($ADMIN->fulltree) {
 
     $otheruserfieldlabel = get_string('remoteotheruserfield', 'enrol_database');
     $otheruserfielddesc  = get_string('remoteotheruserfield_desc', 'enrol_database');
+
     $settings->add(new admin_setting_configtext('enrol_database/remoteotheruserfield', $otheruserfieldlabel, $otheruserfielddesc, ''));
 
     if (!during_initial_install()) {
@@ -101,8 +106,7 @@ if ($ADMIN->fulltree) {
                      ENROL_EXT_REMOVED_SUSPENDNOROLES => get_string('extremovedsuspendnoroles', 'enrol'));
     $settings->add(new admin_setting_configselect('enrol_database/unenrolaction', get_string('extremovedaction', 'enrol'), get_string('extremovedaction_help', 'enrol'), ENROL_EXT_REMOVED_UNENROL, $options));
 
-
-
+    //--- creation of new courses ----------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('enrol_database_newcoursesheader', get_string('settingsheadernewcourses', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/newcoursetable', get_string('newcoursetable', 'enrol_database'), get_string('newcoursetable_desc', 'enrol_database'), ''));
@@ -123,11 +127,21 @@ if ($ADMIN->fulltree) {
         get_string('newcourseenddate', 'enrol_database'),
         get_string('newcourseenddate_desc', 'enrol_database'), ''));
 
-    $settings->add(new admin_setting_configtext('enrol_database/newcoursecategory', get_string('newcoursecategory', 'enrol_database'), '', ''));
+    $settings->add(new admin_setting_configtext('enrol_database/newcoursesummary', get_string('newcoursesummary', 'enrol_database'), '', ''));
 
-    $settings->add(new admin_settings_coursecat_select('enrol_database/defaultcategory',
-        get_string('defaultcategory', 'enrol_database'),
-        get_string('defaultcategory_desc', 'enrol_database'), 1));
+    $settings->add(new admin_setting_configtext('enrol_database/newcoursetemplate', get_string('newcoursetemplate', 'enrol_database'), '', ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newcoursecategory', get_string('newcoursecategory', 'enrol_database'), get_string('newcoursecategory_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/newcoursecategorypath', get_string('newcoursecategorypath', 'enrol_database'), get_string('newcoursecategorypath_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configtext('enrol_database/categoryseparator', get_string('categoryseparator', 'enrol_database'), get_string('categoryseparator_desc', 'enrol_database'), ''));
+
+    $settings->add(new admin_setting_configcheckbox('enrol_database/autocreatecategory',
+          get_string('autocreatecategory', 'enrol_database'),
+          get_string('autocreatecategory_desc', 'enrol_database'), 0));
+
+    $settings->add(new admin_settings_coursecat_select('enrol_database/defaultcategory', get_string('defaultcategory', 'enrol_database'), get_string('defaultcategory_desc', 'enrol_database'), 1));
 
     $settings->add(new admin_setting_configtext('enrol_database/templatecourse', get_string('templatecourse', 'enrol_database'), get_string('templatecourse_desc', 'enrol_database'), ''));
 }
