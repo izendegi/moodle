@@ -68,6 +68,7 @@ $string['newcoursefullname'] = 'New course full name field';
 $string['newcourseidnumber'] = 'New course ID number field';
 $string['newcoursestartdate'] = 'New course start date field';
 $string['newcoursestartdate_desc'] = 'Specify a date in the format yyyy-mm-dd or Unix time, or leave blank for the course start date to be set to the current date.';
+$string['newcoursesummary'] = 'New course summary field';
 $string['newcourseshortname'] = 'New course short name field';
 $string['manualenrol_cleaning'] = 'Remove duplicated manual enrolments';
 $string['manualenrol_cleaning_desc'] = 'If enabled, if a user is already manually enrolled when enrolling a user from the external database the manual enrolment will be removed.';
