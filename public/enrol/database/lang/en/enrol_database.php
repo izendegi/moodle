@@ -58,6 +58,7 @@ $string['newcoursefullname'] = 'New course full name field';
 $string['newcourseidnumber'] = 'New course ID number field';
 $string['newcoursestartdate'] = 'New course start date field';
 $string['newcoursestartdate_desc'] = 'Specify a date in the format yyyy-mm-dd or Unix time, or leave blank for the course start date to be set to the current date.';
+$string['newcoursesummary'] = 'New course summary field';
 $string['newcourseshortname'] = 'New course short name field';
 $string['pluginname'] = 'External database';
 $string['pluginname_desc'] = 'You can use an external database (of nearly any kind) to control your enrolments. It is assumed your external database contains at least a field containing a course ID, and a field containing a user ID. These are compared against fields that you choose in the local course and user tables.';

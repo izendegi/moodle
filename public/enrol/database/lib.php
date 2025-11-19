@@ -704,6 +704,7 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname  = trim($this->get_config('newcoursefullname'));
         $shortname = trim($this->get_config('newcourseshortname'));
         $idnumber  = trim($this->get_config('newcourseidnumber'));
+        $summary = trim($this->get_config('newcoursesummary'));
         $category  = trim($this->get_config('newcoursecategory'));
 
         $startdate = trim($this->get_config('newcoursestartdate'));
@@ -713,6 +714,7 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname_l  = strtolower($fullname);
         $shortname_l = strtolower($shortname);
         $idnumber_l  = strtolower($idnumber);
+        $summary_l   = strtolower($summary);
         $category_l  = strtolower($category);
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
@@ -730,6 +732,9 @@ class enrol_database_plugin extends enrol_plugin {
         $sqlfields = array($fullname, $shortname);
         if ($category) {
             $sqlfields[] = $category;
+        }
+        if ($summary) {
+            $sqlfields[] = $summary_l;
         }
         if ($idnumber) {
             $sqlfields[] = $idnumber;
@@ -765,6 +770,7 @@ class enrol_database_plugin extends enrol_plugin {
                     $course->fullname  = $fields[$fullname_l];
                     $course->shortname = $fields[$shortname_l];
                     $course->idnumber  = $idnumber ? $fields[$idnumber_l] : '';
+                    $course->summary = $summary_l ? $fields[$summary_l] : '';
 
                     if ($category) {
                         if (empty($fields[$category_l])) {
@@ -837,6 +843,7 @@ class enrol_database_plugin extends enrol_plugin {
                     unset($template->fullname);
                     unset($template->shortname);
                     unset($template->idnumber);
+                    unset($template->summary);
                 } else {
                     $trace->output("can not find template for new course!", 1);
                 }
@@ -868,6 +875,7 @@ class enrol_database_plugin extends enrol_plugin {
                 $newcourse->fullname  = $fields->fullname;
                 $newcourse->shortname = $fields->shortname;
                 $newcourse->idnumber  = $fields->idnumber;
+                $newcourse->summary   = $fields->summary;
                 $newcourse->category  = $fields->category;
 
                 if (isset($fields->startdate)) {
