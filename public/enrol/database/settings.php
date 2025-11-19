@@ -67,6 +67,8 @@ if ($ADMIN->fulltree) {
     $options = array('id'=>'id', 'idnumber'=>'idnumber');
     $settings->add(new admin_setting_configselect('enrol_database/localcategoryfield', get_string('localcategoryfield', 'enrol_database'), '', 'id', $options));
 
+    $options = array('id'=>'id', 'idnumber'=>'idnumber', 'shortname'=>'shortname');
+    $settings->add(new admin_setting_configselect('enrol_database/localtemplatefield', get_string('localtemplatefield', 'enrol_database'), '', 'idnumber', $options));
 
     $settings->add(new admin_setting_heading('enrol_database_remoteheader', get_string('settingsheaderremote', 'enrol_database'), ''));
 
