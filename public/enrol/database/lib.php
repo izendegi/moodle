@@ -932,8 +932,8 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname  = trim($this->get_config('newcoursefullname'));
         $shortname = trim($this->get_config('newcourseshortname'));
         $idnumber  = trim($this->get_config('newcourseidnumber'));
-        $summary = trim($this->get_config('newcoursesummary'));
-        $template = trim($this->get_config('newcoursetemplate'));
+        $summary =   trim($this->get_config('newcoursesummary'));
+        $template =  trim($this->get_config('newcoursetemplate') ?? '');
         $category  = trim($this->get_config('newcoursecategory'));
 
         $startdate = trim($this->get_config('newcoursestartdate'));
