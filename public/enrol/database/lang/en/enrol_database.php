@@ -58,6 +58,7 @@ $string['ignorehiddencourses_desc'] = 'If enabled users will not be enrolled on 
 $string['localcategoryfield'] = 'Local category field';
 $string['localcoursefield'] = 'Local course field';
 $string['localrolefield'] = 'Local role field';
+$string['localtemplatefield'] = 'Local template field';
 $string['localuserfield'] = 'Local user field';
 $string['newcourseenddate'] = 'New course end date field';
 $string['newcourseenddate_desc'] = 'Specify a date in the format yyyy-mm-dd or Unix time, or leave blank for the course end date to be calculated from the configured course duration.';

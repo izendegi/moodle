@@ -933,6 +933,7 @@ class enrol_database_plugin extends enrol_plugin {
         $shortname = trim($this->get_config('newcourseshortname'));
         $idnumber  = trim($this->get_config('newcourseidnumber'));
         $summary = trim($this->get_config('newcoursesummary'));
+        $template = trim($this->get_config('newcoursetemplate'));
         $category  = trim($this->get_config('newcoursecategory'));
 
         $startdate = trim($this->get_config('newcoursestartdate'));
@@ -943,6 +944,7 @@ class enrol_database_plugin extends enrol_plugin {
         $shortname_l = strtolower($shortname);
         $idnumber_l  = strtolower($idnumber);
         $summary_l   = strtolower($summary);
+        $template_l  = strtolower($template);
         $category_l  = strtolower($category);
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
@@ -963,6 +965,8 @@ class enrol_database_plugin extends enrol_plugin {
         }
         if ($summary) {
             $sqlfields[] = $summary_l;
+        if ($template) {
+            $sqlfields[] = $template_l;
         }
         if ($idnumber) {
             $sqlfields[] = $idnumber;
@@ -999,6 +1003,7 @@ class enrol_database_plugin extends enrol_plugin {
                     $course->shortname = $fields[$shortname_l];
                     $course->idnumber  = $idnumber ? $fields[$idnumber_l] : '';
                     $course->summary = $summary_l ? $fields[$summary_l] : '';
+                    $course->template = $template_l ? trim($fields[$template_l]) : '';
 
                     if ($category) {
                         if (empty($fields[$category_l])) {
@@ -1060,46 +1065,69 @@ class enrol_database_plugin extends enrol_plugin {
 
             $templatecourse = $this->get_config('templatecourse');
 
-            $template = false;
+            $defaulttemplate = false;
+            $defaulttemplateid = 0;
             if ($templatecourse) {
-                if ($template = $DB->get_record('course', array('shortname'=>$templatecourse))) {
-                    $template = fullclone(course_get_format($template)->get_course());
-                    if (!isset($template->numsections)) {
-                        $template->numsections = course_get_format($template)->get_last_section_number();
+                // We don't set $defaulttemplateid here (and keep it as 0), because we can't import
+                // content from this template (as it's not really a course!).
+                // The next line has been removed on Moodle 4.5 core
+                //$courseconfig = get_config('moodlecourse');
+                if ($defaulttemplate = $DB->get_record('course', array('shortname'=>$templatecourse))) {
+                    $defaulttemplate = fullclone(course_get_format($defaulttemplate)->get_course());
+                    $defaulttemplateid = $defaulttemplate->id;
+                    if (!isset($defaulttemplate->numsections)) {
+                        $defaulttemplate->numsections = course_get_format($defaulttemplate)->get_last_section_number();
                     }
-                    unset($template->id);
-                    unset($template->fullname);
-                    unset($template->shortname);
-                    unset($template->idnumber);
-                    unset($template->summary);
+                    unset($defaulttemplate->id);
+                    unset($defaulttemplate->fullname);
+                    unset($defaulttemplate->shortname);
+                    unset($defaulttemplate->idnumber);
+                    unset($defaulttemplate->summary);
                 } else {
                     $trace->output("can not find template for new course!", 1);
                 }
             }
-            if (!$template) {
-                $template = new stdClass();
-                $template->summary        = '';
-                $template->summaryformat  = FORMAT_HTML;
-                $template->format         = $courseconfig->format;
-                $template->numsections    = $courseconfig->numsections;
-                $template->newsitems      = $courseconfig->newsitems;
-                $template->showgrades     = $courseconfig->showgrades;
-                $template->showreports    = $courseconfig->showreports;
-                $template->maxbytes       = $courseconfig->maxbytes;
-                $template->groupmode      = $courseconfig->groupmode;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->visible        = $courseconfig->visible;
-                $template->lang           = $courseconfig->lang;
-                $template->enablecompletion = $courseconfig->enablecompletion;
-                $template->groupmodeforce = $courseconfig->groupmodeforce;
-                $template->startdate      = usergetmidnight(time());
+            if (!$defaulttemplate) {
+                $defaulttemplate = new stdClass();
+                $defaulttemplate->summary        = '';
+                $defaulttemplate->summaryformat  = FORMAT_HTML;
+                $defaulttemplate->format         = $courseconfig->format;
+                $defaulttemplate->numsections    = $courseconfig->numsections;
+                $defaulttemplate->newsitems      = $courseconfig->newsitems;
+                $defaulttemplate->showgrades     = $courseconfig->showgrades;
+                $defaulttemplate->showreports    = $courseconfig->showreports;
+                $defaulttemplate->maxbytes       = $courseconfig->maxbytes;
+                $defaulttemplate->groupmode      = $courseconfig->groupmode;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->visible        = $courseconfig->visible;
+                $defaulttemplate->lang           = $courseconfig->lang;
+                $defaulttemplate->enablecompletion = $courseconfig->enablecompletion;
+                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
+                $defaulttemplate->startdate      = usergetmidnight(time());
                 if ($courseconfig->courseenddateenabled) {
-                    $template->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
+                    $defaulttemplate->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
                 }
             }
 
             foreach ($createcourses as $fields) {
-                $newcourse = clone($template);
+                $templateid = $defaulttemplateid;
+                if ($fields->template) {
+                    if ($coursetemplate = $DB->get_record('course',
+                            array($this->get_config('localtemplatefield') => $fields->template))) {
+                        $newcourse = fullclone(course_get_format($coursetemplate)->get_course());
+                        $templateid = $newcourse->id;
+                        unset($newcourse->id);
+                        unset($newcourse->fullname);
+                        unset($newcourse->shortname);
+                        unset($newcourse->idnumber);
+                    } else {
+                        $newcourse = clone($defaulttemplate);
+                        $trace->output('can not find template for new course! Using default template.', 1);
+                    }
+                } else {
+                    $newcourse = clone($defaulttemplate);
+                }
+
                 $newcourse->fullname  = $fields->fullname;
                 $newcourse->shortname = $fields->shortname;
                 $newcourse->idnumber  = $fields->idnumber;
@@ -1134,12 +1162,45 @@ class enrol_database_plugin extends enrol_plugin {
                     $trace->output("can not insert new course, duplicate idnumber detected: ".$newcourse->idnumber, 1);
                     continue;
                 }
-                $c = create_course($newcourse);
-                $trace->output("creating course: $c->id, $c->fullname, $c->shortname, $c->idnumber, $c->category", 1);
+                $trace->output("creating course: $newcourse->idnumber, $newcourse->fullname, $newcourse->shortname, ".
+                               "$newcourse->category", 1);
+
+                if ($templateid) {
+                    // If we have a real template (i.e., based on an existing course) duplicate it (including all activities,
+                    // blocks, filters and enrolments) and update the resulting course with the new course fields.
+                    require_once("$CFG->dirroot/course/externallib.php");
+                    require_once("$CFG->dirroot/group/lib.php");
+
+                    // This requires special permissions. Temporarily elevate our privileges.
+                    // And remember to drop the elevated privileges as soon as they are not needed.
+                    global $USER;
+                    $olduser = $USER;
+                    $USER = get_admin();
+
+                    static $backupsettings = array(
+                        array('name' => 'users', 'value' => 0)
+                    );
+
+                    $duplicatecoursereturns = core_course_external::duplicate_course($templateid, $newcourse->fullname,
+                            $newcourse->shortname, $newcourse->category, 1, $backupsettings);
+
+                    $updatecourse = array('courses' => array(
+                            'id' => $duplicatecoursereturns['id'],
+                            'idnumber' => $newcourse->idnumber,
+                            'summary' => $newcourse->summary));
+                    core_course_external::update_courses($updatecourse);
+                    groups_delete_groups($duplicatecoursereturns['id'], $showfeedback=false);
+                    groups_delete_groupings($duplicatecoursereturns['id'], $showfeedback=false);
+
+                    $USER = $olduser;
+                } else {
+                    // Course creation without a template.
+                    create_course($newcourse);
+                }
             }
 
             unset($createcourses);
-            unset($template);
+            unset($defaulttemplate);
         }
 
         // Close db connection.
