@@ -965,6 +965,7 @@ class enrol_database_plugin extends enrol_plugin {
         }
         if ($summary) {
             $sqlfields[] = $summary_l;
+        }
         if ($template) {
             $sqlfields[] = $template_l;
         }
@@ -1120,6 +1121,7 @@ class enrol_database_plugin extends enrol_plugin {
                         unset($newcourse->fullname);
                         unset($newcourse->shortname);
                         unset($newcourse->idnumber);
+                        unset($newcourse->summary);
                         unset($newcourse->category);
                     } else {
                         $newcourse = clone($defaulttemplate);
