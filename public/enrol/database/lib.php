@@ -1120,6 +1120,7 @@ class enrol_database_plugin extends enrol_plugin {
                         unset($newcourse->fullname);
                         unset($newcourse->shortname);
                         unset($newcourse->idnumber);
+                        unset($newcourse->category);
                     } else {
                         $newcourse = clone($defaulttemplate);
                         $trace->output('can not find template for new course! Using default template.', 1);
