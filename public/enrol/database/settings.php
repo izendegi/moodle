@@ -51,7 +51,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('enrol_database/debugdb', get_string('debugdb', 'enrol_database'), get_string('debugdb_desc', 'enrol_database'), 0));
 
-
+    //--- local field mapping --------------------------------------------------------------------------------
 
     $settings->add(new admin_setting_heading('enrol_database_localheader', get_string('settingsheaderlocal', 'enrol_database'), ''));
 
@@ -70,6 +70,8 @@ if ($ADMIN->fulltree) {
     $options = array('id'=>'id', 'idnumber'=>'idnumber', 'shortname'=>'shortname');
     $settings->add(new admin_setting_configselect('enrol_database/localtemplatefield', get_string('localtemplatefield', 'enrol_database'), '', 'idnumber', $options));
 
+    //--- remote field mapping -------------------------------------------------------------------------------
+
     $settings->add(new admin_setting_heading('enrol_database_remoteheader', get_string('settingsheaderremote', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/remoteenroltable', get_string('remoteenroltable', 'enrol_database'), get_string('remoteenroltable_desc', 'enrol_database'), ''));
@@ -82,6 +84,7 @@ if ($ADMIN->fulltree) {
 
     $otheruserfieldlabel = get_string('remoteotheruserfield', 'enrol_database');
     $otheruserfielddesc  = get_string('remoteotheruserfield_desc', 'enrol_database');
+
     $settings->add(new admin_setting_configtext('enrol_database/remoteotheruserfield', $otheruserfieldlabel, $otheruserfielddesc, ''));
 
     if (!during_initial_install()) {
@@ -103,7 +106,12 @@ if ($ADMIN->fulltree) {
                      ENROL_EXT_REMOVED_SUSPENDNOROLES => get_string('extremovedsuspendnoroles', 'enrol'));
     $settings->add(new admin_setting_configselect('enrol_database/unenrolaction', get_string('extremovedaction', 'enrol'), get_string('extremovedaction_help', 'enrol'), ENROL_EXT_REMOVED_UNENROL, $options));
 
+    $settings->add(new admin_setting_configcheckbox('enrol_database/manualenrol_cleaning', get_string('manualenrol_cleaning', 'enrol_database'), get_string('manualenrol_cleaning_desc', 'enrol_database'), 0));
 
+    $options = array('new'=>'new', 'full'=>'full');
+    $settings->add(new admin_setting_configselect('enrol_database/manualenrol_cleaning_mode', get_string('manualenrol_cleaning_mode', 'enrol_database'), '', 'new', $options));
+
+    //--- creation of new courses ----------------------------------------------------------------------------
 
     $settings->add(new admin_setting_heading('enrol_database_newcoursesheader', get_string('settingsheadernewcourses', 'enrol_database'), ''));
 
@@ -127,6 +135,8 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configtext('enrol_database/newcoursesummary', get_string('newcoursesummary', 'enrol_database'), '', ''));
 
+    $settings->add(new admin_setting_configtext('enrol_database/newcoursetemplate', get_string('newcoursetemplate', 'enrol_database'), '', ''));
+
     $settings->add(new admin_setting_configtext('enrol_database/newcoursecategory', get_string('newcoursecategory', 'enrol_database'), get_string('newcoursecategory_desc', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/newcoursecategorypath', get_string('newcoursecategorypath', 'enrol_database'), get_string('newcoursecategorypath_desc', 'enrol_database'), ''));
@@ -140,6 +150,8 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_settings_coursecat_select('enrol_database/defaultcategory', get_string('defaultcategory', 'enrol_database'), get_string('defaultcategory_desc', 'enrol_database'), 1));
 
     $settings->add(new admin_setting_configtext('enrol_database/templatecourse', get_string('templatecourse', 'enrol_database'), get_string('templatecourse_desc', 'enrol_database'), ''));
+
+    //--- creation of new groups ---------------------------------------------------------------------------
 
     $settings->add(new admin_setting_heading('enrol_database_newgroupsheader', get_string('settingsheadernewgroups', 'enrol_database'), ''));
 
