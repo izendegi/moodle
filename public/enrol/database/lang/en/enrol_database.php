@@ -17,10 +17,10 @@
 /**
  * Strings for component 'enrol_database', language 'en'.
  *
- * @package     enrol_database
- * @copyright   1999 onwards Martin Dougiamas  {@link http://moodle.com}
- *              2024 onwards Iñigo Zendegi  {@link https://mondragon.edu}
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   enrol_database
+ * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ *            2024 onwards Iñigo Zendegi  {@link https://mondragon.edu}
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 $string['autocreatecategory'] = 'Create course categories';
@@ -65,6 +65,10 @@ $string['localcoursefield'] = 'Local course field';
 $string['localrolefield'] = 'Local role field';
 $string['localtemplatefield'] = 'Local template field';
 $string['localuserfield'] = 'Local user field';
+$string['manualenrol_cleaning'] = 'Remove duplicated manual enrolments';
+$string['manualenrol_cleaning_desc'] = 'If enabled, if a user is already manually enrolled when enrolling a user from the external database the manual enrolment will be removed.';
+$string['manualenrol_cleaning_mode'] = 'Duplicated manual enrolment removal mode';
+$string['manualenrol_cleaning_mode_desc'] = 'Select the mode to use when removing duplicated manual enrolments. If you select all, all manual enrolments that also exist in the external DB will be removed. If you select new, only the manual enrolments of new enrolments of the external DB will be removed.';
 $string['newcoursecategory'] = 'New course category field';
 $string['newcoursecategory_desc'] = 'This field is not being used by the template-based matriculation patch.';
 $string['newcoursecategorypath'] = 'New course category path field';
@@ -90,10 +94,6 @@ $string['newgroupgroupings_desc'] = 'The name of the field in the remote table t
 $string['newgroupname'] = 'New group name field';
 $string['newgrouptable'] = 'Remote new groups table';
 $string['newgrouptable_desc'] = 'Specify the name of the table that contains list of groups that should be created automatically. Empty means no groups are created.';
-$string['manualenrol_cleaning'] = 'Remove duplicated manual enrolments';
-$string['manualenrol_cleaning_desc'] = 'If enabled, if a user is already manually enrolled when enrolling a user from the external database the manual enrolment will be removed.';
-$string['manualenrol_cleaning_mode'] = 'Duplicated manual enrolment removal mode';
-$string['manualenrol_cleaning_mode_desc'] = 'Select the mode to use when removing duplicated manual enrolments. If you select all, all manual enrolments that also exist in the external DB will be removed. If you select new, only the manual enrolments of new enrolments of the external DB will be removed.';
 $string['pluginname'] = 'External database';
 $string['pluginname_desc'] = 'You can use an external database (of nearly any kind) to control your enrolments. It is assumed your external database contains at least a field containing a course ID, and a field containing a user ID. These are compared against fields that you choose in the local course and user tables.';
 $string['privacy:metadata'] = 'The External database enrolment plugin does not store any personal data.';

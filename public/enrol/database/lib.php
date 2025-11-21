@@ -38,6 +38,7 @@ defined('MOODLE_INTERNAL') || die();
  * @author  Julen Pardo
  * @author  Kepa Urzelai
  * @author  Iñigo Zendegi
+ * @author  Ibai Mutiloa
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class enrol_database_plugin extends enrol_plugin {
@@ -381,7 +382,7 @@ class enrol_database_plugin extends enrol_plugin {
             // Adding users to their respective groups.
             foreach ($requestedgroups as $group) {
                 require_once($CFG->dirroot.'/group/lib.php');
-                
+
                 groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
             }
             unset($requestedgroups);
@@ -507,8 +508,10 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
+
         $manual_enrol_check = $this->get_config('manualenrol_cleaning');
         $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
+
         // Create roles mapping.
         $allroles = get_all_roles();
         if (!isset($allroles[$defaultrole])) {
@@ -641,10 +644,10 @@ class enrol_database_plugin extends enrol_plugin {
             $context = context_course::instance($course->id);
 
             // Get current list of enrolled users with their roles.
-            $currentroles  = array();
-            $currentenrols = array();
-            $currentstatus = array();
-            $usermapping   = array();
+            $currentroles   = array();
+            $currentenrols  = array();
+            $currentstatus  = array();
+            $usermapping    = array();
             $useridentifier = array();
             $sql = "SELECT u.$localuserfield AS mapping, u.id AS userid, ue.status, ra.roleid
                       FROM {user} u
@@ -661,6 +664,7 @@ class enrol_database_plugin extends enrol_plugin {
                 $currentroles[$ue->userid][$ue->roleid] = $ue->roleid;
                 $usermapping[$ue->mapping] = $ue->userid;
                 $useridentifier[$ue->userid] = $ue->mapping;
+
                 if (isset($ue->status)) {
                     $currentenrols[$ue->userid][$ue->roleid] = $ue->roleid;
                     $currentstatus[$ue->userid] = $ue->status;
@@ -722,7 +726,6 @@ class enrol_database_plugin extends enrol_plugin {
 
             // Enrol all users and sync roles.
             foreach ($requestedenrols as $userid => $userroles) {
-
                 foreach ($userroles as $roleid) {
                     if (empty($currentenrols[$userid])) {
                         $this->enrol_user($instance, $userid, $roleid, 0, 0, ENROL_USER_ACTIVE);
@@ -730,7 +733,7 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentenrols[$userid][$roleid] = $roleid;
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
                         $trace->output("enrolling $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
-                                        
+
                         // If new mode is enabled, check if there is a manual enrolment for the recently enrolled user-course and remove the duplicated manual enrolment
                         if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'new') {
                             // If there are more roles assigned to the user in that course, in order to remove the manual enrolment those roles and their archetypes must have higher sortorders
@@ -755,7 +758,7 @@ class enrol_database_plugin extends enrol_plugin {
                                                                            WHERE ra2.userid=ra.userid
                                                                              AND c2.id = e.courseid
                                                                              AND externalrole.id= :roleid
-                                                                             AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder) 
+                                                                             AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
                                                                          )
                                                     ";
                             $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
@@ -763,7 +766,7 @@ class enrol_database_plugin extends enrol_plugin {
                             if ($manual_enrol) {
                                 $enrol_plugin = enrol_get_plugin('manual');
                                 $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
-                        
+
                                 if ($manual_instance) {
                                     role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
                                     $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
@@ -773,7 +776,7 @@ class enrol_database_plugin extends enrol_plugin {
                                     $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.",1);
                                 }
                             }
-                        } 
+                        }
                     }
                     // If full mode is enabled, check if there is a manual enrolment for every user in the external db and remove the duplicated manual enrolment
                     if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'full') {
@@ -799,7 +802,7 @@ class enrol_database_plugin extends enrol_plugin {
                                                                        WHERE ra2.userid=ra.userid
                                                                          AND c2.id = e.courseid
                                                                          AND externalrole.id= :roleid
-                                                                         AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder) 
+                                                                         AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
                                                                         )
                                                     ";
                         $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
@@ -807,7 +810,7 @@ class enrol_database_plugin extends enrol_plugin {
                         if ($manual_enrol) {
                             $enrol_plugin = enrol_get_plugin('manual');
                             $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
-                    
+
                             if ($manual_instance) {
                                 role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
                                 $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
@@ -825,9 +828,8 @@ class enrol_database_plugin extends enrol_plugin {
                     $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE);
                     $trace->output("unsuspending $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
                 }
-                
             }
-            
+
             foreach ($requestedroles as $userid => $userroles) {
                 // Assign extra roles.
                 foreach ($userroles as $roleid) {
@@ -937,35 +939,34 @@ class enrol_database_plugin extends enrol_plugin {
 
         $courseconfig = get_config('moodlecourse');
 
-        $table     = trim($this->get_config('newcoursetable'));
-        $fullname  = trim($this->get_config('newcoursefullname'));
-        $shortname = trim($this->get_config('newcourseshortname'));
-        $idnumber  = trim($this->get_config('newcourseidnumber'));
-        $summary = trim($this->get_config('newcoursesummary'));
-        $template = trim($this->get_config('newcoursetemplate'));
-        $category  = trim($this->get_config('newcoursecategory'));
+        $table        = trim($this->get_config('newcoursetable'));
+        $fullname     = trim($this->get_config('newcoursefullname'));
+        $shortname    = trim($this->get_config('newcourseshortname'));
+        $idnumber     = trim($this->get_config('newcourseidnumber'));
+        $summary      = trim($this->get_config('newcoursesummary'));
+        $template     = trim($this->get_config('newcoursetemplate') ?? '');
+        $category     = trim($this->get_config('newcoursecategory'));
         $categoryname = trim($this->get_config('newcoursecategorypath'));
 
-        $startdate = trim($this->get_config('newcoursestartdate'));
-        $enddate   = trim($this->get_config('newcourseenddate'));
+        $startdate    = trim($this->get_config('newcoursestartdate'));
+        $enddate      = trim($this->get_config('newcourseenddate'));
 
         // Lowercased versions - necessary because we normalise the resultset with array_change_key_case().
         $fullname_l  = strtolower($fullname);
         $shortname_l = strtolower($shortname);
         $idnumber_l  = strtolower($idnumber);
-        $template_l  = strtolower($template);
         $summary_l   = strtolower($summary);
+        $template_l  = strtolower($template);
         $category_l  = strtolower($category);
         $categoryname_l = strtolower($categoryname);
-
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
-        $defaultcategory = $this->get_config('defaultcategory');
+        $defaultcategory    = $this->get_config('defaultcategory');
 
         if (null === ($defaultcategory = core_course_category::get($defaultcategory, IGNORE_MISSING, true))) {
-            $trace->output("default course category  does not exist!", 1);
+            $trace->output("default course category does not exist!", 1);
             $defaultcategory = core_course_category::get_default();
         }
 
@@ -1013,14 +1014,25 @@ class enrol_database_plugin extends enrol_plugin {
                         continue;
                     }
                     $course = new stdClass();
-                    $course->fullname = $fields[$fullname_l];
+                    $course->fullname  = $fields[$fullname_l];
                     $course->shortname = $fields[$shortname_l];
-                    $course->idnumber = $idnumber_l ? $fields[$idnumber_l] : '';
-                    $course->template = $template_l ? trim($fields[$template_l]) : '';
-                    $course->summary = $summary_l ? $fields[$summary_l] : '';
+                    $course->idnumber  = $idnumber_l ? $fields[$idnumber_l] : '';
+                    $course->summary   = $summary_l ? $fields[$summary_l] : '';
+                    $course->template  = $template_l ? trim($fields[$template_l]) : '';
+
                     if ($categoryname_l and $fields[$categoryname_l]) {
                         if ($categoryid = $this->get_categoryid($fields[$categoryname_l], $trace)) {
                             $course->category = $categoryid;
+                        } else {
+                            // Bad luck, better not continue because unwanted ppl might get access to course in different category.
+                            $trace->output('error: invalid category '.$localcategoryfield.', can not create course: '.$fields[$shortname_l], 1);
+                            continue;
+                        }
+                    } else if ($category and $fields[$category_l]) {
+                        // Old-style category lookup using localcategoryfield.
+                        if ($coursecategory = $DB->get_record('course_categories', array($localcategoryfield => $fields[$category_l]))) {
+                            // Yay, correctly specified category!
+                            $course->category = $coursecategory->id;
                         } else {
                             // Bad luck, better not continue because unwanted ppl might get access to course in different category.
                             $trace->output('error: invalid category '.$localcategoryfield.', can not create course: '.$fields[$shortname_l], 1);
@@ -1093,28 +1105,24 @@ class enrol_database_plugin extends enrol_plugin {
                 }
             }
             if (!$defaulttemplate) {
-                // We don't set $defaulttemplateid here (and keep it as 0), because we can't import
-                // content from this template (as it's not really a course!).
-                // The next line has been removed on Moodle 4.5 core
-                //$courseconfig = get_config('moodlecourse');
                 $defaulttemplate = new stdClass();
                 $defaulttemplate->summary = '';
-                $defaulttemplate->summaryformat = FORMAT_HTML;
-                $defaulttemplate->format = $courseconfig->format;
-                $defaulttemplate->numsections = $courseconfig->numsections;
-                $defaulttemplate->newsitems = $courseconfig->newsitems;
-                $defaulttemplate->showgrades = $courseconfig->showgrades;
-                $defaulttemplate->showreports = $courseconfig->showreports;
+                $defaulttemplate->summaryformat  = FORMAT_HTML;
+                $defaulttemplate->format         = $courseconfig->format;
+                $defaulttemplate->numsections    = $courseconfig->numsections;
+                $defaulttemplate->newsitems      = $courseconfig->newsitems;
+                $defaulttemplate->showgrades     = $courseconfig->showgrades;
+                $defaulttemplate->showreports    = $courseconfig->showreports;
                 $defaulttemplate->showactivitydates = $courseconfig->showactivitydates;
-                $defaulttemplate->maxbytes = $courseconfig->maxbytes;
-                $defaulttemplate->groupmode = $courseconfig->groupmode;
+                $defaulttemplate->maxbytes       = $courseconfig->maxbytes;
+                $defaulttemplate->groupmode      = $courseconfig->groupmode;
                 $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
-                $defaulttemplate->visible = $courseconfig->visible;
-                $defaulttemplate->lang = $courseconfig->lang;
+                $defaulttemplate->visible        = $courseconfig->visible;
+                $defaulttemplate->lang           = $courseconfig->lang;
                 $defaulttemplate->enablecompletion = $courseconfig->enablecompletion;
-                $defaulttemplate->startdate = usergetmidnight(time());
+                $defaulttemplate->startdate      = usergetmidnight(time());
                 if ($courseconfig->courseenddateenabled) {
-                    $defaulttemplate->enddate = usergetmidnight(time()) + $courseconfig->courseduration;
+                    $defaulttemplate->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
                 }
             }
 
@@ -1173,7 +1181,6 @@ class enrol_database_plugin extends enrol_plugin {
                     $trace->output("can not insert new course, duplicate idnumber detected: ".$newcourse->idnumber, 1);
                     continue;
                 }
-
                 $trace->output("creating course: $newcourse->idnumber, $newcourse->fullname, $newcourse->shortname, ".
                                "$newcourse->summary, $newcourse->category", 1);
 
@@ -1271,7 +1278,7 @@ class enrol_database_plugin extends enrol_plugin {
         $courselow = strtolower($course);
         $descriptionlow = strtolower($description);
         $groupinglow = strtolower($grouping);
-        
+
         $extdbgroups = array();
         $dbgroups = array();
 
@@ -1305,9 +1312,9 @@ class enrol_database_plugin extends enrol_plugin {
 
         // Moodle db groups (existing groups).
         $dbsql = "SELECT c.shortname||g.idnumber as index, g.idnumber, g.name, g.description, c.shortname as coursename
-                    FROM {groups} g 
+                    FROM {groups} g
                          JOIN {course} c on (g.courseid=c.id)
-                   WHERE g.idnumber is not null 
+                   WHERE g.idnumber is not null
                      AND g.idnumber<>''";
         if ($result = $DB->get_records_sql($dbsql)) {
             foreach ($result as $rs) {
@@ -1335,8 +1342,8 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                $courseid = $DB->get_field_sql("SELECT id 
-                                                  FROM {course} 
+                $courseid = $DB->get_field_sql("SELECT id
+                                                  FROM {course}
                                                  WHERE shortname="."'".$group[$courselow]."'");
                 if ($DB->record_exists('groups', array('idnumber' => $group[$idnumberlow], 'courseid' => $courseid))) {
                     // Already exists, skip.
