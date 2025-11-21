@@ -777,6 +777,16 @@ class enrol_database_plugin extends enrol_plugin {
                             $trace->output('error: invalid category '.$localcategoryfield.', can not create course: '.$fields[$shortname_l], 1);
                             continue;
                         }
+                    } else if ($category and $fields[$category_l]) {
+                        // Old-style category lookup using localcategoryfield.
+                        if ($coursecategory = $DB->get_record('course_categories', array($localcategoryfield => $fields[$category_l]))) {
+                            // Yay, correctly specified category!
+                            $course->category = $coursecategory->id;
+                        } else {
+                            // Bad luck, better not continue because unwanted ppl might get access to course in different category.
+                            $trace->output('error: invalid category '.$localcategoryfield.', can not create course: '.$fields[$shortname_l], 1);
+                            continue;
+                        }
                     } else {
                         $course->category = $defaultcategory->id;
                     }
