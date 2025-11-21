@@ -509,7 +509,6 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
-
         $manual_enrol_check = $this->get_config('manualenrol_cleaning');
         $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
 
