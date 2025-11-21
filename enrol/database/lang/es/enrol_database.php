@@ -17,10 +17,10 @@
 /**
  * Strings for component 'enrol_database', language 'es'.
  *
- * @package     enrol_database
- * @copyright   1999 onwards Martin Dougiamas  {@link http://moodle.com}
- *              2024 onwards Iñigo Zendegi  {@link https://mondragon.edu}
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   enrol_database
+ * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ *            2024 onwards Iñigo Zendegi  {@link https://mondragon.edu}
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 $string['autocreatecategory'] = 'Creación de categorias de cursos';
@@ -65,6 +65,10 @@ $string['localcoursefield'] = 'Campo de curso local';
 $string['localrolefield'] = 'Campo de rol local';
 $string['localtemplatefield'] = 'Campo de plantilla local';
 $string['localuserfield'] = 'Campo de usuario local';
+$string['manualenrol_cleaning'] = 'Quitar matriculaciones manuales duplicadas';
+$string['manualenrol_cleaning_desc'] = 'Si esta activo, si un usuario que va a ser matriculado desde la base de datos externa se encuentra ya matriculado manualmente se quitará la matriculación manual.';
+$string['manualenrol_cleaning_mode'] = 'Modo de eliminación de las matriculaciones manuales duplicadas';
+$string['manualenrol_cleaning_mode_desc'] = 'Selecciona el modo eliminación de las matriculaciones manuales duplicadas. Si seleccionas all, se eliminarán todas las matriculaciones manuales que también existan en la BD externa. Si seleccionas new, solamente se eliminarán las matriculaciones manuales de las nuevas matriculaciones de la BD externa.';
 $string['newcoursecategory'] = 'Campo de categoría del nuevo curso';
 $string['newcoursecategory_desc'] = 'NOTA: Este campo no se utiliza en el parche de matriculacion basada en plantillas.';
 $string['newcoursecategorypath'] = 'Ruta de la categoría de los nuevos cursos';
@@ -90,10 +94,6 @@ $string['newgroupgroupings_desc'] = 'El nombre del campo de la base de datos ext
 $string['newgroupname'] = 'Campo de nombre de nuevos grupos';
 $string['newgrouptable'] = 'Tabla remota de nuevos grupos';
 $string['newgrouptable_desc'] = 'Especifica el nombre de la tabla que contiene la lista de grupos que deben crearse automáticamente. Si se deja el campo vacío no se crearán nuevos grupos.';
-$string['manualenrol_cleaning'] = 'Quitar matriculaciones manuales duplicadas';
-$string['manualenrol_cleaning_desc'] = 'Si esta activo, si un usuario que va a ser matriculado desde la base de datos externa se encuentra ya matriculado manualmente se quitará la matriculación manual.';
-$string['manualenrol_cleaning_mode'] = 'Modo de eliminación de las matriculaciones manuales duplicadas';
-$string['manualenrol_cleaning_mode_desc'] = 'Selecciona el modo eliminación de las matriculaciones manuales duplicadas. Si seleccionas all, se eliminarán todas las matriculaciones manuales que también existan en la BD externa. Si seleccionas new, solamente se eliminarán las matriculaciones manuales de las nuevas matriculaciones de la BD externa.';
 $string['pluginname'] = 'Base de datos externa';
 $string['pluginname_desc'] = 'Puede utilizar una base de datos externa (casi de cualquier tipo) para controlar sus matriculaciones. Se asume que su base de datos externa contiene al menos un campo que contiene un ID de curso, y un campo que contiene un ID de usuario. Estos se comparan con los campos que usted elija en el curso local y las tablas de usuario.';
 $string['privacy:metadata'] = 'El complemento de matrícula a través de base de datos externa no almacena ningún dato personal.';
