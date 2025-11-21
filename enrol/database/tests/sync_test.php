@@ -711,7 +711,7 @@ final class sync_test extends \advanced_testcase {
         $coursecat = $this->getDataGenerator()->create_category(array('name' => 'Test category 1', 'idnumber' => 'tcid1'));
         $defcat = $DB->get_record('course_categories', array('id' => $plugin->get_config('defaultcategory')));
 
-        $course1 = array('fullname' => 'New course 1', 'shortname' => 'nc1', 'idnumber' => 'ncid1', 'category' => get_categoryid('Test category 1'));
+        $course1 = array('fullname' => 'New course 1', 'shortname' => 'nc1', 'idnumber' => 'ncid1', 'category' => $coursecat->id);
         $course2 = array('fullname' => 'New course 2', 'shortname' => 'nc2', 'idnumber' => 'ncid2', 'category' => null);
         // Duplicate records are to be ignored.
         $course3 = array('fullname' => 'New course 3', 'shortname' => 'xx', 'idnumber' => 'yy2', 'category' => $defcat->id);
