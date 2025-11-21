@@ -463,9 +463,8 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
-
-        $manualenrolcleaning = $this->get_config('manualenrol_cleaning');
-        $manualenrolcleaningmode = $this->get_config('manualenrol_cleaning_mode');
+        $manual_enrol_check = $this->get_config('manualenrol_cleaning');
+        $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
 
         // Create roles mapping.
         $allroles = get_all_roles();
