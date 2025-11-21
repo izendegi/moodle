@@ -482,7 +482,7 @@ class enrol_database_plugin extends enrol_plugin {
         core_php_time_limit::raise();
         raise_memory_limit(MEMORY_HUGE);
 
-        $table            = $this->get_config('remoteenroltable');
+        $table            = trim($this->get_config('remoteenroltable'));
         $coursefield      = trim($this->get_config('remotecoursefield'));
         $userfield        = trim($this->get_config('remoteuserfield'));
         $rolefield        = trim($this->get_config('remoterolefield'));
