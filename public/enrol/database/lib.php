@@ -964,7 +964,7 @@ class enrol_database_plugin extends enrol_plugin {
         $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
-        $defaultcategory = $this->get_config('defaultcategory');
+        $defaultcategory    = $this->get_config('defaultcategory');
 
         if (null === ($defaultcategory = core_course_category::get($defaultcategory, IGNORE_MISSING, true))) {
             $trace->output("default course category does not exist!", 1);
@@ -1017,7 +1017,7 @@ class enrol_database_plugin extends enrol_plugin {
                         continue;
                     }
                     $course = new stdClass();
-                    $course->fullname = $fields[$fullname_l];
+                    $course->fullname  = $fields[$fullname_l];
                     $course->shortname = $fields[$shortname_l];
                     $course->idnumber  = $idnumber_l ? $fields[$idnumber_l] : '';
                     $course->summary   = $summary_l ? $fields[$summary_l] : '';
