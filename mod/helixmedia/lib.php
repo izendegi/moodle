@@ -17,11 +17,11 @@
 /**
  * This file contains a library of functions and constants for the helixmedia module
  *
- * @package    mod
+ * @package    mod_helixmedia
  * @subpackage helixmedia
  * @copyright  2009 Marc Alier, Jordi Piguillem, Nikolas Galanis
  *  marc.alier@upc.edu
- * @copyright  2009 Universitat Politecnica de Catalunya http://www.upc.edu
+ * @copyright  2009 Universitat Politecnica de Catalunya http://www.upc.edu, MEDIAL
  * @author     Marc Alier
  * @author     Jordi Piguillem
  * @author     Nikolas Galanis
@@ -30,15 +30,13 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die;
-
 /**
  * List of features supported in URL module
  * @param string $feature FEATURE_xx constant for requested feature
  * @return mixed True if module supports feature, false if not, null if doesn't know
  */
 function helixmedia_supports($feature) {
-    switch($feature) {
+    switch ($feature) {
         case FEATURE_GROUPS:
             return false;
         case FEATURE_GROUPINGS:
@@ -55,6 +53,12 @@ function helixmedia_supports($feature) {
             return true;
         case FEATURE_MOD_PURPOSE:
             return MOD_PURPOSE_CONTENT;
+        case FEATURE_GRADE_HAS_GRADE:
+        case FEATURE_GRADE_OUTCOMES:
+            if (get_config("helixmedia", "ltiversion") == LTI_VERSION_1P3) {
+                return true;
+            }
+            return false;
         default:
             return null;
     }
@@ -65,7 +69,7 @@ function helixmedia_supports($feature) {
  */
 function helixmedia_preallocate_id() {
     global $DB, $CFG;
-    require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
+    require_once($CFG->dirroot . '/mod/helixmedia/locallib.php');
 
     $pre = new stdclass();
     $pre->timecreated = time();
@@ -78,24 +82,24 @@ function helixmedia_preallocate_id() {
     if ($pre->id == 1 && ($CFG->dbtype == "mariadb" || $CFG->dbtype == "mysqli")) {
         $val = 1;
         // Check the activity mod.
-        $sql = "SELECT MAX(preid) AS preid FROM ".$CFG->prefix."helixmedia;";
+        $sql = "SELECT MAX(preid) AS preid FROM " . $CFG->prefix . "helixmedia;";
         $vala = $DB->get_record_sql($sql);
         if ($vala) {
             $val = $vala->preid;
         }
         // Check the Submissions.
-        $assigninstalled = $DB->get_records('assign_plugin_config', array('plugin' => 'helixassign'));
+        $assigninstalled = $DB->get_records('assign_plugin_config', ['plugin' => 'helixassign']);
         if (count($assigninstalled) > 0) {
-            $sql = "SELECT MAX(preid) AS preid FROM ".$CFG->prefix."assignsubmission_helixassign;";
+            $sql = "SELECT MAX(preid) AS preid FROM " . $CFG->prefix . "assignsubmission_helixassign;";
             $valb = $DB->get_record_sql($sql);
             if ($valb && $valb->preid > $val) {
                 $val = $valb->preid;
             }
         }
         // Check the Feedback.
-        $feedinstalled = $DB->get_records('assign_plugin_config', array('plugin' => 'helixfeedback'));
+        $feedinstalled = $DB->get_records('assign_plugin_config', ['plugin' => 'helixfeedback']);
         if (count($feedinstalled) > 0) {
-            $sql = "SELECT MAX(preid) AS preid FROM ".$CFG->prefix."assignfeedback_helixfeedback;";
+            $sql = "SELECT MAX(preid) AS preid FROM " . $CFG->prefix . "assignfeedback_helixfeedback;";
             $valc = $DB->get_record_sql($sql)->preid;
             if ($valc && $valc->preid > $val) {
                 $val = $valc->preid;
@@ -110,7 +114,7 @@ function helixmedia_preallocate_id() {
 
         $val = intval($val / 10) + 100;
 
-        $DB->execute("ALTER TABLE ".$CFG->prefix."helixmedia_pre AUTO_INCREMENT=".$val."");
+        $DB->execute("ALTER TABLE " . $CFG->prefix . "helixmedia_pre AUTO_INCREMENT=" . $val . "");
         $pre = new stdclass();
         $pre->timecreated = time();
         $pre->servicesalt = uniqid('', true);
@@ -122,18 +126,13 @@ function helixmedia_preallocate_id() {
 
 /**
  * Get the resource link id
- * @param $cmid Course module id
- * @return The Resource link id
+ * @param int $cmid Course module id
+ * @return int The Resource link id
  */
 function helixmedia_get_preid($cmid) {
     global $DB;
-
-    if ($cmid == null) {
-        return null;
-    }
-
     $cm = get_coursemodule_from_id('helixmedia', $cmid, 0, false, MUST_EXIST);
-    $hmli = $DB->get_record('helixmedia', array('id' => $cm->instance), '*', MUST_EXIST);
+    $hmli = $DB->get_record('helixmedia', ['id' => $cm->instance], '*', MUST_EXIST);
     return $hmli->preid;
 }
 
@@ -143,19 +142,21 @@ function helixmedia_get_preid($cmid) {
  * will create a new instance and return the id number
  * of the new instance.
  *
- * @param object $instance An object from the form in mod.html
+ * @param object $helixmedia An object from the form in mod.html
+ * @param object $mform The Moodle form
  * @return int The id of the newly inserted helixmedia record
  **/
 function helixmedia_add_instance($helixmedia, $mform) {
     global $DB, $CFG;
-    require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
+    require_once($CFG->dirroot . '/mod/helixmedia/locallib.php');
 
-    $prerec = $DB->get_record('helixmedia_pre', array('id' => $helixmedia->preid));
+    $prerec = $DB->get_record('helixmedia_pre', ['id' => $helixmedia->preid]);
 
     $helixmedia->timecreated = time();
     $helixmedia->timemodified = $helixmedia->timecreated;
-    $helixmedia->servicesalt = $prerec->servicesalt;
-
+    if (property_exists($prerec, 'servicesalt')) {
+        $helixmedia->servicesalt = $prerec->servicesalt;
+    }
     if (!isset($helixmedia->showtitlelaunch)) {
         $helixmedia->showtitlelaunch = 0;
     }
@@ -164,11 +165,18 @@ function helixmedia_add_instance($helixmedia, $mform) {
         $helixmedia->showdescriptionlaunch = 0;
     }
 
-    /**Set these to some defaults for now.**/
+    // Set these to some defaults for now.
     $helixmedia->icon = "";
     $helixmedia->secureicon = "";
 
     $helixmedia->id = $DB->insert_record('helixmedia', $helixmedia);
+
+    if (property_exists($helixmedia, 'addgrades') && $helixmedia->addgrades) {
+        if (!isset($helixmedia->cmidnumber)) {
+            $helixmedia->cmidnumber = '';
+        }
+        helixmedia_grade_item_update($helixmedia);
+    }
 
     return $helixmedia->id;
 }
@@ -179,7 +187,8 @@ function helixmedia_add_instance($helixmedia, $mform) {
  * (defined by the form in mod.html) this function
  * will update an existing instance with new data.
  *
- * @param object $instance An object from the form in mod.html
+ * @param object $helixmedia An object from the form in mod.html
+ * @param object $mform The Moodle form
  * @return boolean Success/Fail
  **/
 function helixmedia_update_instance($helixmedia, $mform) {
@@ -196,6 +205,13 @@ function helixmedia_update_instance($helixmedia, $mform) {
         $helixmedia->showdescriptionlaunch = 0;
     }
 
+    if (property_exists($helixmedia, 'addgrades') && $helixmedia->addgrades) {
+        helixmedia_grade_item_update($helixmedia);
+    } else {
+        // Instance is no longer accepting grades from Provider, set grade to "No grade" value 0.
+        helixmedia_grade_item_delete($helixmedia);
+    }
+
     return $DB->update_record('helixmedia', $helixmedia);
 }
 
@@ -210,51 +226,15 @@ function helixmedia_update_instance($helixmedia, $mform) {
 function helixmedia_delete_instance($id) {
     global $DB;
 
-    if (! $helixmedia = $DB->get_record("helixmedia", array("id" => $id))) {
+    if (! $helixmedia = $DB->get_record("helixmedia", ["id" => $id])) {
         return false;
     }
 
-    $result = true;
+    // Delete any dependent records here.
+    helixmedia_grade_item_delete($helixmedia);
 
-    return $DB->delete_records("helixmedia", array("id" => $helixmedia->id));
-}
-
-/**
- * Return a small object with summary information about what a
- * user has done with a given particular instance of this module
- * Used for user activity reports.
- * $return->time = the time they did it
- * $return->info = a short text description
- *
- * @return null
- * @TODO: implement this moodle function (if needed)
- **/
-function helixmedia_user_outline($course, $user, $mod, $helixmedia) {
-    return null;
-}
-
-/**
- * Print a detailed representation of what a user has done with
- * a given particular instance of this module, for user activity reports.
- *
- * @return boolean
- * @TODO: implement this moodle function (if needed)
- **/
-function helixmedia_user_complete($course, $user, $mod, $helixmedia) {
+    $DB->delete_records("helixmedia", ["id" => $helixmedia->id]);
     return true;
-}
-
-/**
- * Given a course and a time, this module should find recent activity
- * that has occurred in helixmedia activities and print it out.
- * Return true if there was output, or false is there was none.
- *
- * @uses $CFG
- * @return boolean
- * @TODO: implement this moodle function
- **/
-function helixmedia_print_recent_activity($course, $isteacher, $timestart) {
-    return false;  // True if anything was printed, otherwise false.
 }
 
 /**
@@ -280,13 +260,13 @@ function helixmedia_uninstall() {
 /**
  * Mark the activity completed (if required) and trigger the course_module_viewed event.
  *
- * @param  stdClass $hml        hml object
- * @param  stdClass $course     course object
- * @param  stdClass $cm         course module object
- * @param  stdClass $context    context object
+ * @param  object $hml        hml object
+ * @param  object $course     course object
+ * @param  object $cm         course module object
+ * @param  object $context    context object
+ * @param  object $user       user object or null
  * @since Moodle 3.0
  */
-
 function helixmedia_view($hml, $course, $cm, $context, $user = null) {
     global $USER;
     if ($user == null) {
@@ -294,11 +274,11 @@ function helixmedia_view($hml, $course, $cm, $context, $user = null) {
     }
 
     // Trigger course_module_viewed event.
-    $params = array(
+    $params = [
         'context' => $context,
         'objectid' => $hml->id,
-        'userid' => $user->id
-    );
+        'userid' => $user->id,
+    ];
 
     $event = \mod_helixmedia\event\course_module_viewed::create($params);
     $event->add_record_snapshot('course_modules', $cm);
@@ -308,4 +288,69 @@ function helixmedia_view($hml, $course, $cm, $context, $user = null) {
 
     $completion = new completion_info($course);
     $completion->set_module_viewed($cm);
+}
+
+/**
+ * Create grade item for given hmli
+ *
+ * @category grade
+ * @param object $hmli object with extra cmidnumber
+ * @param mixed $grades optional array/object of grade(s); 'reset' means reset grades in gradebook
+ * @return int 0 if ok, error code otherwise
+ */
+function helixmedia_grade_item_update($hmli, $grades = null) {
+    global $CFG;
+    require_once($CFG->libdir . '/gradelib.php');
+
+    if (!$hmli->addgrades) {
+        return 0;
+    }
+
+    $params = ['itemname' => $hmli->name, 'idnumber' => $hmli->cmidnumber];
+
+    $custom = json_decode($hmli->custom);
+    if (!property_exists($custom, 'is_quiz') || strtolower($custom->is_quiz) != "true") {
+        return 0;
+    }
+
+    $params['gradetype'] = GRADE_TYPE_VALUE;
+    $params['grademax']  = intval($custom->max_score);
+    $params['grademin']  = 0;
+
+    if ($grades === 'reset') {
+        $params['reset'] = true;
+        $grades = null;
+    }
+
+    return grade_update('mod/helixmedia', $hmli->course, 'mod', 'helixmedia', $hmli->id, 0, $grades, $params);
+}
+
+/**
+ * Update activity grades
+ *
+ * @param stdClass $hmli The HML instance
+ * @param int      $userid Specific user only, 0 means all.
+ * @param bool     $nullifnone Not used
+ */
+function helixmedia_update_grades($hmli, $userid = 0, $nullifnone = true) {
+    global $CFG;
+    require_once($CFG->dirroot . '/mod/lti/servicelib.php');
+    // MEDIAL doesn't have its own grade table so the only thing to do is update the grade item.
+    if ($hmli->addgrades) {
+        lti_grade_item_update($hmli);
+    }
+}
+
+/**
+ * Delete grade item for given basiclti
+ *
+ * @category grade
+ * @param object $hmli object
+ * @return object hmli
+ */
+function helixmedia_grade_item_delete($hmli) {
+    global $CFG;
+    require_once($CFG->libdir . '/gradelib.php');
+
+    grade_update('mod/helixmedia', $hmli->course, 'mod', 'helixmedia', $hmli->id, 0, null, ['deleted' => 1]);
 }

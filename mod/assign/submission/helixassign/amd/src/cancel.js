@@ -23,17 +23,11 @@ define([], function() {
     var module = {};
 
     module.helixCancelClick = function() {
-        var xmlDoc = null;
-        if (typeof window.ActiveXObject !== 'undefined') {
-            /* global ActiveXObject */
-            xmlDoc = new ActiveXObject('Microsoft.XMLHTTP');
-        } else {
-            xmlDoc = new XMLHttpRequest();
-            var params = 'resource_link_id=' + module.resID + '&user_id=' + module.userID;
-            xmlDoc.open('POST', module.statusURL, false);
-            xmlDoc.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-            xmlDoc.send(params);
-        }
+        var xmlDoc = new XMLHttpRequest();
+        var params = 'resource_link_id=' + module.resID + '&user_id=' + module.userID;
+        xmlDoc.open('POST', module.statusURL, false);
+        xmlDoc.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        xmlDoc.send(params);
     };
 
     module.bind = function() {
