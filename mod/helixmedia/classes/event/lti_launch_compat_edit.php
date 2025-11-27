@@ -25,12 +25,13 @@
 
 namespace mod_helixmedia\event;
 defined('MOODLE_INTERNAL') || die();
-require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
+require_once($CFG->dirroot . '/mod/helixmedia/locallib.php');
 
 /**
  * LTI Edit Launch Event
  *
  * Class for event to be triggered when a course module is viewed with legacy log compatibility.
+ * Note this class is only used in Moodle 4.1 and lower
  *
  * @package    mod_helixmedia
  * @since      Moodle 2.7
@@ -38,18 +39,14 @@ require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
  * @author     Tim Williams tim@medial.com
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 class lti_launch_compat_edit extends lti_launch_edit {
-
     /**
      * Return the legacy event log data.
      *
      * @return array|null
      */
     protected function get_legacy_logdata() {
-        return array($this->courseid, $this->objecttable, 'editlaunch', 'launch.php?id=' . $this->contextinstanceid .
-            '&type=' . HML_LAUNCH_EDIT, $this->objectid, $this->contextinstanceid);
+        return [$this->courseid, $this->objecttable, 'editlaunch', 'launch.php?id=' . $this->contextinstanceid .
+            '&type=' . HML_LAUNCH_EDIT, $this->objectid, $this->contextinstanceid];
     }
-
- 
 }

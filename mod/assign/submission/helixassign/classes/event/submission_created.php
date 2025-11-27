@@ -24,8 +24,6 @@
 
 namespace assignsubmission_helixassign\event;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * The assignsubmission_helixassign submission_created event class.
  *
@@ -35,7 +33,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class submission_created extends \mod_assign\event\submission_created {
-
     /**
      * Init method.
      */
@@ -69,6 +66,6 @@ class submission_created extends \mod_assign\event\submission_created {
      */
     public static function get_objectid_mapping() {
         // No mapping available for 'assignsubmission_helixassign'.
-        return array('db' => 'assignsubmission_helixassign', 'restore' => \core\event\base::NOT_MAPPED);
+        return ['db' => 'assignsubmission_helixassign', 'restore' => \core\event\base::NOT_MAPPED];
     }
 }
