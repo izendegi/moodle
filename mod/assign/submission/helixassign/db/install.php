@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 
 /**
  * Code run after the assignsubmission_helixassign module database tables have been created.
@@ -41,5 +39,3 @@ function xmldb_assignsubmission_helixassign_install() {
 
     return true;
 }
-
-
