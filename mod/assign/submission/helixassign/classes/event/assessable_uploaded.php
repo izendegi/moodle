@@ -24,8 +24,6 @@
 
 namespace assignsubmission_helixassign\event;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * The assignsubmission_helixassign assessable uploaded event class.
  *
@@ -41,7 +39,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class assessable_uploaded extends \core\event\assessable_uploaded {
-
     /**
      * Returns description of what happened.
      *
@@ -67,7 +64,7 @@ class assessable_uploaded extends \core\event\assessable_uploaded {
      * @return \moodle_url
      */
     public function get_url() {
-        return new \moodle_url('/mod/assign/view.php', array('id' => $this->contextinstanceid));
+        return new \moodle_url('/mod/assign/view.php', ['id' => $this->contextinstanceid]);
     }
 
     /**
@@ -80,7 +77,11 @@ class assessable_uploaded extends \core\event\assessable_uploaded {
         $this->data['objecttable'] = 'assign_submission';
     }
 
+    /**
+     * Gets the object mapping
+     * @return array
+     */
     public static function get_objectid_mapping() {
-        return array('db' => 'assign_submission', 'restore' => 'submission');
+        return ['db' => 'assign_submission', 'restore' => 'submission'];
     }
 }
