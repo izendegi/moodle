@@ -38,42 +38,49 @@ require_once("$CFG->libdir/externallib.php");
  * @since      Moodle 3.0
  */
 class mod_helixmedia_external extends external_api {
-
+    /**
+     * Defines the structure for the launch data parameters
+     * @return array
+     */
     public static function get_launch_data_parameters() {
         return new external_function_parameters(
-            array(
+            [
                 'id' => new external_value(PARAM_INT, 'Moodle module id'),
                 'user' => new external_value(PARAM_INT, 'Moodle user id'),
-                'course' => new external_value(PARAM_INT, 'Moodle course id')
-            )
+                'course' => new external_value(PARAM_INT, 'Moodle course id'),
+            ]
         );
     }
 
+    /**
+     * Gets the launch data
+     * @param int $id instance id
+     * @param int $userid user id
+     * @param int $course The course id
+     **/
     public static function get_launch_data($id, $userid, $course) {
         global $DB, $USER;
-        $warnings = array();
-        $token = self::random_code(40);
+        $warnings = [];
 
-        $tokenid = $DB->insert_record("helixmedia_mobile", array(
-            'instance' => $id,
-            'userid' => $userid,
-            'course' => $course,
-            'token' => $token,
-            'timecreated' => time())
-        );
+        [$token, $tokenid] = helixmedia_get_mobile_token($id, $userid, $course);
 
-        $result = array(
+        $result = [
             'id' => $tokenid,
             'token' => $token,
-            'warnings' => $warnings
-        );
+            'warnings' => $warnings,
+        ];
 
         return $result;
     }
 
+    /**
+     * Gets a random code
+     * @param int $length number of chars
+     * @return string
+     */
     private static function random_code($length) {
         $chars = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        $clen = strlen( $chars ) - 1;
+        $clen = strlen($chars) - 1;
         $id = '';
 
         for ($i = 0; $i < $length; $i++) {
@@ -82,13 +89,17 @@ class mod_helixmedia_external extends external_api {
         return ($id);
     }
 
+    /**
+     * Gets the structure for launch data return
+     * @return array
+     */
     public static function get_launch_data_returns() {
         return new external_single_structure(
-            array(
+            [
                 'id' => new external_value(PARAM_INT, 'Launch token id'),
                 'token' => new external_value(PARAM_TEXT, 'Launch token'),
-                'warnings' => new external_warnings()
-            )
+                'warnings' => new external_warnings(),
+            ]
         );
     }
 }
