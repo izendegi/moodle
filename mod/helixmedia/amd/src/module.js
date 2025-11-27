@@ -25,21 +25,93 @@ define(['jquery'], function($) {
     module.first = true;
 
     module.medialinstance = function($, params) {
+
         var minst = {};
         minst.params = params;
         minst.params.gotIn = false;
-        minst.params.medial_interval = false;
+
+        minst.params.medialInterval = false;
+        minst.params.videoref = '';
 
         minst.openmodal = function(evt) {
             evt.preventDefault();
-            $('#mod_helixmedia_launchframe_'+minst.params.docID).attr('src', minst.params.launchurl);
-            $('.modal-backdrop').css('position', 'relative');
-            $('.modal-backdrop').css('z-index', '0');
 
+            var lu = minst.params.launchurl;
+            if (minst.params.videorref !== '') {
+                lu = lu + "&video_ref=" + minst.params.videoref;
+            }
+            $('#mod_helixmedia_launchframe_' + minst.params.docID).attr('src', lu);
+            if (!minst.params.bs5) {
+                $('.modal-backdrop').css('position', 'relative');
+            }
+
+            $('.modal-backdrop').css('z-index', '0');
             if (minst.params.doStatusCheck) {
-                setTimeout(minst.checkStatus, 5000);
+                if (minst.params.statusURL !== false) {
+                    setTimeout(minst.checkStatus, 500);
+                }
                 setTimeout(minst.maintainSession, minst.params.sessionFreq);
             }
+            window.addEventListener("message", minst.onmessage);
+        };
+
+        minst.onmessage = function(evt) {
+            if (evt.origin != minst.params.origin) {
+                /* eslint-disable-next-line no-console */
+                console.log("Message rejected: bad origin evt: " + evt.origin + " expected: " + minst.params.origin);
+                return;
+            }
+
+            var mform1 = document.getElementById("mform1");
+            if (mform1 === null) {
+                var elements = document.getElementsByClassName("mform");
+                mform1 = elements.item(0);
+            }
+
+            var name = mform1.elements.namedItem('name');
+            if (name !== null && name.value.length == 0) {
+                mform1.name.value = evt.data.title;
+            }
+
+            var custom = mform1.elements.namedItem('custom');
+            if (custom !== null) {
+                custom.value = JSON.stringify(evt.data.custom);
+            }
+
+            var hacustom = mform1.elements.namedItem('helixassign_custom');
+            if (hacustom !== null) {
+                hacustom.value = JSON.stringify(evt.data.custom);
+            }
+
+            var hfcustom = mform1.elements.namedItem('helixfeedback_custom');
+            if (hfcustom !== null) {
+                hfcustom.value = JSON.stringify(evt.data.custom);
+            }
+
+
+            var addgrades = mform1.elements.namedItem('addgrades');
+            if (addgrades !== null) {
+                if (evt.data.custom.is_quiz.toLowerCase() == "true") {
+                    addgrades.checked = true;
+                } else {
+                    addgrades.checked = false;
+                }
+            }
+
+            minst.params.videoref = evt.data.custom.video_ref;
+            setTimeout(minst.closeDialogue, 2000);
+        };
+
+        minst.textfit = function($) {
+            $('.helixmedia_fittext').each(function() {
+                var w2 = $(this).width();
+                if ($(this).text().length > 16 && w2 < 240) {
+                    var ratio = w2 / 240;
+                    $(this).css('font-size', ratio + 'em');
+                } else {
+                    $(this).css('font-size', 'large');
+                }
+            });
         };
 
         minst.closemodalListen = function(evt) {
@@ -48,43 +120,47 @@ define(['jquery'], function($) {
         };
 
         minst.closemodal = function() {
-            if (minst.params.medial_interval !== false) {
-                clearInterval(minst.params.medial_interval);
+            if (minst.params.medialInterval != false) {
+                clearInterval(minst.params.medialInterval);
+                minst.params.medialInterval = false;
             }
 
-            $('#mod_helixmedia_launchframe_'+minst.params.docID).attr('src', '');
+            $('#mod_helixmedia_launchframe_' + minst.params.docID).attr('src', '');
 
             if (!minst.params.doStatusCheck) {
                 return;
             }
 
-            var tframe = document.getElementById("mod_helixmedia_thumbframe_"+minst.params.docID);
-            if (tframe !== null && typeof(minst.params.thumburl) !== "undefined") {
-                tframe.contentWindow.location = minst.params.thumburl;
-            }
+            var tframe = document.getElementById("mod_helixmedia_thumbframe_" + minst.params.docID);
 
-            var mform1 = document.getElementById("mform1");
-            if (mform1 === null) {
-                var elements = document.getElementsByClassName("mform");
-                mform1 = elements[0];
+            if (tframe !== null && typeof (minst.params.thumburl) != "undefined") {
+                if (minst.params.videorref === '') {
+                    tframe.contentWindow.location = minst.params.thumburl;
+                } else {
+                    tframe.contentWindow.location = minst.params.thumburl + "&video_ref=" + minst.params.videoref;
+                }
+
             }
         };
 
         minst.closeDialogue = function() {
-            $('#mod_helixmedia_modal_'+minst.params.docID).modal('hide');
+            $('#mod_helixmedia_modal_' + minst.params.docID).modal('hide');
             minst.closemodal();
         };
 
         minst.bind = function() {
-            $('#helixmedia_ltimodal_'+minst.params.docID).click(minst.openmodal);
-            $('#mod_helixmedia_closemodal_'+minst.params.docID).click(minst.closemodalListen);
+            $('#helixmedia_ltimodal_' + minst.params.docID).click(minst.openmodal);
+            $('#mod_helixmedia_closemodal_' + minst.params.docID).click(minst.closemodalListen);
+
+            minst.textfit($);
         };
 
         minst.unbind = function() {
-            $('#helixmedia_ltimodal_'+minst.params.docID).off();
-            $('#mod_helixmedia_closemodal_'+minst.params.docID).off();
-            if (minst.params.medial_interval !== false) {
-                clearInterval(minst.params.medial_interval);
+            $('#helixmedia_ltimodal_' + minst.params.docID).off();
+            $('#mod_helixmedia_closemodal_' + minst.params.docID).off();
+            if (minst.params.medialInterval != false) {
+                clearInterval(minst.params.medialInterval);
+                minst.params.medialInterval = false;
             }
         };
 
@@ -97,15 +173,16 @@ define(['jquery'], function($) {
 
         minst.checkStatusResponse = function(evt) {
             var responseText = evt.target.responseText;
-            if (responseText === "IN") {
+            if (responseText == "IN") {
                 minst.params.gotIn = true;
             }
-            if (responseText !== "OUT" || minst.params.gotIn === false) {
-                if (minst.params.medial_interval === false) {
-                    minst.params.medial_interval = setInterval(minst.checkStatus, 2000);
+            if (responseText != "OUT" || minst.params.gotIn == false) {
+
+                if (minst.params.medialInterval == false) {
+                    minst.params.medialInterval = setInterval(minst.checkStatus, 2000);
                 }
             } else {
-                if (minst.params.resDelay === 0) {
+                if (minst.params.resDelay == 0) {
                     minst.closeDialogue();
                 } else {
                     setTimeout(minst.closeDialogue, (minst.params.resDelay * 1000));
@@ -115,12 +192,11 @@ define(['jquery'], function($) {
 
         minst.checkStatus = function() {
             var xmlDoc = new XMLHttpRequest();
-            var params = "resource_link_id=" + minst.params.resID +
-                         "&user_id=" + minst.params.userID +
-                         "&oauth_consumer_key=" + minst.params.oauthConsumerKey;
+            var params = "resource_link_id=" + minst.params.resID + "&user_id=" + minst.params.userID +
+                "&oauth_consumer_key=" + minst.params.oauthConsumerKey;
             xmlDoc.addEventListener("load", minst.checkStatusResponse);
             xmlDoc.open("POST", minst.params.statusURL);
-            xmlDoc.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+            xmlDoc.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
             xmlDoc.send(params);
         };
 
@@ -128,13 +204,15 @@ define(['jquery'], function($) {
     };
 
     module.init = function(frameid, launchurl, thumburl, resID, userID, statusURL, oauthConsumerKey, doStatusCheck,
-        sessionURL, sessionFreq, resDelay, extraID) {
+        sessionURL, sessionFreq, resDelay, extraID, title, library, origin, bs5) {
+
+
         // AMD Modules aren't unique, so this will get called in the same instance for each MEDIAL we have on the page.
         // That causes trouble on the quiz grading interface in particular, so wrap each call in an inner object.
 
         // Sanity check, sometimes this gets called more than once with the same resID. Clean up the old one and re-init.
-        if (typeof module.instances[resID+extraID] !== 'undefined') {
-            module.instances[resID+extraID].unbind();
+        if (typeof module.instances[resID + extraID] !== 'undefined') {
+            module.instances[resID + extraID].unbind();
         }
 
         var params = {};
@@ -149,7 +227,9 @@ define(['jquery'], function($) {
         params.sessionURL = sessionURL;
         params.sessionFreq = sessionFreq;
         params.resDelay = resDelay;
-        params.docID = resID+extraID;
+        params.docID = resID + extraID;
+        params.bs5 = bs5;
+        params.origin = origin;
         var medialhandler = module.medialinstance($, params);
         module.instances[params.docID] = medialhandler;
         medialhandler.bind();

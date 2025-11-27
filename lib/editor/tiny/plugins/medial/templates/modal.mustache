@@ -19,17 +19,15 @@
 
     Modal to manage a link within the Tiny Editor.
 
-    Classes required for JS:
-    * none
-
-    Data attributes required for JS:
-    * none
 
     Context variables required for this template:
 
     Example context (json):
     {
-
+        "medialurl": "https://medial.com",
+        "launchurl": "https://medial.com",
+        "elementid": 100,
+        "embedopt": false
     }
 }}
 
@@ -40,10 +38,9 @@
     {{/title}}
 
     {{$body}}
-        <div class="embed-responsive embed-responsive-4by3">
-            <iframe src="{{launchurl}}" id="mod_helixmedia_launchframe_{{elementid}}" class="embed-responsive-item overflow-auto border-0" 
-                allow="microphone {{medialurl}}; camera {{medialurl}}; display-capture {{medialurl}};"
-                allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+        <div class="{{^bs5}}embed-responsive embed-responsive-4by3{{/bs5}}{{#bs5}}ratio ratio-4x3{{/bs5}}">
+            <iframe src="{{launchurl}}" id="mod_helixmedia_launchframe_{{elementid}}" class="{{^bs5}}embed-responsive-item{{/bs5}} overflow-auto border-0" 
+                allow="fullscreen; microphone {{medialurl}}; camera {{medialurl}}; display-capture {{medialurl}};"></iframe>
         </div>
     {{/body}}
     {{$footer}}
