@@ -23,16 +23,27 @@
  * @author    Tim Williams (tmw@autotrain.org) for Streaming LTD
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Stub for upgrade code
  * @param int $oldversion
  * @return bool
  */
 function xmldb_assignfeedback_helixfeedback_upgrade($oldversion) {
+    global $DB;
 
+    if ($oldversion < 2025021701) {
+        // Define field custom to be added to assignfeedback_helixfeedback.
+        $table = new xmldb_table('assignfeedback_helixfeedback');
+        $field = new xmldb_field('custom', XMLDB_TYPE_TEXT, null, null, null, null, null, 'servicesalt');
+
+        $dbman = $DB->get_manager();
+        // Conditionally launch add field custom.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Helixfeedback savepoint reached.
+        upgrade_plugin_savepoint(true, 2025021701, 'assignfeedback', 'helixfeedback');
+    }
     return true;
 }
-
-

@@ -32,17 +32,24 @@ use editor_tiny\plugin_with_menuitems;
 use editor_tiny\plugin_with_configuration;
 
 defined('MOODLE_INTERNAL') || die();
-require_once($CFG->dirroot.'/lib/editor/tiny/plugins/medial/lib.php');
+require_once($CFG->dirroot . '/lib/editor/tiny/plugins/medial/lib.php');
+require_once($CFG->dirroot . '/mod/helixmedia/locallib.php');
 
-class plugininfo extends plugin implements plugin_with_configuration, plugin_with_buttons, plugin_with_menuitems {
-
+/**
+ * Tiny MEDIAL plugin.
+ *
+ * @package    tiny_medial
+ * @copyright  2024 MEDIAL Tim Williams <tim@medial.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class plugininfo extends plugin implements plugin_with_buttons, plugin_with_configuration, plugin_with_menuitems {
     /**
      * Whether the plugin is enabled
      *
      * @param context $context The context that the editor is used within
      * @param array $options The options passed in when requesting the editor
      * @param array $fpoptions The filepicker options passed in when requesting the editor
-     * @param editor $editor The editor instance in which the plugin is initialised
+     * @param ?editor $editor The editor instance in which the plugin is initialised
      * @return boolean
      */
     public static function is_enabled(
@@ -71,6 +78,18 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
             }
         }
 
+        if ($permission && !$canhaveexternalfiles && $canhavefiles) {
+            // Special case, this has been added to deal with the use of MEDIAL in the Essay question type.
+            // Essay questions have no response format option that allows external files, so if we are in
+            // a context where the user has permission, internal files are allowed but external files
+            // are not allowed, we may want to use allow MEDIAL to work as an internal file instead.
+
+            $internal = get_config('tiny_medial', 'internal');
+            if ($internal == 1) {
+                $canhaveexternalfiles = $canhavefiles;
+            }
+        }
+
         $func = true;
         // This hides the button in specific situations where we want people to use the plugin, eg in the MEDIAL activity
         // and the assign grading interface where we want people to use Feedback.
@@ -87,7 +106,7 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
                     break;
             }
         } else {
-            // $PAGE->cm is false when adding a new instance, so check the URL and see if we're adding a MEDIAL activity
+            // Object $PAGE->cm is false when adding a new instance, so check the URL and see if we're adding a MEDIAL activity.
             if ($PAGE->url->get_path() == "/course/modedit.php" && $PAGE->url->get_param("add") == "helixmedia") {
                 $func = false;
             }
@@ -96,18 +115,35 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
         return $func && $permission && $canhavefiles && $canhaveexternalfiles;
     }
 
+    /**
+     * Gets the available buttons provided by this plugin
+     * @return array of buttons
+     **/
     public static function get_available_buttons(): array {
         return [
             'tiny_medial/plugin',
         ];
     }
 
+    /**
+     * Gets the available menu items provided by this plugin
+     * @return array of menu items
+     **/
     public static function get_available_menuitems(): array {
         return [
             'tiny_medial/plugin',
         ];
     }
 
+    /**
+     * Get a list of the menu items provided by this plugin.
+     *
+     * @param context $context The context that the editor is used within
+     * @param array $options The options passed in when requesting the editor
+     * @param array $fpoptions The filepicker options passed in when requesting the editor
+     * @param ?\editor_tiny\editor $editor The editor instance in which the plugin is initialised
+     * @return array
+     */
     public static function get_plugin_configuration_for_context(
         context $context,
         array $options,
@@ -156,14 +192,20 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
             $ll = -1;
         }
 
+        if (get_config('helixmedia', 'ltiversion') == LTI_VERSION_1) {
+            $oauthkey = get_config('helixmedia', 'consumer_key');
+        } else {
+            $oauthkey = false;
+        }
+
         return [
             'baseurl' => $CFG->wwwroot,
-            'ltiurl' => get_config("helixmedia", "launchurl"),
+            'ltiurl' => helixmedial_launch_url(),
             'statusurl' => helixmedia_get_status_url(),
             'userid' => intval($USER->id),
             'hideinsert' => $hideinsert,
             'insertdelay' => $modaldelay,
-            'oauthConsumerKey' => get_config('helixmedia', 'consumer_key'),
+            'oauthConsumerKey' => $oauthkey,
             'modtype' => $modtype,
             'placeholder' => $placeholder,
             'playersizeurl' => helixmedia_get_playerwidthurl(),
@@ -173,6 +215,7 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
             'libLaunchType' => $ll,
             'embedopt' => $embedopt,
             'linkonly' => $linkonly,
+            'bs5' => helixmedia_is_moodle_5(),
         ];
     }
 }
