@@ -1,8 +1,8 @@
 @enrol @enrol_metabulk
-Feature: Enrolments are synchronised with meta courses
+Feature: Enrolments are synchronised with metabulk courses
   In order to simplify enrolments in parent courses
   As a teacher
-  I need to be able to set up meta enrolments
+  I need to be able to set up metabulk enrolments
 
   Background:
     Given the following "users" exist:
@@ -33,7 +33,7 @@ Feature: Enrolments are synchronised with meta courses
     And I click on "Enable" "link" in the "Bulk meta course link" "table_row"
     And I am on homepage
     And I follow "Courses"
-  
+
   Scenario: Add bulk meta enrolment instance to a course
     When I follow "Course 3"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
@@ -44,7 +44,7 @@ Feature: Enrolments are synchronised with meta courses
     And I press "Next"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
     Then I should see "testname1" in the "table.generaltable" "css_element"
-  
+
   Scenario: Add metabulk instance and link multiple courses in that instance
     When I follow "Course 3"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
