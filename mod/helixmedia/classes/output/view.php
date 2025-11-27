@@ -14,21 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 namespace mod_helixmedia\output;
 defined('MOODLE_INTERNAL') || die();
-
-/**
- * Search form renderable.
- *
- * @package    mod_helixmedia
- * @copyright  2021 Tim Williams <tmw@autotrain.org>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 
 use renderable;
 use renderer_base;
 use templatable;
+
+require_once($CFG->dirroot . '/mod/helixmedia/locallib.php');
 
 /**
  * Container renderable class.
@@ -38,11 +31,20 @@ use templatable;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class view implements renderable, templatable {
+    /**
+     * @var The LTI launch URL
+     */
+    private $launchurl;
 
-    private $launchurl, $audioonly;
+    /**
+     * @var Is this audio only?
+     */
+    private $audioonly;
 
     /**
      * Constructor.
+     * @param string $launchurl Launch URL
+     * @param bool $audioonly
      */
     public function __construct($launchurl, $audioonly = false) {
         global $COURSE;
@@ -50,26 +52,23 @@ class view implements renderable, templatable {
         $this->audioonly = $audioonly;
 
         if ($COURSE->id != 1) {
-            $this->launchurl.='&course='.$COURSE->id;
+            $this->launchurl .= '&course=' . $COURSE->id;
         }
     }
 
-
+    /**
+     * Export data for rendering.
+     * @param renderer_base $output The renderer.
+     * @return arrray The data as an array
+     */
     public function export_for_template(renderer_base $output) {
         global $CFG;
 
-        if ($this->audioonly) {
-            $aspect = '';
-            $style = 'height:100px';
-        } else {
-            $aspect = 'embed-responsive-16by9';
-            $style = '';
-        }
-
         $data = [
             'launchurl' => $this->launchurl,
-            'aspect' => $aspect,
-            'style' => $style
+            'bs5' => helixmedia_is_moodle_5(),
+            'audioonly' => $this->audioonly,
+            'medialurl' => get_config("helixmedia", "launchurl"),
         ];
         return $data;
     }

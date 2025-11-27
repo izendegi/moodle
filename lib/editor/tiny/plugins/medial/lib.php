@@ -24,13 +24,13 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
-require_once($CFG->dirroot.'/lib/filterlib.php');
+require_once($CFG->dirroot . '/mod/helixmedia/locallib.php');
+require_once($CFG->dirroot . '/lib/filterlib.php');
 
 /**
  * Parses a list of module types and checks if they match the one we are in.
- * @param $param The list name to check
- * @return The module name string or false
+ * @param string $param The list name to check
+ * @return string The module name string or false
  */
 function tiny_medial_checklist($param) {
     global $PAGE, $DB;
@@ -38,8 +38,10 @@ function tiny_medial_checklist($param) {
     $types = explode("\n", $config);
     for ($i = 0; $i < count($types); $i++) {
         $types[$i] = trim($types[$i]);
-        if (strlen($types[$i]) > 0 && strpos($PAGE->pagetype, 'mod-'.$types[$i]) !== false &&
-            $DB->get_record('modules', ['name' => $types[$i]])) {
+        if (
+            strlen($types[$i]) > 0 && strpos($PAGE->pagetype, 'mod-' . $types[$i]) !== false &&
+            $DB->get_record('modules', ['name' => $types[$i]])
+        ) {
             return $types[$i];
         }
     }
@@ -49,7 +51,7 @@ function tiny_medial_checklist($param) {
 
 /**
  * Test if we have an active MEDIAL filter
- * @param $context (optional) The current context
+ * @param context $context (optional) The current context
  * @return true if there is a filter
  */
 function tiny_medial_has_filter($context = false) {
