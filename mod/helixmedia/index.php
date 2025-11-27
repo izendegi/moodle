@@ -16,28 +16,30 @@
 
 /**
  * This page lists all the instances of helixmedia in a particular course
- *
- * @package    mod
+ * @package    mod_helixmedia
  * @subpackage helixmedia
  * @author     Tim Williams for Streaming LTD
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  MEDIAL
  */
+
 require_once("../../config.php");
-require_once($CFG->dirroot.'/mod/helixmedia/lib.php');
+require_once($CFG->dirroot . '/mod/helixmedia/lib.php');
 
 $id = required_param('id', PARAM_INT);
-$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
+$course = $DB->get_record('course', ['id' => $id], '*', MUST_EXIST);
 
 require_login($course);
 $PAGE->set_pagelayout('incourse');
 
 $event = \mod_helixmedia\event\course_module_instance_list_viewed::create(
-    array('context' => context_course::instance($course->id)));
+    ['context' => context_course::instance($course->id)]
+);
 $event->add_record_snapshot('course', $course);
 $event->trigger();
 
-$PAGE->set_url('/mod/helixmedia/index.php', array('id' => $course->id));
-$pagetitle = strip_tags($course->shortname.': '.get_string("modulenamepluralformatted", "helixmedia"));
+$PAGE->set_url('/mod/helixmedia/index.php', ['id' => $course->id]);
+$pagetitle = strip_tags($course->shortname . ': ' . get_string("modulenamepluralformatted", "helixmedia"));
 $PAGE->set_title($pagetitle);
 $PAGE->set_heading($course->fullname);
 
@@ -55,17 +57,17 @@ if (! $hmlis = get_all_instances_in_course("helixmedia", $course)) {
 // Print the list of instances (your module will probably extend this).
 $timenow = time();
 $strname = get_string("name");
-$strsectionname  = get_string('sectionname', 'format_'.$course->format);
+$strsectionname  = get_string('sectionname', 'format_' . $course->format);
 $usesections = course_format_uses_sections($course->format);
 
 $table = new html_table();
 $table->attributes['class'] = 'generaltable mod_index';
 
 if ($usesections) {
-    $table->head  = array($strsectionname, $strname);
-    $table->align = array("center", "left");
+    $table->head  = [$strsectionname, $strname];
+    $table->align = ["center", "left"];
 } else {
-    $table->head  = array($strname);
+    $table->head  = [$strname];
 }
 
 foreach ($hmlis as $hmli) {
@@ -78,14 +80,9 @@ foreach ($hmlis as $hmli) {
     }
 
     if ($usesections) {
-        // MDL2.4+ works slightly differently here.
-        if ($CFG->version >= 2012120300) {
-            $table->data[] = array (get_section_name($course, $hmli->section), $link);
-        } else {
-            $table->data[] = array ($hmli->section, $link);
-        }
+        $table->data[] = [get_section_name($course, $hmli->section), $link];
     } else {
-        $table->data[] = array ($link);
+        $table->data[] = [$link];
     }
 }
 

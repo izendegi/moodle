@@ -26,8 +26,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot.'/mod/helixmedia/lib.php');
-require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
+require_once($CFG->dirroot . '/mod/helixmedia/lib.php');
+require_once($CFG->dirroot . '/mod/helixmedia/locallib.php');
 
 /**
  * Library class for video feedback plugin extending feedback plugin base class
@@ -36,8 +36,10 @@ require_once($CFG->dirroot.'/mod/helixmedia/locallib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class assign_feedback_helixfeedback extends assign_feedback_plugin {
-
-    // Used for group assignments on the submission summary page so we have a unique frame ID
+    /**
+     * Used for group assignments on the submission summary page so we have a unique frame ID.
+     * @var int
+     */
     private $count = 0;
 
     /**
@@ -56,7 +58,7 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
      */
     public function get_feedback_entry($gradeid) {
         global $DB;
-        return $DB->get_record('assignfeedback_helixfeedback', array('grade' => $gradeid));
+        return $DB->get_record('assignfeedback_helixfeedback', ['grade' => $gradeid]);
     }
 
     /**
@@ -79,14 +81,13 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
         $mform->addElement('hidden', 'helixfeedback_preid');
         $mform->setType('helixfeedback_preid', PARAM_INT);
 
-        $thumbparams = array('type' => HML_LAUNCH_FEEDBACK_THUMBNAILS);
-        $params = array('type' => HML_LAUNCH_FEEDBACK, 'userid' => $grade->userid);
+        $thumbparams = ['type' => HML_LAUNCH_FEEDBACK_THUMBNAILS];
+        $params = ['type' => HML_LAUNCH_FEEDBACK, 'userid' => $grade->userid];
 
         if ($gradeid) {
             $feedbackentry = $this->get_feedback_entry($gradeid);
             if ($feedbackentry) {
                 $preid = $feedbackentry->preid;
-                //$param = "e_feed=" . $feedbackentry->preid;
                 $thumbparams['e_feed'] = $feedbackentry->preid;
                 $params['e_feed'] = $feedbackentry->preid;
                 $mform->setDefault('helixfeedback_preid', $feedbackentry->preid);
@@ -95,7 +96,6 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
 
         if (!array_key_exists('e_feed', $params)) {
             $preid = helixmedia_preallocate_id();
-            
             $thumbparams['n_feed'] = $preid;
             $params['n_feed'] = $preid;
             $thumbparams['aid'] = $PAGE->cm->id;
@@ -104,10 +104,20 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
         }
 
         $output = $PAGE->get_renderer('mod_helixmedia');
-        $disp = new \mod_helixmedia\output\modal($preid, $thumbparams, $params, 'upload',
-            get_string('add_feedback', 'assignfeedback_helixfeedback'), false, true, "column");
+        $disp = new \mod_helixmedia\output\modal(
+            $preid,
+            $thumbparams,
+            $params,
+            'upload',
+            get_string('add_feedback', 'assignfeedback_helixfeedback'),
+            false,
+            true,
+            "column"
+        );
 
         $mform->addElement('static', 'helixfeedback_choosemedia', "", $output->render($disp));
+        $mform->addElement('hidden', 'helixfeedback_custom');
+        $mform->setType('helixfeedback_custom', PARAM_TEXT);
         return true;
     }
 
@@ -128,15 +138,18 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
         $feedbackentry = $this->get_feedback_entry($grade->id);
 
         if ($feedbackentry) {
-            /***Nothing needs to change in the DB for an update since the only change is on the HML server, so just return true***/
-            return true;
+            if ($feedbackentry->custom != $data->helixfeedback_custom) {
+                $feedbackentry->custom = $data->helixfeedback_custom;
+                $DB->update_record('assignfeedback_helixfeedback', $feedbackentry);
+            }            return true;
         } else {
             $feedbackentry = new stdClass();
             $feedbackentry->grade = $grade->id;
             $feedbackentry->assignment = $this->assignment->get_instance()->id;
-            $prerec = $DB->get_record('helixmedia_pre', array('id' => $data->helixfeedback_preid));
+            $prerec = $DB->get_record('helixmedia_pre', ['id' => $data->helixfeedback_preid]);
             $feedbackentry->preid = $prerec->id;
             $feedbackentry->servicesalt = $prerec->servicesalt;
+            $feedbackentry->custom = $data->helixfeedback_custom;
             return $DB->insert_record('assignfeedback_helixfeedback', $feedbackentry) > 0;
         }
     }
@@ -161,10 +174,19 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
             $extraid = $this->count;
             $this->count++;
 
-            $params = array('type' => HML_LAUNCH_VIEW_FEEDBACK, 'e_feed' => $feedbackentry->preid, 'userid' => $grade->userid);
+            $params = ['type' => HML_LAUNCH_VIEW_FEEDBACK, 'e_feed' => $feedbackentry->preid, 'userid' => $grade->userid];
             $output = $PAGE->get_renderer('mod_helixmedia');
-            $disp = new \mod_helixmedia\output\modal($feedbackentry->preid, array(), $params, false,
-                 get_string('view_feedback', 'assignfeedback_helixfeedback'), false, false, 'row', $extraid);
+            $disp = new \mod_helixmedia\output\modal(
+                $feedbackentry->preid,
+                [],
+                $params,
+                false,
+                get_string('view_feedback', 'assignfeedback_helixfeedback'),
+                false,
+                false,
+                'row',
+                $extraid
+            );
             return $output->render($disp);
         }
         return '';
@@ -181,11 +203,19 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
         if ($feedbackentry) {
             global $PAGE;
 
-            $thumbparams = array('type' => HML_LAUNCH_VIEW_FEEDBACK_THUMBNAILS, 'e_feed' =>$feedbackentry->preid, 'userid' => $grade->userid);
-            $params = array('type' => HML_LAUNCH_VIEW_FEEDBACK, 'e_feed' => $feedbackentry->preid, 'userid' => $grade->userid);
+            $thumbparams = ['type' => HML_LAUNCH_VIEW_FEEDBACK_THUMBNAILS, 'e_feed' => $feedbackentry->preid,
+               'userid' => $grade->userid];
+            $params = ['type' => HML_LAUNCH_VIEW_FEEDBACK, 'e_feed' => $feedbackentry->preid, 'userid' => $grade->userid];
             $output = $PAGE->get_renderer('mod_helixmedia');
-            $disp = new \mod_helixmedia\output\modal($feedbackentry->preid, $thumbparams, $params, "moodle-lti-viewfeed-btn.png",
-                 get_string('view_feedback', 'assignfeedback_helixfeedback'), false, false);
+            $disp = new \mod_helixmedia\output\modal(
+                $feedbackentry->preid,
+                $thumbparams,
+                $params,
+                "moodle-lti-viewfeed-btn.png",
+                get_string('view_feedback', 'assignfeedback_helixfeedback'),
+                false,
+                false
+            );
             return $output->render($disp);
         }
         return '';
@@ -212,7 +242,7 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
     public function delete_instance() {
         global $DB;
         // Will throw exception on failure.
-        $DB->delete_records('assignfeedback_helixfeedback', array('assignment' => $this->assignment->get_instance()->id));
+        $DB->delete_records('assignfeedback_helixfeedback', ['assignment' => $this->assignment->get_instance()->id]);
         return true;
     }
 
@@ -236,5 +266,4 @@ class assign_feedback_helixfeedback extends assign_feedback_plugin {
     public function is_feedback_modified(stdClass $grade, stdClass $data) {
         return true;
     }
-
 }
