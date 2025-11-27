@@ -1,6 +1,6 @@
 @format @format_redirected
-Feature: Courses can be created in Single Activity mode
-  In order to create a single activity course
+Feature: Courses can be created in Redirected format
+  In order to create a Redirected format course
   As a manager
   I need to create courses and set default values on them
 
