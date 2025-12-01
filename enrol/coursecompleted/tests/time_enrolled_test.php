@@ -44,9 +44,7 @@ use PHPUnit\Framework\Attributes\{DataProvider, CoversClass};
 #[CoversClass(observer::class)]
 #[CoversClass(task\process_future::class)]
 final class time_enrolled_test extends advanced_testcase {
-    /**
-     * Tests initial setup.
-     */
+    #[\core\attribute\label('Initial setup')]
     protected function setUp(): void {
         global $CFG;
         require_once($CFG->dirroot . '/enrol/locallib.php');
@@ -55,9 +53,7 @@ final class time_enrolled_test extends advanced_testcase {
         $this->resetAfterTest(true);
     }
 
-    /**
-     * Test if adhoc.
-     */
+    #[\core\attribute\label('Test adhoc task')]
     public function test_adhoc_task(): void {
         global $DB;
         $gen = $this->getDataGenerator();
@@ -88,14 +84,8 @@ final class time_enrolled_test extends advanced_testcase {
         delete_course($course2, false);
     }
 
-    /**
-     * Test if user is enrolled for a specific time after completing a course.
-     */
-    #[Large]
+    #[\core\attribute\label('Test if user is enrolled for a specific time after completing a course')]
     public function test_time_enrolled(): void {
-        if (!PHPUNIT_LONGTEST) {
-            $this->markTestSkipped('PHPUNIT_LONGTEST is not defined');
-        }
         global $DB, $PAGE;
         $generator = $this->getDataGenerator();
         $course1 = $generator->create_course();
@@ -196,8 +186,6 @@ final class time_enrolled_test extends advanced_testcase {
     /**
      * Test enrol time variation.
      *
-     * @param array $input
-     * @param bool $isenrolled
      * @dataProvider enroltime_provider
      */
     #[DataProvider('enroltime_provider')]
