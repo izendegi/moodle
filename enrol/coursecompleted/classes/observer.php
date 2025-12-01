@@ -38,13 +38,11 @@ namespace enrol_coursecompleted;
 class observer {
     /**
      * Triggered when user completes a course.
-     *
-     * @param \core\event\course_completed $event
+     * @param \core\event\course_completed $event Event
      */
-    public static function enroluser(\core\event\course_completed $event) {
+    public static function enroluser(\core\event\course_completed $event): void {
         global $DB;
         if (enrol_is_enabled('coursecompleted')) {
-            // TODO: What if there are 2 roles?
             $sql = "SELECT *
                       FROM {enrol}
                       WHERE enrol = :enrol

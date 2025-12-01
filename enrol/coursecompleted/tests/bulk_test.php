@@ -58,9 +58,7 @@ final class bulk_test extends \advanced_testcase {
     /** @var stdClass Instance. */
     private $instance;
 
-    /**
-     * Setup to ensure that forms and locallib are loaded.
-     */
+    #[\core\attribute\label('Setup to ensure that forms and locallib are loaded.')]
     public static function setUpBeforeClass(): void {
         global $CFG;
         require_once($CFG->libdir . '/formslib.php');
@@ -68,9 +66,7 @@ final class bulk_test extends \advanced_testcase {
         parent::setUpBeforeClass();
     }
 
-    /**
-     * Tests initial setup.
-     */
+    #[\core\attribute\label('Test initial setup')]
     protected function setUp(): void {
         global $CFG, $DB;
         parent::setUp();
@@ -85,6 +81,7 @@ final class bulk_test extends \advanced_testcase {
         $generator->create_and_enrol($this->course1, 'student');
         $generator->create_and_enrol($this->course1, 'teacher');
         $generator->create_and_enrol($this->course2, 'teacher');
+
         $this->student = $generator->create_and_enrol($this->course2, 'student');
         $id = $plugin->add_instance($this->course1, ['name' => 'A', 'customint1' => $this->course2->id, 'roleid' => 5]);
         $this->instance = $DB->get_record('enrol', ['id' => $id]);
@@ -92,9 +89,7 @@ final class bulk_test extends \advanced_testcase {
         $plugin->enrol_user($this->instance, $suspendedid);
     }
 
-    /**
-     * Test bulk delete.
-     */
+    #[\core\attribute\label('Test bulk delete')]
     public function test_bulk_delete(): void {
         $plugin = enrol_get_plugin('coursecompleted');
         $page = new moodle_page();
@@ -106,10 +101,12 @@ final class bulk_test extends \advanced_testcase {
         $enr1->status = true;
         $enr1->enrolmentplugin = $plugin;
         $enr1->enrolmentinstance = $this->instance;
+
         $enr2 = new stdClass();
         $enr2->status = true;
         $enr2->enrolmentplugin = $plugin;
         $enr2->enrolmentinstance = $this->instance;
+
         $user = new stdClass();
         $user->id = $this->student->id;
         $user->enrolments = [$enr1, $enr2];
@@ -131,9 +128,7 @@ final class bulk_test extends \advanced_testcase {
         $this->assertStringContainsString('<th class="header c3 lastcol" style="" scope="col">Enrolment ends</th>', $html);
     }
 
-    /**
-     * Test bulk delete.
-     */
+    #[\core\attribute\label('Test bulk delete 2')]
     public function test_bulk_delete2(): void {
         $this->setAdminUser();
         $plugin = enrol_get_plugin('coursecompleted');
@@ -144,9 +139,11 @@ final class bulk_test extends \advanced_testcase {
         $enr->status = true;
         $enr->enrolmentplugin = $plugin;
         $enr->enrolmentinstance = $this->instance;
+
         $user = new stdClass();
         $user->id = $this->student->id;
         $user->enrolments = [$enr];
+
         $form = $operation->get_form('Delete', ['users' => [$user]]);
         ob_start();
         $form->display();
@@ -157,9 +154,7 @@ final class bulk_test extends \advanced_testcase {
         $this->assertStringContainsString('<th class="header c3 lastcol" style="" scope="col">Enrolment ends</th>', $html);
     }
 
-    /**
-     * Test bulk edit.
-     */
+    #[\core\attribute\label('Test bulk edit')]
     public function test_bulk_edit(): void {
         $this->assertTrue(user_has_role_assignment($this->student->id, 5, context_course::instance($this->course2->id)->id));
         $this->assertTrue(user_has_role_assignment($this->student->id, 5, context_course::instance($this->course1->id)->id));
@@ -174,9 +169,11 @@ final class bulk_test extends \advanced_testcase {
         $enr->enrolmentinstance = $this->instance;
         $enr->instance = $this->instance;
         $enr->id = $this->instance->id;
+
         $user = new stdClass();
         $user->id = $this->student->id;
         $user->enrolments = [$enr];
+
         $properties = new stdClass();
         $properties->status = ENROL_USER_SUSPENDED;
         $properties->timestart = time() - 100;
@@ -186,14 +183,19 @@ final class bulk_test extends \advanced_testcase {
         $this->assertTrue($operation->process($manager, [$user], $properties));
         $properties = new stdClass();
         $properties->status = ENROL_USER_ACTIVE;
+
         $sink = $this->redirectEvents();
         $this->assertTrue($operation->process($manager, [$user], $properties));
         $events = $sink->get_events();
         $sink->close();
         $this->assertCount(1, $events);
         foreach ($events as $eventinfo) {
+            $this->assertEquals($eventinfo->get_data()['contextid'], context_course::instance($this->course1->id)->id);
+            $this->assertEquals($eventinfo->get_data()['relateduserid'], $user->id);
+            $this->assertEquals($eventinfo->get_data()['objectid'], $this->instance->id);
             $this->assertTrue($eventinfo instanceof \core\event\user_enrolment_updated);
         }
+
         $properties = new stdClass();
         $this->assertTrue($operation->process($manager, [$user], $properties));
         $form = $operation->get_form(null, ['users' => [$user]]);
