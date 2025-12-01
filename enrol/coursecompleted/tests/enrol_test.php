@@ -69,7 +69,7 @@ final class enrol_test extends advanced_testcase {
     private $plugin;
 
     /** @var moodle_page Page. */
-    private $page;
+    private ?\moodle_page $page = null;
 
     /**
      * Setup to ensure that forms and locallib are loaded.
@@ -153,6 +153,7 @@ final class enrol_test extends advanced_testcase {
         $this->page->set_context(context_course::instance($this->course1->id));
         $this->page->set_course($this->course1);
         $this->page->set_pagelayout('admin');
+
         $url = new moodle_url(
             '/enrol/editinstance.php',
             [
@@ -271,22 +272,28 @@ final class enrol_test extends advanced_testcase {
         }
     }
 
-    /**
-     * Test builld course path.
-     */
+    #[\core\attribute\label('Test build course path.')]
     public function test_build_course_path(): void {
         global $DB;
-        $plug = enrol_get_plugin('coursecompleted');
-        $instances = $DB->get_records('enrol', ['enrol' => 'coursecompleted']);
-        foreach ($instances as $instance) {
-            $path = \phpunit_util::call_internal_method($plug, 'build_course_path', [$instance], '\enrol_coursecompleted_plugin');
+        $plugin = enrol_get_plugin('coursecompleted');
+        $ccompletion = new \completion_completion(['course' => $this->course1->id, 'userid' => $this->student->id]);
+        $ccompletion->mark_complete(time());
+        $enrols = $DB->get_records('enrol', ['enrol' => 'coursecompleted']);
+
+        // Create other pseudo enrolments.
+        foreach ($enrols as $enrol) {
+            $enrol->enrol = 'other';
+            unset($enrol->id);
+            $DB->insert_record('enrol', $enrol);
+        }
+
+        foreach ($enrols as $enrol) {
+            $path = \phpunit_util::call_internal_method($plugin, 'build_course_path', [$enrol], '\enrol_coursecompleted_plugin');
             $this->assertGreaterThan(4, $path);
         }
     }
 
-    /**
-     * Test library.
-     */
+    #[\core\attribute\label('Test library functions.')]
     public function test_library_functions(): void {
         $this->assertEquals($this->plugin->get_name(), 'coursecompleted');
         $this->assertEquals($this->plugin->get_config('enabled'), null);
@@ -305,9 +312,8 @@ final class enrol_test extends advanced_testcase {
         $this->assertEquals($icons[0]->attributes['title'], 'After completing course: Test course 1');
         $icons = $this->plugin->get_action_icons($this->instance);
         $this->assertCount(2, $icons);
-        $this->assertStringContainsString('iconsmall', $icons[0]);
-        $this->assertStringContainsString('icon fa fa-', $icons[0]);
-        $this->assertStringContainsString('icon fa fa-', $icons[1]);
+        $this->assertStringContainsString('icon fa fa-pen fa-fw iconsmall', $icons[0]);
+        $this->assertStringContainsString('"icon fa fa-user-plus fa-fw iconsmall', $icons[1]);
         $this->assertStringContainsString(
             '<a href="https://www.example.com/moodle/enrol/editinstance.php?courseid=' . $this->course2->id,
             $icons[0]
@@ -330,16 +336,26 @@ final class enrol_test extends advanced_testcase {
 
         $this->plugin->set_config('svglearnpath', 1);
         $out = $this->plugin->enrol_page_hook($this->instance);
-        $cleaned = preg_replace('/\s+/', '', $out);
+        $cleaned = preg_replace('/\s+/', '', (string) $out);
+        $this->assertStringContainsString('<spanclass="float-end"><spanclass="fa-stackfa-2x">', $cleaned);
         $this->assertStringContainsString('title="Testcourse1"', $cleaned);
+        $this->assertStringContainsString('"Testcourse1"><spanclass="fafa-circle-ofa-stack-2x"></span>', $cleaned);
+        $this->assertStringContainsString('<spanclass="fafa-circle-ofa-stack-2x"></span>', $cleaned);
+        $this->assertStringContainsString('<strongclass="fa-stack-1x">1</strong></a></span>', $cleaned);
+        $this->assertStringContainsString('<strongclass="fa-stack-1xtext-light">2</strong></span>', $cleaned);
+        $this->assertStringContainsString('spanclass="fa-stackfa-2x"><spanclass="fafa-arrow-rightfa-stack-1xtext-dark"', $cleaned);
+        $this->assertStringContainsString('<spanclass="fa-stackfa-2x"><spanclass="fafa-circlefa-stack-2xtext-dark">', $cleaned);
+        $this->assertStringContainsString('<strongclass="fa-stack-1xtext-light">2</strong></span>', $cleaned);
+        $this->assertStringContainsString('<spanclass="fafa-arrow-rightfa-stack-1xtext-dark"></span></span>', $cleaned);
         $arr = [
             $this->course1->id,
             $this->course3->id,
             $this->course4->id,
         ];
         foreach ($arr as $value) {
-            $this->assertStringContainsString("https://www.example.com/moodle/course/view.php?id=$value", $cleaned);
+            $this->assertStringContainsString("https://www.example.com/moodle/course/view.php?id={$value}", $cleaned);
         }
+
         $this->assertStringNotContainsString('https://www.example.com/moodle/course/view.php?id=' . $this->course2->id, $cleaned);
         $arr = [
             'Test course 1</a>',
@@ -355,9 +371,7 @@ final class enrol_test extends advanced_testcase {
         }
     }
 
-    /**
-     * Test library 2.
-     */
+    #[\core\attribute\label('Test library other functionality')]
     public function test_library_other_functionality(): void {
         global $DB;
         $studentrole = $DB->get_field('role', 'id', ['shortname' => 'student']);
@@ -392,6 +406,7 @@ final class enrol_test extends advanced_testcase {
         );
         $observer = new observer();
         $observer->enroluser($compevent);
+
         $tmp = $this->plugin->enrol_page_hook($this->instance);
         $this->assertStringContainsString('Test course 1', $tmp);
         $this->assertStringContainsString('You will be enrolled in this course when you complete course', $tmp);
@@ -411,9 +426,7 @@ final class enrol_test extends advanced_testcase {
         $this->assertStringNotContainsString('You will be enrolled in this course when you complete course', $tmp);
     }
 
-    /**
-     * Test form.
-     */
+    #[\core\attribute\label('Test Form')]
     public function test_form(): void {
         $page = new moodle_page();
         $context = context_course::instance($this->course1->id);
@@ -422,6 +435,7 @@ final class enrol_test extends advanced_testcase {
         $page->set_pagelayout('standard');
         $page->set_pagetype('course-view');
         $page->set_url('/enrol/coursecompleted/manage.php?enrolid=' . $this->instance->id);
+
         $form = $this->tempform();
         $mform = $form->getform();
         $this->plugin->edit_instance_form($this->instance, $mform, $context);
@@ -430,7 +444,7 @@ final class enrol_test extends advanced_testcase {
         $mform->display();
         $html = ob_get_clean();
         $cleaned = preg_replace('/\s+/', '', $html);
-        $this->assertStringContainsString('<optionvalue="1">No</option></select>', $cleaned);
+        $this->assertStringContainsString('-select"name="status"id="id_status"><optionvalue="0">Yes</option>', $cleaned);
         $this->assertStringContainsString('optionvalue="86400"selected', $cleaned);
         $this->assertStringContainsString('<optionvalue="0">No</option>', $cleaned);
         $this->assertStringContainsString('d="id_enrolstartdate_enabled"value="1">Enable</label>', $cleaned);
@@ -441,13 +455,10 @@ final class enrol_test extends advanced_testcase {
         $this->assertStringContainsString('name="customint5"class="form-check-input"value="1"id="id_customint5"', $cleaned);
         $this->assertStringContainsString('-select"name="status"id="id_status"><optionvalue="0">Yes</option>', $cleaned);
         $this->assertStringContainsString('-select"name="customint2"id="id_customint2">', $cleaned);
-        $this->assertStringContainsString('<optionvalue="1"selected>Fromthecoursecontact</option>', $cleaned);
-        $this->assertStringNotContainsString('<optionvalue="2">Fromthekeyholder</option>', $cleaned);
-        $this->assertStringContainsString('<optionvalue="3">Fromtheno-replyaddress</option>', $cleaned);
-        $this->assertStringContainsString(
-            '-select"name="roleid"id="id_roleid"><optionvalue="5"selected>Student</option>',
-            $cleaned
-        );
+        $this->assertStringContainsString('<optionvalue="1"selected>Fromthecoursecontact', $cleaned);
+        $this->assertStringNotContainsString('<optionvalue="2">Fromthekeyholder', $cleaned);
+        $this->assertStringContainsString('<optionvalue="3">Fromtheno-replyaddress', $cleaned);
+        $this->assertStringContainsString('-select"name="roleid"id="id_roleid"><optionvalue="5"selected>Student', $cleaned);
 
         $arr = [
             'Enrolmentdate',
@@ -462,21 +473,21 @@ final class enrol_test extends advanced_testcase {
         foreach ($arr as $value) {
             $this->assertStringContainsString('title="Helpwith' . $value . '"role="img"', $cleaned);
         }
+
         $strm = get_string_manager();
         $arr = ['compcourse', 'customwelcome', 'enrolenddate', 'enrolstartdate', 'group'];
         foreach ($arr as $value) {
             if ($strm->string_exists($value, 'enrol_coursecompleted')) {
                 $this->assertStringContainsString(get_string($value, 'enrol_coursecompleted'), $html);
             }
+
             if ($strm->string_exists($value . '_desc', 'enrol_coursecompleted')) {
                 $this->assertStringContainsString(get_string($value . '_desc', 'enrol_coursecompleted'), $html);
             }
         }
     }
 
-    /**
-     * Test other config.
-     */
+    #[\core\attribute\label('Test other config.')]
     public function test_other_config(): void {
         global $DB;
         $this->plugin->set_config('status', 1);
@@ -512,6 +523,7 @@ final class enrol_test extends advanced_testcase {
         $page->set_pagelayout('standard');
         $page->set_pagetype('course-view');
         $page->set_url('/enrol/coursecompleted/manage.php?enrolid=' . $instance->id);
+
         $form = $this->tempform();
         $mform = $form->getform();
         $this->plugin->edit_instance_form($instance, $mform, $context);
@@ -546,9 +558,8 @@ final class enrol_test extends advanced_testcase {
 
     /**
      * Test form.
-     * @return \moodleform
      */
-    private function tempform() {
+    private function tempform(): \moodleform {
         /**
          * Coursecompleted enrolment form tests.
          *
@@ -561,9 +572,10 @@ final class enrol_test extends advanced_testcase {
             /**
              * Form definition.
              */
-            public function definition() {
+            public function definition(): void {
                 // No definition required.
             }
+
             /**
              * Returns form reference
              * @return MoodleQuickForm
