@@ -51,9 +51,7 @@ final class backup_test extends advanced_testcase {
     /** @var stdClass Second course. */
     private $course2;
 
-    /**
-     * Tests initial setup.
-     */
+    #[\core\attribute\label('Initial setup')]
     protected function setUp(): void {
         global $CFG, $DB;
         parent::setUp();
@@ -73,9 +71,7 @@ final class backup_test extends advanced_testcase {
         $this->student = $generator->create_and_enrol($this->course1, 'student');
     }
 
-    /**
-     * Test backup.
-     */
+    #[\core\attribute\label('Backup and restore')]
     public function test_backup_restore(): void {
         global $CFG, $DB, $PAGE;
         require_once($CFG->dirroot . '/backup/util/includes/backup_includes.php');
@@ -84,6 +80,7 @@ final class backup_test extends advanced_testcase {
 
         $ccompletion = new \completion_completion(['course' => $this->course1->id, 'userid' => $this->student->id]);
         $ccompletion->mark_complete(time());
+
         $bc = new \backup_controller(
             \backup::TYPE_1COURSE,
             $this->course2->id,
@@ -93,6 +90,7 @@ final class backup_test extends advanced_testcase {
             2
         );
         $bc->execute_plan();
+
         $results = $bc->get_results();
         $file = $results['backup_destination'];
         $fp = get_file_packer('application/vnd.moodle.backup');
@@ -109,6 +107,7 @@ final class backup_test extends advanced_testcase {
         );
         $rc->execute_precheck();
         $rc->execute_plan();
+
         $newid = $rc->get_courseid();
         $rc->destroy();
         $this->assertEquals(2, $DB->count_records('enrol', ['enrol' => 'coursecompleted']));
@@ -128,6 +127,7 @@ final class backup_test extends advanced_testcase {
             2
         );
         $bc->execute_plan();
+
         $results = $bc->get_results();
         $file = $results['backup_destination'];
         $fp = get_file_packer('application/vnd.moodle.backup');

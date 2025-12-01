@@ -1,4 +1,33 @@
-## v4.4.5 (2024-10-07)
+## v5.2.1 (2025-11-30)
+
+* Version update
+* Removed unnecessary hook 
+* rector review
+* code review
+* Removed dependancy to enrol_fee
+
+## v5.1.1 (2025-10-07)
+
+* Version update
+* MOODLE_501_STABLE
+* workflow
+
+## v5.0.1 (2025-04-16)
+
+* Version update
+* MOODLE_500_STABLE
+* strict types
+* bootstrap5
+* PHP 8.4
+
+## v4.4.7 (2025-02-06)
+
+* Version update
+* code review
+* phpunit 11
+* infection
+
+## v4.4.6 (2024-10-08)
 
 * version update
 * unenrol when plugin is suppporting self unenrolment

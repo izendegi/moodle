@@ -38,7 +38,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
      * Returns localised name of enrol instance
      *
      * @param object $instance (null is accepted too)
-     * @return string
+     * @return string Name of instance
      */
     public function get_instance_name($instance) {
         $tmp = is_null($instance) ? 'unknown' : $instance->customint1;
@@ -54,6 +54,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
             );
             return get_string('aftercourse', 'enrol_coursecompleted', $name);
         }
+
         return get_string('coursedeleted', '', $tmp);
     }
 
@@ -75,24 +76,25 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 $arr[] = new pix_icon('icon', get_string('aftercourse', 'enrol_coursecompleted', $name), 'enrol_coursecompleted');
             }
         }
+
         return $arr;
     }
 
     /**
      * Returns optional enrolment instance description text.
      *
-     * @param object $instance
+     * @param object $instance Instance
      * @return string short html text
      */
     public function get_description_text($instance) {
         $id = $instance->customint1;
-        return "Enrolment by completion of course with id $id";
+        return "Enrolment by completion of course with id {$id}";
     }
 
     /**
      * Add information for people who want to enrol.
      *
-     * @param stdClass $instance
+     * @param stdClass $instance Instance
      * @return string html text, usually a form in a text box
      */
     public function enrol_page_hook(stdClass $instance) {
@@ -119,6 +121,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 $i++;
             }
         }
+
         $name = $formatter->format_string(
             get_course($instance->customint1)->fullname,
             context: context_course::instance($instance->customint1)
@@ -137,7 +140,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     /**
      * Gets an array of the user enrolment actions
      *
-     * @param \course_enrolment_manager $manager
+     * @param \course_enrolment_manager $manager Manager
      * @param stdClass $ue A user enrolment object
      * @return array An array of user_enrolment_actions
      */
@@ -152,19 +155,21 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 ['class' => 'originlink', 'rel' => $ue->id]
             );
         }
+
         return $actions;
     }
 
     /**
      * Returns edit icons for the page with list of instances
-     * @param stdClass $instance
-     * @return array
+     * @param stdClass $instance Instance
+     * @return array of action icons
      */
     public function get_action_icons(stdClass $instance) {
         global $OUTPUT;
         if ($instance->enrol !== 'coursecompleted') {
             throw new coding_exception('invalid enrol instance!');
         }
+
         $context = context_course::instance($instance->courseid);
         $icons = [];
         if (has_capability('enrol/coursecompleted:enrolpast', $context)) {
@@ -172,18 +177,19 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
             $icon = new pix_icon('t/enrolusers', get_string('enrolusers', 'enrol_manual'), 'core', ['class' => 'iconsmall']);
             $icons[] = $OUTPUT->action_icon($managelink, $icon);
         }
+
         return array_merge(parent::get_action_icons($instance), $icons);
     }
 
     /**
      * Restore instance and map settings.
      *
-     * @param \restore_enrolments_structure_step $step
-     * @param stdClass $data
-     * @param stdClass $course
-     * @param int $oldid
+     * @param \restore_enrolments_structure_step $step Restore step
+     * @param stdClass $data Data to restore
+     * @param stdClass $course Course
+     * @param int $oldid Old id
      */
-    public function restore_instance(\restore_enrolments_structure_step $step, stdClass $data, $course, $oldid) {
+    public function restore_instance(\restore_enrolments_structure_step $step, stdClass $data, $course, $oldid): void {
         global $DB;
         if ($step->get_task()->get_target() == backup::TARGET_NEW_COURSE) {
             $merge = false;
@@ -195,26 +201,28 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 'customint1' => $data->customint1,
             ];
         }
+
         if ($merge && $instances = $DB->get_records('enrol', $merge, 'id')) {
             $instance = reset($instances);
             $instanceid = $instance->id;
         } else {
             $instanceid = $this->add_instance($course, (array)$data);
         }
+
         $step->set_mapping('enrol', $oldid, $instanceid);
     }
 
     /**
      * Enrol user into course via enrol instance.
      *
-     * @param stdClass $instance
-     * @param int $userid
+     * @param stdClass $instance Instance
+     * @param int $userid User id
      * @param int $roleid optional role id
      * @param int $timestart 0 means unknown
      * @param int $timeend 0 means forever
      * @param int $status default to ENROL_USER_ACTIVE for new enrolments, no change by default in updates
      * @param bool $recovergrades restore grade history
-     * @return void
+     * @return void Nothing
      */
     public function enrol_user(
         stdClass $instance,
@@ -224,25 +232,80 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
         $timeend = 0,
         $status = null,
         $recovergrades = null
-    ) {
-        global $DB;
+    ): void {
+        global $CFG, $DB;
         if ($this->is_active($instance)) {
             // We ignore the role, timestart, timeend and status parameters and fall back on the instance settings.
             $roleid = $instance->roleid ?? $this->get_config('roleid');
-            if (
-                $DB->record_exists('role', ['id' => $roleid]) &&
-                context_course::instance($instance->customint1, IGNORE_MISSING) &&
-                context_course::instance($instance->courseid, IGNORE_MISSING)
-            ) {
+            $context1 = context_course::instance($instance->customint1, IGNORE_MISSING);
+            $context2 = context_course::instance($instance->courseid, IGNORE_MISSING);
+            if ($DB->record_exists('role', ['id' => $roleid]) && $context1 && $context2) {
                 $timestart = time();
                 $timeend = 0;
                 if (isset($instance->customint4) && $instance->customint4 > 0) {
                     $timestart = $instance->customint4;
                 }
+
                 if (isset($instance->enrolperiod) && $instance->enrolperiod > 0) {
                     $timeend = $timestart + $instance->enrolperiod;
                 }
+
                 parent::enrol_user($instance, $userid, $roleid, $timestart, $timeend, $status, $recovergrades);
+                // Handle welcome message.
+                if ($instance->customint2 != ENROL_DO_NOT_SEND_EMAIL) {
+                    $course = get_course($instance->customint1);
+                    $formatter = \core\di::get(\core\formatting::class);
+                    $a = new stdClass();
+                    $a->completed = $formatter->format_string($course->fullname, context: $context1);
+                    if ($instance->customtext1 == '') {
+                        $message = get_string('welcometocourse', 'enrol_coursecompleted', $a);
+                    } else {
+                        $key = ['{$a->completed}'];
+                        $value = [$a->completed];
+                        $message = str_replace($key, $value, $instance->customtext1);
+                    }
+
+                    $this->send_course_welcome_message_to_user(
+                        instance: $instance,
+                        userid: (int)$userid,
+                        sendoption: (int)$instance->customint2,
+                        message: $message,
+                        roleid: (int)$roleid,
+                    );
+                }
+
+                // Keep the user in a group when needed.
+                if ($instance->customint3 > 0) {
+                    require_once($CFG->dirroot . '/group/lib.php');
+                    $groups = groups_get_user_groups((int)$instance->customint1, (int)$userid);
+                    foreach ($groups as $group) {
+                        foreach ($group as $sub) {
+                            $groupnamea = groups_get_group_name($sub);
+                            $groupnameb = groups_get_group_by_name((int)$instance->courseid, $groupnamea);
+                            if ($groupnameb) {
+                                groups_add_member($groupnameb, (int)$userid);
+                            }
+                        }
+                    }
+                }
+
+                // Try unenrol the user from the completed course.
+                if ($instance->customint5 > 0) {
+                    $page = new moodle_page();
+                    require_once($CFG->dirroot . '/enrol/locallib.php');
+                    $course = get_course($instance->customint1);
+                    $cem = new \course_enrolment_manager($page, $course);
+                    $enrols = $cem->get_user_enrolments($userid);
+
+                    foreach ($enrols as $enrol) {
+                        $plugin = enrol_get_plugin($enrol->enrolmentinstance->enrol);
+                        if ($instance = $DB->get_record('enrol', ['id' => $enrol->enrolid], '*', MUST_EXIST)) {
+                            if ($plugin->allow_unenrol_user($instance, $enrol)) {
+                                $plugin->unenrol_user($instance, $userid);
+                            }
+                        }
+                    }
+                }
             } else {
                 debugging('Role does not exist', DEBUG_DEVELOPER);
             }
@@ -252,13 +315,13 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     /**
      * Restore user enrolment.
      *
-     * @param \restore_enrolments_structure_step $step
-     * @param stdClass $data
-     * @param stdClass $instance
-     * @param int $userid
-     * @param int $oldstatus
+     * @param \restore_enrolments_structure_step $step Restore step`
+     * @param stdClass $data Ignored data
+     * @param stdClass $instance Instance
+     * @param int $userid User id
+     * @param int $oldstatus Old statis
      */
-    public function restore_user_enrolment(\restore_enrolments_structure_step $step, $data, $instance, $userid, $oldstatus) {
+    public function restore_user_enrolment(\restore_enrolments_structure_step $step, $data, $instance, $userid, $oldstatus): void {
         if ($step->get_task()->get_target() == backup::TARGET_NEW_COURSE) {
             $this->enrol_user($instance, $userid);
         }
@@ -268,7 +331,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
      * Is it possible to add enrol instance via standard UI?
      *
      * @param int $courseid id of the course to add the instance to
-     * @return boolean
+     * @return bool if user can add instance to course
      */
     public function can_add_instance($courseid) {
         return has_capability('enrol/coursecompleted:manage', context_course::instance($courseid));
@@ -277,8 +340,8 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     /**
      * Is it possible to delete enrol instance via standard UI?
      *
-     * @param object $instance
-     * @return bool
+     * @param object $instance Instance
+     * @return bool if user can delete instance
      */
     public function can_delete_instance($instance) {
         return has_capability('enrol/coursecompleted:manage', context_course::instance($instance->courseid));
@@ -287,8 +350,8 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     /**
      * Is it possible to hide/show enrol instance via standard UI?
      *
-     * @param stdClass $instance
-     * @return bool
+     * @param stdClass $instance Instance
+     * @return bool True is user can enrol via UI
      */
     public function can_hide_show_instance($instance): bool {
         return has_capability('enrol/coursecompleted:manage', context_course::instance($instance->courseid));
@@ -326,7 +389,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
 
     /**
      * Execute synchronisation.
-     * @param progress_trace $trace
+     * @param progress_trace $trace Trace progress
      * @return int exit code, 0 means ok
      */
     public function sync(progress_trace $trace): int {
@@ -337,7 +400,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     /**
      * We are a good plugin and don't invent our own UI/validation code path.
      *
-     * @return bool
+     * @return bool True
      */
     public function use_standard_editing_ui(): bool {
         return true;
@@ -346,29 +409,21 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     /**
      * Add elements to the edit instance form.
      *
-     * @param stdClass $instance
-     * @param \MoodleQuickForm $mform
-     * @param context $context
-     * @return bool
+     * @param stdClass $instance Instance
+     * @param \MoodleQuickForm $mform Quick form
+     * @param context $context Context
      */
-    public function edit_instance_form($instance, \MoodleQuickForm $mform, $context) {
+    public function edit_instance_form($instance, \MoodleQuickForm $mform, $context): void {
         $plugin = 'enrol_coursecompleted';
         $options = [ENROL_INSTANCE_ENABLED => get_string('yes'), ENROL_INSTANCE_DISABLED => get_string('no')];
         $mform->addElement('select', 'status', get_string('enabled', 'admin'), $options);
         $mform->setDefault('status', $this->get_config('status'));
 
-        $role = $this->get_config('roleid');
-        $start = time();
-        if ($instance) {
-            if (isset($instance->roleid)) {
-                $role = $instance->roleid;
-            }
-            if (isset($instance->customint1)) {
-                $start = get_course($instance->customint1)->startdate;
-            }
-        }
+        $role = ($instance && isset($instance->roleid)) ? $instance->roleid : $this->get_config('roleid');
+        $start = ($instance && isset($instance->customint1)) ? get_course($instance->customint1)->startdate : time();
+
         $roles = get_default_enrol_roles($context, $role);
-        $mform->addElement('select', 'roleid', get_string('assignrole', 'enrol_fee'), $roles);
+        $mform->addElement('select', 'roleid', get_string('assignrole', $plugin), $roles);
         $mform->setDefault('roleid', $this->get_config('roleid'));
 
         $arr = ['optional' => true, 'defaulttime' => $start];
@@ -425,28 +480,30 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
 
     /**
      * Add new instance of enrol plugin.
-     * @param object $course
-     * @param array|null $fields
+     * @param object $course Course
+     * @param array|null $fields Fields
      * @return int id of new instance, null if can not be created
      */
     public function add_instance($course, ?array $fields = null): int {
-        if ($fields) {
+        if ($fields !== null) {
             if (!isset($fields['customint2'])) {
                 $fields['customint2'] = $this->get_config('welcome', 1);
             }
+
             if (!isset($fields['customint3'])) {
                 $fields['customint3'] = $this->get_config('keepgroup', 1);
             }
         }
+
         return parent::add_instance($course, $fields);
     }
 
     /**
      * Update instance of enrol plugin.
      *
-     * @param stdClass $instance
+     * @param stdClass $instance Instance
      * @param stdClass $data modified instance fields
-     * @return boolean
+     * @return bool True if updated
      */
     public function update_instance($instance, $data) {
         $update = parent::update_instance($instance, $data);
@@ -466,11 +523,9 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
      */
     public function edit_instance_validation($data, $files, $instance, $context): array {
         $errors = [];
-        if (!empty($data['enrolenddate'])) {
-            // Minimum duration of a course is one hour.
-            if ($data['enrolenddate'] <= $data['enrolstartdate'] + HOURSECS) {
-                $errors['enrolenddate'] = get_string('enrolenddaterror', 'enrol_fee');
-            }
+        // Minimum duration of a course is one hour.
+        if (!empty($data['enrolenddate']) && $data['enrolenddate'] <= $data['enrolstartdate'] + HOURSECS) {
+            $errors['enrolenddate'] = get_string('enrolenddaterror', 'enrol_coursecompleted');
         }
 
         if (
@@ -479,66 +534,69 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
         ) {
             $errors['customint1'] = get_string('error_nonexistingcourse', 'tool_generator');
         }
+
         return $errors;
     }
 
     /**
      * Build (possible) coursepath
      *
-     * @param stdClass $instance
-     * @return array $items
+     * @param stdClass $instance Instance
+     * @return array $items Children and Parents
      */
     private function build_course_path(stdClass $instance): array {
-        $parents = $this->search_parents($instance->customint1);
-        $children = $this->search_children($instance->courseid);
+        $parents = $this->search_parents((int) $instance->customint1);
+        $children = $this->search_children((int) $instance->courseid);
         return array_unique(array_merge($parents, $children));
     }
 
     /**
      * Search parents
      *
-     * @param int $id
-     * @param int $level
-     * @return array items
+     * @param int $courseid Course id
+     * @param int $level Level we are
+     * @return array found items
      */
-    private function search_parents($id, $level = 1): array {
+    private function search_parents(int $courseid, int $level = 1): array {
         global $DB;
-        $arr = [$id];
+        $arr = [$courseid];
         if ($level < 5) {
             $level++;
-            $params = ['enrol' => 'coursecompleted', 'courseid' => $id];
+            $params = ['enrol' => 'coursecompleted', 'courseid' => $courseid];
             if ($parent = $DB->get_field('enrol', 'customint1', $params, IGNORE_MULTIPLE)) {
-                $arr = array_merge($this->search_parents($parent, $level), $arr);
+                $arr = array_merge($this->search_parents((int) $parent, $level), $arr);
             }
         }
+
         return $arr;
     }
 
     /**
      * Search children
      *
-     * @param int $id
-     * @param int $level
-     * @return array items
+     * @param int $courseid Course id
+     * @param int $level Level
+     * @return array found items
      */
-    private function search_children($id, $level = 1): array {
+    private function search_children(int $courseid, int $level = 1): array {
         global $DB;
-        $arr = [$id];
+        $arr = [$courseid];
         if ($level < 5) {
             $level++;
-            $params = ['enrol' => 'coursecompleted', 'customint1' => $id];
+            $params = ['enrol' => 'coursecompleted', 'customint1' => $courseid];
             if ($child = $DB->get_field('enrol', 'courseid', $params, IGNORE_MULTIPLE)) {
-                $arr = array_merge($arr, $this->search_children($child, $level));
+                $arr = array_merge($arr, $this->search_children((int) $child, $level));
             }
         }
+
         return $arr;
     }
 
     /**
      * Is this instance active?
      *
-     * @param stdClass $instance
-     * @return bool
+     * @param stdClass $instance Instance
+     * @return bool true is active
      */
     private function is_active($instance): bool {
         $time = time();
@@ -546,20 +604,21 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
         if ($start > $time) {
             return false;
         }
+
         $end = is_null($instance->enrolenddate) ? 0 : $instance->enrolenddate;
         if ($end != 0 && $end < $time) {
             // Past enrolment.
             return false;
         }
+
         return true;
     }
 
     /**
-     * Returns true if the plugin has one or more bulk operations that can be performed on
-     * user enrolments.
+     * Has bulk operations.
      *
-     * @param \course_enrolment_manager $manager
-     * @return bool
+     * @param \course_enrolment_manager $manager Manager
+     * @return bool True if bulk operations
      */
     public function has_bulk_operations(\course_enrolment_manager $manager): bool {
         $instances = $manager->get_enrolment_instances();
@@ -569,13 +628,14 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 $return = true;
             }
         }
+
         return $return;
     }
 
     /**
      * The enrol plugin has bulk operations that can be performed.
-     * @param \course_enrolment_manager $manager
-     * @return array
+     * @param \course_enrolment_manager $manager Manager
+     * @return array of bulk operations
      */
     public function get_bulk_operations(\course_enrolment_manager $manager): array {
         $context = $manager->get_context();
@@ -584,17 +644,19 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
             if (has_capability("enrol/coursecompleted:manage", $context)) {
                 $bulkoperations['editselectedusers'] = new \enrol_coursecompleted\bulkedit($manager, $this);
             }
+
             if (has_capability("enrol/coursecompleted:unenrol", $context)) {
                 $bulkoperations['deleteselectedusers'] = new \enrol_coursecompleted\bulkdelete($manager, $this);
             }
         }
+
         return $bulkoperations;
     }
 
     /**
      * Get all candidates for an enrolment.
-     * @param int $courseid
-     * @return array
+     * @param int $courseid Course id
+     * @return array of candidates for enrolment
      */
     public static function get_candidates(int $courseid): array {
         global $DB;
