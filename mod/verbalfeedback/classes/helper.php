@@ -24,12 +24,13 @@
 namespace mod_verbalfeedback;
 use Exception;
 use mod_verbalfeedback\model\instance_category;
+use mod_verbalfeedback\model\language;
 use moodle_exception;
 use stdClass;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->libdir.'/weblib.php');
+require_once($CFG->libdir . '/weblib.php');
 
 /**
  * Class containing helper functions for the verbal feedback activity module.
@@ -38,7 +39,6 @@ require_once($CFG->libdir.'/weblib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class helper {
-
     /**
      * Gets the localised string value of a status code.
      *
@@ -85,7 +85,7 @@ class helper {
      * @return array List of items with the average rating/comments given to the user.
      */
     public static function prepare_items_view($categories) {
-        $currentlanguage = current_language();
+        $currentlanguage = language::map_current_language();
         $viewmodel = [];
         /** @var instance_category $category */
         foreach ($categories as $category) {
