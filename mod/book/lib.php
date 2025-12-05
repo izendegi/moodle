@@ -103,15 +103,23 @@ function book_update_instance($data, $mform) {
 function book_delete_instance($id) {
     global $DB;
 
-    if (!$book = $DB->get_record('book', array('id'=>$id))) {
+    if (!$book = $DB->get_record('book', ['id' => $id])) {
         return false;
     }
 
     $cm = get_coursemodule_from_instance('book', $id);
     \core_completion\api::update_completion_date_event($cm->id, 'book', $id, null);
 
-    $DB->delete_records('book_chapters', array('bookid'=>$book->id));
-    $DB->delete_records('book', array('id'=>$book->id));
+    $chapters = $DB->get_fieldset('book_chapters', 'id', ['bookid' => $book->id]);
+    if ($chapters) {
+        foreach ($chapters as $chapter) {
+            $DB->delete_records('book_chapters_userviews', ['chapterid' => $chapter->id]);
+        }
+
+        $DB->delete_records('book_chapters', ['bookid' => $book->id]);
+    }
+
+    $DB->delete_records('book', ['id' => $book->id]);
 
     return true;
 }
@@ -307,8 +315,11 @@ function book_extend_settings_navigation(settings_navigation $settingsnav, navig
 
     $params = $settingsnav->get_page()->url->params();
 
-    if ($settingsnav->get_page()->cm->modname === 'book' and !empty($params['id']) and !empty($params['chapterid'])
-            and has_capability('mod/book:edit', $settingsnav->get_page()->cm->context)) {
+    if (
+        $settingsnav->get_page()->cm->modname === 'book' &&
+        !empty($params['id']) && !empty($params['chapterid']) &&
+        has_capability('mod/book:edit', $settingsnav->get_page()->cm->context)
+    ) {
         if (!empty($USER->editing)) {
             $string = get_string("turneditingoff");
             $edit = '0';
@@ -439,7 +450,7 @@ function book_pluginfile($course, $cm, $context, $filearea, $args, $forcedownloa
         return false;
     }
 
-    if ($chapter->hidden and !has_capability('mod/book:viewhiddenchapters', $context)) {
+    if ($chapter->hidden && !has_capability('mod/book:viewhiddenchapters', $context)) {
         return false;
     }
 
@@ -637,26 +648,49 @@ function book_export_contents($cm, $baseurl) {
  *
  * @param  stdClass $book       book object
  * @param  stdClass $chapter    chapter object
- * @param  bool $islaschapter   is the las chapter of the book?
- * @param  stdClass $course     course object
- * @param  stdClass $cm         course module object
  * @param  stdClass $context    context object
  * @since Moodle 3.0
  */
-function book_view($book, $chapter, $islastchapter, $course, $cm, $context) {
+function book_view($book, $context, $chapter = null) {
+    global $DB, $USER;
+
+    $course = $DB->get_record('course', ['id' => $book->course], '*', MUST_EXIST);
+    $cm = $DB->get_record('course_modules', ['id' => $context->instanceid], '*', MUST_EXIST);
+
+    $completion = new completion_info($course);
 
     // First case, we are just opening the book.
     if (empty($chapter)) {
         \mod_book\event\course_module_viewed::create_from_book($book, $context)->trigger();
 
-    } else {
-        \mod_book\event\chapter_viewed::create_from_chapter($book, $context, $chapter)->trigger();
+        if (!$completion->is_enabled($cm)) {
+            return;
+        }
 
-        if ($islastchapter) {
-            // We cheat a bit here in assuming that viewing the last page means the user viewed the whole book.
-            $completion = new completion_info($course);
+        if ($cm->completionview) {
             $completion->set_module_viewed($cm);
         }
+
+        $completion->update_state($cm, COMPLETION_INCOMPLETE);
+    } else {
+        $userview = new \stdClass();
+        $userview->chapterid = $chapter->id;
+        $userview->userid = $USER->id;
+        $userview->timecreated = time();
+
+        $DB->insert_record('book_chapters_userviews', $userview);
+
+        \mod_book\event\chapter_viewed::create_from_chapter($book, $context, $chapter)->trigger();
+
+        if (!$completion->is_enabled($cm)) {
+            return;
+        }
+
+        if ($cm->completionview) {
+            $completion->set_module_viewed($cm);
+        }
+
+        $completion->update_state($cm, COMPLETION_COMPLETE);
     }
 }
 
@@ -751,4 +785,72 @@ function mod_book_core_calendar_provide_event_action(calendar_event $event,
         1,
         true
     );
+}
+
+/**
+ * Add a get_coursemodule_info function in case any survey type wants to add 'extra' information
+ * for the course (see resource).
+ *
+ * Given a course_module object, this function returns any "extra" information that may be needed
+ * when printing this activity in a course listing.  See get_array_of_activities() in course/lib.php.
+ *
+ * @param stdClass $coursemodule The coursemodule object (record).
+ * @return cached_cm_info An object on information that the courses
+ *                        will know about (most noticeably, an icon).
+ */
+function book_get_coursemodule_info($coursemodule) {
+    global $DB;
+
+    $dbparams = ['id' => $coursemodule->instance];
+    $fields = 'id, name, intro, introformat, readpercent';
+    if (!$book = $DB->get_record('book', $dbparams, $fields)) {
+        return false;
+    }
+
+    $result = new cached_cm_info();
+    $result->name = $book->name;
+
+    if ($coursemodule->showdescription) {
+        // Convert intro to html. Do not filter cached version, filters run at display time.
+        $result->content = format_module_intro('book', $book, $coursemodule->id, false);
+    }
+
+    // Populate the custom completion rules as key => value pairs, but only if the completion mode is 'automatic'.
+    if ($coursemodule->completion == COMPLETION_TRACKING_AUTOMATIC) {
+        $result->customdata['customcompletionrules']['readpercent'] = $book->readpercent;
+    }
+
+    return $result;
+}
+
+/**
+ * Callback which returns human-readable strings describing the active completion custom rules for the module instance.
+ *
+ * @param cm_info|stdClass $cm object with fields ->completion and ->customdata['customcompletionrules']
+ * @return array $descriptions the array of descriptions for the custom rules.
+ */
+function mod_book_get_completion_active_rule_descriptions($cm) {
+    // Values will be present in cm_info, and we assume these are up to date.
+    if (empty($cm->customdata['customcompletionrules']) || $cm->completion != COMPLETION_TRACKING_AUTOMATIC) {
+        return [];
+    }
+
+    $descriptions = [];
+    foreach ($cm->customdata['customcompletionrules'] as $key => $val) {
+        switch ($key) {
+            case 'readpercent':
+                if (!empty($val)) {
+                    $descriptions[] = get_string(
+                        'readpercentstatus',
+                        'mod_book',
+                        $cm->customdata['customcompletionrules']['readpercent']
+                    );
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    return $descriptions;
 }

@@ -79,4 +79,70 @@ class mod_book_mod_form extends moodleform_mod {
 
         $this->add_action_buttons();
     }
+
+    /**
+     * Process the data before load the form
+     *
+     * @param array $defaultvalues
+     */
+    public function data_preprocessing(&$defaultvalues) {
+        parent::data_preprocessing($defaultvalues);
+
+        $defaultvalues['readpercentactive'] = !empty($defaultvalues['readpercent']) ? 1 : 0;
+    }
+
+    /**
+     * Book completion rule fields.
+     *
+     * @return array|void
+     *
+     * @throws coding_exception
+     */
+    public function add_completion_rules() {
+        $mform = $this->_form;
+
+        $completionviews = [];
+        for ($i = 0; $i <= 100; $i += 5) {
+            $completionviews[$i] = $i . '%';
+        }
+
+        $group = [
+            $mform->createElement('checkbox', 'readpercentactive', '   ', get_string('requiredreadpercent', 'book')),
+            $mform->createElement('select', 'readpercent', get_string('readpercentselect', 'book'), $completionviews),
+        ];
+
+        $mform->addGroup($group, 'completionviewgroup', get_string('readpercentselect', 'book'), ['<br>'], false);
+        $mform->disabledIf('readpercent', 'readpercentactive', 'notchecked');
+
+        return ['completionviewgroup'];
+    }
+
+    /**
+     * Validates the form.
+     *
+     * @param array $data
+     * @param array $files
+     *
+     * @return array
+     */
+    public function validation($data, $files) {
+        $errors = parent::validation($data, $files);
+
+        if (isset($data['readpercentactive']) && $data['readpercent'] == '0') {
+            $errors['completionviewgroup'] = get_string('readpercentvalidation', 'mod_book');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Called during validation to see whether some module-specific completion rules are selected.
+     *
+     * @param array $data Input data not yet validated.
+     *
+     * @return bool True if one or more rules is enabled, false if none are.
+     */
+    public function completion_rule_enabled($data) {
+        return (!empty($data['readpercentactive']) && $data['readpercent'] > 0);
+    }
 }
