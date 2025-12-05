@@ -305,17 +305,17 @@ function book_get_toc($chapters, $chapter, $book, $cm, $edit) {
                     array('title' => get_string('editchapter', 'mod_book', $titleunescaped)));
 
             $deleteaction = new confirm_action(get_string('deletechapter', 'mod_book', $titleunescaped));
-            $toc .= $OUTPUT->action_link(
-                new moodle_url('delete.php', [
-                    'id'        => $cm->id,
-                    'chapterid' => $ch->id,
-                    'sesskey'   => sesskey(),
-                    'confirm'   => 1,
-                ]),
-                $OUTPUT->pix_icon('t/delete', get_string('deletechapter', 'mod_book', $title)),
-                $deleteaction,
-                ['title' => get_string('deletechapter', 'mod_book', $titleunescaped)]
-            );
+            $toc .= $OUTPUT->action_icon(
+                    new moodle_url('delete.php', [
+                            'id'        => $cm->id,
+                            'chapterid' => $ch->id,
+                            'sesskey'   => sesskey(),
+                            'confirm'   => 1,
+                        ]),
+                    new pix_icon('t/delete', get_string('deletechapter', 'mod_book', $title)),
+                    $deleteaction,
+                    ['title' => get_string('deletechapter', 'mod_book', $titleunescaped)]
+                );
 
             if ($ch->hidden) {
                 $toc .= html_writer::link(new moodle_url('show.php', array('id' => $cm->id, 'chapterid' => $ch->id, 'sesskey' => $USER->sesskey)),
@@ -546,6 +546,112 @@ function mod_book_get_tagged_chapters($tag, $exclusivemode = false, $fromctx = 0
         return new core_tag\output\tagindex($tag, 'mod_book', 'book_chapters', $content,
             $exclusivemode, $fromctx, $ctx, $rec, $page, $totalpages);
     }
+}
+
+/**
+ * Returns the user progress in a book based on their userviews
+ *
+ * @param int $bookid
+ * @param int $userid
+ * @return int
+ */
+function mod_book_get_book_userview_progress($bookid, $userid) {
+    global $DB;
+
+    $chapters = $DB->get_records('book_chapters', ['bookid' => $bookid, 'hidden' => 0], 'id', 'id');
+
+    $userviewedchapters = mod_book_get_book_userviews($bookid, $userid);
+
+    if (!$chapters || !$userviewedchapters) {
+        return 0;
+    }
+
+    return (int)((count($userviewedchapters) / count($chapters)) * 100);
+}
+
+/**
+ * Returns all chapters views of a user.
+ *
+ * @param int $bookid
+ * @param int $userid
+ * @return array|bool
+ */
+function mod_book_get_book_userviews($bookid, $userid) {
+    global $DB;
+
+    $userviewedchapterssql = "SELECT DISTINCT uv.chapterid
+                              FROM {book_chapters_userviews} uv
+                              INNER JOIN {book_chapters} bc ON bc.id = uv.chapterid
+                              INNER JOIN {book} b ON b.id = bc.bookid
+                              WHERE bc.bookid = :bookid AND uv.userid = :userid AND bc.hidden = 0";
+    $parameters = [
+        'bookid' => $bookid,
+        'userid' => $userid,
+    ];
+
+    $userviewedchapters = $DB->get_records_sql($userviewedchapterssql, $parameters);
+
+    if ($userviewedchapters) {
+        return $userviewedchapters;
+    }
+
+    return false;
+}
+
+/**
+ * Returns the ID of the last visited page to show
+ *
+ * @param int $bookid
+ * @param array $chapters
+ * @return int|bool
+ */
+function mod_book_get_user_last_viewed_chapter_to_show(int $bookid, array $chapters): int|bool {
+    $lastuserviewedchapterid = mod_book_get_user_last_viewed_chapter($bookid);
+
+    if ($lastuserviewedchapterid === false) {
+        return false;
+    }
+
+    if (!isset($chapters[$lastuserviewedchapterid])) {
+        return false;
+    }
+
+    if ($chapters[$lastuserviewedchapterid]->hidden) {
+        return false;
+    }
+
+    return $lastuserviewedchapterid;
+}
+
+/**
+ * Returns the ID of the last visited page based on the book user views
+ *
+ * @param int $bookid
+ * @return bool
+ */
+function mod_book_get_user_last_viewed_chapter($bookid) {
+    global $DB, $USER;
+
+    $sql = "SELECT uv.chapterid
+            FROM {book_chapters_userviews} uv
+            INNER JOIN {book_chapters} bc ON bc.id = uv.chapterid
+            INNER JOIN {book} b ON b.id = bc.bookid
+            WHERE bc.bookid = :bookid AND uv.userid = :userid AND bc.hidden = 0
+            ORDER BY uv.timecreated DESC
+            LIMIT 1";
+
+    $parameters = [
+        'bookid' => $bookid,
+        'userid' => $USER->id,
+    ];
+
+    $record = $DB->get_record_sql($sql, $parameters);
+
+    if ($record) {
+        return $record->chapterid;
+    }
+
+    return false;
 }
 
 /**

@@ -24,21 +24,77 @@ namespace mod_book;
  */
 class helper {
     /**
-     * Check if we are on the last visible chapter of the book.
+     * Check if the user completed the book read based on its read percent requirement
      *
-     * @param int $chapterid
-     * @param array $chapters chapter list provided by book_preload_chapters
-     * @see book_preload_chapters
+     * @param int $bookid
+     * @param int $userid
      * @return bool
      */
-    public static function is_last_visible_chapter(int $chapterid, array $chapters): bool {
-        $lastchapterid = 0;
-        foreach ($chapters as $ch) {
-            if ($ch->hidden) {
-                continue;
-            }
-            $lastchapterid = $ch->id;
+    public static function is_book_read_completed($bookid, $userid): bool {
+        global $DB;
+
+        $book = $DB->get_record('book', ['id' => $bookid], '*', MUST_EXIST);
+
+        if (!$book->readpercent) {
+            return false;
         }
-        return $chapterid == $lastchapterid;
+
+        $percentviewed = self::get_book_userview_progress($book->id, $userid);
+
+        if ($percentviewed >= $book->readpercent) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns the user progress in a book based on their userviews
+     *
+     * @param int $bookid
+     * @param int $userid
+     * @return int
+     */
+    public static function get_book_userview_progress($bookid, $userid): int {
+        global $DB;
+
+        $chapters = $DB->get_records('book_chapters', ['bookid' => $bookid, 'hidden' => 0], 'id', 'id');
+
+        $userviewedchapters = self::get_book_userviews($bookid, $userid);
+
+        if (!$chapters || !$userviewedchapters) {
+            return 0;
+        }
+
+        return (int)((count($userviewedchapters) / count($chapters)) * 100);
+    }
+
+    /**
+     * Returns all chapters views of a user.
+     *
+     * @param int $bookid
+     * @param int $userid
+     * @return array|bool
+     */
+    public static function get_book_userviews($bookid, $userid): array|bool {
+        global $DB;
+
+        $userviewedchapterssql = "SELECT DISTINCT uv.chapterid
+                              FROM {book_chapters_userviews} uv
+                              INNER JOIN {book_chapters} bc ON bc.id = uv.chapterid
+                              INNER JOIN {book} b ON b.id = bc.bookid
+                              WHERE bc.bookid = :bookid AND uv.userid = :userid AND bc.hidden = 0";
+        $parameters = [
+            'bookid' => $bookid,
+            'userid' => $userid,
+        ];
+
+        $userviewedchapters = $DB->get_records_sql($userviewedchapterssql, $parameters);
+
+        if ($userviewedchapters) {
+            return $userviewedchapters;
+        }
+
+        return false;
     }
 }

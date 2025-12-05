@@ -34,6 +34,7 @@ class restore_book_activity_structure_step extends restore_activity_structure_st
 
         $paths[] = new restore_path_element('book', '/activity/book');
         $paths[] = new restore_path_element('book_chapter', '/activity/book/chapters/chapter');
+        $paths[] = new restore_path_element('book_chapter_userview', '/activity/book/chapters/chapter/chapters_userviews/userview');
         $paths[] = new restore_path_element('book_chapter_tag', '/activity/book/chaptertags/tag');
 
         // Return the paths wrapped into standard activity structure
@@ -73,6 +74,19 @@ class restore_book_activity_structure_step extends restore_activity_structure_st
 
         $newitemid = $DB->insert_record('book_chapters', $data);
         $this->set_mapping('book_chapter', $oldid, $newitemid, true);
+    }
+
+    /**
+     * Process chapter user view tag information
+     * @param array $data information
+     */
+    protected function process_book_chapter_userview($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $data->chapterid = $this->get_new_parentid('book_chapter');
+
+        $DB->insert_record('book_chapters_userviews', $data);
     }
 
     protected function process_book_chapter_tag($data) {
