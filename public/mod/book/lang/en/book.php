@@ -71,7 +71,10 @@ $string['indicator:socialbreadthdef_help'] = 'The participant has reached this p
 $string['indicator:socialbreadthdef_link'] = 'Learning_analytics_indicators#Social_breadth';
 $string['movechapterup'] = 'Move chapter up "{$a}"';
 $string['movechapterdown'] = 'Move chapter down "{$a}"';
-$string['privacy:metadata'] = 'The book activity module does not store any personal data.';
+$string['privacy:metadata:book_chapters_userviews'] = 'Information about book pages user view history';
+$string['privacy:metadata:book_chapters_userviews:chapterid'] = 'Chapter viewed';
+$string['privacy:metadata:book_chapters_userviews:timecreated'] = 'Time when the user viewed the page';
+$string['privacy:metadata:book_chapters_userviews:userid'] = 'User who viewed the page';
 $string['search:activity'] = 'Book - resource information';
 $string['search:chapter'] = 'Book - chapters';
 $string['showchapter'] = 'Show chapter "{$a}"';
@@ -115,7 +118,11 @@ $string['subchapternotice'] = '(Only available once the first chapter has been c
 $string['subplugintype_booktool'] = 'Book tool';
 $string['subplugintype_booktool_plural'] = 'Book tools';
 
+$string['readpercentselect'] = 'Required read percent';
+$string['readpercentstatus'] = 'You need to read at least {$a}% of the book';
+$string['readpercentvalidation'] = 'You need to define the required read percentage';
 $string['removeallbooktags'] = 'All book tags';
+$string['requiredreadpercent'] = 'The user needs to read at least this percent of the Book:';
 $string['tagarea_book_chapters'] = 'Book chapters';
 
 // Deprecated since Moodle 4.5.
