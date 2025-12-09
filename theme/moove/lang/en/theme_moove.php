@@ -254,3 +254,8 @@ $string['hvpcss_desc'] = 'Custom CSS code to be applied on H5P activities';
 // Redirect page
 $string['redirectmessage'] = 'This page should automatically redirect.';
 $string['redirectbtntext'] = 'If nothing is happening please click here to continue.';
+
+// Custom login page
+$string['loginmu'] = 'Mondragon Unibertsitatea SSO';
+$string['loginmoodle'] = 'Classic login';
+$string['backtoselection'] = 'Back to login options';
