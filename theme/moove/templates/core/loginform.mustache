@@ -92,8 +92,8 @@
         "languagemenu": "Choose language"
     }
 }}
-<div class="loginform row {{#hastwocolumns}}hastwocolumns{{/hastwocolumns}}">
-    <div class="{{#hastwocolumns}}col-lg-6 col-md-12 left-column{{/hastwocolumns}}{{^hastwocolumns}}col{{/hastwocolumns}}">
+<div class="loginform row">
+    <div class="col-12">
         {{#logourl}}
             <div id="loginlogo" class="login-logo">
                 <img id="logoimage" src="{{logourl}}" class="img-fluid" alt="{{sitename}}"/>
@@ -109,7 +109,8 @@
             </div>
         {{/maintenance}}
         {{#error}}
-            <div id="loginerrormessage" class="alert alert-danger" role="alert">{{error}}</div>
+            <a href="#" id="loginerrormessage" class="sr-only">{{error}}</a>
+            <div class="alert alert-danger" role="alert">{{error}}</div>
         {{/error}}
         {{#info}}
             <a href="#" id="logininfomessage" class="sr-only">{{info}}</a>
@@ -119,7 +120,24 @@
             <a href="{{signupurl}}" class="sr-only">{{#str}} tocreatenewaccount {{/str}}</a>
         {{/cansignup}}
 
-        <form class="login-form" action="{{loginurl}}" method="post" id="login">
+        <!-- Botones principales de selección -->
+        <div class="login-method-selection mb-4">
+            {{#hasidentityproviders}}
+                {{#identityproviders}}
+                    <a href="{{url}}" class="btn btn-lg btn-block mb-3 btn-login-sso">
+                        <img src="https://www.mondragon.edu/documents/20182/844251/MU_logo_txuria_128px.png" {{!
+                        !}}alt="{{#str}}loginmu, theme_moove{{/str}}" {{!
+                        !}}class="mr-2 login-sso-icon" />{{#str}} loginmu, theme_moove {{/str}}
+                    </a>
+                {{/identityproviders}}
+            {{/hasidentityproviders}}
+            <button type="button" class="btn btn-lg btn-block btn-login-manual" id="moodle-login-btn">
+                <i class="fa fa-user mr-2"></i>{{#str}} loginmoodle, theme_moove {{/str}}
+            </button>
+        </div>
+
+        <!-- Formulario de login tradicional (inicialmente oculto) -->
+        <form class="login-form" action="{{loginurl}}" method="post" id="login" style="display: none;">
             <input type="hidden" name="logintoken" value="{{logintoken}}">
             <div class="login-form-username form-group">
                 <label for="username" class="sr-only">
@@ -160,85 +178,50 @@
                     {{#str}}donthaveanaccount, theme_moove{{/str}} <a href="{{signupurl}}">{{#str}}startsignup{{/str}}</a>
                 </div>
             {{/cansignup}}
+            
+            <!-- Botón para volver a la selección -->
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-link" id="back-to-selection">
+                    <i class="fa fa-arrow-left mr-1"></i>{{#str}}backtoselection, theme_moove{{/str}}
+                </button>
+            </div>
         </form>
-        {{^hastwocolumns}}
-            {{#canloginasguest}}
-                <form action="{{loginurl}}" method="post" id="guestlogin" class="mt-2">
-                    <input type="hidden" name="logintoken" value="{{logintoken}}">
-                    <input type="hidden" name="username" value="guest" />
-                    <input type="hidden" name="password" value="guest" />
-                    <button class="btn btn-secondary btn-block" type="submit">{{#str}}loginguest{{/str}}</button>
-                </form>
-            {{/canloginasguest}}
-            <div class="d-flex mt-2">
-                {{#languagemenu}}
-                    <div class="login-languagemenu">
-                        {{>core/action_menu}}
-                    </div>
-                {{/languagemenu}}
-                <button type="button" class="ml-auto btn btn-link" {{!
-                }} data-modal="alert"{{!
-                }} data-modal-title-str='["cookiesenabled", "core"]' {{!
-                }} data-modal-content-str='["cookiesenabled_help_html", "core"]'{{!
-                }}><i class="fa fa-question-circle"></i> {{#str}}cookiesnotice{{/str}}</button>
-            </div>
-            <div class="d-flex">
-                <button type="button" class="ml-auto btn btn-link" {{!
-                }} onclick="window.open('https://www.mondragon.edu/privacy-policy', '_blank');" {{!
-                }}>{{#str}}policydoctype1, tool_policy{{/str}}</button>
-            </div>
-        {{/hastwocolumns}}
-    </div>
-    {{#hastwocolumns}}
-        <div class="col-lg-6 col-md-12 right-column">
-            <div class="column-content">
-                {{#hasidentityproviders}}
-                    <div class="login-identityproviders">
-                        <p class="login-heading text-center">{{#str}}signinwith, theme_moove{{/str}}</p>
-                        {{#identityproviders}}
-                            <a class="btn login-identityprovider-btn btn-block {{#isfacebook}}facebook{{/isfacebook}}" href="{{url}}">
-                                {{#iconurl}}
-                                    <img src="{{iconurl}}" alt="" width="24" height="24"/>
-                                {{/iconurl}}
-                                {{name}}
-                            </a>
-                        {{/identityproviders}}
-                    </div>
 
-                    <div class="login-divider"></div>
-                {{/hasidentityproviders}}
-                {{#hasinstructions}}
-                    {{{instructions}}}
-                {{/hasinstructions}}
-                {{#canloginasguest}}
-                    <form action="{{loginurl}}" method="post" id="guestlogin">
-                        <input type="hidden" name="logintoken" value="{{logintoken}}">
-                        <input type="hidden" name="username" value="guest" />
-                        <input type="hidden" name="password" value="guest" />
-                        <button class="btn btn-secondary btn-block" type="submit">{{#str}}loginguest{{/str}}</button>
-                    </form>
-                {{/canloginasguest}}
-
-                <div class="d-flex mt-2">
-                    {{#languagemenu}}
-                        <div class="login-languagemenu">
-                            {{>core/action_menu}}
-                        </div>
-                    {{/languagemenu}}
-                    <button type="button" class="ml-auto btn btn-link" {{!
-                    }} data-modal="alert"{{!
-                    }} data-modal-title-str='["cookiesenabled", "core"]' {{!
-                    }} data-modal-content-str='["cookiesenabled_help_html", "core"]'{{!
-                    }}><i class="fa fa-question-circle"></i> {{#str}}cookiesnotice{{/str}}</button>
-                </div>
-                <div class="d-flex">
-                    <button type="button" class="ml-auto btn btn-link" {{!
-                    }} onclick="window.open('https://www.mondragon.edu/privacy-policy', '_blank');" {{!
-                    }}>{{#str}}policydoctype1, tool_policy{{/str}}</button>
-                </div>
+        <!-- Proveedores de identidad (SSO) - ya no se usan en la interfaz principal -->
+        {{#hasidentityproviders}}
+            <div class="login-identityproviders mt-4" id="sso-providers" style="display: none;">
+                <!-- Solo se mantiene por compatibilidad, no se usa en la interfaz -->
             </div>
+        {{/hasidentityproviders}}
+
+        {{#hasinstructions}}
+            <div class="login-instructions mt-4">
+                {{{instructions}}}
+            </div>
+        {{/hasinstructions}}
+
+        {{#canloginasguest}}
+            <form action="{{loginurl}}" method="post" id="guestlogin" class="mt-2">
+                <input type="hidden" name="logintoken" value="{{logintoken}}">
+                <input type="hidden" name="username" value="guest" />
+                <input type="hidden" name="password" value="guest" />
+                <button class="btn btn-secondary btn-block" type="submit">{{#str}}loginguest{{/str}}</button>
+            </form>
+        {{/canloginasguest}}
+
+        <div class="d-flex mt-2">
+            {{#languagemenu}}
+                <div class="login-languagemenu">
+                    {{>core/action_menu}}
+                </div>
+            {{/languagemenu}}
+            <button type="button" class="ml-auto btn btn-link" {{!
+            }} data-modal="alert"{{!
+            }} data-modal-title-str='["cookiesenabled", "core"]' {{!
+            }} data-modal-content-str='["cookiesenabled_help_html", "core"]'{{!
+            }}><i class="fa fa-question-circle"></i> {{#str}}cookiesnotice{{/str}}</button>
         </div>
-    {{/hastwocolumns}}
+    </div>
 </div>
 
 {{#js}}
@@ -247,10 +230,13 @@
             require(['core_form/events'], function(FormEvent) {
                 function autoFocus() {
                     const userNameField = document.getElementById('username');
-                    if (userNameField.value.length == 0) {
+                    if (userNameField && userNameField.value.length == 0) {
                         userNameField.focus();
                     } else {
-                        document.getElementById('password').focus();
+                        const passwordField = document.getElementById('password');
+                        if (passwordField) {
+                            passwordField.focus();
+                        }
                     }
                 }
                 autoFocus();
@@ -259,17 +245,63 @@
         {{/autofocusform}}
     {{/error}}
     {{#error}}
-        document.getElementById('loginerrormessage').focus();
+        const errorMsg = document.getElementById('loginerrormessage');
+        if (errorMsg) {
+            errorMsg.focus();
+        }
     {{/error}}
     {{#togglepassword}}
         require(['core/togglesensitive'], function(ToggleSensitive) {
             ToggleSensitive.init("password", {{smallscreensonly}});
         });
     {{/togglepassword}}
-        require(['core_form/submit'], function(Submit) {
-            Submit.init("loginbtn");
-            {{#canloginasguest}}
-                Submit.init("loginguestbtn");
-            {{/canloginasguest}}
+    
+    require(['core_form/submit'], function(Submit) {
+        Submit.init("loginbtn");
+        {{#canloginasguest}}
+            Submit.init("loginguestbtn");
+        {{/canloginasguest}}
+    });
+
+    require(['jquery'], function($) {
+        $(document).ready(function() {
+            console.log('Login method selection initialized');
+            
+            // Elementos del DOM
+            var $moodleLoginBtn = $('#moodle-login-btn');
+            var $loginForm = $('#login');
+            var $methodSelection = $('.login-method-selection');
+            var $backToSelectionBtn = $('#back-to-selection');
+
+            console.log('Found elements:', {
+                moodleBtn: $moodleLoginBtn.length,
+                loginForm: $loginForm.length,
+                methodSelection: $methodSelection.length
+            });
+
+            // Mostrar formulario de Moodle al hacer clic en "Usuario de Moodle"
+            $moodleLoginBtn.on('click', function(e) {
+                e.preventDefault();
+                console.log('Moodle login button clicked');
+                $methodSelection.hide();
+                $loginForm.show();
+                
+                // Auto-focus en el campo de usuario
+                setTimeout(function() {
+                    var $userNameField = $('#username');
+                    if ($userNameField.length && $userNameField.val().length == 0) {
+                        $userNameField.focus();
+                    }
+                }, 100);
+            });
+
+            // Volver a la selección desde formulario de Moodle
+            $backToSelectionBtn.on('click', function(e) {
+                e.preventDefault();
+                console.log('Back to selection from Moodle form');
+                $loginForm.hide();
+                $methodSelection.show();
+            });
         });
+    });
 {{/js}}
