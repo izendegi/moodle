@@ -51,20 +51,22 @@ class delete extends scheduled_task {
     public function execute() {
         mtrace(get_string('taskname', 'tool_deletemessage'));
         global $DB, $CFG;
-        require_once($CFG->dirroot.'/admin/tool/deletemessage/locallib.php');
+        require_once($CFG->dirroot . '/admin/tool/deletemessage/locallib.php');
         $configs = get_config('tool_deletemessage');
         $individualmessage = \core_message\api::MESSAGE_CONVERSATION_TYPE_INDIVIDUAL;// 1
         $delteaction = \core_message\api::MESSAGE_ACTION_DELETED;// 2
         $viewaction = \core_message\api::MESSAGE_ACTION_READ;// 1
         $users = null;
 
-        $types = $individualmessage;
+        $types = [$individualmessage];
+
         if ($configs->deletegroupmessages > 0) {
-            $types .= ','.\core_message\api::MESSAGE_CONVERSATION_TYPE_GROUP;
+            $types[] = \core_message\api::MESSAGE_CONVERSATION_TYPE_GROUP;
         }
         if ($configs->deletepersonalmessage > 0) {
-            $types .= ','.\core_message\api::MESSAGE_CONVERSATION_TYPE_SELF;
+            $types[] = \core_message\api::MESSAGE_CONVERSATION_TYPE_SELF;
         }
+
         if ($configs->deletereadmessages > 0) {
             $reftime = time() - $configs->deletereadmessages;
             $sql = "SELECT distinct userid from {message_conversation_members}";
@@ -82,35 +84,45 @@ class delete extends scheduled_task {
                     'userref' => $user->userid, 'timeref2' => $reftime,
                 ]);
                 foreach ($readmessagens as $readmessage) {// Just soft delete if both has saw it will be hard deleted.
-                    if ($readmessage &&
-                            isset($readmessage->useridfrom) &&
-                            $DB->record_exists('user', ['id' => $readmessage->useridfrom]) &&
-                            $DB->record_exists("messages", ['id' => $readmessage->messageid])) {
+                    if (
+                        $readmessage && isset($readmessage->useridfrom) &&
+                        $DB->record_exists('user', ['id' => $readmessage->useridfrom]) &&
+                        $DB->record_exists("messages", ['id' => $readmessage->messageid])
+                    ) {
                         \core_message\api::delete_message($readmessage->useridfrom, $readmessage->messageid);
                     }
                 }
             }
         }
         if ($configs->deleteallmessages > 0) {
-            if (!$user) {
+            if (!$users) {
                 $sql = "SELECT distinct userid from {message_conversation_members}";
                 $users = $DB->get_records_sql($sql);
             }
+
             foreach ($users as $user) {
                 $reftime = time() - $configs->deleteallmessages;
-                $sql = "SELECT DISTINCT m.id as messageid,m.useridfrom FROM {message_conversations} c
-                        JOIN {messages} m on m.conversationid =c.id
-                        and c.type in (:types) and m.timecreated<:timeref and m.useridfrom=:userref
-                        LEFT JOIN {message_user_actions} uad on uad.messageid=m.id
-					    ";
-                $readmessagens = $DB->get_records_sql($sql, ['types' => $individualmessage,
-                    'timeref' => $reftime, 'userref' => $user->userid,
+                [$insql, $inparams] = $DB->get_in_or_equal($types, SQL_PARAMS_NAMED, 'typ');
+                $sql = "SELECT DISTINCT m.id as messageid, m.useridfrom
+        FROM {message_conversations} c
+        JOIN {messages} m ON m.conversationid = c.id
+        AND c.type $insql
+        AND m.timecreated < :timeref
+        AND m.useridfrom = :userref
+        LEFT JOIN {message_user_actions} uad ON uad.messageid = m.id";
+                $params = array_merge($inparams, [
+                    'timeref' => $reftime,
+                    'userref' => $user->userid,
                 ]);
-                foreach ($readmessagens as $readmessage) {
+                $readmessages = $DB->get_records_sql($sql, $params);
+                foreach ($readmessages as $readmessage) {
                     if ($configs->harddelete) {// If is old it need to be deleted.
                         hard_delete_message($readmessage->messageid);
-                    } else if ($readmessage->useridfrom && $DB->record_exists('user', ['id' => $readmessage->useridfrom]) &&
-                            $DB->record_exists("messages", ['id' => $readmessage->messageid])) {
+                    } else if (
+                        $readmessage->useridfrom &&
+                        $DB->record_exists('user', ['id' => $readmessage->useridfrom]) &&
+                        $DB->record_exists("messages", ['id' => $readmessage->messageid])
+                    ) {
                         \core_message\api::delete_message($readmessage->useridfrom, $readmessage->messageid);
                     }
                 }
