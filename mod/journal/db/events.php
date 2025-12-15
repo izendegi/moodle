@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_journal version file
+ * mod_journal events file
  *
  * @package    mod_journal
  * @copyright  2014 David Monllao <david.monllao@gmail.com>
@@ -24,8 +24,13 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_journal';
-$plugin->version = 2025121400;
-$plugin->requires = 2022041900;  /* Moodle 4.0 */
-$plugin->release = '5.0.0 (Build: 2025121400)';
-$plugin->maturity = MATURITY_STABLE;
+$observers = [
+    [
+        'eventname' => '\mod_journal\event\entry_created',
+        'callback'  => '\mod_journal\event_observer::entry_modified',
+    ],
+    [
+        'eventname' => '\mod_journal\event\entry_updated',
+        'callback'  => '\mod_journal\event_observer::entry_modified',
+    ],
+];
