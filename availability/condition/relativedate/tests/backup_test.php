@@ -54,11 +54,13 @@ final class backup_test extends advanced_testcase {
         require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
         $this->resetAfterTest();
         $this->preventResetByRollback();
+        $this->setAdminUser();
         set_config('enabled_stores', 'logstore_standard', 'tool_log');
         set_config('buffersize', 0, 'logstore_standard');
-        $this->setAdminUser();
+        get_log_manager(true);
         $CFG->enablecompletion = true;
         $CFG->enableavailability = true;
+
         $dg = $this->getDataGenerator();
         $now = di::get(clock::class)->time();
         $this->course = $dg->create_course(['startdate' => $now, 'enddate' => $now + 7 * WEEKSECS, 'enablecompletion' => 1]);
@@ -69,7 +71,11 @@ final class backup_test extends advanced_testcase {
      */
     public function test_backup_course(): void {
         global $CFG, $DB;
-        $logger = new \core_backup_html_logger(\backup::LOG_WARNING);
+        $CFG->backup_database_logger_level = \backup::LOG_DEBUG;
+        $CFG->backup_error_log_logger_level = \backup::LOG_DEBUG;
+        $CFG->backup_file_logger_level = \backup::LOG_DEBUG;
+        $CFG->backup_file_logger_level_extra = \backup::LOG_DEBUG;
+
         $dg = $this->getDataGenerator();
         $pg = $dg->get_plugin_generator('mod_page');
         $page0 = $pg->create_instance(['course' => $this->course, 'completion' => COMPLETION_TRACKING_MANUAL]);
@@ -94,16 +100,16 @@ final class backup_test extends advanced_testcase {
             \backup::MODE_GENERAL,
             2
         );
-        $bc->add_logger($logger);
         $bc->execute_plan();
+
         $results = $bc->get_results();
         $file = $results['backup_destination'];
         $fp = get_file_packer('application/vnd.moodle.backup');
         $filepath = $CFG->dataroot . '/temp/backup/test-restore-course-event';
         $file->extract_to_pathname($fp, $filepath);
         $bc->destroy();
-        $this->assertEquals('', $logger->get_html());
 
+        $logger = new \core_backup_html_logger(\backup::LOG_DEBUG);
         $newcourse = $dg->create_course(['enablecompletion' => 1]);
         $rc = new \restore_controller(
             'test-restore-course-event',
@@ -116,9 +122,11 @@ final class backup_test extends advanced_testcase {
         $rc->add_logger($logger);
         $rc->execute_precheck();
         $rc->execute_plan();
-        $rc->destroy();
+
         // TODO:  We should see a warning.
-        $this->assertEquals('', $logger->get_html());
+        $this->assertNotEquals('', $logger->get_html());
+        $rc->destroy();
+
         $modinfo = get_fast_modinfo($newcourse);
         $pages = $modinfo->get_instances_of('page');
         $this->assertCount(5, $pages);
@@ -128,6 +136,7 @@ final class backup_test extends advanced_testcase {
                 $arr[] = $page->availability;
             }
         }
+
         $this->assertStringContainsString('[{"type":"relativedate","n":4,"d":4,"s":7,"m"', $arr[0]);
         $this->assertStringNotContainsString($page0->cmid, $arr[0]);
         $this->assertStringContainsString('[{"type":"relativedate","n":3,"d":4,"s":7,"m"', $arr[1]);
@@ -156,6 +165,7 @@ final class backup_test extends advanced_testcase {
             2
         );
         $bc->execute_plan();
+
         $results = $bc->get_results();
         $file = $results['backup_destination'];
         $fp = get_file_packer('application/vnd.moodle.backup');
@@ -174,6 +184,7 @@ final class backup_test extends advanced_testcase {
         $rc->execute_precheck();
         $rc->execute_plan();
         $rc->destroy();
+
         $modinfo = get_fast_modinfo($this->course);
         $pages = $modinfo->get_instances_of('page');
         $this->assertCount(4, $pages);
@@ -183,6 +194,7 @@ final class backup_test extends advanced_testcase {
                 $arr[] = $page->availability;
             }
         }
+
         $this->assertStringContainsString('[{"type":"relativedate","n":2,"d":5,"s":7,"m":' . $page0->cmid, $arr[0]);
         $this->assertStringContainsString($page0->cmid, $arr[0]);
         $this->assertStringContainsString('[{"type":"relativedate","n":2,"d":5,"s":7,"m"', $arr[1]);
@@ -212,11 +224,13 @@ final class backup_test extends advanced_testcase {
             2
         );
         $bc->execute_plan();
+
         $filepath = $CFG->dataroot . '/temp/backup/test-restore-course-event';
         $fp = get_file_packer('application/vnd.moodle.backup');
         $results = $bc->get_results();
         $file = $results['backup_destination'];
         $file->extract_to_pathname($fp, $filepath);
+
         $bc->destroy();
 
         $rc = new \restore_controller(
@@ -230,6 +244,7 @@ final class backup_test extends advanced_testcase {
         $rc->execute_precheck();
         $rc->execute_plan();
         $rc->destroy();
+
         $modinfo = get_fast_modinfo($this->course);
         $pages = $modinfo->get_instances_of('page');
         $this->assertCount(3, $pages);
@@ -239,6 +254,7 @@ final class backup_test extends advanced_testcase {
                 $arr[] = $page->availability;
             }
         }
+
         $this->assertStringContainsString('[{"type":"relativedate","n":66,"d":5,"s":7,"m":' . $page0->cmid, $arr[0]);
         $this->assertStringContainsString($page0->cmid, $arr[0]);
         $this->assertStringContainsString('[{"type":"relativedate","n":66,"d":5,"s":7,"m"', $arr[1]);

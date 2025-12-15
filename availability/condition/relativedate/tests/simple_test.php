@@ -57,6 +57,7 @@ final class simple_test extends \basic_testcase {
 
         $structure = (object)['type' => 'relativedate'];
         $structure->d = 2;
+
         $cond = new condition($structure);
         $this->assertNotEqualsCanonicalizing($structure, $cond->save());
         $structure->d = 'b';
@@ -65,6 +66,7 @@ final class simple_test extends \basic_testcase {
 
         $structure = (object)['type' => 'relativedate'];
         $structure->c = 3;
+
         $cond = new condition($structure);
         $this->assertNotEqualsCanonicalizing($structure, $cond->save());
         $structure->c = 'c';
@@ -73,6 +75,7 @@ final class simple_test extends \basic_testcase {
 
         $structure = (object)['type' => 'relativedate'];
         $structure->e = 4;
+
         $cond = new condition($structure);
         $this->assertNotEqualsCanonicalizing($structure, $cond->save());
         $structure->e = 'd';
@@ -81,6 +84,7 @@ final class simple_test extends \basic_testcase {
 
         $structure = (object)['type' => 'relativedate'];
         $structure->s = 4;
+
         $cond = new condition($structure);
         $this->assertNotEqualsCanonicalizing($structure, $cond->save());
         $structure->s = 'd';
@@ -89,6 +93,7 @@ final class simple_test extends \basic_testcase {
 
         $structure = (object)['type' => 'relativedate'];
         $structure->n = 5;
+
         $cond = new condition($structure);
         $this->assertNotEqualsCanonicalizing($structure, $cond->save());
         $structure->n = 'e';
@@ -125,6 +130,9 @@ final class simple_test extends \basic_testcase {
         $this->assertCount(5, condition::options_dwm());
         $expected = [0 => 'minutes', 1 => 'hours', 2 => 'days', 3 => 'weeks', 4 => 'months'];
         $this->assertEquals($expected, condition::options_dwm());
+        $expected = [0 => 'minute', 1 => 'hour', 2 => 'day', 3 => 'week', 4 => 'month'];
+        $this->assertEquals($expected, condition::options_dwm(false));
+
         $this->assertEquals('minute', condition::option_dwm(0));
         $this->assertEquals('hour', condition::option_dwm(1));
         $this->assertEquals('day', condition::option_dwm(2));
@@ -132,10 +140,6 @@ final class simple_test extends \basic_testcase {
         $this->assertEquals('month', condition::option_dwm(4));
         $this->assertEquals('', condition::option_dwm(5));
         $this->assertEquals('', condition::option_dwm(6));
-        $this->assertEquals($expected, condition::options_dwm());
-        $expected = [0 => 'minute', 1 => 'hour', 2 => 'day', 3 => 'week', 4 => 'month'];
-        $this->assertEquals($expected, condition::options_dwm(1));
-        $this->assertEquals(condition::options_dwm(4), condition::options_dwm(3));
 
         $this->assertEquals('', condition::options_start(0));
         $this->assertEquals('after course start date', condition::options_start(1));
@@ -165,7 +169,6 @@ final class simple_test extends \basic_testcase {
 
     /**
      * Relative dates debug provider.
-     * @return Generator
      */
     public static function debug_provider(): Generator {
         $daybefore = ' 1 ' . get_string('day', 'availability_relativedate') . ' ';

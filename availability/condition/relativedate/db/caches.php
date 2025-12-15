@@ -15,31 +15,26 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Relative date availability privacy provider class.
+ * Cache for availability_relativedate
  *
  * @package   availability_relativedate
  * @copyright eWallah (www.eWallah.net)
  * @author    Renaat Debleu <info@eWallah.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-namespace availability_relativedate\privacy;
+defined('MOODLE_INTERNAL') || die();
 
-/**
- * Provider class.
- *
- * @package   availability_relativedate
- * @copyright eWallah (www.eWallah.net)
- * @author    Renaat Debleu <info@eWallah.net>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class provider implements \core_privacy\local\metadata\null_provider {
-    /**
-     * Get the language string identifier with the component's language
-     * file to explain why this plugin stores no data.
-     *
-     * @return  string Reason
-     */
-    public static function get_reason(): string {
-        return 'privacy:metadata';
-    }
-}
+$definitions = [
+    'enrolstart' => [
+        'mode' => cache_store::MODE_REQUEST,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+    ],
+    'enrolend' => [
+        'mode' => cache_store::MODE_REQUEST,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+    ],
+];
