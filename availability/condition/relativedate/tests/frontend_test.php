@@ -47,6 +47,9 @@ final class frontend_test extends \advanced_testcase {
         $CFG->enablecompletion = true;
         $CFG->enableavailability = true;
         set_config('enableavailability', true);
+        $cache = \cache::make('availability_relativedate', 'enrolend');
+        $cache->set('0_999', 0);
+        $cache->set('0_1', 1);
     }
 
     /**
@@ -63,6 +66,7 @@ final class frontend_test extends \advanced_testcase {
         $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'self'], '*', MUST_EXIST);
         $DB->set_field('enrol', 'enrolenddate', $now + 10000, ['id' => $instance->id]);
         $DB->set_field('enrol', 'enrolstartdate', $now - 100, ['id' => $instance->id]);
+
         $page = $dg->get_plugin_generator('mod_page')->create_instance(['course' => $course, 'completion' => 1]);
         $modinfo = get_fast_modinfo($course);
         $cms = $modinfo->get_instances();
@@ -70,6 +74,11 @@ final class frontend_test extends \advanced_testcase {
         $DB->set_field('course_modules', 'deletioninprogress', true, ['id' => $cm->id]);
         $arr = $this->call_method([$course]);
         $this->assertCount(6, $arr);
+        $cache = \cache::make('availability_relativedate', 'enrolend');
+        $this->assertTrue($cache->has("0_{$course->id}"));
+        $this->assertEquals($course->id, $cache->get("0_{$course->id}"));
+
+        $arr = $this->call_method([$course]);
         $this->assertCount(5, $arr[1]);
         $expected = [
             ['field' => 1, 'display' => 'after course start date'],
@@ -223,8 +232,8 @@ final class frontend_test extends \advanced_testcase {
 
     /**
      * Test behat funcs
-     * @param array $params
-     * @return array
+     * @param array $params Parameters to use
+     * @return array returned data
      */
     private function call_method(array $params): array {
         $frontend = new frontend();
