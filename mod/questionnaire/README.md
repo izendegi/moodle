@@ -6,25 +6,27 @@ The questionnaire module allows you to construct questionnaires (surveys) from a
 variety of question type. It was originally based on phpESP, and Open Source
 survey tool.
 
---------------------------------------------------------------------------------
-Developers Note:
+## Developers Note
 
 There is no main branch. Questionnaire is maintained in MOODLE_XXX_STABLE
 branches. Use the latest STABLE branch for development or installation.
-The current stable branch is MOODLE_404_STABLE, and supports Moodle 4.4 through 4.5.
+
+Submit a pull request against the current stable branch to provide fixes, improvements or features. Make sure the change is defined well in the pull request or associated issue. Pull requests should contain changes for the issue at hand only. Any other changes must be in a separate pull request.
+
+**The current stable branch is MOODLE_500_STABLE, and supports Moodle 5.0 through 5.1.**
+
+Use the MOODLE_404_STABLE branch for Moodle 4.4 through 4.5.
+
 Use the MOODLE_401_STABLE branch for Moodle 4.1 through 4.3.
 
---------------------------------------------------------------------------------
-To Install:
+## To Install
 
 1. Load the questionnaire module directory into your "mod" subdirectory.
 2. Visit your admin page to create all of the necessary data tables.
 
---------------------------------------------------------------------------------
-To Upgrade:
+## To Upgrade
 
 1. Copy all of the files into your 'mod/questionnaire' directory.
 2. Visit your admin page. The database will be updated.
 
---------------------------------------------------------------------------------
 Please read the CHANGES.md file for more info about successive changes
