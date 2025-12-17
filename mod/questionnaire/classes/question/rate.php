@@ -330,7 +330,6 @@ class rate extends question {
             $cols = [];
             if (isset($choice->content)) {
                 $str = 'q' . "{$this->id}_$cid";
-                //$content = $choice->content;
                 $content = format_text($choice->content, FORMAT_HTML, ['noclean' => true]);
                 $rendercontent = format_text($choice->content, FORMAT_PLAIN);
                 if ($this->osgood_rate_scale()) {
@@ -344,8 +343,7 @@ class rate extends question {
                     if (isset($odata)) {
                         $ovalue = stripslashes($odata);
                     }
-                    $content = $othertext;
-                    //$content = format_text($othertext, FORMAT_HTML, ['noclean' => true]);
+                    $content = format_text($othertext, FORMAT_HTML, ['noclean' => true]);
                     $cols[] = ['oname' => $oname, 'oid' => $oid, 'ovalue' => $ovalue,
                             'colstyle' => 'text-align: ' . $textalign . ';',
                             'coltext' => format_text($content, FORMAT_HTML, ['noclean' => true]) . '&nbsp;'];
@@ -530,15 +528,13 @@ class rate extends question {
                 $content = $choice->content;
                 $contents = questionnaire_choice_values($content);
                 if ($contents->modname) {
-                    //$content = $contents->text;
                     $content = format_text($contents->text, FORMAT_HTML, ['noclean' => true]);
                 }
                 if ($this->osgood_rate_scale()) {
                     [$content, $contentright] = array_merge(preg_split('/[|]/', $content), [' ']);
                 }
                 if ($choice->is_other_choice()) {
-                    $content = $choice->other_choice_display();
-                    //$content = format_text($choice->other_choice_display(), FORMAT_HTML, ['noclean' => true]);
+                    $content = format_text($choice->other_choice_display(), FORMAT_HTML, ['noclean' => true]);
                     if (isset($response->answers[$this->id][$cid]->otheresponse)) {
                         $rowobj->othercontent = $response->answers[$this->id][$cid]->otheresponse;
                     }
@@ -1021,7 +1017,6 @@ class rate extends question {
      */
     private function add_nameddegrees_from_extradata() {
         if (!empty($this->extradata)) {
-            //$this->nameddegrees = json_decode($this->extradata, true);
             $degrees = json_decode($this->extradata, true);
             if (is_array($degrees)) {
                 foreach ($degrees as $key => $value) {
