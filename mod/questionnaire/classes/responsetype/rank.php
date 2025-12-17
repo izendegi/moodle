@@ -317,8 +317,8 @@ class rank extends responsetype {
                   WHERE c.question_id = ?
                         AND c.content = '!other'
                         AND ro.response <> ''
-               GROUP BY ro.response, cid
-               ORDER BY cid";
+               GROUP BY ro.response, c.id
+               ORDER BY c.id";
         return $DB->get_records_sql($osql, array_merge($params, [$this->question->id]));
     }
 
@@ -641,7 +641,6 @@ class rank extends responsetype {
         foreach ($this->question->nameddegrees as $degree) {
             // To take into account languages filter.
             $content = (format_text($degree, FORMAT_HTML, ['noclean' => true]));
-            //$n[$nameddegrees] = $degree;
             $n[$nameddegrees] = $content;
             $nameddegrees++;
         }
@@ -953,7 +952,6 @@ class rank extends responsetype {
         foreach ($this->question->choices as $choice) {
             $contents = questionnaire_choice_values($choice->content);
             if ($contents->modname) {
-                //$choice->content = $contents->text;
                 $choice->content = format_text($contents->text, FORMAT_HTML, ['noclean' => true]);
             }
         }
