@@ -24,7 +24,7 @@
  */
 
 $string['automaticsave'] = 'Automatic save';
-$string['heartbeat'] = 'Heartbeat';
+$string['heartbeat'] = 'Heartbeat (Status overview)';
 $string['manualsave'] = 'Manual save';
 $string['plugindescription'] = 'See how much time has elapsed since the last successful manual or automatic save for each student attempting a given quiz.';
 $string['pluginname'] = 'Heartbeat (quiz_heartbeat)';
