@@ -1,5 +1,11 @@
 # Changelog
 
+### 1.0.6 (2025-12-21)
+
+- change report name to "Heartbeat (Status overview)" to be more clear
+- drop support for deprecated Moodle versions 4.1 and 4.4
+- internal: update CI
+
 ### 1.0.5 (2025-10-13)
 
 - assure compatibility with Moodle 5.1
