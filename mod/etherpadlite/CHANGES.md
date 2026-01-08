@@ -4,6 +4,10 @@ moodle-mod_etherpadlite
 Changes
 -------
 
+### v5.0.2
+* Support course overview - thanks to Luca Bösch (#85 and #86)
+* Comply to Moodle Code checker - thanks to Luca Bösch (#86)
+
 ### v5.0.1
 * Introduce dedicated connection testing tool by André Menrath (#79)
 * Fix unchecked check_ssl option not being honored by Ilja Rozhko

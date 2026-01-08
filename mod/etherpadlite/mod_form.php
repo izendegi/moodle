@@ -97,11 +97,19 @@ class mod_etherpadlite_mod_form extends moodleform_mod {
         }
 
         $mform->addElement('header', 'availabilityhdr', get_string('availability'));
-        $mform->addElement('date_time_selector', 'timeopen', get_string('activityopen', 'etherpadlite'),
-            ['optional' => true]);
+        $mform->addElement(
+            'date_time_selector',
+            'timeopen',
+            get_string('activityopen', 'etherpadlite'),
+            ['optional' => true]
+        );
         $mform->addHelpButton('timeopen', 'activityopenclose', 'etherpadlite');
-        $mform->addElement('date_time_selector', 'timeclose', get_string('activityclose', 'etherpadlite'),
-            ['optional' => true]);
+        $mform->addElement(
+            'date_time_selector',
+            'timeclose',
+            get_string('activityclose', 'etherpadlite'),
+            ['optional' => true]
+        );
 
         $this->standard_coursemodule_elements();
 
