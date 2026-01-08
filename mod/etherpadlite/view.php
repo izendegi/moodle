@@ -30,7 +30,7 @@ require_once(__DIR__ . '/lib.php');
 $id = optional_param('id', 0, PARAM_INT); // The course_module id.
 $a  = optional_param('a', 0, PARAM_INT);  // The etherpadlite instance id.
 
-list($course, $cm, $etherpadlite) = \mod_etherpadlite\util::get_coursemodule($id, $a);
+[$course, $cm, $etherpadlite] = \mod_etherpadlite\util::get_coursemodule($id, $a);
 
 $context = context_module::instance($cm->id);
 
@@ -138,9 +138,10 @@ $renderer = $PAGE->get_renderer('mod_etherpadlite');
 echo $renderer->header();
 
 require_once($CFG->libdir . '/grouplib.php');
-$groupselecturl = new moodle_url($CFG->wwwroot . '/mod/etherpadlite/view.php',
-    ['id' => $cm->id,
-    ]);
+$groupselecturl = new moodle_url(
+    $CFG->wwwroot . '/mod/etherpadlite/view.php',
+    ['id' => $cm->id],
+);
 
 groups_print_activity_menu($cm, $groupselecturl);
 
