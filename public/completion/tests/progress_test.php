@@ -17,6 +17,8 @@
 namespace core_completion;
 
 use completion_completion;
+use core_availability\tree;
+use availability_date\condition;
 
 /**
  * Test completion progress API.
@@ -282,5 +284,287 @@ final class progress_test extends \advanced_testcase {
 
         // Check that the result is null now.
         $this->assertNull(\core_completion\progress::get_course_progress_percentage($course, $user->id));
+    }
+
+    /**
+     * Tests course progress with hidden section.
+     */
+    public function test_course_progress_percentage_with_hidden_section(): void {
+        global $DB;
+
+        // Create a course with completion enabled and two sections.
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'numsections' => 2,
+            'format' => 'topics',
+        ]);
+
+        // Enrol a student.
+        $user = $this->getDataGenerator()->create_user();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, $studentrole->id);
+
+        $assigngenerator = $this->getDataGenerator()->get_plugin_generator('mod_assign');
+
+        // Add visible activities to section 0 and 1.
+        $activity1 = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'section' => 0,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+        $activity2 = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'section' => 1,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+
+        // Hide section 1.
+        $sectioninfo = get_fast_modinfo($course->id)->get_section_info(1);
+        \core_courseformat\formatactions::section($course->id)->set_visibility($sectioninfo, false);
+        $completion = new \completion_info($course);
+
+        // Initial completion: 0%.
+        $this->assertEquals(0, \core_completion\progress::get_course_progress_percentage($course, $user->id));
+
+        // Complete the visible activity: activity1.
+        $cm = get_coursemodule_from_id('assign', $activity1->cmid);
+        $completion->update_state($cm, COMPLETION_COMPLETE, $user->id);
+
+        // Only the visible activity (activity1) counts toward course completion.
+        // Activities in hidden sections are not included in the calculation.
+        $this->assertEquals(100, \core_completion\progress::get_course_progress_percentage($course, $user->id));
+
+        // Now unhide section 1.
+        $sectioninfo = get_fast_modinfo($course->id)->get_section_info(1);
+        \core_courseformat\formatactions::section($course->id)->set_visibility($sectioninfo, true);
+
+        // Course completion: 1 of 2 visible activities complete; previously hidden activity now counted.
+        $this->assertEquals(50, \core_completion\progress::get_course_progress_percentage($course, $user->id));
+    }
+
+    /**
+     * Tests course progress with hidden activity.
+     */
+    public function test_course_progress_percentage_with_hidden_activity(): void {
+        global $DB;
+
+        // Create a course with completion enabled and two sections.
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'numsections' => 3,
+            'format' => 'topics',
+        ]);
+
+        // Enrol a student.
+        $user = $this->getDataGenerator()->create_user();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, $studentrole->id);
+
+        $assigngenerator = $this->getDataGenerator()->get_plugin_generator('mod_assign');
+
+        // Section 0: visible activity.
+        $activity1 = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'section' => 0,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+
+        // Section 1: hidden activity.
+        $activity2 = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'section' => 1,
+            'completion' => COMPLETION_ENABLED,
+            'visible' => 0,
+        ]);
+
+        $completion = new \completion_info($course);
+
+        // Complete activity1 (visible).
+        $cm1 = get_coursemodule_from_id('assign', $activity1->cmid);
+        $completion->update_state($cm1, COMPLETION_COMPLETE, $user->id);
+
+        // Only 1 visible activity: course completion = 100%.
+        $this->assertEquals(100, \core_completion\progress::get_course_progress_percentage($course, $user->id));
+
+        $cm2 = get_coursemodule_from_id('assign', $activity2->cmid);
+        // Show activity2.
+        $DB->set_field('course_modules', 'visible', 1, ['id' => $cm2->id]);
+        rebuild_course_cache($course->id, true);
+
+        // Course completion: 1 of 2 visible activities complete; previously hidden activity now counted.
+        $this->assertEquals(50, \core_completion\progress::get_course_progress_percentage($course, $user->id));
+    }
+
+    /**
+     * Tests course progress percentage with activities having different availability restrictions.
+     */
+    public function test_course_progress_percentage_with_availability_restrictions(): void {
+        global $DB;
+
+        set_config('enableavailability', 1);
+
+        // Create a course with completion enabled.
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'format' => 'topics',
+        ]);
+
+        // Create and enrol a student.
+        $user = $this->getDataGenerator()->create_user();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, $studentrole->id);
+
+        $assigngenerator = $this->getDataGenerator()->get_plugin_generator('mod_assign');
+
+        // Activity 1: no restrictions (always visible).
+        $assign['activity1'] = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+
+        // Activity 2: date restriction from past (visible).
+        $assign['activity2'] = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+        $availabilityjson = json_encode(tree::get_root_json(
+            [
+                condition::get_json(condition::DIRECTION_FROM, time() - 3600),
+            ],
+            tree::OP_AND,
+            false,
+        ));
+        $DB->set_field('course_modules', 'availability', $availabilityjson, ['id' => $assign['activity2']->cmid]);
+
+        // Activity 3: date restriction from future, shows info (open eye).
+        $assign['activity3'] = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+        $availabilityjson = json_encode(tree::get_root_json(
+            [
+                condition::get_json(condition::DIRECTION_FROM, time() + 3600),
+            ],
+            tree::OP_AND,
+            true,
+        ));
+        $DB->set_field('course_modules', 'availability', $availabilityjson, ['id' => $assign['activity3']->cmid]);
+
+        // Activity 4: date restriction from future, hidden (closed eye).
+        $assign['activity4'] = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+        $availabilityjson = json_encode(tree::get_root_json(
+            [
+                condition::get_json(condition::DIRECTION_FROM, time() + 7200),
+            ],
+            tree::OP_AND,
+            false,
+        ));
+        $DB->set_field('course_modules', 'availability', $availabilityjson, ['id' => $assign['activity4']->cmid]);
+
+        rebuild_course_cache($course->id, true);
+
+        // Set user context and get completion info.
+        $this->setUser($user);
+        $completion = new \completion_info($course);
+
+        // Initial completion: 0%.
+        $this->assertEquals(0, \core_completion\progress::get_course_progress_percentage($course, $user->id));
+
+        // Complete activity 1.
+        $cm1 = get_coursemodule_from_id('assign', $assign['activity1']->cmid);
+        $completion->update_state($cm1, COMPLETION_COMPLETE, $user->id);
+        // 1 of 3 user-visible activities is complete; activity4 is hidden and ignored.
+        $this->assertEquals(33.33, round(\core_completion\progress::get_course_progress_percentage($course, $user->id), 2));
+
+        // Complete activity 2 (available from past).
+        $cm2 = get_coursemodule_from_id('assign', $assign['activity2']->cmid);
+        $completion->update_state($cm2, COMPLETION_COMPLETE, $user->id);
+        // Now 2 of the 3 user-visible activities are complete.
+        $this->assertEquals(66.67, round(\core_completion\progress::get_course_progress_percentage($course, $user->id), 2));
+
+        // Mark the restricted activity (with open eye) as complete.
+        $cm3 = get_coursemodule_from_id('assign', $assign['activity3']->cmid);
+        $completion->update_state($cm3, COMPLETION_COMPLETE, $user->id);
+        // All 3 user-visible activities are now complete; activity4 remains hidden.
+        $this->assertEquals(100, round(\core_completion\progress::get_course_progress_percentage($course, $user->id), 2));
+    }
+
+    /**
+     * Tests course progress percentage with activities having group restrictions.
+     */
+    public function test_course_progress_percentage_with_group_restrictions(): void {
+        global $DB;
+
+        set_config('enableavailability', 1);
+
+        // Create a course with completion enabled.
+        $course = $this->getDataGenerator()->create_course([
+            'enablecompletion' => 1,
+            'format' => 'topics',
+        ]);
+
+        // Create and enrol a student.
+        $user = $this->getDataGenerator()->create_user();
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, $studentrole->id);
+
+        // Create groups.
+        $visiblegroup = $this->getDataGenerator()->create_group([
+            'courseid' => $course->id,
+            'name' => 'Visible group',
+        ]);
+        $this->getDataGenerator()->create_group_member([
+            'groupid' => $visiblegroup->id,
+            'userid' => $user->id,
+        ]);
+
+        $restrictedgroup = $this->getDataGenerator()->create_group([
+            'courseid' => $course->id,
+            'name' => 'Restricted group',
+        ]);
+
+        $assigngenerator = $this->getDataGenerator()->get_plugin_generator('mod_assign');
+
+        // Activity 1: visible group (counts for completion).
+        $assign['activity1'] = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+        $availabilityjson = json_encode(tree::get_root_json(
+            [
+                \availability_group\condition::get_json($visiblegroup->id),
+            ],
+            tree::OP_AND,
+            false,
+        ));
+        $DB->set_field('course_modules', 'availability', $availabilityjson, ['id' => $assign['activity1']->cmid]);
+
+        // Activity 2: restricted group (does not count).
+        $assign['activity2'] = $assigngenerator->create_instance([
+            'course' => $course->id,
+            'completion' => COMPLETION_ENABLED,
+        ]);
+        $availabilityjson = json_encode(tree::get_root_json(
+            [
+                \availability_group\condition::get_json($restrictedgroup->id),
+            ],
+            tree::OP_AND,
+            false,
+        ));
+        $DB->set_field('course_modules', 'availability', $availabilityjson, ['id' => $assign['activity2']->cmid]);
+        rebuild_course_cache($course->id, true);
+
+        // Set user context and get completion info.
+        $this->setUser($user);
+        $completion = new \completion_info($course);
+
+        // Mark activity 1 as complete.
+        $cm1 = get_coursemodule_from_id('assign', $assign['activity1']->cmid);
+        $completion->update_state($cm1, COMPLETION_COMPLETE, $user->id);
+        // Assert course completion percentage only counts visible activity activity1.
+        $this->assertEquals(100, \core_completion\progress::get_course_progress_percentage($course, $user->id));
     }
 }
