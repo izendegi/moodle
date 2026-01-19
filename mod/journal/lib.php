@@ -132,6 +132,12 @@ function journal_supports($feature) {
     ) {
         return MOD_PURPOSE_COLLABORATION;
     }
+
+    // For versions of Moodle prior to 5.1, we need to define that constant here.
+    if (!defined('FEATURE_MOD_OTHERPURPOSE')) {
+        define('FEATURE_MOD_OTHERPURPOSE', 'mod_otherpurpose');
+    }
+
     switch ($feature) {
         case FEATURE_MOD_INTRO:
             return true;
@@ -155,6 +161,8 @@ function journal_supports($feature) {
             return true;
         case FEATURE_SHOW_DESCRIPTION:
             return true;
+        case FEATURE_MOD_OTHERPURPOSE:
+            return MOD_PURPOSE_ASSESSMENT;
         default:
             return null;
     }
@@ -253,7 +261,12 @@ function journal_print_recent_activity($course, $viewfullnames, $timestart) {
     }
 
     $dbparams = [$timestart, $course->id, 'journal'];
-    $namefields = user_picture::fields('u', null, 'userid');
+    if (class_exists('\core_user\fields')) {
+        $userfieldsapi = \core_user\fields::for_userpic();
+        $namefields = $userfieldsapi->get_sql('u', false, '', 'userid', false)->selects;
+    } else {
+        $namefields = user_picture::fields('u', null, 'userid');
+    }
     $sql = "SELECT je.id, je.modified, cm.id AS cmid, $namefields
          FROM {journal_entries} je
               JOIN {journal} j         ON j.id = je.journal
@@ -936,7 +949,7 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
             ['class' => 'userpix', 'style' => 'border-top: 1px solid #dedede;']
         );
 
-        $feedbacksection = get_string('feedback') . ': ';
+        $feedbacksection = get_string('grade', 'journal') . ': ';
         $gradinginfo = grade_get_grades($course->id, 'mod', 'journal', $entry->journal, [$user->id]);
 
         $attrs = [];
@@ -1082,7 +1095,8 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
             $options,
             $fpoptions
         );
-        echo "<p><textarea id=\"c$entry->id[text]\" name=\"c$entry->id[text]\" rows=\"7\" $feedbackdisabledstr>";
+        echo "<p><div>" . get_string('feedback', 'journal') .
+            ":</div><textarea id=\"c$entry->id[text]\" name=\"c$entry->id[text]\" rows=\"7\" $feedbackdisabledstr>";
         p($feedbacktext);
         echo '</textarea></p>';
 
