@@ -4,6 +4,10 @@ moodle-mod_etherpadlite
 Changes
 -------
 
+### v5.0.3
+* Activity information for Moodle 5.1 activity chooser (#87 and #88)
+* Improved URL checking in the test tool, suitable for installations in a subdirectory
+
 ### v5.0.2
 * Support course overview - thanks to Luca Bösch (#85 and #86)
 * Comply to Moodle Code checker - thanks to Luca Bösch (#86)

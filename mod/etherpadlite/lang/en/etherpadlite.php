@@ -71,9 +71,20 @@ $string['link_copied']                           = 'Link copied!';
 $string['minwidth']                              = 'Minimum width';
 $string['minwidthdesc']                          = 'If you don\'t want a very small etherpad on small displays like cell phones, you can set a minimum width that will keep the pad.';
 $string['modulename']                            = 'Etherpad Lite';
-$string['modulename_help']                       = 'The Etherpad Lite module enables students and teachers to write text in a collaborative way. The text is synced automatically as they type.
+$string['modulename_help']                       = '###### Key features
+- Enables real-time collaborative text editing for students and teachers
+- The text is synced automatically as they type
+- Add, view, and delete pads directly within Moodle
+- Consistent user identity and writing color across all pads
+- Supports Moodle import/export and optional guest access
 
-(The etherpadlite server, which stands behind this module, is still in beta stage. That\'s why problems might occur in rare circumstances, but aren\'t expected)';
+###### Ways to use it
+- Facilitate group brainstorming sessions in real time
+- Collaboratively draft essays, reports, or project documentation
+- Enable live note-taking during lectures or workshops
+- Support peer editing and feedback activities
+- Create shared writing spaces for remote or blended learning environments';
+$string['modulename_summary'] = 'Allows for real-time collaborative text editing directly within Moodle in both remote and blended environments.';
 $string['modulenameplural']            = 'Etherpad Lites';
 $string['padname']                     = 'Padname for all instances';
 $string['padnamedesc']                 = 'A general padname can be helpful, if you want to find all pads from this Moodle installation on your etherpadlite server. Pad groups are generated autmatically.';
