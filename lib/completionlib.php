@@ -1703,6 +1703,7 @@ class completion_info {
                   JOIN {course_modules_completion} cmc ON cm.id = cmc.coursemoduleid
                  WHERE cm.course = :courseid
                        AND cmc.userid = :userid
+                       AND cm.visible = 1
                        AND (cmc.completionstate = " . COMPLETION_COMPLETE . "
                         OR cmc.completionstate = " . COMPLETION_COMPLETE_PASS . ")";
         $params = ['courseid' => $this->course_id, 'userid' => $userid];
