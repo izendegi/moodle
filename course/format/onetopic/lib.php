@@ -862,12 +862,7 @@ class format_onetopic extends core_courseformat\base {
      * @return array
      */
     public function section_format_options($foreditform = false) {
-        global $section;
-
         static $sectionformatoptions = false;
-
-        // Diferent format options for subsection activity modules.
-        $subsection = !empty($section->component);
 
         $onetopicconfig = get_config('format_onetopic');
 
@@ -919,6 +914,10 @@ class format_onetopic extends core_courseformat\base {
         }
 
         if ($foreditform) {
+            global $section;
+            // Diferent format options for subsection activity modules.
+            $subsection = !empty($section->component);
+
             $sectionformatoptionsedit = [];
 
             if ($subsection) {
@@ -1008,7 +1007,7 @@ class format_onetopic extends core_courseformat\base {
                 }
             }
 
-            $sectionformatoptions = $sectionformatoptionsedit;
+            return $sectionformatoptionsedit;
         }
 
         return $sectionformatoptions;
@@ -1203,9 +1202,14 @@ class format_onetopic extends core_courseformat\base {
      * @param string $availableinfo the 'availableinfo' propery of the section_info as it was evaluated by conditional availability.
      */
     public function section_get_available_hook(section_info $section, &$available, &$availableinfo) {
+        try {
+            $level = $section->level;
+        } catch (Exception $notused) {
+            return;
+        }
 
         // Only check childs tabs visibility.
-        if (!property_exists($section, 'level') || $section->level == 0) {
+        if (empty($level)) {
             return;
         }
 
