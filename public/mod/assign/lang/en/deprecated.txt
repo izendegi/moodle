@@ -8,3 +8,4 @@ downloadasfolders_help,mod_assign
 editaction,mod_assign
 saveallquickgradingchanges,mod_assign
 gradingoptions,mod_assign
+assignmentoverduehtmlcutoffsnippet,mod_assign
