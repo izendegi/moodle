@@ -445,9 +445,6 @@ class notification_helper {
 
         // Prepare the cut-off date html string.
         $snippet = '';
-        if (!empty($cutoffdate)) {
-            $snippet = get_string('assignmentoverduehtmlcutoffsnippet', 'mod_assign', ['cutoffdate' => userdate($cutoffdate)]);
-        }
 
         $stringparams = [
             'firstname' => $user->firstname,
