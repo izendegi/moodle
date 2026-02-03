@@ -87,7 +87,7 @@ $string['assignmentduesoonofflinehtml'] = '<p>Hi {$a->firstname},</p>
 $string['assignmentduesoonsms'] = 'Your assignment {$a->assignmentname} is due on {$a->duedate}: {$a->shortlink}';
 $string['assignmentoverduehtml'] = '<p>Hi {$a->firstname},</p>
 <p><strong>{$a->assignmentname}</strong> in course {$a->coursename} was due on <strong>{$a->duedate}</strong>.</p>
-<p>You might still be able to submit your assignment{$a->cutoffsnippet}, but your submission will be marked as late.</p>
+<p>You might still be able to submit your assignment, but your submission will be marked as late.</p>
 <p><a href="{$a->url}">Go to activity</a></p>';
 $string['assignmentoverduesms'] = 'Your assignment {$a->assignmentname} is overdue on {$a->duedate}: {$a->shortlink}';
 $string['assignmentoverduehtmlcutoffsnippet'] = ' <strong>by {$a->cutoffdate}</strong>';
