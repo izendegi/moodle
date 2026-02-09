@@ -100,7 +100,7 @@ class factor extends object_factor_base {
         $records = $DB->get_records('tool_mfa', [
             'userid' => $user->id,
             'factor' => $this->name,
-            'label' => $user->email,
+            'label' => $user->email ?? '',
         ]);
 
         if (!empty($records)) {
@@ -111,8 +111,8 @@ class factor extends object_factor_base {
         $record = [
             'userid' => $user->id,
             'factor' => $this->name,
-            'label' => $user->email,
-            'createdfromip' => $user->lastip,
+            'label' => $user->email ?? '',
+            'createdfromip' => $user->lastip ?? '',
             'timecreated' => time(),
             'revoked' => 0,
         ];
