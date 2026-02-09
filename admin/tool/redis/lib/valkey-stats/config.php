@@ -33,8 +33,8 @@ defined('MOODLE_INTERNAL') || die();
 // Servers are defined as an array
 // [ Name, IP/Socket, Port, Password ]
 //
-// Name (string):                     name shown in drop-down list (also used for command mapping)
-// IP/Socket (string):                IP address or socket of the server
+// Name (string):                     name shown in drop-down list (also used for tls options and command mapping)
+// IP/Socket (string):                IP address, hostname, or socket of the server
 // Port (integer):                    port of server, use -1 for socket
 // Password entry (string|array):     credentials for the server (optional)
 // $ret = cache_administration_helper::get_store_instance_summaries();
@@ -42,6 +42,15 @@ defined('MOODLE_INTERNAL') || die();
 //
 // First: Initialize empty stores array.
 $servers = [];
+
+// And initialize TLS configuration array.
+$tls = [
+    'default-options' => [
+        'verify_peer'       => true,
+        'verify_peer_name'  => true,
+        'allow_self_signed' => false,
+    ],
+];
 
 // Second: Get all MUC stores' configurations.
 $factory = \core_cache\factory::instance();
@@ -60,8 +69,62 @@ foreach ($stores as $key => $store) {
         continue;
     }
 
+    // Check if cluster mode is enabled.
+    $clustermode = !empty($store['configuration']['clustermode']);
+
+    // Get server address(es) and trim whitespace.
+    $serverstring = trim($store['configuration']['server']);
+
+    // For cluster mode, use only the first line. For single mode, use the whole string.
+    if ($clustermode) {
+        $lines = explode("\n", $serverstring);
+        $serverstring = trim($lines[0]);
+    }
+
+    // Check if it's a Unix socket.
+    if ($serverstring[0] === '/' || str_starts_with($serverstring, 'unix://')) {
+        $serveraddress = $serverstring;
+        $port = -1; // Unix socket indicator for valkey-stats.
+    } else {
+        // Default port for Redis.
+        $port = 6379;
+        $serveraddress = $serverstring;
+
+        // Check for custom port in format "host:port".
+        if (strpos($serverstring, ':') !== false) {
+            list($serveraddress, $port) = explode(':', $serverstring, 2);
+            $port = (int)$port;
+        }
+
+        // Trim server address to handle accidental whitespace.
+        $serveraddress = trim($serveraddress);
+
+        // Add tls:// prefix if encryption is enabled.
+        if (!empty($store['configuration']['encryption']) && !str_starts_with($serveraddress, 'tls://')) {
+            $serveraddress = 'tls://' . $serveraddress;
+        }
+    }
+
     // Remember the Redis store information.
-    $servers[] = [$store['name'], $store['configuration']['server'], 6379, $store['configuration']['password']];
+    $servers[] = [$store['name'], $serveraddress, $port, $store['configuration']['password']];
+
+    // Check if TLS encryption is enabled for this store.
+    if (!empty($store['configuration']['encryption'])) {
+        // Build TLS options for this store.
+        $tlsoptions = [];
+
+        // If a CA file is specified, use it for verification.
+        if (!empty($store['configuration']['cafile'])) {
+            $tlsoptions['cafile'] = $store['configuration']['cafile'];
+        } else {
+            // If no CA file is specified, disable peer verification (for self-signed certificates).
+            $tlsoptions['verify_peer'] = false;
+            $tlsoptions['verify_peer_name'] = false;
+        }
+
+        // Add TLS options for this specific server (using the store name as key).
+        $tls[$store['name']] = $tlsoptions;
+    }
 }
 
 // Forth: If there isn't any Redis store configured, we should stop here.
@@ -83,3 +146,6 @@ define("STATUS_LINE", "bottom");
 
 // Don't show the 'Check for update' button.
 define("CHECK_FOR_UPDATE", false);
+
+// Use the php extension, if loaded.
+define("USE_MODULE_IF_LOADED", true);
