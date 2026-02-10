@@ -51,15 +51,18 @@
     position: absolute;
     z-index: 1;
     right: 0;
+    max-width: 100%;
 }
 
-#learningmap-advanced-settings label {
-    float: left;
+@media (max-width: 767.98px) {
+    #learningmap-advanced-settings {
+        left: 0;
+        right: 0;
+    }
 }
 
-#learningmap-advanced-settings label + a {
-    position: absolute;
-    right: 0;
+#learningmap-advanced-settings .col {
+    min-width: 0;
 }
 
 #fitem_id_introeditor_text {
@@ -142,4 +145,16 @@
 
 .learningmap-container {
     width: 100%;
+}
+
+.learningmap_description_form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.learningmap_description_form input,
+.learningmap_description_form textarea {
+    width: 100%;
+    box-sizing: border-box;
 }
