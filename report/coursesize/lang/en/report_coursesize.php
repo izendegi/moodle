@@ -64,6 +64,7 @@ $string['livecalc'] = 'Live calculations: ';
 $string['nevercap'] = 'Never';
 $string['numberofusers'] = 'Top users number';
 $string['numberofusers_desc'] = 'Number of top users of usage to display.';
+$string['numberofusershelp'] = 'Number of top users of usage to display.';
 $string['pluginname'] = 'Course size';
 $string['pluginsettings'] = 'Course size settings';
 $string['privacy:metadata:report_coursesize_users'] = 'Course size users.';
