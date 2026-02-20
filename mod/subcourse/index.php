@@ -22,12 +22,17 @@
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
-require_once(dirname(__FILE__).'/lib.php');
+require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(dirname(__FILE__) . '/lib.php');
+global $CFG;
 
 $id = required_param('id', PARAM_INT);
 
 $course = $DB->get_record('course', ['id' => $id], '*', MUST_EXIST);
+
+if ($CFG->version > 2025041400) {
+    \core_courseformat\activityoverviewbase::redirect_to_overview_page($id, 'subcourse');
+}
 
 require_course_login($course);
 
@@ -37,9 +42,9 @@ $PAGE->set_heading($course->shortname);
 $PAGE->set_pagelayout('incourse');
 $PAGE->navbar->add(get_string('modulenameplural', 'subcourse'));
 
-$event = \mod_subcourse\event\course_module_instance_list_viewed::create([
-    'context' => context_course::instance($course->id)
-]);
+$event = \mod_subcourse\event\course_module_instance_list_viewed::create(
+    ['context' => context_course::instance($course->id)]
+);
 $event->add_record_snapshot('course', $course);
 $event->trigger();
 
@@ -55,7 +60,7 @@ if (!$subcourses = get_all_instances_in_course('subcourse', $course)) {
 $usesections = course_format_uses_sections($course->format);
 
 $timenow = time();
-$strsectionname = get_string('sectionname', 'format_'.$course->format);
+$strsectionname = get_string('sectionname', 'format_' . $course->format);
 $strname = get_string('subcoursename', 'subcourse');
 $strdesc = get_string('moduleintro');
 
@@ -63,11 +68,11 @@ $table = new html_table();
 $table->id = 'subcourseslist';
 
 if ($usesections) {
-    $table->head  = array ($strsectionname, $strname, $strdesc);
-    $table->align = array ('center', 'left', 'left');
+    $table->head  = [$strsectionname, $strname, $strdesc];
+    $table->align = ['center', 'left', 'left'];
 } else {
-    $table->head  = array ($strname, $strdesc);
-    $table->align = array ('left', 'left');
+    $table->head  = [$strname, $strdesc];
+    $table->align = ['left', 'left'];
 }
 
 foreach ($subcourses as $subcourse) {
@@ -75,8 +80,15 @@ foreach ($subcourses as $subcourse) {
     if (empty($subcourse->visible)) {
         $attributes['class'] = 'dimmed';
     }
-    $link = html_writer::link(new moodle_url('/mod/subcourse/view.php',
-        ['id' => $subcourse->coursemodule]), format_string($subcourse->name), $attributes);
+
+    $link = html_writer::link(
+        new moodle_url(
+            '/mod/subcourse/view.php',
+            ['id' => $subcourse->coursemodule]
+        ),
+        format_string($subcourse->name),
+        $attributes
+    );
     $description = format_module_intro('subcourse', $subcourse, $subcourse->coursemodule);
     if ($usesections) {
         $table->data[] = [get_section_name($course, $subcourse->section), $link, $description];
