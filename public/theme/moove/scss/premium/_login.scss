@@ -1,0 +1,31 @@
+#page-login-index.moove-login {
+    &.left .loginform {
+        margin: 0 auto 0 0;
+    }
+
+    &.right .loginform {
+        margin: 0 0 0 auto;
+    }
+}
+
+#page-login-signup.moove-login {
+    &.left .login-wrapper {
+        justify-content: left;
+    }
+
+    &.right .login-wrapper {
+        justify-content: right;
+    }
+}
+
+@include media-breakpoint-up(md) {
+    #page-login-index.moove-login {
+        .loginform {
+            width: 30%;
+
+            &.hastwocolumns {
+                width: 70%;
+            }
+        }
+    }
+}
