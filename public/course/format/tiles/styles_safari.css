@@ -1,0 +1,24 @@
+.format-tiles .activityiconcontainer.administration:not(.isbranded) .activityicon:not(.nofilter),
+.format-tiles .activityiconcontainer.administration:not(.isbranded) .icon:not(.nofilter) {
+    filter: brightness(0) saturate(100%) invert(45%) sepia(46%) saturate(3819%) hue-rotate(260deg) brightness(101%) contrast(87%);
+}
+.format-tiles .activityiconcontainer.assessment:not(.isbranded) .activityicon:not(.nofilter),
+.format-tiles .activityiconcontainer.assessment:not(.isbranded) .icon:not(.nofilter) {
+    filter: brightness(0) saturate(100%) invert(36%) sepia(98%) saturate(6969%) hue-rotate(315deg) brightness(90%) contrast(119%);
+}
+.format-tiles .activityiconcontainer.collaboration:not(.isbranded) .activityicon:not(.nofilter),
+.format-tiles .activityiconcontainer.collaboration:not(.isbranded) .icon:not(.nofilter) {
+    filter: brightness(0) saturate(100%) invert(25%) sepia(54%) saturate(6226%) hue-rotate(245deg) brightness(100%) contrast(102%);
+}
+.format-tiles .activityiconcontainer.communication:not(.isbranded) .activityicon:not(.nofilter),
+.format-tiles .activityiconcontainer.communication:not(.isbranded) .icon:not(.nofilter) {
+    filter: brightness(0) saturate(100%) invert(48%) sepia(74%) saturate(4887%) hue-rotate(11deg) brightness(102%) contrast(101%);
+}
+.format-tiles .activityiconcontainer.content:not(.isbranded) .activityicon:not(.nofilter),
+.format-tiles .activityiconcontainer.content:not(.isbranded) .icon:not(.nofilter) {
+    filter: brightness(0) saturate(100%) invert(49%) sepia(52%) saturate(4675%) hue-rotate(156deg) brightness(89%) contrast(102%);
+}
+.format-tiles .activityiconcontainer.interactivecontent:not(.isbranded) .activityicon:not(.nofilter),
+.format-tiles .activityiconcontainer.interactivecontent:not(.isbranded) .icon:not(.nofilter) {
+    filter: brightness(0) saturate(100%) invert(25%) sepia(63%) saturate(1152%) hue-rotate(344deg) brightness(94%) contrast(91%);
+}
