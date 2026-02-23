@@ -1,0 +1,13 @@
+Version 1.0.3 (Build 2025071000)
+- Added better formatting for text input fields
+- Added ability to use Textarea fields in the snippet popup form
+
+Version 1.0.2 (Build 2025041700)
+- Added capability "use"
+- Tweaks for PHP 8.4
+
+Version 1.0.1 (Build 2023101800)
+-New icon
+
+Version 1.0.0 (Build: 2023100700 )
+-First release of Tiny Snippet
