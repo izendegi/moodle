@@ -1,0 +1,115 @@
+.gitquote {
+    border-radius: 6px;
+    margin: 16px 0;
+    padding: 12px;
+    border-left: 5px solid;
+    background-color: #f9f9f9;
+}
+
+.gitquote_name {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.gitquote strong::before {
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    display: inline-block;
+    font-size: 18px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.gitquote.NOTE {
+    border-color: #0366d6;
+    background-color: #e7f0ff;
+}
+
+.gitquote.WARNING {
+    border-color: #d73a49;
+    background-color: #fce8e6;
+}
+
+.gitquote.TIP {
+    border-color: #28a745;
+    background-color: #e6f4ea;
+}
+
+.gitquote.IMPORTANT {
+    border-color: #800080;
+    background-color: #f3e5f5;
+}
+
+.gitquote b,
+.gitquote i,
+.gitquote code {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    font-size: inherit;
+    vertical-align: baseline;
+}
+
+.gitquote code {
+    background-color: #f1f1f1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.defaultquote {
+    background-color: #f9f9f9;
+    border-left: 5px solid #ccc;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-style: italic;
+    color: #555;
+}
+
+.defaultquote .quote-content {
+    display: block;
+    margin: 0;
+}
+
+.gitquote .quote-type.NOTE {
+    color: #0366d6;
+}
+
+.gitquote .quote-type.NOTE::before {
+    content: "\f05a"; /* FontAwesome fa-circle-info */
+    font-family: "Font Awesome 6 Free";
+}
+
+.gitquote .quote-type.IMPORTANT {
+    color: #800080;
+}
+
+.gitquote .quote-type.IMPORTANT::before {
+    content: "\f06a"; /* FontAwesome exclamation-circle icon */
+    font-family: "Font Awesome 6 Free";
+}
+
+.gitquote .quote-type.WARNING {
+    color: #d73a49;
+}
+
+.gitquote .quote-type.WARNING::before {
+    content: "\f071"; /* FontAwesome exclamation-triangle icon */
+    font-family: "Font Awesome 6 Free";
+}
+
+.gitquote .quote-type.TIP {
+    color: #28a745;
+}
+
+.gitquote .quote-type.TIP::before {
+    content: "\f05a"; /* FontAwesome lightbulb icon */
+    font-family: "Font Awesome 6 Free";
+}
+
+.gitquote .quote-content,
+.defaultquote .quote-content {
+    display: block;
+    margin: 0;
+    color: #555;
+}
