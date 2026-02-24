@@ -21,4 +21,3 @@ Feature: Tiny code pro editor
     And I set the field "Description" to "Hello tiny!"
     And I click on the "View > Source code Pro" menu item for the "Description" TinyMCE editor
     Then I should see "Source code Pro"
-    
