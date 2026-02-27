@@ -43,3 +43,6 @@ $string['cannotunzipfile'] = 'Chan urrainn am faidhle siopach fhosgladh';
 $string['componentisuptodate'] = 'Tha a’ cho-phàirt ris an latha';
 $string['dmlexceptiononinstall'] = '<p>Tha mearachd stòir-dàta air tachairt \\[{$a->errorcode}].<br />{$a->debuginfo}</p>';
 $string['downloadedfilecheckfailed'] = 'Dh’fhàillig sgrùdadh an fhaidhle a chaidh a luchdachadh a-nuas';
+$string['missingrequiredfield'] = 'Tha raon deatamach air choireigin a dhìth';
+$string['remotedownloaderror'] = '<p>Dh’fhàillig luchdachadh na co-phàirte a-nuas chun fhrithealaiche agad. Dearbh na suidheachaidhean procsaidh: thathas a’ moladh an leudachain PHP cURL gu mòr.</p>
+<p>Feumaidh tu am faidhle <a href="{$a->url}">{$a->url}</a> a luchdachadh a-nuas le làimh, lethbhreac dheth a chur ann an "{$a->dest}" san fhrithealaiche agad agus an siopadh fhosgladh an sin.</p>';
