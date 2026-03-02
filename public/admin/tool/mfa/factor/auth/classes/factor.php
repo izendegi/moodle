@@ -81,7 +81,7 @@ class factor extends object_factor_base {
             $safetypes = explode(',', $safetypes);
 
             // Check all safetypes against user auth.
-            if (in_array($USER->auth, $safetypes, true)) {
+            if (in_array($USER->auth ?? '', $safetypes, true)) {
                 return \tool_mfa\plugininfo\factor::STATE_PASS;
             }
             return \tool_mfa\plugininfo\factor::STATE_NEUTRAL;
