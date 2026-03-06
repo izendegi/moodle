@@ -15,17 +15,22 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Completion Progress block version details
+ * Completion Progress block external services.
  *
  * @package    block_completion_progress
- * @copyright  2018 Michael de Raadt
+ * @copyright  2026 Jonathon Fowler <fowlerj@usq.edu.au>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die;
+defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025101301;
-$plugin->requires  = 2022112800;
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = 'Version for Moodle 4.5 onwards';
-$plugin->component = 'block_completion_progress';
+$functions = [
+    'block_completion_progress_get_blockinstance_data' => [
+        'classname'     => 'block_completion_progress\external\get_blockinstance_data',
+        'methodname'    => 'execute',
+        'description'   => 'Gets the data for rendering a progress bar.',
+        'type'          => 'read',
+        'ajax'          => true,
+        'capabilities'  => 'block/completion_progress:showbar',
+    ],
+];
