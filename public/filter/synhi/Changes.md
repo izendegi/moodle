@@ -1,6 +1,11 @@
 Version Information
 ===================
 
+Version 500.1.1 - 05/03/2026
+----------------------------
+1. Prevent autolinking.
+2. Checked on Moodle 5.1.
+
 Version 500.1.0 - 21/04/2025
 ----------------------------
 1. M5.0 compatibility.
