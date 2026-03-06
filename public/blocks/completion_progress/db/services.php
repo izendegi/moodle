@@ -15,19 +15,22 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * SynHi filter.
+ * Completion Progress block external services.
  *
- * @package    filter_synhi
- * @copyright  &copy; 2020-onwards G J Barnard.
- * @author     G J Barnard - {@link http://moodle.org/user/profile.php?id=442195}
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later.
+ * @package    block_completion_progress
+ * @copyright  2026 Jonathon Fowler <fowlerj@usq.edu.au>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2025041801;
-$plugin->requires = 2025041400.00; // 5.0 (Build: 20250414).  phpcs:ignore Squiz.PHP.CommentedOutCode.Found
-$plugin->supported = [500, 501];
-$plugin->component = 'filter_synhi';
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = '500.1.1';
+$functions = [
+    'block_completion_progress_get_blockinstance_data' => [
+        'classname'     => 'block_completion_progress\external\get_blockinstance_data',
+        'methodname'    => 'execute',
+        'description'   => 'Gets the data for rendering a progress bar.',
+        'type'          => 'read',
+        'ajax'          => true,
+        'capabilities'  => 'block/completion_progress:showbar',
+    ],
+];
