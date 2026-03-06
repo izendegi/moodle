@@ -110,6 +110,16 @@ class block_completion_progress extends block_base {
     }
 
     /**
+     * Initialise JS.
+     */
+    public function get_required_javascript() {
+        parent::get_required_javascript();
+        if ($this->page->requires->should_create_one_time_item_now('block_completion_progress')) {
+            $this->page->requires->js_call_amd('block_completion_progress/progressbar', 'init');
+        }
+    }
+
+    /**
      * Creates the blocks main content
      *
      * @return string
@@ -142,9 +152,6 @@ class block_completion_progress extends block_base {
         }
 
         // Organise access to JS.
-        $this->page->requires->js_call_amd('block_completion_progress/progressbar', 'init', [
-            'instances' => $barinstances,
-        ]);
         $cachevalue = debugging('', DEBUG_DEVELOPER) ? -1 : (int)get_config('block_completion_progress', 'cachevalue');
         $this->page->requires->css('/blocks/completion_progress/css.php?v=' . $cachevalue);
 
