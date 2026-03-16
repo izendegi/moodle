@@ -53,6 +53,10 @@ $string['presetfiles'] = 'Additional theme preset files';
 $string['presetfiles_desc'] = 'Preset files can be used to dramatically alter the appearance of the theme. See <a href="https://docs.moodle.org/dev/Boost_Presets">Boost presets</a> for information on creating and sharing your own preset files.';
 $string['loginbgimg'] = 'Login page background';
 $string['loginbgimg_desc'] = 'Upload your custom background image for the login page.';
+$string['loginlayout'] = 'Login page layout';
+$string['loginlayout_desc'] = 'Choose between the modified or the default Moove login page.';
+$string['loginlayout_modified'] = 'Modified login page';
+$string['loginlayout_base'] = 'Default login page';
 $string['brandcolor'] = 'Brand colour';
 $string['brandcolor_desc'] = 'The accent colour.';
 $string['secondarymenucolor'] = 'Secondary menu color';
@@ -192,6 +196,14 @@ $string['loginposition_desc'] = 'Where you want to position the login box in the
 $string['loginposition_left'] = 'Left';
 $string['loginposition_center'] = 'Centered';
 $string['loginposition_right'] = 'Right';
+$string['identityprovidersmode'] = 'Identity providers visibility';
+$string['identityprovidersmode_desc'] = 'Choose how identity provider buttons are shown on the login page.';
+$string['identityprovidersmode_none'] = 'Hide all providers';
+$string['identityprovidersmode_single'] = 'Show only one provider';
+$string['identityprovidersmode_all'] = 'Show all providers';
+$string['identityproviderssingle'] = 'Identity provider';
+$string['identityproviderssingle_desc'] = 'Select which identity provider is shown when using "Show only one provider" mode.';
+$string['identityproviderschoose'] = 'Choose a provider';
 $string['configreportstitle'] = 'Additional features';
 $string['configreportstext'] = '<div class="alert alert-info"><p>Moove Premium comes with some extra and special reports for you.</p><p class="mb-0">To access them, go to Site Administration > Reports.</p></div>';
 $string['alternativelogin'] = 'Alternative login URL';
@@ -259,3 +271,9 @@ $string['hvpcss_desc'] = 'Custom CSS code to be applied on H5P activities';
 // Redirect page
 $string['redirectmessage'] = 'This page should automatically redirect.';
 $string['redirectbtntext'] = 'If nothing is happening please click here to continue.';
+
+// Custom login page
+$string['loginmu'] = 'Mondragon Unibertsitatea SSO';
+$string['loginmoodle'] = 'Classic login';
+$string['backtoselection'] = 'Back to login options';
+$string['identityproviderschoosebutton'] = 'OAuth options';
