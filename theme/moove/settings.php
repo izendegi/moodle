@@ -25,6 +25,15 @@
 // This line protects the file from being accessed by a URL directly.
 defined('MOODLE_INTERNAL') || die();
 
+$authlib = null;
+if (isset($CFG->dirroot) && $CFG->dirroot !== '[dirroot]') {
+    $authlib = $CFG->dirroot . '/lib/authlib.php';
+}
+
+if ($authlib && file_exists($authlib)) {
+    require_once($authlib);
+}
+
 // This is used for performance, we don't need to know about these settings on every page in Moodle, only when
 // we are looking at the admin settings pages.
 if ($ADMIN->fulltree) {
@@ -93,6 +102,46 @@ if ($ADMIN->fulltree) {
     $opts = array('accepted_types' => array('.png', '.jpg', '.svg'));
     $setting = new admin_setting_configstoredfile($name, $title, $description, 'loginbgimg', 0, $opts);
     $setting->set_updatedcallback('theme_reset_all_caches');
+    $page->add($setting);
+
+    // Login layout mode.
+    $name = 'theme_moove/loginlayout';
+    $title = get_string('loginlayout', 'theme_moove');
+    $description = get_string('loginlayout_desc', 'theme_moove');
+    $choices = [
+        'modified' => get_string('loginlayout_modified', 'theme_moove'),
+        'base' => get_string('loginlayout_base', 'theme_moove')
+    ];
+    $setting = new admin_setting_configselect($name, $title, $description, 'modified', $choices);
+    $setting->set_updatedcallback('theme_reset_all_caches');
+    $page->add($setting);
+    //MODIFIKAZIOA IBAI MUTILOA, IDENTITY PROVIDERS SETTINGS, BEGIN
+    // Identity providers visibility.
+    $providerchoices = [];
+    if (class_exists('auth_plugin_base')) {
+        $authsequence = get_enabled_auth_plugins();
+        $identityproviders = \auth_plugin_base::get_identity_providers($authsequence);
+        foreach ($identityproviders as $provider) {
+            $providerchoices[$provider['name']] = $provider['name'];
+        }
+    }
+
+    $name = 'theme_moove/identityprovidersmode';
+    $title = get_string('identityprovidersmode', 'theme_moove');
+    $description = get_string('identityprovidersmode_desc', 'theme_moove');
+    $modechoices = [
+        'none' => get_string('identityprovidersmode_none', 'theme_moove'),
+        'single' => get_string('identityprovidersmode_single', 'theme_moove'),
+        'all' => get_string('identityprovidersmode_all', 'theme_moove')
+    ];
+    $setting = new admin_setting_configselect($name, $title, $description, 'all', $modechoices);
+    $page->add($setting);
+
+    $name = 'theme_moove/identityproviderssingle';
+    $title = get_string('identityproviderssingle', 'theme_moove');
+    $description = get_string('identityproviderssingle_desc', 'theme_moove');
+    $singlechoices = ['' => get_string('identityproviderschoose', 'theme_moove')] + $providerchoices;
+    $setting = new admin_setting_configselect($name, $title, $description, '', $singlechoices);
     $page->add($setting);
 
     // Variable $brand-color.

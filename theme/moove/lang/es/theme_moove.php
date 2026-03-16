@@ -26,4 +26,17 @@ defined('MOODLE_INTERNAL') || die();
 // Custom login page
 $string['loginmu'] = 'Mondragon Unibertsitatea SSO';
 $string['loginmoodle'] = 'Login clásico';
-$string['backtoselection'] = 'Volver a opciones de acceso';
+$string['loginlayout'] = 'Diseno de la página de login';
+$string['loginlayout_desc'] = 'Elige entre el login modificado o el login predeterminado de Moove.';
+$string['loginlayout_modified'] = 'Login modificado';
+$string['loginlayout_base'] = 'Login predeterminado';
+$string['backtoselection'] = 'Volver a las opciones de acceso';
+$string['identityprovidersmode'] = 'Modo de seleccion de proveedores';
+$string['identityprovidersmode_desc'] = 'Elige si no mostrar ninguno, mostrar sólo uno o mostrar todos.';
+$string['identityprovidersmode_none'] = 'No mostrar proveedores';
+$string['identityprovidersmode_all'] = 'Mostrar todos los proveedores';
+$string['identityprovidersmode_single'] = 'Mostrar un único proveedor';
+$string['identityproviderssingle'] = 'Proveedor único';
+$string['identityproviderssingle_desc'] = 'Selecciona que proveedor mostrar en modo único.';
+$string['identityproviderschoose'] = 'Elige un proveedor';
+$string['identityproviderschoosebutton'] = 'Opciones de OAuth';
