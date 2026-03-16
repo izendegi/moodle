@@ -200,10 +200,29 @@ class core_renderer extends \theme_boost\output\core_renderer {
             $context->hasinstructions = false;
         }
 
-        $context->hastwocolumns = false;
-        if ($context->hasidentityproviders || $CFG->auth_instructions) {
-            $context->hastwocolumns = true;
+        $mode = (string) get_config('theme_moove', 'identityprovidersmode');
+        if ($mode === '') {
+            $mode = 'all';
         }
+
+        if ($mode === 'none') {
+            $context->identityproviders = [];
+        } else if ($mode === 'single') {
+            $selected = trim((string) get_config('theme_moove', 'identityproviderssingle'));
+            if ($selected !== '' && !empty($context->identityproviders)) {
+                $context->identityproviders = array_values(array_filter(
+                    $context->identityproviders,
+                    function($provider) use ($selected) {
+                        return $provider['name'] === $selected;
+                    }
+                ));
+            }
+        }
+
+        $context->hasidentityproviders = !empty($context->identityproviders);
+        $context->showproviderschooser = $context->hasidentityproviders && ($mode === 'all');
+        $context->showprovidersdirect = $context->hasidentityproviders && ($mode === 'single');
+        $context->hastwocolumns = $context->hasidentityproviders || $CFG->auth_instructions;
 
         if ($context->identityproviders) {
             foreach ($context->identityproviders as $key => $provider) {
@@ -215,6 +234,14 @@ class core_renderer extends \theme_boost\output\core_renderer {
 
                 $context->identityproviders[$key]['isfacebook'] = $isfacebook;
             }
+        }
+
+        $context->identityproviders_first = array_slice($context->identityproviders, 0, 1);
+        $context->identityproviders_rest = array_slice($context->identityproviders, 1);
+
+        $loginlayout = (string) get_config('theme_moove', 'loginlayout');
+        if ($loginlayout === 'base') {
+            return $this->render_from_template('theme_moove/loginform_base', $context);
         }
 
         return $this->render_from_template('core/loginform', $context);
