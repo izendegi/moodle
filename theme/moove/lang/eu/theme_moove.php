@@ -26,4 +26,17 @@ defined('MOODLE_INTERNAL') || die();
 // Custom login page
 $string['loginmu'] = 'Mondragon Unibertsitatea SSO';
 $string['loginmoodle'] = 'Saio-hasiera klasikoa';
-$string['backtoselection'] = 'Itzuli saio-hasiera aukeretara';
+$string['loginlayout'] = 'Saio-hasiera orriaren diseinua';
+$string['loginlayout_desc'] = 'Aukeratu moldatutako saio-hasiera orria edo Moove-en lehenetsitakoa.';
+$string['loginlayout_modified'] = 'Moldatutako saio-hasiera orria';
+$string['loginlayout_base'] = 'Lehenetsitako saio-hasiera orria';
+$string['backtoselection'] = 'Itzuli saio-hasierako aukeretara';
+$string['identityprovidersmode'] = 'Identitate hornitzaileen hautaketa modua';
+$string['identityprovidersmode_desc'] = 'Aukeratu bat ere ez, hornitzaile bakarra, edo guztiak erakustea.';
+$string['identityprovidersmode_none'] = 'Ez erakutsi hornitzailerik';
+$string['identityprovidersmode_all'] = 'Erakutsi hornitzaile guztiak';
+$string['identityprovidersmode_single'] = 'Erakutsi hornitzaile bakarra ';
+$string['identityproviderssingle'] = 'Hornitzaile bakarra';
+$string['identityproviderssingle_desc'] = 'Aukeratu zein hornitzaile erakutsi hornitzaile bakarreko moduan.';
+$string['identityproviderschoose'] = 'Aukeratu hornitzaile bat';
+$string['identityproviderschoosebutton'] = 'OAuth aukerak';

@@ -53,6 +53,10 @@ $string['presetfiles'] = 'Additional theme preset files';
 $string['presetfiles_desc'] = 'Preset files can be used to dramatically alter the appearance of the theme. See <a href="https://docs.moodle.org/dev/Boost_Presets">Boost presets</a> for information on creating and sharing your own preset files.';
 $string['loginbgimg'] = 'Login page background';
 $string['loginbgimg_desc'] = 'Upload your custom background image for the login page.';
+$string['loginlayout'] = 'Login page layout';
+$string['loginlayout_desc'] = 'Choose between the modified or the default Moove login page.';
+$string['loginlayout_modified'] = 'Modified login page';
+$string['loginlayout_base'] = 'Default login page';
 $string['brandcolor'] = 'Brand colour';
 $string['brandcolor_desc'] = 'The accent colour.';
 $string['secondarymenucolor'] = 'Secondary menu color';
@@ -258,4 +262,13 @@ $string['redirectbtntext'] = 'If nothing is happening please click here to conti
 // Custom login page
 $string['loginmu'] = 'Mondragon Unibertsitatea SSO';
 $string['loginmoodle'] = 'Classic login';
-$string['backtoselection'] = 'Back to login options';
+$string['backtoselection'] = 'Back to the login options';
+$string['identityprovidersmode'] = 'Identity provider selection mode';
+$string['identityprovidersmode_desc'] = 'Choose whether to show none, a single provider, or all providers.';
+$string['identityprovidersmode_none'] = 'Show no providers';
+$string['identityprovidersmode_all'] = 'Show all providers';
+$string['identityprovidersmode_single'] = 'Show one provider';
+$string['identityproviderssingle'] = 'Single provider';
+$string['identityproviderssingle_desc'] = 'Select which provider to show when using single mode.';
+$string['identityproviderschoose'] = 'Choose a provider';
+$string['identityproviderschoosebutton'] = 'OAuth options';

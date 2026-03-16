@@ -123,13 +123,22 @@
         <!-- Botones principales de selección -->
         <div class="login-method-selection mb-4">
             {{#hasidentityproviders}}
-                {{#identityproviders}}
+                {{#identityproviders_first}}
                     <a href="{{url}}" class="btn btn-lg btn-block mb-3 btn-login-sso">
-                        <img src="https://www.mondragon.edu/documents/20182/844251/MU_logo_txuria_128px.png" {{!
-                        !}}alt="{{#str}}loginmu, theme_moove{{/str}}" {{!
-                        !}}class="mr-2 login-sso-icon" />{{#str}} loginmu, theme_moove {{/str}}
+                        {{#iconurl}}
+                            <img src="{{iconurl}}" alt="" class="mr-2 login-sso-icon" />
+                        {{/iconurl}}
+                        {{name}}
                     </a>
-                {{/identityproviders}}
+                {{/identityproviders_first}}
+                {{#identityproviders_rest}}
+                    <a class="btn login-identityprovider-btn btn-block" href="{{url}}">
+                        {{#iconurl}}
+                            <img src="{{iconurl}}" alt="" width="24" height="24"/>
+                        {{/iconurl}}
+                        {{name}}
+                    </a>
+                {{/identityproviders_rest}}
             {{/hasidentityproviders}}
             <button type="button" class="btn btn-lg btn-block btn-login-manual" id="moodle-login-btn">
                 <i class="fa fa-user mr-2"></i>{{#str}} loginmoodle, theme_moove {{/str}}
@@ -186,13 +195,6 @@
                 </button>
             </div>
         </form>
-
-        <!-- Proveedores de identidad (SSO) - ya no se usan en la interfaz principal -->
-        {{#hasidentityproviders}}
-            <div class="login-identityproviders mt-4" id="sso-providers" style="display: none;">
-                <!-- Solo se mantiene por compatibilidad, no se usa en la interfaz -->
-            </div>
-        {{/hasidentityproviders}}
 
         {{#hasinstructions}}
             <div class="login-instructions mt-4">
@@ -272,6 +274,8 @@
             var $loginForm = $('#login');
             var $methodSelection = $('.login-method-selection');
             var $backToSelectionBtn = $('#back-to-selection');
+            var $ssoChooserBtn = $('#sso-chooser-btn');
+            var $ssoProviders = $('#sso-providers');
 
             console.log('Found elements:', {
                 moodleBtn: $moodleLoginBtn.length,
@@ -301,6 +305,11 @@
                 console.log('Back to selection from Moodle form');
                 $loginForm.hide();
                 $methodSelection.show();
+            });
+
+            $ssoChooserBtn.on('click', function(e) {
+                e.preventDefault();
+                $ssoProviders.toggle();
             });
         });
     });
