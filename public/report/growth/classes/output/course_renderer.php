@@ -30,6 +30,7 @@ use html_writer;
 use plugin_renderer_base;
 use renderable;
 use tabobject;
+use stdClass;
 use core\{chart_bar, chart_line, chart_series};
 
 /**
@@ -47,11 +48,10 @@ class course_renderer extends growth_renderer {
     /**
      * Create Tabs.
      *
-     * @param \stdClass $context Selected $coursecontext
+     * @param stdClass $context Selected $coursecontext
      * @param int $p Selected tab
-     * @return string
      */
-    public function create_tabtree($context, int $p = 1) {
+    public function create_tabtree(stdClass $context, int $p = 1): string {
         global $CFG;
         $this->courseid = $context->instanceid;
         $this->context = $context;
@@ -65,6 +65,7 @@ class course_renderer extends growth_renderer {
             $rows['activitiescompleted'] = get_string('activitiescompleted', 'completion');
             $rows['coursecompletions'] = $txt->coursecompletions;
         }
+
         $rows = array_merge($rows, $this->certificate_tabs());
         $rows['countries'] = get_string('countries', 'report_growth');
         // Trigger a report viewed event.
@@ -76,9 +77,8 @@ class course_renderer extends growth_renderer {
      * Table enrolments.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_enrolments($title = ''): string {
+    public function table_enrolments(string $title = ''): string {
         return $this->collect_course_table($title, 'enrol', 'user_enrolments', 'courseid', 'enrolid', 'timecreated');
     }
 
@@ -86,29 +86,26 @@ class course_renderer extends growth_renderer {
      * Table last access.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_lastaccess($title = ''): string {
-        return $this->create_charts('user_lastaccess', $title, 'timeaccess', 'courseid = ' . $this->courseid);
+    public function table_lastaccess(string $title = ''): string {
+        return $this->create_charts('user_lastaccess', $title, 'timeaccess', "courseid = {$this->courseid}");
     }
 
     /**
      * Table activities.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_activities($title = ''): string {
-        return $this->create_charts('course_modules', $title, 'added', 'course = ' . $this->courseid);
+    public function table_activities(string $title = ''): string {
+        return $this->create_charts('course_modules', $title, 'added', "course = {$this->courseid}");
     }
 
     /**
      * Table Activities completed.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_activitiescompleted($title = ''): string {
+    public function table_activitiescompleted(string $title = ''): string {
         return $this->collect_course_table($title, 'course_modules', 'course_modules_completion', 'course', 'coursemoduleid');
     }
 
@@ -116,19 +113,17 @@ class course_renderer extends growth_renderer {
      * Table completions.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_coursecompletions($title = ''): string {
-        return $this->create_charts('course_completions', $title, 'timecompleted', 'course = ' . $this->courseid);
+    public function table_coursecompletions(string $title = ''): string {
+        return $this->create_charts('course_completions', $title, 'timecompleted', "course = {$this->courseid}");
     }
 
     /**
      * Table badges.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_badges($title = ''): string {
+    public function table_badges(string $title = ''): string {
         return $this->collect_course_table($title, 'badge', 'badge_issued', 'courseid', 'badgeid', 'dateissued');
     }
 
@@ -136,9 +131,8 @@ class course_renderer extends growth_renderer {
      * Table teacher logs.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_teachers($title = ''): string {
+    public function table_teachers(string $title = ''): string {
         global $DB;
         $out = get_string('nostudentsfound', 'moodle', $title);
         $teachers = get_users_by_capability($this->context, 'moodle/course:viewhiddenactivities', 'u.id', 'u.id');
@@ -150,6 +144,7 @@ class course_renderer extends growth_renderer {
             $inparams[] = $this->context->instanceid;
             $out = $this->create_charts('logstore_standard_log', $title, 'timecreated', 'userid ' . $insql, $inparams);
         }
+
         return $out;
     }
 
@@ -157,68 +152,41 @@ class course_renderer extends growth_renderer {
      * Table certificates.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_certificates($title = ''): string {
-        global $CFG;
-        $s = '';
-        if (file_exists($CFG->dirroot . '/mod/certificate')) {
-            $s = $this->collect_course_table($title, 'certificate', 'certificate_issues', 'course', 'certificateid', 'timecreated');
-        }
-        return $s;
+    public function table_certificates(string $title = ''): string {
+        $s = 'certificate';
+        $t = 'certificate_issues';
+        return $this->dir_exists($s) ? $this->collect_course_table($title, $s, $t, 'course', 'certificateid', 'timecreated') : '';
     }
 
     /**
      * Table custom certificates.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_customcerts($title = ''): string {
-        global $CFG;
-        $s = '';
-        if (file_exists($CFG->dirroot . '/mod/customcert')) {
-            $s = $this->collect_course_table($title, 'customcert', 'customcert_issues', 'course', 'customcertid', 'timecreated');
-        }
-        return $s;
+    public function table_customcerts(string $title = ''): string {
+        $s = 'customcert';
+        $t = 'customcert_issues';
+        return $this->dir_exists($s) ? $this->collect_course_table($title, $s, $t, 'course', 'customcertid', 'timecreated') : '';
     }
 
     /**
      * Table course certificates.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_coursecertificates($title = ''): string {
-        global $CFG;
-        $s = '';
-        if (file_exists($CFG->dirroot . '/mod/coursecertificate')) {
-            $s = $this->create_charts('tool_certificate_issues', $title, 'timecreated', 'courseid = ' . $this->courseid);
-        }
-        return $s;
+    public function table_coursecertificates(string $title = ''): string {
+        $s = 'coursecertificate';
+        $t = 'tool_certificate_issues';
+        return $this->dir_exists($s) ? $this->create_charts($t, $title, 'timecreated', "courseid = {$this->courseid}") : '';
     }
 
     /**
      * Table country.
      *
      * @param string $title Title
-     * @return string
      */
-    public function table_countries($title = ''): string {
-        global $DB;
-        $title = get_string('users');
-        $out = get_string('nostudentsfound', 'moodle', $title);
-        $ids = $DB->get_fieldset_select('enrol', 'id', 'courseid = :courseid', ['courseid' => $this->context->instanceid]);
-        if (count($ids) > 0) {
-            [$insql, $inparams] = $this->insql($ids, 'enrolid', 'enrolid');
-            $userids = $DB->get_fieldset_select('user_enrolments', 'userid', $insql, $inparams);
-            if (count($userids) > 0) {
-                [$insql, $inparams] = $this->insql($userids, 'id', 'id');
-                $sql = "SELECT country, COUNT(country) AS newusers FROM {user} WHERE $insql GROUP BY country ORDER BY country";
-                $rows = $DB->get_records_sql($sql, $inparams);
-                $out = $this->create_countries($rows, $title);
-            }
-        }
-        return $out;
+    public function table_countries(string $title = ''): string {
+        return $this->handle_users(get_enrolled_users($this->context, '', 0, 'u.id, u.country'), $title);
     }
 }
