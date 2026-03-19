@@ -37,7 +37,7 @@ import {
  * @param {integer} fontfamily Font family in integer.
  */
 const handleAction = (editor, fontfamily) => {
-    editor.dom.setStyle(editor.selection.getNode(), 'font-family', fontfamily);
+    editor.formatter.apply('fontname', {value: fontfamily});
 };
 
 /**
