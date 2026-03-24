@@ -993,8 +993,6 @@ class enrol_database_plugin extends enrol_plugin {
         }
         if ($enddate) {
             $sqlfields[] = $enddate;
-        if ($categoryname) {
-            $sqlfields[] = $categoryname_l;
         }
 
         $sql = $this->db_get_sql($table, array(), $sqlfields, true);
