@@ -1121,7 +1121,6 @@ class enrol_database_plugin extends enrol_plugin {
                 $defaulttemplate->visible        = $courseconfig->visible;
                 $defaulttemplate->lang           = $courseconfig->lang;
                 $defaulttemplate->enablecompletion = $courseconfig->enablecompletion;
-                $defaulttemplate->groupmodeforce = $courseconfig->groupmodeforce;
                 $defaulttemplate->startdate      = usergetmidnight(time());
                 if ($courseconfig->courseenddateenabled) {
                     $defaulttemplate->enddate    = usergetmidnight(time()) + $courseconfig->courseduration;
