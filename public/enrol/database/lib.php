@@ -1,4 +1,4 @@
-    <?php
+<?php
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -1575,7 +1575,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         return $sql;
     }
-    
+
     /**
      * Tries to make connection to the external database.
      *
