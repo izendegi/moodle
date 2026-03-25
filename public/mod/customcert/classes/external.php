@@ -23,11 +23,23 @@
  */
 namespace mod_customcert;
 
+use context_module;
+use context_system;
+use moodle_exception;
 use core_external\external_api;
 use core_external\external_value;
 use core_external\external_single_structure;
 use core_external\external_multiple_structure;
 use core_external\external_function_parameters;
+use core_user\fields;
+use mod_customcert\event\issue_deleted;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\service\element_factory;
+use mod_customcert\service\element_repository;
+use mod_customcert\service\pdf_generation_service;
+use mod_customcert\service\persistence_helper;
+use stdClass;
+use Throwable;
 
 /**
  * This is the external API for this tool.
@@ -64,7 +76,7 @@ class external extends external_api {
      * @param int $templateid The template id.
      * @param int $elementid The element id.
      * @param array $values The values to save
-     * @return array
+     * @return bool
      */
     public static function save_element($templateid, $elementid, $values) {
         global $DB;
@@ -76,42 +88,83 @@ class external extends external_api {
         ];
         self::validate_parameters(self::save_element_parameters(), $params);
 
-        $template = $DB->get_record('customcert_templates', ['id' => $templateid], '*', MUST_EXIST);
         $element = $DB->get_record('customcert_elements', ['id' => $elementid], '*', MUST_EXIST);
 
         // Set the template.
-        $template = new \mod_customcert\template($template);
+        $template = template::load((int)$templateid);
 
         // Perform checks.
         if ($cm = $template->get_cm()) {
-            self::validate_context(\context_module::instance($cm->id));
+            self::validate_context(context_module::instance($cm->id));
         } else {
-            self::validate_context(\context_system::instance());
+            self::validate_context(context_system::instance());
         }
         // Make sure the user has the required capabilities.
         $template->require_manage();
 
-        // Verify the element belongs to the given template to prevent cross-template tampering.
-        $page = $DB->get_record('customcert_pages', ['id' => $element->pageid], '*', MUST_EXIST);
-        if ($page->templateid != $templateid) {
-            throw new \moodle_exception('Invalid access');
+        // Verify the element belongs to the authorised template so that a teacher in
+        // Course A cannot overwrite elements from Course B by supplying a foreign elementid.
+        $elementrepo = new element_repository(element_factory::build_with_defaults());
+        $elementcontextid = $elementrepo->get_template_context_id_for_element($elementid);
+        if ($elementcontextid === null || $elementcontextid !== (int)$template->get_contextid()) {
+            throw new moodle_exception('nopermissions', 'error', '', 'save_element');
         }
 
-        // Set the values we are going to save.
-        $data = new \stdClass();
-        $data->id = $element->id;
-        $data->name = $element->name;
+        // Build the updated record by merging submitted values onto the existing element.
+        $record = clone $element;
         foreach ($values as $value) {
             $field = $value['name'];
-            $data->$field = $value['value'];
+            $record->$field = $value['value'];
         }
 
-        // Get an instance of the element class.
-        if ($e = \mod_customcert\element_factory::get_element_instance($element)) {
-            return $e->save_form_elements($data);
+        // Merge visual attributes into the JSON payload before normalisation.
+        // Seed from the existing element JSON, then overlay any caller-submitted 'data' field.
+        $decoded = [];
+        if (!empty($element->data)) {
+            $existing = json_decode((string)$element->data, true);
+            if (is_array($existing) && !array_is_list($existing)) {
+                $decoded = $existing;
+            }
+        }
+        // If caller explicitly submitted a 'data' JSON string, merge it (only objects, not arrays).
+        $submittedfields = array_column($values, 'name');
+        if (in_array('data', $submittedfields, true) && is_string($record->data) && $record->data !== '') {
+            $incoming = json_decode($record->data, true);
+            if (is_array($incoming) && !array_is_list($incoming)) {
+                $decoded = array_merge($decoded, $incoming);
+            }
+        }
+        foreach (['font', 'fontsize', 'colour', 'width'] as $jk) {
+            if (property_exists($record, $jk) && $record->$jk !== '' && $record->$jk !== null) {
+                $decoded[$jk] = in_array($jk, ['fontsize', 'width'], true) ? (int)$record->$jk : (string)$record->$jk;
+            }
+        }
+        $record->data = json_encode($decoded);
+
+        // Instantiate the element via the factory so element-specific normalisation is applied.
+        $factory = element_factory::build_with_defaults();
+        $tempinstance = $factory->create_from_legacy_record($record);
+        if (!$tempinstance) {
+            throw new moodle_exception('invalidelementtype', 'customcert');
+        }
+        // For persistable elements, merge normalise_data() result on top of the already-seeded
+        // $decoded payload (existing JSON + visual attrs + caller data) so existing keys are preserved.
+        // For legacy elements, $record->data already contains the correctly merged JSON payload.
+        if ($tempinstance instanceof persistable_element_interface) {
+            $normalised = $tempinstance->normalise_data((object)(array)$record);
+            if (is_array($normalised)) {
+                $record->data = json_encode(array_merge($decoded, $normalised));
+            } else {
+                $record->data = persistence_helper::to_json_data($tempinstance, (object)(array)$record);
+            }
         }
 
-        return false;
+        // Create the final instance from the normalised record and persist.
+        $instance = $factory->create_from_legacy_record($record);
+        $elementrepo->save($instance);
+
+        // For compatibility keep a simple truthy result.
+        return true;
     }
 
     /**
@@ -153,27 +206,29 @@ class external extends external_api {
         ];
         self::validate_parameters(self::get_element_html_parameters(), $params);
 
-        $template = $DB->get_record('customcert_templates', ['id' => $templateid], '*', MUST_EXIST);
         $element = $DB->get_record('customcert_elements', ['id' => $elementid], '*', MUST_EXIST);
 
         // Set the template.
-        $template = new \mod_customcert\template($template);
+        $template = template::load((int)$templateid);
 
         // Perform checks.
         if ($cm = $template->get_cm()) {
-            self::validate_context(\context_module::instance($cm->id));
+            self::validate_context(context_module::instance($cm->id));
         } else {
-            self::validate_context(\context_system::instance());
+            self::validate_context(context_system::instance());
         }
 
-        // Verify the element belongs to the given template to prevent cross-template information disclosure.
-        $page = $DB->get_record('customcert_pages', ['id' => $element->pageid], '*', MUST_EXIST);
-        if ($page->templateid != $templateid) {
-            throw new \moodle_exception('Invalid access');
+        // Verify the element belongs to the authorised template so that a teacher in
+        // Course A cannot read elements from Course B by supplying a foreign elementid.
+        $elementrepo = new element_repository(element_factory::build_with_defaults());
+        $elementcontextid = $elementrepo->get_template_context_id_for_element($elementid);
+        if ($elementcontextid === null || $elementcontextid !== (int)$template->get_contextid()) {
+            throw new moodle_exception('nopermissions', 'error', '', 'get_element_html');
         }
 
         // Get an instance of the element class.
-        if ($e = \mod_customcert\element_factory::get_element_instance($element)) {
+        $factory = element_factory::build_with_defaults();
+        if ($e = $factory->create_from_legacy_record($element)) {
             return $e->render_html();
         }
 
@@ -225,7 +280,7 @@ class external extends external_api {
         $cm = get_coursemodule_from_instance('customcert', $certificate->id, 0, false, MUST_EXIST);
 
         // Make sure the user has the required capabilities.
-        $context = \context_module::instance($cm->id);
+        $context = context_module::instance($cm->id);
         self::validate_context($context);
         require_capability('mod/customcert:manage', $context);
 
@@ -234,7 +289,7 @@ class external extends external_api {
 
         // Trigger event if deletion succeeded.
         if ($deleted) {
-            $event = \mod_customcert\event\issue_deleted::create([
+            $event = issue_deleted::create([
                 'objectid' => $issue->id,
                 'context' => $context,
                 'relateduserid' => $issue->userid,
@@ -345,12 +400,12 @@ class external extends external_api {
         $offset = max(0, $params['offset']);
 
         // Capability check.
-        $context = \context_system::instance();
+        $context = context_system::instance();
         self::validate_context($context);
         require_capability('mod/customcert:viewallcertificates', $context);
 
         // Prepare SQL.
-        [$fullnamefields, $sqlparams] = \core_user\fields::get_sql_fullname();
+        [$fullnamefields, $sqlparams] = fields::get_sql_fullname();
         $where = [];
 
         if (!empty($timecreatedfrom)) {
@@ -384,26 +439,22 @@ class external extends external_api {
 
         $output = [];
 
+        $pdfservice = $includepdf ? pdf_generation_service::create() : null;
+
         foreach ($records as $issue) {
             $pdfname = null;
             $pdfcontent = null;
 
             if ($includepdf) {
                 try {
-                    $templatedata = (object)[
-                        'id' => $issue->templateid,
-                        'name' => $issue->templatename,
-                        'contextid' => $issue->contextid,
-                    ];
-
-                    $template = new \mod_customcert\template($templatedata);
+                    $template = template::load((int)$issue->templateid);
                     $safe = str_replace(' ', '_', mb_strtolower($template->get_name()));
 
                     $pdfname = $safe . '_certificate.pdf';
                     $pdfcontent = base64_encode(
-                        $template->generate_pdf(false, $issue->userid, true)
+                        $pdfservice->generate_pdf($template, false, (int)$issue->userid, true)
                     );
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     // Leave PDF fields null on failure and log for developers.
                     debugging('Failed to generate PDF for list_issues: ' . $e->getMessage(), DEBUG_DEVELOPER);
                     $pdfname = null;

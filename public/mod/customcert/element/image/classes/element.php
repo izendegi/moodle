@@ -22,7 +22,32 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace customcertelement_image;
+
+use context_course;
+use context_system;
+use core_collator;
+use html_writer;
+use mod_customcert\service\form_service;
+use mod_customcert\element\constructable_element_interface;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element as base_element;
+use mod_customcert\element\element_interface;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element_helper;
+use mod_customcert\element\form_buildable_interface;
+use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\restorable_element_interface;
+use mod_customcert\element\validatable_element_interface;
+use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use moodle_url;
+use pdf;
+use restore_customcert_activity_task;
+use stdClass;
+use stored_file;
 
 /**
  * The customcert element image's core interaction API.
@@ -31,16 +56,25 @@ namespace customcertelement_image;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends \mod_customcert\element {
+class element extends base_element implements
+    constructable_element_interface,
+    element_interface,
+    form_buildable_interface,
+    persistable_element_interface,
+    preparable_form_interface,
+    renderable_element_interface,
+    restorable_element_interface,
+    validatable_element_interface
+{
     /**
      * @var array The file manager options.
      */
-    protected $filemanageroptions = [];
+    protected array $filemanageroptions = [];
 
     /**
      * Constructor.
      *
-     * @param \stdClass $element the element data
+     * @param stdClass $element the element data
      */
     public function __construct($element) {
         global $COURSE;
@@ -55,16 +89,26 @@ class element extends \mod_customcert\element {
     }
 
     /**
-     * This function renders the form elements when adding a customcert element.
+     * Build an element instance from a DB record.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance
+     * @param stdClass $record Raw DB row from customcert_elements.
+     * @return static
      */
-    public function render_form_elements($mform) {
+    public static function from_record(stdClass $record): static {
+        return new static($record);
+    }
+
+    /**
+     * Build the configuration form for this element.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function build_form(MoodleQuickForm $mform): void {
         $mform->addElement('select', 'fileid', get_string('image', 'customcertelement_image'), self::get_images());
 
-        \mod_customcert\element_helper::render_form_element_width($mform);
-
-        \mod_customcert\element_helper::render_form_element_height($mform);
+        element_helper::render_form_element_width($mform);
+        element_helper::render_form_element_height($mform);
 
         $alphachannelvalues = [
             '0' => 0,
@@ -79,13 +123,19 @@ class element extends \mod_customcert\element {
             '0.9' => 0.9,
             '1' => 1,
         ];
-        $mform->addElement('select', 'alphachannel', get_string('alphachannel', 'customcertelement_image'), $alphachannelvalues);
+
+        $mform->addElement(
+            'select',
+            'alphachannel',
+            get_string('alphachannel', 'customcertelement_image'),
+            $alphachannelvalues
+        );
         $mform->setType('alphachannel', PARAM_FLOAT);
         $mform->setDefault('alphachannel', 1);
         $mform->addHelpButton('alphachannel', 'alphachannel', 'customcertelement_image');
 
         if (get_config('customcert', 'showposxy')) {
-            \mod_customcert\element_helper::render_form_element_position($mform);
+            element_helper::render_form_element_position($mform);
         }
 
         $mform->addElement(
@@ -98,38 +148,61 @@ class element extends \mod_customcert\element {
     }
 
     /**
-     * Performs validation on the element values.
+     * Prepare form defaults and draft areas for the image element.
      *
-     * @param array $data the submitted data
-     * @param array $files the submitted files
-     * @return array the validation errors
+     * @param MoodleQuickForm $mform
+     * @return void
      */
-    public function validate_form_elements($data, $files) {
-        // Array to return the errors.
-        $errors = [];
+    public function prepare_form(MoodleQuickForm $mform): void {
+        global $COURSE, $SITE;
 
-        // Validate the width.
-        $errors += \mod_customcert\element_helper::validate_form_element_width($data);
+        // If element has an image stored, select it in the dropdown (only when metadata exists).
+        if (!empty($this->get_data())) {
+            $payload = $this->get_payload();
+            if (
+                isset(
+                    $payload['contextid'],
+                    $payload['filearea'],
+                    $payload['itemid'],
+                    $payload['filepath'],
+                    $payload['filename']
+                )
+            ) {
+                if ($file = $this->get_file()) {
+                    $mform->setDefault('fileid', $file->get_id());
+                }
+            }
 
-        // Validate the height.
-        $errors += \mod_customcert\element_helper::validate_form_element_height($data);
-
-        // Validate the position.
-        if (get_config('customcert', 'showposxy')) {
-            $errors += \mod_customcert\element_helper::validate_form_element_position($data);
+            // Populate size/alpha fields from stored JSON data if present.
+            if (isset($payload['width'])) {
+                $mform->setDefault('width', (int)$payload['width']);
+            }
+            if (isset($payload['height'])) {
+                $mform->setDefault('height', (int)$payload['height']);
+            }
+            if (isset($payload['alphachannel'])) {
+                $mform->setDefault('alphachannel', (float)$payload['alphachannel']);
+            }
         }
 
-        return $errors;
+        // Prepare the draft area for the uploader so previously uploaded files show up.
+        if ($COURSE->id == $SITE->id) {
+            $context = \context_system::instance();
+        } else {
+            $context = \context_course::instance($COURSE->id);
+        }
+        $draftitemid = file_get_submitted_draft_itemid('customcertimage');
+        file_prepare_draft_area($draftitemid, $context->id, 'mod_customcert', 'image', 0, $this->filemanageroptions);
+        $mform->getElement('customcertimage')->setValue($draftitemid);
     }
 
     /**
-     * Handles saving the form elements created by this element.
-     * Can be overridden if more functionality is needed.
+     * Normalise user picture element data.
      *
-     * @param \stdClass $data the form data
-     * @return bool true of success, false otherwise.
+     * @param stdClass $formdata Form submission data
+     * @return array JSON-serialisable payload
      */
-    public function save_form_elements($data) {
+    public function normalise_data(stdClass $formdata): array {
         global $COURSE, $SITE;
 
         // Set the context.
@@ -140,32 +213,23 @@ class element extends \mod_customcert\element {
         }
 
         // Handle file uploads.
-        \mod_customcert\certificate::upload_files($data->customcertimage, $context->id);
-
-        return parent::save_form_elements($data);
-    }
-
-    /**
-     * This will handle how form data will be saved into the data column in the
-     * customcert_elements table.
-     *
-     * @param \stdClass $data the form data
-     * @return string the json encoded array
-     */
-    public function save_unique_data($data) {
-        $arrtostore = [
-            'width' => !empty($data->width) ? (int) $data->width : 0,
-            'height' => !empty($data->height) ? (int) $data->height : 0,
-        ];
-
-        if (isset($data->alphachannel)) {
-            $arrtostore['alphachannel'] = (float) $data->alphachannel;
+        if (isset($formdata->customcertimage)) {
+            form_service::upload_files($formdata->customcertimage, $context->id);
         }
 
-        if (!empty($data->fileid)) {
+        $arrtostore = [
+            'width' => !empty($formdata->width) ? (int) $formdata->width : 0,
+            'height' => !empty($formdata->height) ? (int) $formdata->height : 0,
+        ];
+
+        if (isset($formdata->alphachannel)) {
+            $arrtostore['alphachannel'] = (float) $formdata->alphachannel;
+        }
+
+        if (!empty($formdata->fileid)) {
             // Array of data we will be storing in the database.
             $fs = get_file_storage();
-            if ($file = $fs->get_file_by_id($data->fileid)) {
+            if ($file = $fs->get_file_by_id($formdata->fileid)) {
                 $arrtostore += [
                     'contextid' => $file->get_contextid(),
                     'filearea' => $file->get_filearea(),
@@ -176,47 +240,102 @@ class element extends \mod_customcert\element {
             }
         }
 
-        return json_encode($arrtostore);
+        return $arrtostore;
     }
+
+    /**
+     * Returns the configured width for this image element.
+     *
+     * These elements store width/height inside their JSON `data` payload, not in the standard
+     * element `width` column. Override to expose the JSON value to forms and renderers consistently.
+     *
+     * @return int|null Width in mm, or null if not set.
+     */
+    public function get_width(): ?int {
+        $data = $this->get_data();
+
+        if (empty($data)) {
+            return null;
+        }
+
+        $decoded = json_decode($data, false, 512, JSON_THROW_ON_ERROR);
+
+        return isset($decoded->width) && $decoded->width !== ''
+            ? (int) $decoded->width
+            : null;
+    }
+
+    /**
+     * Returns the configured height for this image element from JSON data.
+     *
+     * @return int|null Height in mm, or null if not set.
+     */
+    public function get_height(): ?int {
+        $payload = $this->get_payload();
+        if (empty($payload)) {
+            return null;
+        }
+        return isset($payload['height']) && $payload['height'] !== ''
+            ? (int)$payload['height']
+            : null;
+    }
+
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param \pdf $pdf the pdf object
+     * @param pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param \stdClass $user the user we are rendering this for
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
      */
-    public function render($pdf, $preview, $user) {
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
         // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return;
         }
 
-        $imageinfo = json_decode($this->get_data());
+        $payload = $this->get_payload();
 
         // If there is no file, we have nothing to display.
-        if (empty($imageinfo->filename)) {
+        if (empty($payload['filename'])) {
             return;
         }
 
         if ($file = $this->get_file()) {
-            $location = make_request_directory() . '/target';
-            $file->copy_content_to($location);
-
-            // Check if the alpha channel is set, if it is, use it.
-            if (isset($imageinfo->alphachannel)) {
-                $pdf->SetAlpha($imageinfo->alphachannel);
-            }
-
-            $mimetype = $file->get_mimetype();
-            if ($mimetype == 'image/svg+xml') {
-                $pdf->ImageSVG($location, $this->get_posx(), $this->get_posy(), $imageinfo->width, $imageinfo->height);
+            if ($renderer) {
+                $this->render_html($renderer);
             } else {
-                $pdf->Image($location, $this->get_posx(), $this->get_posy(), $imageinfo->width, $imageinfo->height);
-            }
+                $location = make_request_directory() . '/target';
+                $file->copy_content_to($location);
 
-            // Restore to full opacity.
-            $pdf->SetAlpha(1);
+                // Check if the alpha channel is set, if it is, use it.
+                if (isset($payload['alphachannel'])) {
+                    $pdf->SetAlpha((float)$payload['alphachannel']);
+                }
+
+                $mimetype = $file->get_mimetype();
+                if ($mimetype == 'image/svg+xml') {
+                    $pdf->ImageSVG(
+                        $location,
+                        $this->get_posx(),
+                        $this->get_posy(),
+                        (int)($payload['width'] ?? 0),
+                        (int)($payload['height'] ?? 0)
+                    );
+                } else {
+                    $pdf->Image(
+                        $location,
+                        $this->get_posx(),
+                        $this->get_posy(),
+                        (int)($payload['width'] ?? 0),
+                        (int)($payload['height'] ?? 0)
+                    );
+                }
+
+                // Restore to full opacity.
+                $pdf->SetAlpha(1);
+            }
         }
     }
 
@@ -226,18 +345,19 @@ class element extends \mod_customcert\element {
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
+     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html() {
+    public function render_html(?element_renderer $renderer = null): string {
         // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return '';
         }
 
-        $imageinfo = json_decode($this->get_data());
+        $payload = $this->get_payload();
 
         // If there is no file, we have nothing to display.
-        if (empty($imageinfo->filename)) {
+        if (empty($payload['filename'])) {
             return '';
         }
 
@@ -245,15 +365,15 @@ class element extends \mod_customcert\element {
         $fs = get_file_storage();
         if (
             $file = $fs->get_file(
-                $imageinfo->contextid,
+                (int)$payload['contextid'],
                 'mod_customcert',
-                $imageinfo->filearea,
-                $imageinfo->itemid,
-                $imageinfo->filepath,
-                $imageinfo->filename
+                (string)$payload['filearea'],
+                (int)$payload['itemid'],
+                (string)$payload['filepath'],
+                (string)$payload['filename']
             )
         ) {
-            $url = \moodle_url::make_pluginfile_url(
+            $url = moodle_url::make_pluginfile_url(
                 $file->get_contextid(),
                 'mod_customcert',
                 'image',
@@ -265,74 +385,34 @@ class element extends \mod_customcert\element {
             $whratio = $fileimageinfo['width'] / $fileimageinfo['height'];
             // The size of the images to use in the CSS style.
             $style = '';
-            if ($imageinfo->width === 0 && $imageinfo->height === 0) {
+            $w = (int)($payload['width'] ?? 0);
+            $h = (int)($payload['height'] ?? 0);
+            if ($w === 0 && $h === 0) {
                 $style .= 'width: ' . $fileimageinfo['width'] . 'px; ';
                 $style .= 'height: ' . $fileimageinfo['height'] . 'px';
-            } else if ($imageinfo->width === 0) { // Then the height must be set.
+            } else if ($w === 0) { // Then the height must be set.
                 // We must get the width based on the height to keep the ratio.
-                $style .= 'width: ' . ($imageinfo->height * $whratio) . 'mm; ';
-                $style .= 'height: ' . $imageinfo->height . 'mm';
-            } else if ($imageinfo->height === 0) { // Then the width must be set.
-                $style .= 'width: ' . $imageinfo->width . 'mm; ';
+                $style .= 'width: ' . ($h * $whratio) . 'mm; ';
+                $style .= 'height: ' . $h . 'mm';
+            } else if ($h === 0) { // Then the width must be set.
+                $style .= 'width: ' . $w . 'mm; ';
                 // We must get the height based on the width to keep the ratio.
-                $style .= 'height: ' . ($imageinfo->width / $whratio) . 'mm';
+                $style .= 'height: ' . ($w / $whratio) . 'mm';
             } else { // Must both be set.
-                $style .= 'width: ' . $imageinfo->width . 'mm; ';
-                $style .= 'height: ' . $imageinfo->height . 'mm';
+                $style .= 'width: ' . $w . 'mm; ';
+                $style .= 'height: ' . $h . 'mm';
             }
 
-            return \html_writer::tag('img', '', ['src' => $url, 'style' => $style]);
-        }
-    }
+            $content = html_writer::tag('img', '', ['src' => $url, 'style' => $style]);
 
-    /**
-     * Sets the data on the form when editing an element.
-     *
-     * @param \MoodleQuickForm $mform the edit_form instance
-     */
-    public function definition_after_data($mform) {
-        global $COURSE, $SITE;
-
-        // Set the image, width, height and alpha channel for this element.
-        if (!empty($this->get_data())) {
-            $imageinfo = json_decode($this->get_data());
-            if (!empty($imageinfo->filename)) {
-                if ($file = $this->get_file()) {
-                    $element = $mform->getElement('fileid');
-                    $element->setValue($file->get_id());
-                }
+            if ($renderer) {
+                return (string) $renderer->render_content($this, $content);
             }
 
-            if (isset($imageinfo->width) && $mform->elementExists('width')) {
-                $element = $mform->getElement('width');
-                $element->setValue($imageinfo->width);
-            }
-
-            if (isset($imageinfo->height) && $mform->elementExists('height')) {
-                $element = $mform->getElement('height');
-                $element->setValue($imageinfo->height);
-            }
-
-            if (isset($imageinfo->alphachannel) && $mform->elementExists('alphachannel')) {
-                $element = $mform->getElement('alphachannel');
-                $element->setValue($imageinfo->alphachannel);
-            }
+            return $content;
         }
 
-        // Set the context.
-        if ($COURSE->id == $SITE->id) {
-            $context = \context_system::instance();
-        } else {
-            $context = \context_course::instance($COURSE->id);
-        }
-
-        // Editing existing instance - copy existing files into draft area.
-        $draftitemid = file_get_submitted_draft_itemid('customcertimage');
-        file_prepare_draft_area($draftitemid, $context->id, 'mod_customcert', 'image', 0, $this->filemanageroptions);
-        $element = $mform->getElement('customcertimage');
-        $element->setValue($draftitemid);
-
-        parent::definition_after_data($mform);
+        return '';
     }
 
     /**
@@ -340,19 +420,19 @@ class element extends \mod_customcert\element {
      *
      * We will want to update the file's pathname hash.
      *
-     * @param \restore_customcert_activity_task $restore
+     * @param restore_customcert_activity_task $restore
      */
-    public function after_restore($restore) {
+    public function after_restore_from_backup(restore_customcert_activity_task $restore): void {
         global $DB;
 
         // Get the current data we have stored for this element.
-        $elementinfo = json_decode($this->get_data());
+        $payload = $this->get_payload();
 
         // Update the context.
-        $elementinfo->contextid = \context_course::instance($restore->get_courseid())->id;
+        $payload['contextid'] = context_course::instance($restore->get_courseid())->id;
 
         // Encode again before saving.
-        $elementinfo = json_encode($elementinfo);
+        $elementinfo = json_encode($payload);
 
         // Perform the update.
         $DB->set_field('customcert_elements', 'data', $elementinfo, ['id' => $this->get_id()]);
@@ -361,20 +441,20 @@ class element extends \mod_customcert\element {
     /**
      * Fetch stored file.
      *
-     * @return \stored_file|bool stored_file instance if exists, false if not
+     * @return stored_file|bool stored_file instance if exists, false if not
      */
     public function get_file() {
-        $imageinfo = json_decode($this->get_data());
+        $payload = $this->get_payload();
 
         $fs = get_file_storage();
 
         return $fs->get_file(
-            $imageinfo->contextid,
+            (int)$payload['contextid'],
             'mod_customcert',
-            $imageinfo->filearea,
-            $imageinfo->itemid,
-            $imageinfo->filepath,
-            $imageinfo->filename
+            (string)$payload['filearea'],
+            (int)$payload['itemid'],
+            (string)$payload['filepath'],
+            (string)$payload['filename']
         );
     }
 
@@ -392,7 +472,7 @@ class element extends \mod_customcert\element {
         // The array used to store the images.
         $arrfiles = [];
         // Loop through the files uploaded in the system context.
-        if ($files = $fs->get_area_files(\context_system::instance()->id, 'mod_customcert', 'image', false, 'filename', false)) {
+        if ($files = $fs->get_area_files(context_system::instance()->id, 'mod_customcert', 'image', false, 'filename', false)) {
             foreach ($files as $hash => $file) {
                 $arrfiles[$file->get_id()] = get_string('systemimage', 'customcertelement_image', $file->get_filename());
             }
@@ -400,7 +480,7 @@ class element extends \mod_customcert\element {
         // Loop through the files uploaded in the course context.
         if (
             $files = $fs->get_area_files(
-                \context_course::instance($COURSE->id)->id,
+                context_course::instance($COURSE->id)->id,
                 'mod_customcert',
                 'image',
                 false,
@@ -413,7 +493,7 @@ class element extends \mod_customcert\element {
             }
         }
 
-        \core_collator::asort($arrfiles);
+        core_collator::asort($arrfiles);
         $arrfiles = ['0' => get_string('noimage', 'customcert')] + $arrfiles;
 
         return $arrfiles;
@@ -422,10 +502,10 @@ class element extends \mod_customcert\element {
     /**
      * This handles copying data from another element of the same type.
      *
-     * @param \stdClass $data the form data
+     * @param stdClass $data the form data
      * @return bool returns true if the data was copied successfully, false otherwise
      */
-    public function copy_element($data) {
+    public function copy_element(stdClass $data): bool {
         global $COURSE, $DB, $SITE;
 
         $imagedata = json_decode($data->data);
@@ -435,8 +515,8 @@ class element extends \mod_customcert\element {
             return true;
         }
 
-        $coursecontext = \context_course::instance($COURSE->id);
-        $systemcontext = \context_system::instance();
+        $coursecontext = context_course::instance($COURSE->id);
+        $systemcontext = context_system::instance();
 
         $fs = get_file_storage();
 
@@ -471,10 +551,27 @@ class element extends \mod_customcert\element {
 
             // Set the image to the copied file in the course.
             $imagedata->fileid = $coursefile->get_id();
-            $DB->set_field('customcert_elements', 'data', $this->save_unique_data($imagedata), ['id' => $this->get_id()]);
+            $jsondata = json_encode($this->normalise_data($imagedata));
+            $DB->set_field(
+                'customcert_elements',
+                'data',
+                $jsondata,
+                ['id' => $this->get_id()]
+            );
         }
 
         return true;
+    }
+
+    /**
+     * Validate submitted form data for this element.
+     * Core validations are handled by validation_service; no extra rules here.
+     *
+     * @param array $data
+     * @return array<string,string>
+     */
+    public function validate(array $data): array {
+        return [];
     }
 
     /**

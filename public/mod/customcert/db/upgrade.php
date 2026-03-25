@@ -22,6 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use mod_customcert\local\upgrade\row_migrator;
+
 /**
  * Customcert module upgrade code.
  *
@@ -29,7 +31,7 @@
  * @return bool always true
  */
 function xmldb_customcert_upgrade($oldversion) {
-    global $DB;
+    global $CFG, $DB;
 
     $dbman = $DB->get_manager();
 
@@ -347,6 +349,52 @@ function xmldb_customcert_upgrade($oldversion) {
 
         // Savepoint reached.
         upgrade_mod_savepoint(true, 2025041401, 'customcert');
+    }
+
+    if ($oldversion < 2025122600) {
+        // If date range is no longer present, then delete it.
+        if (!file_exists($CFG->dirroot . '/mod/customcert/element/daterange/version.php')) {
+            uninstall_plugin('customcertelement', 'daterange');
+        }
+
+        // Savepoint reached.
+        upgrade_mod_savepoint(true, 2025122600, 'customcert');
+    }
+
+    // Migrate width, font, fontsize, and colour into data JSON and drop those columns from customcert_elements.
+    if ($oldversion < 2025122800) {
+        // 1) Migrate data in customcert_elements.
+        $rs = $DB->get_recordset('customcert_elements', null, 'id');
+        foreach ($rs as $rec) {
+            $recwidth = $rec->width === null ? null : (int)$rec->width;
+            $recfont = $rec->font === null ? null : (string)$rec->font;
+            $recfsize = $rec->fontsize === null ? null : (int)$rec->fontsize;
+            $reccolour = $rec->colour === null ? null : (string)$rec->colour;
+
+            $migrated = $rec->element === 'border'
+                ? row_migrator::migrate_border_row($rec->data, $recwidth, $recfont, $recfsize, $reccolour)
+                : row_migrator::migrate_row($rec->data, $recwidth, $recfont, $recfsize, $reccolour);
+
+            if ($migrated !== $rec->data) {
+                $DB->update_record('customcert_elements', (object) [
+                    'id' => $rec->id,
+                    'data' => $migrated,
+                ]);
+            }
+        }
+        $rs->close();
+
+        // 2) Drop the migrated columns from customcert_elements.
+        $table = new xmldb_table('customcert_elements');
+        foreach (['width', 'font', 'fontsize', 'colour'] as $mfield) {
+            $field = new xmldb_field($mfield);
+            if ($dbman->field_exists($table, $field)) {
+                $dbman->drop_field($table, $field);
+            }
+        }
+
+        // Savepoint reached.
+        upgrade_mod_savepoint(true, 2025122800, 'customcert');
     }
 
     return true;

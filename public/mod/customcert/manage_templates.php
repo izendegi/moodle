@@ -22,6 +22,12 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use mod_customcert\manage_templates_table;
+use mod_customcert\page_helper;
+use mod_customcert\service\template_duplication_service;
+use mod_customcert\service\template_service;
+use mod_customcert\template;
+
 require_once('../../config.php');
 
 $contextid = optional_param('contextid', context_system::instance()->id, PARAM_INT);
@@ -37,8 +43,7 @@ if ($action) {
 }
 
 if ($tid) {
-    $template = $DB->get_record('customcert_templates', ['id' => $tid], '*', MUST_EXIST);
-    $template = new \mod_customcert\template($template);
+    $template = template::load((int)$tid);
 }
 
 $context = context::instance_by_id($contextid);
@@ -50,7 +55,7 @@ $title = $SITE->fullname;
 
 // Set up the page.
 $pageurl = new moodle_url('/mod/customcert/manage_templates.php');
-\mod_customcert\page_helper::page_setup($pageurl, $context, $title);
+page_helper::page_setup($pageurl, $context, $title);
 
 // Additional page setup.
 if ($tid && $action && confirm_sesskey()) {
@@ -88,7 +93,8 @@ if ($tid) {
             }
 
             // Delete the template.
-            $template->delete();
+            $templateservice = template_service::create();
+            $templateservice->delete($template);
 
             // Redirect back to the manage templates page.
             redirect(new moodle_url('/mod/customcert/manage_templates.php'));
@@ -103,12 +109,10 @@ if ($tid) {
                 exit();
             }
 
-            // Create another template to copy the data to.
+            // Duplicate via the service to copy template, pages, and elements transactionally.
+            $service = template_duplication_service::create();
             $name = $template->get_name() . ' (' . strtolower(get_string('duplicate', 'customcert')) . ')';
-            $newtemplate = \mod_customcert\template::create($name, $template->get_contextid());
-
-            // Copy the data to the new template.
-            $template->copy_to_template($newtemplate);
+            $service->duplicate($template->get_id(), $name);
 
             // Redirect back to the manage templates page.
             redirect(new moodle_url('/mod/customcert/manage_templates.php'));
@@ -116,7 +120,7 @@ if ($tid) {
     }
 }
 
-$table = new \mod_customcert\manage_templates_table($context);
+$table = new manage_templates_table($context);
 $table->define_baseurl($pageurl);
 
 echo $OUTPUT->header();

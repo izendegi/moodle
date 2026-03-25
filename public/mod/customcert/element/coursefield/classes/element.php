@@ -23,7 +23,25 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace customcertelement_coursefield;
+
+use core_collator;
+use core_course\customfield\course_handler;
+use mod_customcert\element\constructable_element_interface;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element as base_element;
+use mod_customcert\element\element_interface;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element\form_buildable_interface;
+use mod_customcert\element\validatable_element_interface;
+use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element_helper;
+use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use pdf;
+use stdClass;
 
 /**
  * The customcert element coursefield's core interaction API.
@@ -32,64 +50,85 @@ namespace customcertelement_coursefield;
  * @copyright  2019 Catalyst IT
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends \mod_customcert\element {
+class element extends base_element implements
+    constructable_element_interface,
+    element_interface,
+    form_buildable_interface,
+    persistable_element_interface,
+    preparable_form_interface,
+    renderable_element_interface,
+    validatable_element_interface
+{
     /**
-     * This function renders the form elements when adding a customcert element.
+     * Build the configuration form for this element.
      *
-     * @param \MoodleQuickForm $mform the edit form instance
+     * @param MoodleQuickForm $mform
+     * @return void
      */
-    public function render_form_elements($mform) {
-        // Get the user profile fields.
+    public function build_form(MoodleQuickForm $mform): void {
+        // Get the course fields.
         $coursefields = [
             'fullname' => get_string('fullnamecourse'),
             'shortname' => get_string('shortnamecourse'),
             'idnumber' => get_string('idnumbercourse'),
         ];
         // Get the course custom fields.
-        $arrcustomfields = [];
-        $handler = \core_course\customfield\course_handler::create();
+        $handler = course_handler::create();
         $customfields = $handler->get_fields();
-
+        $arrcustomfields = [];
         foreach ($customfields as $field) {
             $arrcustomfields[$field->get('id')] = $field->get_formatted_name();
         }
 
         // Combine the two.
         $fields = $coursefields + $arrcustomfields;
-        \core_collator::asort($fields);
+        core_collator::asort($fields);
 
-        // Create the select box where the user field is selected.
         $mform->addElement('select', 'coursefield', get_string('coursefield', 'customcertelement_coursefield'), $fields);
-        $mform->setType('coursefield', PARAM_ALPHANUM);
         $mform->addHelpButton('coursefield', 'coursefield', 'customcertelement_coursefield');
+        $mform->setType('coursefield', PARAM_ALPHANUM);
 
-        parent::render_form_elements($mform);
+        element_helper::render_common_form_elements($mform, $this->showposxy);
     }
 
     /**
-     * This will handle how form data will be saved into the data column in the
-     * customcert_elements table.
+     * Normalise course field element data.
      *
-     * @param \stdClass $data the form data
-     * @return string the text
+     * @param stdClass $formdata Form submission data
+     * @return array JSON-serialisable payload
      */
-    public function save_unique_data($data) {
-        return $data->coursefield;
+    public function normalise_data(stdClass $formdata): array {
+        return ['coursefield' => (string)($formdata->coursefield ?? '')];
+    }
+
+    /**
+     * Build an element instance from a DB record.
+     *
+     * @param stdClass $record Raw DB row from customcert_elements.
+     * @return static
+     */
+    public static function from_record(stdClass $record): static {
+        return new static($record);
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param \pdf $pdf the pdf object
+     * @param pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param \stdClass $user the user we are rendering this for
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
      */
-    public function render($pdf, $preview, $user) {
-
-        $courseid = \mod_customcert\element_helper::get_courseid($this->id);
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+        $courseid = element_helper::get_courseid($this->id);
         $course = get_course($courseid);
+        $value = $this->get_course_field_value($course, $preview);
 
-        \mod_customcert\element_helper::render_content($pdf, $this, $this->get_course_field_value($course, $preview));
+        if ($renderer) {
+            $renderer->render_content($this, $value);
+        } else {
+            element_helper::render_content($pdf, $this, $value);
+        }
     }
 
     /**
@@ -97,37 +136,55 @@ class element extends \mod_customcert\element {
      *
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
+     *
+     * @param element_renderer|null $renderer the renderer service
      */
-    public function render_html() {
+    public function render_html(?element_renderer $renderer = null): string {
         global $COURSE;
 
-        return \mod_customcert\element_helper::render_html_content($this, $this->get_course_field_value($COURSE, true));
+        $value = $this->get_course_field_value($COURSE, true);
+        if ($renderer) {
+            return (string) $renderer->render_content($this, $value);
+        }
+
+        return element_helper::render_html_content($this, $value);
     }
 
     /**
-     * Sets the data on the form when editing an element.
+     * Prepare the form by populating the coursefield field from stored data.
      *
-     * @param \MoodleQuickForm $mform the edit form instance
+     * @param MoodleQuickForm $mform
+     * @return void
      */
-    public function definition_after_data($mform) {
-        if (!empty($this->get_data())) {
-            $element = $mform->getElement('coursefield');
-            $element->setValue($this->get_data());
+    public function prepare_form(MoodleQuickForm $mform): void {
+        $payload = $this->get_payload();
+        if (isset($payload['coursefield'])) {
+            $mform->getElement('coursefield')->setValue((string)$payload['coursefield']);
         }
-        parent::definition_after_data($mform);
+    }
+
+    /**
+     * Validate submitted form data for this element.
+     * Core validations are handled by validation_service; no extra rules here.
+     *
+     * @param array $data
+     * @return array<string,string>
+     */
+    public function validate(array $data): array {
+        return [];
     }
 
     /**
      * Helper function that returns the field value in a human-readable format.
      *
-     * @param \stdClass $course the course we are rendering this for
+     * @param stdClass $course the course we are rendering this for
      * @param bool $preview Is this a preview?
      * @return string
      */
-    protected function get_course_field_value(\stdClass $course, bool $preview): string {
-
+    protected function get_course_field_value(stdClass $course, bool $preview): string {
         // The user field to display.
-        $field = $this->get_data();
+        $payload = $this->get_payload();
+        $field = isset($payload['coursefield']) ? $payload['coursefield'] : '';
         // The value to display - we always want to show a value here so it can be repositioned.
         if ($preview) {
             $value = $field;
@@ -135,7 +192,7 @@ class element extends \mod_customcert\element {
             $value = '';
         }
         if (is_number($field)) { // Must be a custom course profile field.
-            $handler = \core_course\customfield\course_handler::create();
+            $handler = course_handler::create();
             $data = $handler->get_instance_data($course->id, true);
             if ($preview && empty($data[$field]->export_value())) {
                 $fields = $handler->get_fields();
@@ -147,7 +204,7 @@ class element extends \mod_customcert\element {
             $value = $course->$field;
         }
 
-        $context = \mod_customcert\element_helper::get_context($this->get_id());
+        $context = element_helper::get_context($this->get_id());
         return format_string($value, true, ['context' => $context]);
     }
 }
