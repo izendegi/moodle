@@ -24,6 +24,11 @@
 
 namespace mod_customcert\event;
 
+use context_system;
+use core\event\base;
+use mod_customcert\element\element_interface;
+use moodle_url;
+
 /**
  * Certificate template element created event class.
  *
@@ -31,11 +36,11 @@ namespace mod_customcert\event;
  * @copyright 2023 Mark Nelson <mdjnelson@gmail.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element_created extends \core\event\base {
+class element_created extends base {
     /**
      * Initialises the event.
      */
-    protected function init() {
+    protected function init(): void {
         $this->data['crud'] = 'c';
         $this->data['edulevel'] = self::LEVEL_OTHER;
         $this->data['objecttable'] = 'customcert_elements';
@@ -46,8 +51,8 @@ class element_created extends \core\event\base {
      *
      * @return string
      */
-    public function get_description() {
-        if ($this->contextlevel == \context_system::instance()->contextlevel) {
+    public function get_description(): string {
+        if ($this->contextlevel == context_system::instance()->contextlevel) {
             // If CONTEXT_SYSTEM assume it's a template.
             return "The user with id '$this->userid' created the element with id '$this->objectid'.";
         } else {
@@ -62,17 +67,17 @@ class element_created extends \core\event\base {
      *
      * @return string
      */
-    public static function get_name() {
+    public static function get_name(): string {
         return get_string('eventelementcreated', 'customcert');
     }
 
     /**
      * Create instance of event.
      *
-     * @param \mod_customcert\element $element
+     * @param element_interface $element
      * @return element_created
      */
-    public static function create_from_element(\mod_customcert\element $element): element_created {
+    public static function create_from_element(element_interface $element): element_created {
         global $DB;
 
         $page = $DB->get_record('customcert_pages', ['id' => $element->get_pageid()]);
@@ -88,13 +93,13 @@ class element_created extends \core\event\base {
 
     /**
      * Returns relevant URL.
-     * @return \moodle_url
+     * @return moodle_url
      */
-    public function get_url() {
-        if ($this->contextlevel == \context_system::instance()->contextlevel) {
-            return new \moodle_url('/mod/customcert/manage_templates.php');
+    public function get_url(): moodle_url {
+        if ($this->contextlevel == context_system::instance()->contextlevel) {
+            return new moodle_url('/mod/customcert/manage_templates.php');
         } else {
-            return new \moodle_url(
+            return new moodle_url(
                 '/mod/customcert/view.php',
                 ['id' => $this->contextinstanceid]
             );
@@ -106,7 +111,7 @@ class element_created extends \core\event\base {
      *
      * @return string[]
      */
-    public static function get_objectid_mapping() {
+    public static function get_objectid_mapping(): array {
         return ['db' => 'customcert_elements', 'restore' => 'customcert_elements'];
     }
 

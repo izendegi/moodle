@@ -22,7 +22,21 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace customcertelement_categoryname;
+
+use mod_customcert\element as base_element;
+use mod_customcert\element\constructable_element_interface;
+use mod_customcert\element\element_interface;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element\form_buildable_interface;
+use mod_customcert\element\validatable_element_interface;
+use mod_customcert\element_helper;
+use mod_customcert\service\element_renderer;
+use pdf;
+use stdClass;
 
 /**
  * The customcert element categoryname's core interaction API.
@@ -31,16 +45,37 @@ namespace customcertelement_categoryname;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends \mod_customcert\element {
+class element extends base_element implements
+    constructable_element_interface,
+    element_interface,
+    form_buildable_interface,
+    persistable_element_interface,
+    renderable_element_interface,
+    validatable_element_interface
+{
+    /**
+     * Build the configuration form for this element.
+     *
+     * @param \MoodleQuickForm $mform
+     * @return void
+     */
+    public function build_form(\MoodleQuickForm $mform): void {
+        element_helper::render_common_form_elements($mform, $this->showposxy);
+    }
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param \pdf $pdf the pdf object
+     * @param pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param \stdClass $user the user we are rendering this for
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
      */
-    public function render($pdf, $preview, $user) {
-        \mod_customcert\element_helper::render_content($pdf, $this, $this->get_category_name());
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+        if ($renderer) {
+            $renderer->render_content($this, $this->get_category_name());
+        } else {
+            element_helper::render_content($pdf, $this, $this->get_category_name());
+        }
     }
 
     /**
@@ -49,10 +84,15 @@ class element extends \mod_customcert\element {
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
+     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html() {
-        return \mod_customcert\element_helper::render_html_content($this, $this->get_category_name());
+    public function render_html(?element_renderer $renderer = null): string {
+        if ($renderer) {
+            return (string) $renderer->render_content($this, $this->get_category_name());
+        }
+
+        return element_helper::render_html_content($this, $this->get_category_name());
     }
 
     /**
@@ -63,9 +103,9 @@ class element extends \mod_customcert\element {
     protected function get_category_name(): string {
         global $DB, $SITE;
 
-        $courseid = \mod_customcert\element_helper::get_courseid($this->get_id());
+        $courseid = element_helper::get_courseid($this->get_id());
         $course = get_course($courseid);
-        $context = \mod_customcert\element_helper::get_context($this->get_id());
+        $context = element_helper::get_context($this->get_id());
 
         // Check that there is a course category available.
         if (!empty($course->category)) {
@@ -75,5 +115,36 @@ class element extends \mod_customcert\element {
         }
 
         return format_string($categoryname, true, ['context' => $context]);
+    }
+
+    /**
+     * Normalise data for persistence. Category name has no custom payload.
+     *
+     * @param stdClass $formdata
+     * @return array
+     */
+    public function normalise_data(stdClass $formdata): array {
+        return [];
+    }
+
+    /**
+     * Validate submitted form data for this element.
+     * Core validations are handled by validation_service; no extra rules here.
+     *
+     * @param array $data
+     * @return array<string,string>
+     */
+    public function validate(array $data): array {
+        return [];
+    }
+
+    /**
+     * Build an element instance from a DB record.
+     *
+     * @param stdClass $record Raw DB row from customcert_elements.
+     * @return static
+     */
+    public static function from_record(stdClass $record): static {
+        return new static($record);
     }
 }

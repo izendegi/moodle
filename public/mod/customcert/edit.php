@@ -22,7 +22,23 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+
+use mod_customcert\edit_form;
+use mod_customcert\load_template_form;
+use mod_customcert\local\preview_renderer;
+use mod_customcert\page_helper;
+use mod_customcert\service\item_move_service;
+use mod_customcert\service\certificate_repository;
+use mod_customcert\service\page_repository;
+use mod_customcert\service\pdf_generation_service;
+use mod_customcert\service\template_service;
+use mod_customcert\template;
+
 require_once('../../config.php');
+
+$pagerepo = new page_repository();
+$templateservice = template_service::create();
+$pdfservice = pdf_generation_service::create();
 
 $tid = optional_param('tid', 0, PARAM_INT);
 $action = optional_param('action', '', PARAM_ALPHA);
@@ -34,8 +50,7 @@ $confirm = optional_param('confirm', 0, PARAM_INT);
 // Edit an existing template.
 if ($tid) {
     // Create the template object.
-    $template = $DB->get_record('customcert_templates', ['id' => $tid], '*', MUST_EXIST);
-    $template = new \mod_customcert\template($template);
+    $template = template::load((int)$tid);
     // Set the context.
     $contextid = $template->get_contextid();
     // Set the page url.
@@ -62,7 +77,7 @@ if ($context->contextlevel == CONTEXT_MODULE) {
 require_capability('mod/customcert:manage', $context);
 
 // Set up the page.
-\mod_customcert\page_helper::page_setup($pageurl, $context, $title);
+page_helper::page_setup($pageurl, $context, $title);
 $PAGE->activityheader->set_attrs(['hidecompletion' => true,
             'description' => '']);
 
@@ -89,26 +104,46 @@ if ($tid) {
     if ($action && confirm_sesskey()) {
         switch ($action) {
             case 'pmoveup':
-                $template->move_item('page', $actionid, 'up');
+                $templateservice->move_item(
+                    $template,
+                    item_move_service::ITEM_PAGE,
+                    $actionid,
+                    item_move_service::DIRECTION_UP
+                );
                 break;
             case 'pmovedown':
-                $template->move_item('page', $actionid, 'down');
+                $templateservice->move_item(
+                    $template,
+                    item_move_service::ITEM_PAGE,
+                    $actionid,
+                    item_move_service::DIRECTION_DOWN
+                );
                 break;
             case 'emoveup':
-                $template->move_item('element', $actionid, 'up');
+                $templateservice->move_item(
+                    $template,
+                    item_move_service::ITEM_ELEMENT,
+                    $actionid,
+                    item_move_service::DIRECTION_UP
+                );
                 break;
             case 'emovedown':
-                $template->move_item('element', $actionid, 'down');
+                $templateservice->move_item(
+                    $template,
+                    item_move_service::ITEM_ELEMENT,
+                    $actionid,
+                    item_move_service::DIRECTION_DOWN
+                );
                 break;
             case 'addpage':
-                $template->add_page();
-                $url = new \moodle_url('/mod/customcert/edit.php', ['tid' => $tid]);
+                $templateservice->add_page($template);
+                $url = new moodle_url('/mod/customcert/edit.php', ['tid' => $tid]);
                 redirect($url);
                 break;
             case 'deletepage':
                 if (!empty($confirm)) { // Check they have confirmed the deletion.
-                    $template->delete_page($actionid);
-                    $url = new \moodle_url('/mod/customcert/edit.php', ['tid' => $tid]);
+                    $templateservice->delete_page($template, $actionid);
+                    $url = new moodle_url('/mod/customcert/edit.php', ['tid' => $tid]);
                     redirect($url);
                 } else {
                     // Set deletion flag to true.
@@ -131,7 +166,7 @@ if ($tid) {
                 break;
             case 'deleteelement':
                 if (!empty($confirm)) { // Check they have confirmed the deletion.
-                    $template->delete_element($actionid);
+                    $templateservice->delete_element($template, $actionid);
                 } else {
                     // Set deletion flag to true.
                     $deleting = true;
@@ -166,20 +201,20 @@ if ($deleting) {
 }
 
 if ($tid) {
-    $mform = new \mod_customcert\edit_form($pageurl, ['tid' => $tid]);
+    $mform = new edit_form($pageurl, ['tid' => $tid]);
     // Set the name for the form.
     $mform->set_data(['name' => $template->get_name()]);
 } else {
-    $mform = new \mod_customcert\edit_form($pageurl);
+    $mform = new edit_form($pageurl);
 }
 
 if ($data = $mform->get_data()) {
     // If there is no id, then we are creating a template.
     if (!$tid) {
-        $template = \mod_customcert\template::create($data->name, $contextid);
+        $template = template::create($data->name, $contextid);
 
         // Create a page for this template.
-        $pageid = $template->add_page(false);
+        $pageid = $templateservice->add_page($template, false);
 
         // Associate all the data from the form to the newly created page.
         $width = 'pagewidth_' . $pageid;
@@ -209,11 +244,11 @@ if ($data = $mform->get_data()) {
 
     if ($tid) {
         // Save any data for the template.
-        $template->save($data);
+        $templateservice->update($template, $data);
     }
 
-    // Save any page data.
-    $template->save_page($data);
+    // Save any page data and emit template_updated when changes occur.
+    $templateservice->save_pages($template, $data, true);
 
     // Loop through the data.
     foreach ($data as $key => $value) {
@@ -237,7 +272,19 @@ if ($data = $mform->get_data()) {
 
     // Check if we want to preview this custom certificate.
     if (!empty($data->previewbtn)) {
-        $template->generate_pdf(true);
+        $preview = preview_renderer::create();
+        $pdf = $pdfservice->create_preview_pdf($template, $USER);
+
+        // Render each page of this template in sequence.
+        $pages = $pagerepo->list_by_template($template->get_id());
+        foreach ($pages as $page) {
+            $preview->render_pdf_page((int)$page->id, $pdf, $USER);
+        }
+
+        // Compute preview filename using the same rules as generate_pdf().
+        $customcert = (new certificate_repository())->get_by_template_id_or_fail($template->get_id());
+        $pdffilename = $pdfservice->compute_filename_for_user($template, $USER, $customcert);
+        $pdf->Output($pdffilename, pdf_generation_service::DELIVERY_OPTION_INLINE);
         exit();
     }
 
@@ -250,7 +297,7 @@ echo $OUTPUT->header();
 $mform->display();
 if ($tid && $context->contextlevel == CONTEXT_MODULE) {
     $loadtemplateurl = new moodle_url('/mod/customcert/load_template.php', ['tid' => $tid]);
-    $loadtemplateform = new \mod_customcert\load_template_form(
+    $loadtemplateform = new load_template_form(
         $loadtemplateurl,
         ['context' => $context],
         'post',

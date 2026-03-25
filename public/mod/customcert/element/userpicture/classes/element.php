@@ -22,7 +22,25 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace customcertelement_userpicture;
+
+use context_user;
+use html_writer;
+use mod_customcert\element as base_element;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element\element_interface;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element\form_buildable_interface;
+use mod_customcert\element\validatable_element_interface;
+use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element_helper;
+use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use pdf;
+use stdClass;
+use user_picture;
 
 /**
  * The customcert element userpicture's core interaction API.
@@ -31,104 +49,103 @@ namespace customcertelement_userpicture;
  * @copyright  2017 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends \mod_customcert\element {
+class element extends base_element implements
+    element_interface,
+    form_buildable_interface,
+    persistable_element_interface,
+    preparable_form_interface,
+    renderable_element_interface,
+    validatable_element_interface
+{
     /**
-     * This function renders the form elements when adding a customcert element.
+     * Build the configuration form for this element.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance
+     * @param MoodleQuickForm $mform
+     * @return void
      */
-    public function render_form_elements($mform) {
-        \mod_customcert\element_helper::render_form_element_width($mform);
-
-        \mod_customcert\element_helper::render_form_element_height($mform);
-
+    public function build_form(MoodleQuickForm $mform): void {
+        element_helper::render_form_element_width($mform);
+        element_helper::render_form_element_height($mform);
         if (get_config('customcert', 'showposxy')) {
-            \mod_customcert\element_helper::render_form_element_position($mform);
+            element_helper::render_form_element_position($mform);
         }
     }
 
     /**
-     * Performs validation on the element values.
+     * Normalise user picture element data.
      *
-     * @param array $data the submitted data
-     * @param array $files the submitted files
-     * @return array the validation errors
+     * @param stdClass $formdata Form submission data
+     * @return array JSON-serialisable payload
      */
-    public function validate_form_elements($data, $files) {
-        // Array to return the errors.
-        $errors = [];
-
-        // Validate the width.
-        $errors += \mod_customcert\element_helper::validate_form_element_width($data);
-
-        // Validate the height.
-        $errors += \mod_customcert\element_helper::validate_form_element_height($data);
-
-        // Validate the position.
-        if (get_config('customcert', 'showposxy')) {
-            $errors += \mod_customcert\element_helper::validate_form_element_position($data);
-        }
-
-        return $errors;
-    }
-
-    /**
-     * This will handle how form data will be saved into the data column in the
-     * customcert_elements table.
-     *
-     * @param \stdClass $data the form data
-     * @return string the json encoded array
-     */
-    public function save_unique_data($data) {
-        // Array of data we will be storing in the database.
-        $arrtostore = [
-            'width' => (int) $data->width,
-            'height' => (int) $data->height,
+    public function normalise_data(stdClass $formdata): array {
+        return [
+            'width' => isset($formdata->width) ? (int)$formdata->width : 0,
+            'height' => isset($formdata->height) ? (int)$formdata->height : 0,
         ];
+    }
 
-        return json_encode($arrtostore);
+    /**
+     * Prepare the form by populating the width and height fields from stored data.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function prepare_form(MoodleQuickForm $mform): void {
+        $payload = $this->get_payload();
+        if (isset($payload['width'])) {
+            // Use defaults so values persist through Moodle's set_data lifecycle.
+            $mform->setDefault('width', (int)$payload['width']);
+        }
+        if (isset($payload['height'])) {
+            $mform->setDefault('height', (int)$payload['height']);
+        }
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param \pdf $pdf the pdf object
+     * @param pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param \stdClass $user the user we are rendering this for
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
      */
-    public function render($pdf, $preview, $user) {
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
         global $CFG;
 
-        // If there is no element data, we have nothing to display.
-        if (empty($this->get_data())) {
-            return;
-        }
-
-        $imageinfo = json_decode($this->get_data());
-
-        $context = \context_user::instance($user->id);
-
-        // Get files in the user icon area.
-        $fs = get_file_storage();
-        $files = $fs->get_area_files($context->id, 'user', 'icon', 0);
-
-        // Get the file we want to display.
-        $file = null;
-        foreach ($files as $filefound) {
-            if (!$filefound->is_directory()) {
-                $file = $filefound;
-                break;
+        if ($renderer) {
+            $this->render_html($renderer);
+        } else {
+            // If there is no element data, we have nothing to display.
+            if (empty($this->get_data())) {
+                return;
             }
-        }
 
-        // Show image if we found one.
-        if ($file) {
-            $location = make_request_directory() . '/target';
-            $file->copy_content_to($location);
-            $pdf->Image($location, $this->get_posx(), $this->get_posy(), $imageinfo->width, $imageinfo->height);
-        } else if ($preview) { // Can't find an image, but we are in preview mode then display default pic.
-            $location = $CFG->dirroot . '/pix/u/f1.png';
-            $pdf->Image($location, $this->get_posx(), $this->get_posy(), $imageinfo->width, $imageinfo->height);
+            $payload = $this->get_payload();
+
+            $context = context_user::instance($user->id);
+
+            // Get files in the user icon area.
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'user', 'icon', 0);
+
+            // Get the file we want to display.
+            $file = null;
+            foreach ($files as $filefound) {
+                if (!$filefound->is_directory()) {
+                    $file = $filefound;
+                    break;
+                }
+            }
+
+            // Show image if we found one.
+            if ($file) {
+                $location = make_request_directory() . '/target';
+                $file->copy_content_to($location);
+                $pdf->Image($location, $this->get_posx(), $this->get_posy(), (int)$payload['width'], (int)$payload['height']);
+            } else if ($preview) { // Can't find an image, but we are in preview mode then display default pic.
+                $location = $CFG->dirroot . '/pix/u/f1.png';
+                $pdf->Image($location, $this->get_posx(), $this->get_posy(), (int)$payload['width'], (int)$payload['height']);
+            }
         }
     }
 
@@ -138,9 +155,10 @@ class element extends \mod_customcert\element {
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
+     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html() {
+    public function render_html(?element_renderer $renderer = null): string {
         global $PAGE, $USER;
 
         // If there is no element data, we have nothing to display.
@@ -148,49 +166,46 @@ class element extends \mod_customcert\element {
             return '';
         }
 
-        $imageinfo = json_decode($this->get_data());
+        $payload = $this->get_payload();
 
         // Get the image.
-        $userpicture = new \user_picture($USER);
+        $userpicture = new user_picture($USER);
         $userpicture->size = 1;
         $url = $userpicture->get_url($PAGE)->out(false);
 
         // The size of the images to use in the CSS style.
         $style = '';
-        if ($imageinfo->width === 0 && $imageinfo->height === 0) {
+        if ((int)($payload['width'] ?? 0) === 0 && (int)($payload['height'] ?? 0) === 0) {
             // Put this in so code checker doesn't complain.
             $style .= '';
-        } else if ($imageinfo->width === 0) { // Then the height must be set.
-            $style .= 'width: ' . $imageinfo->height . 'mm; ';
-            $style .= 'height: ' . $imageinfo->height . 'mm';
-        } else if ($imageinfo->height === 0) { // Then the width must be set.
-            $style .= 'width: ' . $imageinfo->width . 'mm; ';
-            $style .= 'height: ' . $imageinfo->width . 'mm';
+        } else if ((int)($payload['width'] ?? 0) === 0) { // Then the height must be set.
+            $style .= 'width: ' . (int)$payload['height'] . 'mm; ';
+            $style .= 'height: ' . (int)$payload['height'] . 'mm';
+        } else if ((int)($payload['height'] ?? 0) === 0) { // Then the width must be set.
+            $style .= 'width: ' . (int)$payload['width'] . 'mm; ';
+            $style .= 'height: ' . (int)$payload['width'] . 'mm';
         } else { // Must both be set.
-            $style .= 'width: ' . $imageinfo->width . 'mm; ';
-            $style .= 'height: ' . $imageinfo->height . 'mm';
+            $style .= 'width: ' . (int)$payload['width'] . 'mm; ';
+            $style .= 'height: ' . (int)$payload['height'] . 'mm';
         }
 
-        return \html_writer::tag('img', '', ['src' => $url, 'style' => $style]);
+        $content = html_writer::tag('img', '', ['src' => $url, 'style' => $style]);
+
+        if ($renderer) {
+            return (string) $renderer->render_content($this, $content);
+        }
+
+        return $content;
     }
 
     /**
-     * Sets the data on the form when editing an element.
+     * Validate submitted form data for this element.
+     * Core validations are handled by validation_service; no extra rules here.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance
+     * @param array $data
+     * @return array<string,string>
      */
-    public function definition_after_data($mform) {
-        // Set the image, width and height for this element.
-        if (!empty($this->get_data())) {
-            $imageinfo = json_decode($this->get_data());
-
-            $element = $mform->getElement('width');
-            $element->setValue($imageinfo->width);
-
-            $element = $mform->getElement('height');
-            $element->setValue($imageinfo->height);
-        }
-
-        parent::definition_after_data($mform);
+    public function validate(array $data): array {
+        return [];
     }
 }

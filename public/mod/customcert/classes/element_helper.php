@@ -24,7 +24,20 @@
 
 namespace mod_customcert;
 
+use context;
+use context_module;
+use DirectoryIterator;
+use grade_grade;
+use mod_customcert\element\element_interface;
+use MoodleQuickForm;
+use pdf;
+use stdClass;
+use TCPDF_COLORS;
+use TCPDF_FONTS;
+
 defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
 
 require_once($CFG->libdir . '/grade/constants.php');
 require_once($CFG->dirroot . '/grade/lib.php');
@@ -43,29 +56,30 @@ class element_helper {
     /**
      * @var int the top-left of element
      */
-    const CUSTOMCERT_REF_POINT_TOPLEFT = 0;
+    public const int CUSTOMCERT_REF_POINT_TOPLEFT = 0;
 
     /**
      * @var int the top-center of element
      */
-    const CUSTOMCERT_REF_POINT_TOPCENTER = 1;
+    public const int CUSTOMCERT_REF_POINT_TOPCENTER = 1;
 
     /**
      * @var int the top-left of element
      */
-    const CUSTOMCERT_REF_POINT_TOPRIGHT = 2;
+    public const int CUSTOMCERT_REF_POINT_TOPRIGHT = 2;
 
     /**
      * Common behaviour for rendering specified content on the pdf.
      *
-     * @param \pdf $pdf the pdf object
-     * @param \mod_customcert\element $element the customcert element
+     * @param pdf $pdf the pdf object
+     * @param element_interface|element $element the customcert element
      * @param string $content the content to render
      */
-    public static function render_content($pdf, $element, $content) {
+    public static function render_content(pdf $pdf, element_interface|element $element, string $content): void {
         [$font, $attr] = self::get_font($element);
         $pdf->setFont($font, $attr, $element->get_fontsize());
-        $fontcolour = \TCPDF_COLORS::convertHTMLColorToDec($element->get_colour(), $fontcolour);
+        $colour = $element->get_colour() ?? '#000000';
+        $fontcolour = TCPDF_COLORS::convertHTMLColorToDec($colour, $fontcolour);
         $pdf->SetTextColor($fontcolour['R'], $fontcolour['G'], $fontcolour['B']);
 
         $x = $element->get_posx();
@@ -111,11 +125,11 @@ class element_helper {
     /**
      * Common behaviour for rendering specified content on the drag and drop page.
      *
-     * @param \mod_customcert\element $element the customcert element
+     * @param element_interface|element $element the customcert element
      * @param string $content the content to render
      * @return string the html
      */
-    public static function render_html_content($element, $content) {
+    public static function render_html_content(element_interface|element $element, string $content): string {
         [$font, $attr] = self::get_font($element);
         $fontstyle = 'font-family: ' . $font;
         if (strpos($attr, 'B') !== false) {
@@ -125,7 +139,9 @@ class element_helper {
             $fontstyle .= '; font-style: italic';
         }
 
-        $style = $fontstyle . '; color: ' . $element->get_colour() . '; font-size: ' . $element->get_fontsize() . 'pt;';
+        $colour = $element->get_colour() ?? '#000000';
+        $fontsize = $element->get_fontsize() ?? 12;
+        $style = $fontstyle . '; color: ' . $colour . '; font-size: ' . $fontsize . 'pt;';
         if ($element->get_width()) {
             $style .= ' width: ' . $element->get_width() . 'mm';
         }
@@ -135,10 +151,10 @@ class element_helper {
     /**
      * Helper function to render the font elements.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
-    public static function render_form_element_font($mform) {
-        $mform->addElement('select', 'font', get_string('font', 'customcert'), \mod_customcert\certificate::get_fonts());
+    public static function render_form_element_font(MoodleQuickForm $mform): void {
+        $mform->addElement('select', 'font', get_string('font', 'customcert'), self::get_fonts());
         $mform->setType('font', PARAM_TEXT);
         $mform->setDefault('font', 'times');
         $mform->addHelpButton('font', 'font', 'customcert');
@@ -146,7 +162,7 @@ class element_helper {
             'select',
             'fontsize',
             get_string('fontsize', 'customcert'),
-            \mod_customcert\certificate::get_font_sizes()
+            self::get_font_sizes()
         );
         $mform->setType('fontsize', PARAM_INT);
         $mform->setDefault('fontsize', 12);
@@ -156,9 +172,9 @@ class element_helper {
     /**
      * Helper function to render the colour elements.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
-    public static function render_form_element_colour($mform) {
+    public static function render_form_element_colour(MoodleQuickForm $mform): void {
         $mform->addElement('customcert_colourpicker', 'colour', get_string('fontcolour', 'customcert'));
         $mform->setType('colour', PARAM_RAW); // Need to validate that this is a valid colour.
         $mform->setDefault('colour', '#000000');
@@ -168,9 +184,9 @@ class element_helper {
     /**
      * Helper function to render the position elements.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
-    public static function render_form_element_position($mform) {
+    public static function render_form_element_position(MoodleQuickForm $mform): void {
         $mform->addElement('text', 'posx', get_string('posx', 'customcert'), ['size' => 10]);
         $mform->setType('posx', PARAM_INT);
         $mform->setDefault('posx', 0);
@@ -184,9 +200,9 @@ class element_helper {
     /**
      * Helper function to render the width element.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
-    public static function render_form_element_width($mform) {
+    public static function render_form_element_width(MoodleQuickForm $mform): void {
         $mform->addElement('text', 'width', get_string('elementwidth', 'customcert'), ['size' => 10]);
         $mform->setType('width', PARAM_INT);
         $mform->setDefault('width', 0);
@@ -196,9 +212,9 @@ class element_helper {
     /**
      * Helper function to render the height element.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
-    public static function render_form_element_height($mform) {
+    public static function render_form_element_height(MoodleQuickForm $mform): void {
         $mform->addElement('text', 'height', get_string('elementheight', 'customcert'), ['size' => 10]);
         $mform->setType('height', PARAM_INT);
         $mform->setDefault('height', 0);
@@ -208,9 +224,9 @@ class element_helper {
     /**
      * Helper function to render the refpoint element.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
-    public static function render_form_element_refpoint($mform) {
+    public static function render_form_element_refpoint(MoodleQuickForm $mform): void {
         $refpointoptions = [];
         $refpointoptions[self::CUSTOMCERT_REF_POINT_TOPLEFT] = get_string('topleft', 'customcert');
         $refpointoptions[self::CUSTOMCERT_REF_POINT_TOPCENTER] = get_string('topcenter', 'customcert');
@@ -225,9 +241,9 @@ class element_helper {
     /**
      * Helper function to render the alignment form element.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
-    public static function render_form_element_alignment($mform) {
+    public static function render_form_element_alignment(MoodleQuickForm $mform): void {
         $alignmentoptions = [];
         $alignmentoptions[element::ALIGN_LEFT] = get_string('alignleft', 'customcert');
         $alignmentoptions[element::ALIGN_CENTER] = get_string('aligncenter', 'customcert');
@@ -240,12 +256,33 @@ class element_helper {
     }
 
     /**
+     * Renders all common form elements (font, colour, position, width, refpoint, alignment).
+     *
+     * This is a convenience method that adds all standard visual property fields
+     * to the form. Elements should call this method in their build_form() implementation
+     * after adding their element-specific fields.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     * @param bool $showposxy whether to show position fields (default: true).
+     */
+    public static function render_common_form_elements(MoodleQuickForm $mform, bool $showposxy = true): void {
+        self::render_form_element_font($mform);
+        self::render_form_element_colour($mform);
+        if ($showposxy) {
+            self::render_form_element_position($mform);
+        }
+        self::render_form_element_width($mform);
+        self::render_form_element_refpoint($mform);
+        self::render_form_element_alignment($mform);
+    }
+
+    /**
      * Helper function to performs validation on the colour element.
      *
      * @param array $data the submitted data
      * @return array the validation errors
      */
-    public static function validate_form_element_colour($data) {
+    public static function validate_form_element_colour(array $data): array {
         $errors = [];
         // Validate the colour.
         if (!self::validate_colour($data['colour'])) {
@@ -260,7 +297,7 @@ class element_helper {
      * @param array $data the submitted data
      * @return array the validation errors
      */
-    public static function validate_form_element_position($data) {
+    public static function validate_form_element_position(array $data): array {
         $errors = [];
 
         // Check if posx is not set, or not numeric or less than 0.
@@ -282,7 +319,7 @@ class element_helper {
      * @param bool $allowzero allow zero as a valid value
      * @return array the validation errors
      */
-    public static function validate_form_element_width($data, bool $allowzero = true) {
+    public static function validate_form_element_width(array $data, bool $allowzero = true): array {
         $errors = [];
 
         // If there is no width element no validation is needed.
@@ -315,7 +352,7 @@ class element_helper {
      * @param bool $allowzero allow zero as a valid value
      * @return array the validation errors
      */
-    public static function validate_form_element_height($data, bool $allowzero = true) {
+    public static function validate_form_element_height(array $data, bool $allowzero = true): array {
         $errors = [];
 
         // If there is no height element no validation is needed.
@@ -344,16 +381,20 @@ class element_helper {
     /**
      * Returns the font used for this element.
      *
-     * @param \mod_customcert\element $element the customcert element
+     * @param element_interface|element $element the customcert element
      * @return array the font and font attributes
      */
-    public static function get_font($element) {
+    public static function get_font(element_interface|element $element): array {
         // Variable for the font.
         $font = $element->get_font();
+        // If there is no font, then we have nothing to do.
+        if (empty($font)) {
+            return ['', ''];
+        }
         // Get the last two characters of the font name.
         $fontlength = strlen($font);
         $lastchar = $font[$fontlength - 1];
-        $secondlastchar = $font[$fontlength - 2];
+        $secondlastchar = ($fontlength > 1) ? $font[$fontlength - 2] : '';
         // The attributes of the font.
         $attr = '';
         // Check if the last character is 'i'.
@@ -381,7 +422,7 @@ class element_helper {
      * @param string $colour
      * @return bool returns true if the colour is valid, false otherwise
      */
-    public static function validate_colour($colour) {
+    public static function validate_colour(string $colour): bool {
         // List of valid HTML colour names.
         $colournames = [
             'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure',
@@ -433,7 +474,7 @@ class element_helper {
      * @param int $pageid the id of the page we are adding this element to
      * @return int the element number
      */
-    public static function get_element_sequence($pageid) {
+    public static function get_element_sequence(int $pageid): int {
         global $DB;
 
         // Set the sequence of the element we are creating.
@@ -456,7 +497,7 @@ class element_helper {
      * @param int $elementid The element id
      * @return int The course id
      */
-    public static function get_courseid($elementid) {
+    public static function get_courseid(int $elementid): int {
         global $DB, $SITE;
 
         $sql = "SELECT course
@@ -479,9 +520,9 @@ class element_helper {
      * Helper function that returns the context for this element.
      *
      * @param int $elementid The element id
-     * @return \context The context
+     * @return context The context
      */
-    public static function get_context(int $elementid): \context {
+    public static function get_context(int $elementid): context {
         global $DB;
 
         $sql = "SELECT ct.contextid
@@ -493,7 +534,7 @@ class element_helper {
                  WHERE ce.id = :elementid";
         $contextid = $DB->get_field_sql($sql, ['elementid' => $elementid], MUST_EXIST);
 
-        return \context::instance_by_id($contextid);
+        return context::instance_by_id($contextid);
     }
 
     /**
@@ -501,7 +542,7 @@ class element_helper {
      *
      * @return array the list of element types that can be used.
      */
-    public static function get_available_element_types() {
+    public static function get_available_element_types(): array {
         global $CFG;
 
         // Array to store the element types.
@@ -511,7 +552,7 @@ class element_helper {
         $elementdir = "$CFG->dirroot/mod/customcert/element";
         if (file_exists($elementdir)) {
             // Get directory contents.
-            $elementfolders = new \DirectoryIterator($elementdir);
+            $elementfolders = new DirectoryIterator($elementdir);
             // Loop through the elements folder.
             foreach ($elementfolders as $elementfolder) {
                 // If it is not a directory or it is '.' or '..', skip it.
@@ -541,10 +582,10 @@ class element_helper {
     /**
      * Helper function to return all the grades items for a given course.
      *
-     * @param \stdClass $course The course we want to return the grade items for
+     * @param stdClass $course The course we want to return the grade items for
      * @return array the array of gradeable items in the course
      */
-    public static function get_grade_items($course) {
+    public static function get_grade_items(stdClass $course): array {
         // Array to store the grade items.
         $arrgradeitems = [];
 
@@ -557,7 +598,7 @@ class element_helper {
 
                 if ($gi->is_external_item()) {
                     $cm = get_coursemodule_from_instance($gi->itemmodule, $gi->iteminstance, $course->id);
-                    $modcontext = \context_module::instance($cm->id);
+                    $modcontext = context_module::instance($cm->id);
                     $modname = format_string($cm->name, true, ['context' => $modcontext]);
                 }
 
@@ -589,14 +630,14 @@ class element_helper {
      * @param int $userid
      * @return grade_information|bool the grade information, or false if there is none.
      */
-    public static function get_course_grade_info($courseid, $gradeformat, $userid) {
+    public static function get_course_grade_info(int $courseid, int $gradeformat, int $userid): grade_information|false {
         $courseitem = \grade_item::fetch_course_item($courseid);
 
         if (!$courseitem) {
             return false;
         }
 
-        $grade = new \grade_grade(['itemid' => $courseitem->id, 'userid' => $userid]);
+        $grade = new grade_grade(['itemid' => $courseitem->id, 'userid' => $userid]);
 
         return new grade_information(
             $courseitem->get_name(),
@@ -614,7 +655,7 @@ class element_helper {
      * @param int $userid
      * @return grade_information|bool the grade information, or false if there is none.
      */
-    public static function get_mod_grade_info($cmid, $gradeformat, $userid) {
+    public static function get_mod_grade_info(int $cmid, int $gradeformat, int $userid): grade_information|false {
         global $DB;
 
         if (!$cm = $DB->get_record('course_modules', ['id' => $cmid])) {
@@ -675,12 +716,12 @@ class element_helper {
      * @param int $userid
      * @return grade_information|bool the grade information, or false if there is none.
      */
-    public static function get_grade_item_info($gradeitemid, $gradeformat, $userid) {
+    public static function get_grade_item_info(int $gradeitemid, int $gradeformat, int $userid): grade_information|false {
         if (!$gradeitem = \grade_item::fetch(['id' => $gradeitemid])) {
             return false;
         }
 
-        $grade = new \grade_grade(['itemid' => $gradeitem->id, 'userid' => $userid]);
+        $grade = new grade_grade(['itemid' => $gradeitem->id, 'userid' => $userid]);
 
         return new grade_information(
             $gradeitem->get_name(),
@@ -784,6 +825,71 @@ class element_helper {
         }
 
         return $certificatedate;
+    }
+
+    /**
+     * Return the list of possible fonts to use.
+     *
+     * @return array
+     */
+    public static function get_fonts(): array {
+        global $CFG;
+
+        require_once($CFG->libdir . '/pdflib.php');
+
+        $arrfonts = [];
+        $pdf = new pdf();
+        $fontfamilies = $pdf->get_font_families();
+        foreach ($fontfamilies as $fontfamily => $fontstyles) {
+            foreach ($fontstyles as $fontstyle) {
+                $fontstyle = strtolower($fontstyle);
+                if ($fontstyle == 'r') {
+                    $filenamewoextension = $fontfamily;
+                } else {
+                    $filenamewoextension = $fontfamily . $fontstyle;
+                }
+                $fullpath = TCPDF_FONTS::_getfontpath() . $filenamewoextension;
+                // Set the name of the font to null, the include next should then set this
+                // value, if it is not set then the file does not include the necessary data.
+                $name = null;
+                // Some files include a display name, the include next should then set this
+                // value if it is present, if not then $name is used to create the display name.
+                $displayname = null;
+                // Some of the TCPDF files include files that are not present, so we have to
+                // suppress warnings, this is the TCPDF libraries fault, grrr.
+                @include($fullpath . '.php');
+                // If no $name variable in file, skip it.
+                if (is_null($name)) {
+                    continue;
+                }
+                // Check if there is no display name to use.
+                if (is_null($displayname)) {
+                    // Format the font name, so "FontName-Style" becomes "Font Name - Style".
+                    $displayname = preg_replace("/([a-z])([A-Z])/", "$1 $2", $name);
+                    $displayname = preg_replace("/([a-zA-Z])-([a-zA-Z])/", "$1 - $2", $displayname);
+                }
+
+                $arrfonts[$filenamewoextension] = $displayname;
+            }
+        }
+        ksort($arrfonts);
+
+        return $arrfonts;
+    }
+
+    /**
+     * Return the list of possible font sizes to use.
+     *
+     * @return array
+     */
+    public static function get_font_sizes(): array {
+        $sizes = [];
+
+        for ($i = 1; $i <= 200; $i++) {
+            $sizes[$i] = $i;
+        }
+
+        return $sizes;
     }
 
     /**
