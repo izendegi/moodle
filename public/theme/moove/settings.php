@@ -95,6 +95,72 @@ if ($ADMIN->fulltree) {
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
+    // Login layout style.
+    $name = 'theme_moove/loginlayout';
+    $title = get_string('loginlayout', 'theme_moove');
+    $description = get_string('loginlayout_desc', 'theme_moove');
+    $layoutchoices = [
+        'custom' => get_string('loginlayout_custom', 'theme_moove'),
+        'base' => get_string('loginlayout_base', 'theme_moove'),
+    ];
+    $setting = new admin_setting_configselect($name, $title, $description, 'custom', $layoutchoices);
+    $page->add($setting);
+
+    // Identity providers visibility.
+    $providerchoices = [];
+    if (class_exists('auth_plugin_base')) {
+        $authsequence = get_enabled_auth_plugins();
+        $identityproviders = \auth_plugin_base::get_identity_providers($authsequence);
+        foreach ($identityproviders as $provider) {
+            $providername = (string)($provider['name'] ?? '');
+            if ($providername === '') {
+                continue;
+            }
+
+            // Use provider URL when available because it is unique and stable.
+            $providerkey = (string)($provider['url'] ?? $providername);
+            $providerchoices[$providerkey] = $providername;
+        }
+    }
+
+    // Fallback for OAuth2 issuers so they are available in selector even when
+    // they are not returned by auth_plugin_base provider list at this point.
+    if (class_exists('\\core\\oauth2\\api')) {
+        foreach (\core\oauth2\api::get_all_issuers() as $issuer) {
+            if (method_exists($issuer, 'is_login_allowed') && !$issuer->is_login_allowed()) {
+                continue;
+            }
+
+            $issuername = (string)$issuer->get('name');
+            if ($issuername === '') {
+                continue;
+            }
+
+            // Use a stable key so renderer can match issuer even when login URL
+            // contains dynamic query parameters (wantsurl, etc).
+            $issuerid = (int)$issuer->get('id');
+            $providerchoices['oauth2:' . $issuerid] = $issuername;
+        }
+    }
+
+    $name = 'theme_moove/identityprovidersmode';
+    $title = get_string('identityprovidersmode', 'theme_moove');
+    $description = get_string('identityprovidersmode_desc', 'theme_moove');
+    $modechoices = [
+        'none' => get_string('identityprovidersmode_none', 'theme_moove'),
+        'single' => get_string('identityprovidersmode_single', 'theme_moove'),
+        'all' => get_string('identityprovidersmode_all', 'theme_moove')
+    ];
+    $setting = new admin_setting_configselect($name, $title, $description, 'all', $modechoices);
+    $page->add($setting);
+
+    $name = 'theme_moove/identityproviderssingle';
+    $title = get_string('identityproviderssingle', 'theme_moove');
+    $description = get_string('identityproviderssingle_desc', 'theme_moove');
+    $singlechoices = ['' => get_string('identityproviderschoose', 'theme_moove')] + $providerchoices;
+    $setting = new admin_setting_configselect($name, $title, $description, '', $singlechoices);
+    $page->add($setting);
+
     // Variable $brand-color.
     // We use an empty default value because the default colour should come from the preset.
     $name = 'theme_moove/brandcolor';
