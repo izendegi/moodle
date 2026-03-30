@@ -24,8 +24,6 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-use mod_customcert\admin_setting_link;
-
 $url = $CFG->wwwroot . '/mod/customcert/verify_certificate.php';
 
 $ADMIN->add('modsettings', new admin_category('customcert', get_string('pluginname', 'mod_customcert')));
@@ -45,7 +43,7 @@ $settings->add(new admin_setting_configcheckbox(
     0
 ));
 
-$settings->add(new admin_setting_link(
+$settings->add(new \mod_customcert\admin_setting_link(
     'customcert/verifycertificate',
     get_string('verifycertificate', 'customcert'),
     get_string('verifycertificatedesc', 'customcert'),
@@ -54,7 +52,7 @@ $settings->add(new admin_setting_link(
     ''
 ));
 
-$settings->add(new admin_setting_link(
+$settings->add(new \mod_customcert\admin_setting_link(
     'customcert/managetemplates',
     get_string('managetemplates', 'customcert'),
     get_string('managetemplatesdesc', 'customcert'),
@@ -63,7 +61,7 @@ $settings->add(new admin_setting_link(
     ''
 ));
 
-$settings->add(new admin_setting_link(
+$settings->add(new \mod_customcert\admin_setting_link(
     'customcert/uploadimage',
     get_string('uploadimage', 'customcert'),
     get_string('uploadimagedesc', 'customcert'),
@@ -73,7 +71,7 @@ $settings->add(new admin_setting_link(
 ));
 
 if (has_capability('mod/customcert:viewallcertificates', context_system::instance())) {
-    $settings->add(new admin_setting_link(
+    $settings->add(new \mod_customcert\admin_setting_link(
         'customcert/downloadallsitecerts',
         get_string('downloadallsitecertificates', 'customcert'),
         get_string('downloadallsitecertificatesdesc', 'customcert'),
@@ -204,7 +202,7 @@ $ADMIN->add('customcert', $settings);
 
 // Element plugin settings.
 $ADMIN->add('customcert', new admin_category('customcertelements', get_string('elementplugins', 'customcert')));
-$plugins = core_plugin_manager::instance()->get_plugins_of_type('customcertelement');
+$plugins = \core_plugin_manager::instance()->get_plugins_of_type('customcertelement');
 foreach ($plugins as $plugin) {
     $plugin->load_settings($ADMIN, 'customcertelements', $hassiteconfig);
 }

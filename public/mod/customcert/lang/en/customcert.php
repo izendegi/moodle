@@ -125,7 +125,6 @@ $string['eventpagedeleted'] = 'Custom certificate page deleted';
 $string['eventpageupdated'] = 'Custom certificate page updated';
 $string['eventtemplatecreated'] = 'Custom certificate template created';
 $string['eventtemplatedeleted'] = 'Custom certificate template deleted';
-$string['eventtemplateduplicated'] = 'Custom certificate template duplicated';
 $string['eventtemplateupdated'] = 'Custom certificate template updated';
 $string['exampledatawarning'] = 'Some of these values may just be an example to ensure positioning of the elements is possible.';
 $string['font'] = 'Font';
@@ -235,7 +234,6 @@ $string['topcenter'] = 'Center';
 $string['topleft'] = 'Top left';
 $string['topright'] = 'Top right';
 $string['type'] = 'Type';
-$string['unknownelementtype'] = 'Unknown element type';
 $string['uploadimage'] = 'Upload image';
 $string['uploadimagedesc'] = 'This link will take you to a new screen where you will be able to upload images. Images uploaded using
 this method will be available throughout your site to all users who are able to create a certificate.';

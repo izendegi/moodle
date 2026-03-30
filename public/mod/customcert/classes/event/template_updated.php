@@ -24,9 +24,6 @@
 
 namespace mod_customcert\event;
 
-use context_system;
-use core\event\base;
-use moodle_url;
 use mod_customcert\template;
 
 /**
@@ -36,11 +33,11 @@ use mod_customcert\template;
  * @copyright 2023 Leon Stringer <leon.stringer@ntlworld.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class template_updated extends base {
+class template_updated extends \core\event\base {
     /**
      * Initialises the event.
      */
-    protected function init(): void {
+    protected function init() {
         $this->data['crud'] = 'u';
         $this->data['edulevel'] = self::LEVEL_OTHER;
         $this->data['objecttable'] = 'customcert_templates';
@@ -51,8 +48,8 @@ class template_updated extends base {
      *
      * @return string
      */
-    public function get_description(): string {
-        if ($this->contextlevel == context_system::instance()->contextlevel) {
+    public function get_description() {
+        if ($this->contextlevel == \context_system::instance()->contextlevel) {
             // If CONTEXT_SYSTEM assume it's a template.
             return "The user with id '$this->userid' updated the certificate template with id '$this->objectid'.";
         } else {
@@ -67,7 +64,7 @@ class template_updated extends base {
      *
      * @return string
      */
-    public static function get_name(): string {
+    public static function get_name() {
         return get_string('eventtemplateupdated', 'customcert');
     }
 
@@ -88,13 +85,13 @@ class template_updated extends base {
 
     /**
      * Returns relevant URL.
-     * @return moodle_url
+     * @return \moodle_url
      */
-    public function get_url(): moodle_url {
-        if ($this->contextlevel == context_system::instance()->contextlevel) {
-            return new moodle_url('/mod/customcert/manage_templates.php');
+    public function get_url() {
+        if ($this->contextlevel == \context_system::instance()->contextlevel) {
+            return new \moodle_url('/mod/customcert/manage_templates.php');
         } else {
-            return new moodle_url(
+            return new \moodle_url(
                 '/mod/customcert/view.php',
                 ['id' => $this->contextinstanceid]
             );
@@ -106,7 +103,7 @@ class template_updated extends base {
      *
      * @return string[]
      */
-    public static function get_objectid_mapping(): array {
+    public static function get_objectid_mapping() {
         return ['db' => 'customcert_templates', 'restore' => 'customcert_templates'];
     }
 

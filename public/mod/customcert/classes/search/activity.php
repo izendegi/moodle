@@ -24,8 +24,6 @@
 
 namespace mod_customcert\search;
 
-use core_search\base_activity;
-
 /**
  * Search area for mod_customcert activities.
  *
@@ -33,5 +31,5 @@ use core_search\base_activity;
  * @copyright  2016 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class activity extends base_activity {
+class activity extends \core_search\base_activity {
 }

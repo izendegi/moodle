@@ -24,11 +24,6 @@
 
 namespace mod_customcert\event;
 
-use context_system;
-use core\event\base;
-use mod_customcert\element\element_interface;
-use moodle_url;
-
 /**
  * Certificate template element deleted event class.
  *
@@ -36,11 +31,11 @@ use moodle_url;
  * @copyright 2023 Mark Nelson <mdjnelson@gmail.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element_deleted extends base {
+class element_deleted extends \core\event\base {
     /**
      * Initialises the event.
      */
-    protected function init(): void {
+    protected function init() {
         $this->data['crud'] = 'd';
         $this->data['edulevel'] = self::LEVEL_OTHER;
         $this->data['objecttable'] = 'customcert_elements';
@@ -51,8 +46,8 @@ class element_deleted extends base {
      *
      * @return string
      */
-    public function get_description(): string {
-        if ($this->contextlevel == context_system::instance()->contextlevel) {
+    public function get_description() {
+        if ($this->contextlevel == \context_system::instance()->contextlevel) {
             // If CONTEXT_SYSTEM assume it's a template.
             return "The user with id '$this->userid' deleted the element with id '$this->objectid'.";
         } else {
@@ -67,17 +62,17 @@ class element_deleted extends base {
      *
      * @return string
      */
-    public static function get_name(): string {
+    public static function get_name() {
         return get_string('eventelementdeleted', 'customcert');
     }
 
     /**
      * Create instance of event.
      *
-     * @param element_interface $element
+     * @param \mod_customcert\element $element
      * @return element_deleted
      */
-    public static function create_from_element(element_interface $element): element_deleted {
+    public static function create_from_element(\mod_customcert\element $element): element_deleted {
         global $DB;
 
         $page = $DB->get_record('customcert_pages', ['id' => $element->get_pageid()]);
@@ -93,13 +88,13 @@ class element_deleted extends base {
 
     /**
      * Returns relevant URL.
-     * @return moodle_url
+     * @return \moodle_url
      */
-    public function get_url(): moodle_url {
-        if ($this->contextlevel == context_system::instance()->contextlevel) {
-            return new moodle_url('/mod/customcert/manage_templates.php');
+    public function get_url() {
+        if ($this->contextlevel == \context_system::instance()->contextlevel) {
+            return new \moodle_url('/mod/customcert/manage_templates.php');
         } else {
-            return new moodle_url(
+            return new \moodle_url(
                 '/mod/customcert/view.php',
                 ['id' => $this->contextinstanceid]
             );
@@ -111,7 +106,7 @@ class element_deleted extends base {
      *
      * @return string[]
      */
-    public static function get_objectid_mapping(): array {
+    public static function get_objectid_mapping() {
         return ['db' => 'customcert_elements', 'restore' => 'customcert_elements'];
     }
 

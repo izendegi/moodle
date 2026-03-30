@@ -22,30 +22,52 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace customcertelement_date;
 
-use mod_customcert\element as base_element;
-use mod_customcert\element\constructable_element_interface;
-use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element\element_interface;
-use mod_customcert\element\form_buildable_interface;
-use mod_customcert\element\validatable_element_interface;
-use mod_customcert\element\preparable_form_interface;
-use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element_helper;
-use mod_customcert\service\certificate_repository;
-use MoodleQuickForm;
-use pdf;
-use restore_customcert_activity_task;
-use stdClass;
-use mod_customcert\service\element_renderer;
-use mod_customcert\element\restorable_element_interface;
 
 defined('MOODLE_INTERNAL') || die();
 
-global $CFG;
+/**
+ * Date - Course grade date
+ */
+define('CUSTOMCERT_DATE_COURSE_GRADE', '0');
+
+/**
+ * Date - Issue
+ */
+define('CUSTOMCERT_DATE_ISSUE', '-1');
+
+/**
+ * Date - Completion
+ */
+define('CUSTOMCERT_DATE_COMPLETION', '-2');
+
+/**
+ * Date - Course start
+ */
+define('CUSTOMCERT_DATE_COURSE_START', '-3');
+
+/**
+ * Date - Course end
+ */
+define('CUSTOMCERT_DATE_COURSE_END', '-4');
+
+/**
+ * Date - Current date
+ */
+define('CUSTOMCERT_DATE_CURRENT_DATE', '-5');
+
+/**
+ * Date - Enrollment start
+ */
+define('CUSTOMCERT_DATE_ENROLMENT_START', '-6');
+
+/**
+ * Date - Entrollment end
+ */
+define('CUSTOMCERT_DATE_ENROLMENT_END', '-7');
+
 require_once($CFG->dirroot . '/lib/grade/constants.php');
 
 /**
@@ -55,63 +77,29 @@ require_once($CFG->dirroot . '/lib/grade/constants.php');
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends base_element implements
-    constructable_element_interface,
-    element_interface,
-    form_buildable_interface,
-    persistable_element_interface,
-    preparable_form_interface,
-    renderable_element_interface,
-    restorable_element_interface,
-    validatable_element_interface
-{
-    /** @var string Course grade date identifier. */
-    public const string DATE_COURSE_GRADE = '0';
-
-    /** @var string Issue date identifier. */
-    public const string DATE_ISSUE = '-1';
-
-    /** @var string Completion date identifier. */
-    public const string DATE_COMPLETION = '-2';
-
-    /** @var string Course start date identifier. */
-    public const string DATE_COURSE_START = '-3';
-
-    /** @var string Course end date identifier. */
-    public const string DATE_COURSE_END = '-4';
-
-    /** @var string Current date identifier. */
-    public const string DATE_CURRENT_DATE = '-5';
-
-    /** @var string Enrolment start date identifier. */
-    public const string DATE_ENROLMENT_START = '-6';
-
-    /** @var string Enrolment end date identifier. */
-    public const string DATE_ENROLMENT_END = '-7';
-
+class element extends \mod_customcert\element {
     /**
-     * Build the configuration form for this element.
+     * This function renders the form elements when adding a customcert element.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function build_form(MoodleQuickForm $mform): void {
+    public function render_form_elements($mform) {
         global $CFG, $COURSE;
 
         // Get the possible date options.
         $dateoptions = [];
-        $dateoptions[self::DATE_ISSUE] = get_string('issueddate', 'customcertelement_date');
-        $dateoptions[self::DATE_CURRENT_DATE] = get_string('currentdate', 'customcertelement_date');
+        $dateoptions[CUSTOMCERT_DATE_ISSUE] = get_string('issueddate', 'customcertelement_date');
+        $dateoptions[CUSTOMCERT_DATE_CURRENT_DATE] = get_string('currentdate', 'customcertelement_date');
         $completionenabled = $CFG->enablecompletion && ($COURSE->id == SITEID || $COURSE->enablecompletion);
         if ($completionenabled) {
-            $dateoptions[self::DATE_COMPLETION] = get_string('completiondate', 'customcertelement_date');
+            $dateoptions[CUSTOMCERT_DATE_COMPLETION] = get_string('completiondate', 'customcertelement_date');
         }
-        $dateoptions[self::DATE_ENROLMENT_START] = get_string('enrolmentstartdate', 'customcertelement_date');
-        $dateoptions[self::DATE_ENROLMENT_END] = get_string('enrolmentenddate', 'customcertelement_date');
-        $dateoptions[self::DATE_COURSE_START] = get_string('coursestartdate', 'customcertelement_date');
-        $dateoptions[self::DATE_COURSE_END] = get_string('courseenddate', 'customcertelement_date');
-        $dateoptions[self::DATE_COURSE_GRADE] = get_string('coursegradedate', 'customcertelement_date');
-        $dateoptions = $dateoptions + element_helper::get_grade_items($COURSE);
+        $dateoptions[CUSTOMCERT_DATE_ENROLMENT_START] = get_string('enrolmentstartdate', 'customcertelement_date');
+        $dateoptions[CUSTOMCERT_DATE_ENROLMENT_END] = get_string('enrolmentenddate', 'customcertelement_date');
+        $dateoptions[CUSTOMCERT_DATE_COURSE_START] = get_string('coursestartdate', 'customcertelement_date');
+        $dateoptions[CUSTOMCERT_DATE_COURSE_END] = get_string('courseenddate', 'customcertelement_date');
+        $dateoptions[CUSTOMCERT_DATE_COURSE_GRADE] = get_string('coursegradedate', 'customcertelement_date');
+        $dateoptions = $dateoptions + \mod_customcert\element_helper::get_grade_items($COURSE);
 
         $mform->addElement('select', 'dateitem', get_string('dateitem', 'customcertelement_date'), $dateoptions);
         $mform->addHelpButton('dateitem', 'dateitem', 'customcertelement_date');
@@ -124,52 +112,35 @@ class element extends base_element implements
         );
         $mform->addHelpButton('dateformat', 'dateformat', 'customcertelement_date');
 
-        element_helper::render_common_form_elements($mform, $this->showposxy);
+        parent::render_form_elements($mform);
     }
 
     /**
-     * Normalise date element data.
+     * This will handle how form data will be saved into the data column in the
+     * customcert_elements table.
      *
-     * @param stdClass $formdata Form submission data
-     * @return array JSON-serialisable payload
+     * @param \stdClass $data the form data
+     * @return string the json encoded array
      */
-    public function normalise_data(stdClass $formdata): array {
-        return [
-            'dateitem' => $formdata->dateitem ?? '',
-            'dateformat' => $formdata->dateformat ?? '',
+    public function save_unique_data($data) {
+        // Array of data we will be storing in the database.
+        $arrtostore = [
+            'dateitem' => $data->dateitem,
+            'dateformat' => $data->dateformat,
         ];
-    }
 
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
-
-    /**
-     * Build an element instance from a DB record.
-     *
-     * @param stdClass $record Raw DB row from customcert_elements.
-     * @return static
-     */
-    public static function from_record(stdClass $record): static {
-        return new static($record);
+        // Encode these variables before saving into the DB.
+        return json_encode($arrtostore);
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param pdf $pdf the pdf object
+     * @param \pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param stdClass $user the user we are rendering this for
-     * @param element_renderer|null $renderer the renderer service
+     * @param \stdClass $user the user we are rendering this for
      */
-    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+    public function render($pdf, $preview, $user) {
         global $DB;
 
         // If there is no element data, we have nothing to display.
@@ -177,7 +148,7 @@ class element extends base_element implements
             return;
         }
 
-        $courseid = element_helper::get_courseid($this->id);
+        $courseid = \mod_customcert\element_helper::get_courseid($this->id);
 
         // Decode the information stored in the database.
         $dateinfo = json_decode($this->get_data());
@@ -191,7 +162,7 @@ class element extends base_element implements
             // Get the page.
             $page = $DB->get_record('customcert_pages', ['id' => $this->get_pageid()], '*', MUST_EXIST);
             // Get the customcert this page belongs to.
-            $customcert = (new certificate_repository())->get_by_template_id_or_fail((int)$page->templateid);
+            $customcert = $DB->get_record('customcert', ['templateid' => $page->templateid], '*', MUST_EXIST);
             // Now we can get the issue for this user.
             $issue = $DB->get_record(
                 'customcert_issues',
@@ -200,11 +171,11 @@ class element extends base_element implements
                 IGNORE_MULTIPLE
             );
 
-            if ($dateitem == self::DATE_ISSUE) {
+            if ($dateitem == CUSTOMCERT_DATE_ISSUE) {
                 $date = $issue->timecreated;
-            } else if ($dateitem == self::DATE_CURRENT_DATE) {
+            } else if ($dateitem == CUSTOMCERT_DATE_CURRENT_DATE) {
                 $date = time();
-            } else if ($dateitem == self::DATE_COMPLETION) {
+            } else if ($dateitem == CUSTOMCERT_DATE_COMPLETION) {
                 // Get the last completion date.
                 $sql = "SELECT MAX(c.timecompleted) as timecompleted
                           FROM {course_completions} c
@@ -215,7 +186,7 @@ class element extends base_element implements
                         $date = $timecompleted->timecompleted;
                     }
                 }
-            } else if ($dateitem == self::DATE_ENROLMENT_START) {
+            } else if ($dateitem == CUSTOMCERT_DATE_ENROLMENT_START) {
                 // Get the enrolment start date.
                 $sql = "SELECT ue.timestart FROM {enrol} e JOIN {user_enrolments} ue ON ue.enrolid = e.id
                          WHERE e.courseid = :courseid
@@ -227,7 +198,7 @@ class element extends base_element implements
                         $date = $timestart->timecreated;
                     }
                 }
-            } else if ($dateitem == self::DATE_ENROLMENT_END) {
+            } else if ($dateitem == CUSTOMCERT_DATE_ENROLMENT_END) {
                 // Get the enrolment end date.
                 $sql = "SELECT ue.timeend FROM {enrol} e JOIN {user_enrolments} ue ON ue.enrolid = e.id
                          WHERE e.courseid = :courseid
@@ -237,26 +208,26 @@ class element extends base_element implements
                         $date = $timeend->timeend;
                     }
                 }
-            } else if ($dateitem == self::DATE_COURSE_START) {
+            } else if ($dateitem == CUSTOMCERT_DATE_COURSE_START) {
                 $date = $DB->get_field('course', 'startdate', ['id' => $courseid]);
-            } else if ($dateitem == self::DATE_COURSE_END) {
+            } else if ($dateitem == CUSTOMCERT_DATE_COURSE_END) {
                 $date = $DB->get_field('course', 'enddate', ['id' => $courseid]);
             } else {
-                if ($dateitem == self::DATE_COURSE_GRADE) {
-                    $grade = element_helper::get_course_grade_info(
+                if ($dateitem == CUSTOMCERT_DATE_COURSE_GRADE) {
+                    $grade = \mod_customcert\element_helper::get_course_grade_info(
                         $courseid,
                         GRADE_DISPLAY_TYPE_DEFAULT,
                         $user->id
                     );
                 } else if (strpos($dateitem, 'gradeitem:') === 0) {
                     $gradeitemid = substr($dateitem, 10);
-                    $grade = element_helper::get_grade_item_info(
+                    $grade = \mod_customcert\element_helper::get_grade_item_info(
                         $gradeitemid,
                         $dateitem,
                         $user->id
                     );
                 } else {
-                    $grade = element_helper::get_mod_grade_info(
+                    $grade = \mod_customcert\element_helper::get_mod_grade_info(
                         $dateitem,
                         GRADE_DISPLAY_TYPE_DEFAULT,
                         $user->id
@@ -271,12 +242,7 @@ class element extends base_element implements
 
         // Ensure that a date has been set.
         if (!empty($date)) {
-            $content = element_helper::get_date_format_string($date, $dateformat);
-            if ($renderer) {
-                $renderer->render_content($this, $content);
-            } else {
-                element_helper::render_content($pdf, $this, $content);
-            }
+            \mod_customcert\element_helper::render_content($pdf, $this, element_helper::get_date_format_string($date, $dateformat));
         }
     }
 
@@ -286,46 +252,42 @@ class element extends base_element implements
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
-     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html(?element_renderer $renderer = null): string {
+    public function render_html() {
         // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
-            return '';
+            return;
         }
 
-        // Read the information stored in the database.
-        $payload = $this->get_payload();
-        $dateformat = $payload['dateformat'] ?? '';
+        // Decode the information stored in the database.
+        $dateinfo = json_decode($this->get_data());
+        $dateformat = $dateinfo->dateformat;
 
-        $content = element_helper::get_date_format_string(time(), $dateformat);
-        if ($renderer) {
-            return (string) $renderer->render_content($this, $content);
-        }
-
-        return element_helper::render_html_content($this, $content);
+        return \mod_customcert\element_helper::render_html_content(
+            $this,
+            element_helper::get_date_format_string(time(), $dateformat)
+        );
     }
 
     /**
-     * Prepare the form by populating the dateitem and dateformat fields from stored data.
+     * Sets the data on the form when editing an element.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function prepare_form(MoodleQuickForm $mform): void {
+    public function definition_after_data($mform) {
         // Set the item and format for this element.
         if (!empty($this->get_data())) {
-            $payload = $this->get_payload();
+            $dateinfo = json_decode($this->get_data());
 
-            if (isset($payload['dateitem'])) {
-                $mform->getElement('dateitem')->setValue($payload['dateitem']);
-            }
+            $element = $mform->getElement('dateitem');
+            $element->setValue($dateinfo->dateitem);
 
-            if (isset($payload['dateformat'])) {
-                $mform->getElement('dateformat')->setValue($payload['dateformat']);
-            }
+            $element = $mform->getElement('dateformat');
+            $element->setValue($dateinfo->dateformat);
         }
+
+        parent::definition_after_data($mform);
     }
 
     /**
@@ -334,29 +296,28 @@ class element extends base_element implements
      * We will want to update the course module the date element is pointing to as it will
      * have changed in the course restore.
      *
-     * @param restore_customcert_activity_task $restore
+     * @param \restore_customcert_activity_task $restore
      */
-    public function after_restore_from_backup(restore_customcert_activity_task $restore): void {
+    public function after_restore($restore) {
         global $DB;
 
-        $data = $this->get_payload();
-        if (empty($data) || empty($data['dateitem'])) {
-            return;
-        }
+        $dateinfo = json_decode($this->get_data());
 
         $isgradeitem = false;
-        $oldid = $data['dateitem'];
-        if (str_starts_with($data['dateitem'], 'gradeitem:')) {
+        $oldid = $dateinfo->dateitem;
+        if (str_starts_with($dateinfo->dateitem, 'gradeitem:')) {
             $isgradeitem = true;
-            $oldid = str_replace('gradeitem:', '', $data['dateitem']);
+            $oldid = str_replace('gradeitem:', '', $dateinfo->dateitem);
         }
 
         $itemname = $isgradeitem ? 'grade_item' : 'course_module';
-        // Use the restore task mapping API instead of restore_dbops to allow unit testing without temp tables.
-        $newid = $restore->get_mappingid($itemname, (int)$oldid);
-        if ($newid) {
-            $data['dateitem'] = ($isgradeitem ? 'gradeitem:' : '') . $newid;
-            $DB->set_field('customcert_elements', 'data', json_encode($data), ['id' => $this->get_id()]);
+        if ($newitem = \restore_dbops::get_backup_ids_record($restore->get_restoreid(), $itemname, $oldid)) {
+            $dateinfo->dateitem = '';
+            if ($isgradeitem) {
+                $dateinfo->dateitem = 'gradeitem:';
+            }
+            $dateinfo->dateitem = $dateinfo->dateitem . $newitem->newitemid;
+            $DB->set_field('customcert_elements', 'data', $this->save_unique_data($dateinfo), ['id' => $this->get_id()]);
         }
     }
 

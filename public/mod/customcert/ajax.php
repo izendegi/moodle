@@ -22,11 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_customcert\template;
-use mod_customcert\event\template_updated;
-use mod_customcert\service\element_factory;
-use mod_customcert\service\element_repository;
-
 require_once(__DIR__ . '/../../config.php');
 
 if (!defined('AJAX_SCRIPT')) {
@@ -37,8 +32,11 @@ $tid = required_param('tid', PARAM_INT);
 $values = required_param('values', PARAM_RAW);
 $values = json_decode($values);
 
-// Load the template.
-$template = template::load($tid);
+// Make sure the template exists.
+$template = $DB->get_record('customcert_templates', ['id' => $tid], '*', MUST_EXIST);
+
+// Set the template.
+$template = new \mod_customcert\template($template);
 // Perform checks.
 if ($cm = $template->get_cm()) {
     $courseid = $cm->course;
@@ -49,20 +47,14 @@ if ($cm = $template->get_cm()) {
 // Make sure the user has the required capabilities.
 $template->require_manage();
 
-$factory = element_factory::build_with_defaults();
-$elementrepo = new element_repository($factory);
-
 // Loop through the data.
-$contextid = $template->get_contextid();
 foreach ($values as $value) {
-    // Round fractional positions to the nearest integer — the DB column is INT
-    // but the JS editor may emit sub-pixel values.
-    $elementrepo->update_position(
-        (int)$value->id,
-        (int)round((float)$value->posx),
-        (int)round((float)$value->posy),
-        $contextid
-    );
+    $element = new stdClass();
+    $element->id = $value->id;
+    $element->posx = $value->posx;
+    $element->posy = $value->posy;
+    $DB->update_record('customcert_elements', $element);
+    \mod_customcert\event\element_updated::create_from_id($element->id, $template)->trigger();
 }
 
-template_updated::create_from_template($template)->trigger();
+\mod_customcert\event\template_updated::create_from_template($template)->trigger();

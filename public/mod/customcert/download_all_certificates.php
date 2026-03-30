@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_customcert\service\certificate_download_service;
-
 require_once('../../config.php');
 require_once($CFG->libdir . '/filestorage/zip_archive.php');
 
@@ -32,6 +30,5 @@ require_login();
 $context = context_system::instance();
 require_capability('mod/customcert:viewallcertificates', $context);
 
-$downloadservice = certificate_download_service::create();
-$downloadservice->download_all_for_site();
+\mod_customcert\certificate::download_all_for_site();
 exit();

@@ -22,18 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use core\session\manager;
-use mod_customcert\local\pagination;
-use mod_customcert\event\course_module_viewed;
-use mod_customcert\report_table;
-use mod_customcert\service\certificate_download_service;
-use mod_customcert\service\certificate_issue_service;
-use mod_customcert\service\certificate_time_service;
-use mod_customcert\service\issue_repository;
-use mod_customcert\service\pdf_generation_service;
-use mod_customcert\service\template_repository;
-use mod_customcert\template;
-
 require_once('../../config.php');
 
 $id = required_param('id', PARAM_INT);
@@ -44,12 +32,12 @@ $downloadissue = optional_param('downloadissue', 0, PARAM_INT);
 $deleteissue = optional_param('deleteissue', 0, PARAM_INT);
 $confirm = optional_param('confirm', false, PARAM_BOOL);
 $page = optional_param('page', 0, PARAM_INT);
-$perpage = optional_param('perpage', pagination::CUSTOMCERT_PER_PAGE, PARAM_INT);
+$perpage = optional_param('perpage', \mod_customcert\certificate::CUSTOMCERT_PER_PAGE, PARAM_INT);
 
 $cm = get_coursemodule_from_id('customcert', $id, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
 $customcert = $DB->get_record('customcert', ['id' => $cm->instance], '*', MUST_EXIST);
-$template = (new template_repository())->get_by_id_or_fail((int)$customcert->templateid);
+$template = $DB->get_record('customcert_templates', ['id' => $customcert->templateid], '*', MUST_EXIST);
 
 // Ensure the user is allowed to view this page.
 require_login($course, false, $cm);
@@ -66,8 +54,7 @@ $pageurl = new moodle_url('/mod/customcert/view.php', ['id' => $cm->id]);
 
 // Check if the user can view the certificate based on time spent in course.
 if ($customcert->requiredtime && !$canmanage) {
-    $timeservice = certificate_time_service::create();
-    if ($timeservice->get_course_time((int)$course->id, (int)$USER->id) < ($customcert->requiredtime * 60)) {
+    if (\mod_customcert\certificate::get_course_time($course->id) < ($customcert->requiredtime * 60)) {
         $a = new stdClass();
         $a->requiredtime = $customcert->requiredtime;
         $url = new moodle_url('/course/view.php', ['id' => $course->id]);
@@ -101,9 +88,8 @@ if ($deleteissue && $canmanage && confirm_sesskey()) {
     }
 
     // Delete the issue.
-    $issuerepo = new issue_repository();
-    $issue = $issuerepo->get_by_id_or_fail((int)$deleteissue);
-    $issuerepo->delete_for_certificate((int)$deleteissue, (int)$customcert->id);
+    $issue = $DB->get_record('customcert_issues', ['id' => $deleteissue, 'customcertid' => $customcert->id], '*', MUST_EXIST);
+    $DB->delete_records('customcert_issues', ['id' => $deleteissue, 'customcertid' => $customcert->id]);
 
     // Trigger event.
     $cm = get_coursemodule_from_instance('customcert', $customcert->id, 0, false, MUST_EXIST);
@@ -124,24 +110,21 @@ if ($groupmode = groups_get_activity_groupmode($cm)) {
     groups_get_activity_group($cm, true);
 }
 
-$issuerepo = new issue_repository();
-
 // Check if we are downloading all certificates.
 if ($downloadall && $canviewreport && confirm_sesskey()) {
-    $template = \mod_customcert\template::load((int)$template->id);
-    $issues = $issuerepo->get_issues($customcert->id, $cm, 0, 0);
+    $template = new \mod_customcert\template($template);
+    $issues = \mod_customcert\certificate::get_issues($customcert->id, $groupmode, $cm, 0, 0);
 
     // The button is not visible if there are no issues, so in this case just redirect back to this page.
     if (empty($issues)) {
         redirect(new moodle_url('/mod/customcert/view.php', ['id' => $id]));
     }
 
-    $downloadservice = certificate_download_service::create();
-    $downloadservice->download_all_issues_for_instance($template, $issues);
+    \mod_customcert\certificate::download_all_issues_for_instance($template, $issues);
     exit();
 }
 
-$event = course_module_viewed::create([
+$event = \mod_customcert\event\course_module_viewed::create([
     'objectid' => $customcert->id,
     'context' => $context,
 ]);
@@ -154,7 +137,7 @@ if (!$downloadown && !$downloadissue) {
     // Generate the table to the report if there are issues to display.
     if ($canviewreport) {
         // Get the total number of issues.
-        $reporttable = new report_table($customcert->id, $cm, $downloadtable);
+        $reporttable = new \mod_customcert\report_table($customcert->id, $cm, $groupmode, $downloadtable);
         $reporttable->define_baseurl($pageurl);
 
         if ($reporttable->is_downloading()) {
@@ -165,7 +148,7 @@ if (!$downloadown && !$downloadissue) {
 
     // If the current user has been issued a customcert generate HTML to display the details.
     $issuehtml = '';
-    $issues = $issuerepo->list_by_user_certificate((int)$customcert->id, (int)$USER->id);
+    $issues = $DB->get_records('customcert_issues', ['userid' => $USER->id, 'customcertid' => $customcert->id]);
     if ($issues && !$canmanage) {
         // Get the most recent issue (there should only be one).
         $issue = reset($issues);
@@ -190,7 +173,7 @@ if (!$downloadown && !$downloadissue) {
         }
     }
 
-    $numissues = $issuerepo->get_number_of_issues($customcert->id, $cm);
+    $numissues = \mod_customcert\certificate::get_number_of_issues($customcert->id, $cm, $groupmode);
 
     $downloadallbutton = '';
     if ($canviewreport && $numissues > 0) {
@@ -228,9 +211,8 @@ if (!$downloadown && !$downloadissue) {
     $userid = $USER->id;
     if ($downloadown) {
         // Create new customcert issue record if one does not already exist.
-        if (!(new issue_repository())->exists_for_user((int)$customcert->id, (int)$USER->id)) {
-            $issueservice = certificate_issue_service::create();
-            $issueservice->issue_certificate((int)$customcert->id, (int)$USER->id);
+        if (!$DB->record_exists('customcert_issues', ['userid' => $USER->id, 'customcertid' => $customcert->id])) {
+            \mod_customcert\certificate::issue_certificate($customcert->id, $USER->id);
         }
 
         // Set the custom certificate as viewed.
@@ -245,11 +227,10 @@ if (!$downloadown && !$downloadissue) {
         redirect(new moodle_url('/mod/customcert/view.php', ['id' => $cm->id]));
     }
 
-    manager::write_close();
+    \core\session\manager::write_close();
 
     // Now we want to generate the PDF.
-    $template = template::load((int)$template->id);
-    $pdfservice = pdf_generation_service::create();
-    $pdfservice->generate_pdf($template, false, (int)$userid);
+    $template = new \mod_customcert\template($template);
+    $template->generate_pdf(false, $userid);
     exit();
 }

@@ -25,12 +25,6 @@
 /**
  * AJAX_SCRIPT - exception will be converted into JSON.
  */
-
-use mod_customcert\service\certificate_issue_service;
-use mod_customcert\service\certificate_time_service;
-use mod_customcert\service\pdf_generation_service;
-use mod_customcert\template;
-
 define('AJAX_SCRIPT', true);
 
 /**
@@ -39,7 +33,6 @@ define('AJAX_SCRIPT', true);
 define('NO_MOODLE_COOKIES', true);
 
 require_once('../../../config.php');
-
 require_once($CFG->libdir . '/filelib.php');
 require_once($CFG->libdir . '/completionlib.php');
 require_once($CFG->dirroot . '/webservice/lib.php');
@@ -65,6 +58,7 @@ if (empty($enabledfiledownload)) {
 $cm = get_coursemodule_from_instance('customcert', $certificateid, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
 $certificate = $DB->get_record('customcert', ['id' => $certificateid], '*', MUST_EXIST);
+$template = $DB->get_record('customcert_templates', ['id' => $certificate->templateid], '*', MUST_EXIST);
 
 // Capabilities check.
 require_capability('mod/customcert:view', \context_module::instance($cm->id));
@@ -73,8 +67,7 @@ if ($userid != $USER->id) {
 } else {
     // Make sure the user has met the required time.
     if ($certificate->requiredtime) {
-        $timeservice = certificate_time_service::create();
-        if ($timeservice->get_course_time((int)$certificate->course, (int)$USER->id) < ($certificate->requiredtime * 60)) {
+        if (\mod_customcert\certificate::get_course_time($certificate->course) < ($certificate->requiredtime * 60)) {
             exit();
         }
     }
@@ -89,8 +82,7 @@ if (!$issue) {
         exit();
     }
 
-    $issueservice = certificate_issue_service::create();
-    $issueservice->issue_certificate((int)$certificate->id, (int)$USER->id);
+    \mod_customcert\certificate::issue_certificate($certificate->id, $USER->id);
 
     // Set the custom certificate as viewed.
     $completion = new completion_info($course);
@@ -98,7 +90,6 @@ if (!$issue) {
 }
 
 // Now we want to generate the PDF.
-$template = template::load((int)$certificate->templateid);
-$pdfservice = pdf_generation_service::create();
-$pdfservice->generate_pdf($template, false, (int)$userid);
+$template = new \mod_customcert\template($template);
+$template->generate_pdf(false, $userid);
 exit();

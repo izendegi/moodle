@@ -22,10 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_customcert\event\course_module_instance_list_viewed;
-use mod_customcert\page_helper;
-use mod_customcert\service\issue_repository;
-
 require_once('../../config.php');
 
 $id = required_param('id', PARAM_INT); // Course ID.
@@ -37,7 +33,7 @@ require_login($course);
 
 // Set up the page variables.
 $pageurl = new moodle_url('/mod/customcert/index.php', ['id' => $course->id]);
-page_helper::page_setup(
+\mod_customcert\page_helper::page_setup(
     $pageurl,
     context_course::instance($id),
     get_string('modulenameplural', 'customcert')
@@ -48,7 +44,7 @@ $PAGE->set_pagelayout('incourse');
 $PAGE->navbar->add(get_string('modulenameplural', 'customcert'));
 
 // Add the page view to the Moodle log.
-$event = course_module_instance_list_viewed::create([
+$event = \mod_customcert\event\course_module_instance_list_viewed::create([
     'context' => context_course::instance($course->id),
 ]);
 $event->add_record_snapshot('course', $course);
@@ -92,7 +88,7 @@ foreach ($customcerts as $customcert) {
         $currentsection = $customcert->section;
     }
     // Check if there is was an issue provided for this user.
-    if ($certrecord = (new issue_repository())->find_by_user_certificate((int)$customcert->id, (int)$USER->id)) {
+    if ($certrecord = $DB->get_record('customcert_issues', ['userid' => $USER->id, 'customcertid' => $customcert->id])) {
         $issued = userdate($certrecord->timecreated);
     } else {
         $issued = get_string('notissued', 'customcert');

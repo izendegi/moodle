@@ -22,18 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use core\output\inplace_editable;
-use mod_customcert\edit_element_form;
-use mod_customcert\event\issue_deleted;
-use mod_customcert\service\element_factory;
-use mod_customcert\service\element_repository;
-use mod_customcert\service\issue_repository;
-use mod_customcert\service\page_repository;
-use mod_customcert\service\template_repository;
-use mod_customcert\service\form_service;
-use mod_customcert\service\template_service;
-use mod_customcert\template;
-
 /**
  * Add customcert instance.
  *
@@ -46,18 +34,17 @@ function customcert_add_instance($data, $mform) {
 
     // Create a template for this customcert to use.
     $context = context_module::instance($data->coursemodule);
-    $template = template::create($data->name, $context->id);
+    $template = \mod_customcert\template::create($data->name, $context->id);
 
     // Add the data to the DB.
     $data->templateid = $template->get_id();
-    $data->protection = form_service::set_protection($data);
+    $data->protection = \mod_customcert\certificate::set_protection($data);
     $data->timecreated = time();
     $data->timemodified = $data->timecreated;
     $data->id = $DB->insert_record('customcert', $data);
 
     // Add a page to this customcert.
-    $service = template_service::create();
-    $service->add_page($template, false);
+    $template->add_page(false);
 
     return $data->id;
 }
@@ -72,7 +59,7 @@ function customcert_add_instance($data, $mform) {
 function customcert_update_instance($data, $mform) {
     global $DB;
 
-    $data->protection = form_service::set_protection($data);
+    $data->protection = \mod_customcert\certificate::set_protection($data);
     $data->timemodified = time();
     $data->id = $data->instance;
 
@@ -103,23 +90,25 @@ function customcert_delete_instance($id) {
     $context = context_module::instance($cm->id);
 
     // Trigger issue_deleted events for each issue.
-    $issuerepo = new issue_repository();
-    $issues = $issuerepo->list_by_certificate($id);
+    $issues = $DB->get_records('customcert_issues', ['customcertid' => $id]);
     foreach ($issues as $issue) {
-        $event = issue_deleted::create([
+        $event = \mod_customcert\event\issue_deleted::create([
             'objectid' => $issue->id,
             'context' => $context,
             'relateduserid' => $issue->userid,
         ]);
         $event->trigger();
     }
+
     // Delete the customcert issues.
-    $issuerepo->delete_by_certificate($id);
+    if (!$DB->delete_records('customcert_issues', ['customcertid' => $id])) {
+        return false;
+    }
 
     // Now, delete the template associated with this certificate.
-    if ((new template_repository())->get_by_id((int)$customcert->templateid) !== null) {
-        $templateservice = template_service::create();
-        $templateservice->delete(template::load((int)$customcert->templateid));
+    if ($template = $DB->get_record('customcert_templates', ['id' => $customcert->templateid])) {
+        $template = new \mod_customcert\template($template);
+        $template->delete();
     }
 
     // Delete the customcert instance.
@@ -143,11 +132,16 @@ function customcert_delete_instance($id) {
  * @return array status array
  */
 function customcert_reset_userdata($data) {
+    global $DB;
+
     $componentstr = get_string('modulenameplural', 'customcert');
     $status = [];
 
     if (!empty($data->reset_customcert)) {
-        (new issue_repository())->delete_by_course((int)$data->courseid);
+        $sql = "SELECT cert.id
+                  FROM {customcert} cert
+                 WHERE cert.course = :courseid";
+        $DB->delete_records_select('customcert_issues', "customcertid IN ($sql)", ['courseid' => $data->courseid]);
         $status[] = ['component' => $componentstr, 'item' => get_string('deleteissuedcertificates', 'customcert'),
             'error' => false];
     }
@@ -187,8 +181,10 @@ function customcert_reset_course_form_defaults($course) {
  * @return stdClass the user outline object
  */
 function customcert_user_outline($course, $user, $mod, $customcert) {
+    global $DB;
+
     $result = new stdClass();
-    if ($issue = (new issue_repository())->find_by_user_certificate((int)$customcert->id, (int)$user->id)) {
+    if ($issue = $DB->get_record('customcert_issues', ['customcertid' => $customcert->id, 'userid' => $user->id])) {
         $result->info = get_string('receiveddate', 'customcert');
         $result->time = $issue->timecreated;
     } else {
@@ -209,8 +205,9 @@ function customcert_user_outline($course, $user, $mod, $customcert) {
  * @return string the user complete information
  */
 function customcert_user_complete($course, $user, $mod, $customcert) {
-    global $OUTPUT;
-    if ($issue = (new issue_repository())->find_by_user_certificate((int)$customcert->id, (int)$user->id)) {
+    global $DB, $OUTPUT;
+
+    if ($issue = $DB->get_record('customcert_issues', ['customcertid' => $customcert->id, 'userid' => $user->id])) {
         echo $OUTPUT->box_start();
         echo get_string('receiveddate', 'customcert') . ": ";
         echo userdate($issue->timecreated);
@@ -318,22 +315,20 @@ function customcert_cron() {
  * @return string
  */
 function mod_customcert_output_fragment_editelement($args) {
-    $factory = element_factory::build_with_defaults();
-    $elementrepo = new element_repository($factory);
+    global $DB;
 
     // Get the element.
-    $element = $elementrepo->get_by_id_or_fail((int)$args['elementid']);
+    $element = $DB->get_record('customcert_elements', ['id' => $args['elementid']], '*', MUST_EXIST);
 
-    // Verify the element belongs to the authorised context so that a teacher in
-    // Course A cannot read elements from Course B by supplying a foreign elementid.
-    $authorisedcontext = \context::instance_by_id((int)$args['context']->id);
-    $elementcontextid = $elementrepo->get_template_context_id_for_element((int)$args['elementid']);
-    if ($elementcontextid === null || $elementcontextid !== (int)$authorisedcontext->id) {
-        throw new moodle_exception('nopermissions', 'error', '', 'editelement');
+    // Verify the element belongs to the authorized context to prevent cross-course information disclosure.
+    $page = $DB->get_record('customcert_pages', ['id' => $element->pageid], '*', MUST_EXIST);
+    $template = $DB->get_record('customcert_templates', ['id' => $page->templateid], '*', MUST_EXIST);
+    if ((int)$args['context']->id !== (int)$template->contextid) {
+        throw new \moodle_exception('Invalid access');
     }
 
     $pageurl = new moodle_url('/mod/customcert/rearrange.php', ['pid' => $element->pageid]);
-    $form = new edit_element_form($pageurl, ['element' => $element]);
+    $form = new \mod_customcert\edit_element_form($pageurl, ['element' => $element]);
 
     return $form->render();
 }
@@ -433,17 +428,15 @@ function mod_customcert_myprofile_navigation(core_user\output\myprofile\tree $tr
  * @return \core\output\inplace_editable
  */
 function mod_customcert_inplace_editable($itemtype, $itemid, $newvalue) {
-    global $PAGE;
+    global $DB, $PAGE;
 
     if ($itemtype === 'elementname') {
-        $factory = element_factory::build_with_defaults();
-        $elementrepo = new element_repository($factory);
-
-        $element = $elementrepo->get_by_id_or_fail((int)$itemid);
-        $page = (new page_repository())->get_by_id_or_fail((int)$element->pageid);
+        $element = $DB->get_record('customcert_elements', ['id' => $itemid], '*', MUST_EXIST);
+        $page = $DB->get_record('customcert_pages', ['id' => $element->pageid], '*', MUST_EXIST);
+        $template = $DB->get_record('customcert_templates', ['id' => $page->templateid], '*', MUST_EXIST);
 
         // Set the template object.
-        $template = template::load((int)$page->templateid);
+        $template = new \mod_customcert\template($template);
         // Perform checks.
         if ($cm = $template->get_cm()) {
             require_login($cm->course, false, $cm);
@@ -455,16 +448,18 @@ function mod_customcert_inplace_editable($itemtype, $itemid, $newvalue) {
         $template->require_manage();
 
         // Clean input and update the record.
-        $newname = clean_param($newvalue, PARAM_TEXT);
-        $elementrepo->update_name((int)$element->id, $newname, (int)$template->get_contextid());
+        $updateelement = new stdClass();
+        $updateelement->id = $element->id;
+        $updateelement->name = clean_param($newvalue, PARAM_TEXT);
+        $DB->update_record('customcert_elements', $updateelement);
 
-        return new inplace_editable(
+        return new \core\output\inplace_editable(
             'mod_customcert',
             'elementname',
             $element->id,
             true,
-            $newname,
-            $newname
+            $updateelement->name,
+            $updateelement->name
         );
     }
 }

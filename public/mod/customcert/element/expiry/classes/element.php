@@ -22,25 +22,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace customcertelement_expiry;
 
-use mod_customcert\element as base_element;
-use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element\element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_buildable_interface;
-use mod_customcert\element\validatable_element_interface;
-use mod_customcert\element\preparable_form_interface;
 use mod_customcert\element_helper;
-use mod_customcert\service\certificate_repository;
-use mod_customcert\service\element_renderer;
-use MoodleQuickForm;
-use pdf;
-use restore_customcert_activity_task;
-use stdClass;
-use mod_customcert\element\restorable_element_interface;
 
 /**
  * The customcert element expiry's core interaction API.
@@ -49,39 +33,31 @@ use mod_customcert\element\restorable_element_interface;
  * @copyright  2024 Leon Stringer <leon.stringer@ntlworld.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends base_element implements
-    element_interface,
-    form_buildable_interface,
-    persistable_element_interface,
-    preparable_form_interface,
-    renderable_element_interface,
-    restorable_element_interface,
-    validatable_element_interface
-{
+class element extends \mod_customcert\element {
     /**
      * Date - Relative expiry date of 1 year
      */
-    private const string EXPIRY_ONE = '-8';
+    private const EXPIRY_ONE = '-8';
 
     /**
      * Date - Relative expiry date of 2 year
      */
-    private const string EXPIRY_TWO = '-9';
+    private const EXPIRY_TWO = '-9';
 
     /**
      * Date - Relative expiry date of 3 year
      */
-    private const string EXPIRY_THREE = '-10';
+    private const EXPIRY_THREE = '-10';
 
     /**
      * Date - Relative expiry date of 4 year
      */
-    private const string EXPIRY_FOUR = '-11';
+    private const EXPIRY_FOUR = '-11';
 
     /**
      * Date - Relative expiry date of 5 year
      */
-    private const string EXPIRY_FIVE = '-12';
+    private const EXPIRY_FIVE = '-12';
 
     /** @var array Map EXPIRY_ consts to strtotime()'s $datetime param. */
     private array $relative = [
@@ -93,12 +69,11 @@ class element extends base_element implements
     ];
 
     /**
-     * Build the configuration form for this element.
+     * This function renders the form elements when adding a customcert element.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function build_form(MoodleQuickForm $mform): void {
+    public function render_form_elements($mform) {
         global $CFG, $COURSE;
 
         $dateoptions[self::EXPIRY_ONE] = get_string('expirydateone', 'customcertelement_expiry');
@@ -107,107 +82,80 @@ class element extends base_element implements
         $dateoptions[self::EXPIRY_FOUR] = get_string('expirydatefour', 'customcertelement_expiry');
         $dateoptions[self::EXPIRY_FIVE] = get_string('expirydatefive', 'customcertelement_expiry');
 
+        $mform->addElement('select', 'dateitem', get_string('dateitem', 'customcertelement_expiry'), $dateoptions);
+        $mform->addHelpButton('dateitem', 'dateitem', 'customcertelement_expiry');
+
+        $mform->addElement('select', 'dateformat', get_string('dateformat', 'customcertelement_expiry'), self::get_date_formats());
+        $mform->addHelpButton('dateformat', 'dateformat', 'customcertelement_expiry');
+
         $startdates['award'] = get_string('awarddate', 'customcertelement_expiry');
+
         if ($CFG->enablecompletion && ($COURSE->id == SITEID || $COURSE->enablecompletion)) {
             $startdates['coursecomplete'] = get_string('completiondate', 'customcertelement_expiry');
         }
 
-        $mform->addElement('select', 'dateitem', get_string('dateitem', 'customcertelement_expiry'), $dateoptions);
-        $mform->addHelpButton('dateitem', 'dateitem', 'customcertelement_expiry');
-
-        $mform->addElement(
-            'select',
-            'dateformat',
-            get_string('dateformat', 'customcertelement_expiry'),
-            self::get_date_formats()
-        );
-        $mform->addHelpButton('dateformat', 'dateformat', 'customcertelement_expiry');
-
         $mform->addElement('select', 'startfrom', get_string('startfrom', 'customcertelement_expiry'), $startdates);
         $mform->addHelpButton('startfrom', 'startfrom', 'customcertelement_expiry');
 
-        element_helper::render_common_form_elements($mform, $this->showposxy);
+        parent::render_form_elements($mform);
     }
 
     /**
-     * Normalise expiry element data.
+     * This will handle how form data will be saved into the data column in the
+     * customcert_elements table.
      *
-     * @param stdClass $formdata Form submission data
-     * @return array JSON-serialisable payload
+     * @param \stdClass $data the form data
+     * @return string the json encoded array
      */
-    public function normalise_data(stdClass $formdata): array {
-        return [
-            'dateitem' => $formdata->dateitem ?? '',
-            'dateformat' => $formdata->dateformat ?? '',
-            'startfrom' => $formdata->startfrom ?? '',
+    public function save_unique_data($data) {
+        // Array of data we will be storing in the database.
+        $arrtostore = [
+            'dateitem' => $data->dateitem,
+            'dateformat' => $data->dateformat,
+            'startfrom' => $data->startfrom,
         ];
-    }
 
-    /**
-     * Prepare the form by populating the dateitem, dateformat, and startfrom fields from stored data.
-     *
-     * @param MoodleQuickForm $mform
-     * @return void
-     */
-    public function prepare_form(MoodleQuickForm $mform): void {
-        if (!empty($this->get_data())) {
-            $payload = $this->get_payload();
-            if (isset($payload['dateitem'])) {
-                $mform->getElement('dateitem')->setValue($payload['dateitem']);
-            }
-            if (isset($payload['dateformat'])) {
-                $mform->getElement('dateformat')->setValue($payload['dateformat']);
-            }
-            if (isset($payload['startfrom'])) {
-                $mform->getElement('startfrom')->setValue($payload['startfrom']);
-            }
-        }
+        // Encode these variables before saving into the DB.
+        return json_encode($arrtostore);
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param pdf $pdf the pdf object
+     * @param \pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param stdClass $user the user we are rendering this for
-     * @param element_renderer|null $renderer the renderer service
+     * @param \stdClass $user the user we are rendering this for
      */
-    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+    public function render($pdf, $preview, $user) {
+        global $DB;
+
         // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return;
         }
 
-        $payload = $this->get_payload();
-        $dateformat = $payload['dateformat'] ?? '';
-        $dateitem = $payload['dateitem'] ?? '';
+        $courseid = element_helper::get_courseid($this->id);
+        $dateinfo = json_decode($this->get_data());
+        $dateformat = $dateinfo->dateformat;
+        $dateitem = $dateinfo->dateitem;
         $date = $this->expiry($user->id, $preview);
 
         // Ensure that a date has been set.
         if (!empty($date)) {
-            $content = '';
             if ($dateformat == 'validfor') {
                 if ($dateitem == self::EXPIRY_ONE) {
-                    $content = 'Valid for 1 year';
+                    element_helper::render_content($pdf, $this, 'Valid for 1 year');
                 } else if ($dateitem == self::EXPIRY_TWO) {
-                    $content = 'Valid for 2 years';
+                    element_helper::render_content($pdf, $this, 'Valid for 2 years');
                 } else if ($dateitem == self::EXPIRY_THREE) {
-                    $content = 'Valid for 3 years';
+                    element_helper::render_content($pdf, $this, 'Valid for 3 years');
                 } else if ($dateitem == self::EXPIRY_FOUR) {
-                    $content = 'Valid for 4 years';
+                    element_helper::render_content($pdf, $this, 'Valid for 4 years');
                 } else if ($dateitem == self::EXPIRY_FIVE) {
-                    $content = 'Valid for 5 years';
+                    element_helper::render_content($pdf, $this, 'Valid for 5 years');
                 }
             } else {
-                $content = element_helper::get_date_format_string($date, $dateformat);
-            }
-
-            if (!empty($content)) {
-                if ($renderer) {
-                    $renderer->render_content($this, $content);
-                } else {
-                    element_helper::render_content($pdf, $this, $content);
-                }
+                element_helper::render_content($pdf, $this, element_helper::get_date_format_string($date, $dateformat));
             }
         }
     }
@@ -218,51 +166,61 @@ class element extends base_element implements
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
-     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html(?element_renderer $renderer = null): string {
+    public function render_html() {
         // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
-            return '';
+            return;
         }
 
-        // Read the information stored in the database.
-        $payload = $this->get_payload();
-        $dateformat = $payload['dateformat'] ?? '';
-        $dateitem = $payload['dateitem'] ?? '';
+        // Decode the information stored in the database.
+        $dateinfo = json_decode($this->get_data());
+        $dateformat = $dateinfo->dateformat;
+        $dateitem = $dateinfo->dateitem;
 
-        $content = '';
         if ($dateformat == 'validfor') {
             if ($dateitem == self::EXPIRY_ONE) {
-                $content = get_string('validfor1year', 'customcertelement_expiry');
+                return element_helper::render_html_content($this, get_string('validfor1year', 'customcertelement_expiry'));
             } else if ($dateitem == self::EXPIRY_TWO) {
-                $content = get_string('validfor2years', 'customcertelement_expiry');
+                return element_helper::render_html_content($this, get_string('validfor2years', 'customcertelement_expiry'));
             } else if ($dateitem == self::EXPIRY_THREE) {
-                $content = get_string('validfor3years', 'customcertelement_expiry');
+                return element_helper::render_html_content($this, get_string('validfor3years', 'customcertelement_expiry'));
             } else if ($dateitem == self::EXPIRY_FOUR) {
-                $content = get_string('validfor4years', 'customcertelement_expiry');
+                return element_helper::render_html_content($this, get_string('validfor4years', 'customcertelement_expiry'));
             } else if ($dateitem == self::EXPIRY_FIVE) {
-                $content = get_string('validfor5years', 'customcertelement_expiry');
+                return element_helper::render_html_content($this, get_string('validfor5years', 'customcertelement_expiry'));
             }
         } else {
-            $content = element_helper::get_date_format_string(
+            return element_helper::render_html_content($this, element_helper::get_date_format_string(
                 strtotime($this->relative[$dateitem], time()),
                 $dateformat
-            );
+            ));
         }
-
-        if (empty($content)) {
-            return '';
-        }
-
-        if ($renderer) {
-            return (string) $renderer->render_content($this, $content);
-        }
-
-        return element_helper::render_html_content($this, $content);
     }
 
+    /**
+     * Sets the data on the form when editing an element.
+     *
+     * @param \MoodleQuickForm $mform the edit_form instance
+     */
+    public function definition_after_data($mform) {
+        // Set the item and format for this element.
+        if (!empty($this->get_data())) {
+            $dateinfo = json_decode($this->get_data());
+
+            $element = $mform->getElement('dateitem');
+            $element->setValue($dateinfo->dateitem);
+
+            $element = $mform->getElement('dateformat');
+            $element->setValue($dateinfo->dateformat);
+
+            $element = $mform->getElement('startfrom');
+            $element->setValue($dateinfo->startfrom);
+        }
+
+        parent::definition_after_data($mform);
+    }
 
     /**
      * This function is responsible for handling the restoration process of the element.
@@ -270,20 +228,28 @@ class element extends base_element implements
      * We will want to update the course module the date element is pointing to as it will
      * have changed in the course restore.
      *
-     * @param restore_customcert_activity_task $restore
+     * @param \restore_customcert_activity_task $restore
      */
-    public function after_restore_from_backup(restore_customcert_activity_task $restore): void {
+    public function after_restore($restore) {
         global $DB;
 
-        $data = $this->get_payload();
-        // Expiry element typically uses relative constants; keep legacy mapping logic if present.
-        if (!empty($data['dateitem']) && strpos((string)$data['dateitem'], 'gradeitem:') === 0) {
-            $oldid = str_replace('gradeitem:', '', (string)$data['dateitem']);
-            $newid = $restore->get_mappingid('grade_item', (int)$oldid);
-            if ($newid) {
-                $data['dateitem'] = 'gradeitem:' . $newid;
-                $DB->set_field('customcert_elements', 'data', json_encode($data), ['id' => $this->get_id()]);
+        $dateinfo = json_decode($this->get_data());
+
+        $isgradeitem = false;
+        $oldid = $dateinfo->dateitem;
+        if (strpos($dateinfo->dateitem, 'gradeitem:') === 0) {
+            $isgradeitem = true;
+            $oldid = str_replace('gradeitem:', '', $dateinfo->dateitem);
+        }
+
+        $itemname = $isgradeitem ? 'grade_item' : 'course_module';
+        if ($newitem = \restore_dbops::get_backup_ids_record($restore->get_restoreid(), $itemname, $oldid)) {
+            $dateinfo->dateitem = '';
+            if ($isgradeitem) {
+                $dateinfo->dateitem = 'gradeitem:';
             }
+            $dateinfo->dateitem = $dateinfo->dateitem . $newitem->newitemid;
+            $DB->set_field('customcert_elements', 'data', $this->save_unique_data($dateinfo), ['id' => $this->get_id()]);
         }
     }
 
@@ -300,17 +266,6 @@ class element extends base_element implements
     }
 
     /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
-
-    /**
      * Get expiry date for user.
      *
      * @param int $userid User who has been awarded certificate.
@@ -321,15 +276,15 @@ class element extends base_element implements
     private function expiry($userid, $preview = false) {
         global $DB;
 
-        $payload = $this->get_payload();
-        $dateitem = $payload['dateitem'] ?? '';
-        $startfrom = $payload['startfrom'] ?? '';
+        $dateinfo = json_decode($this->get_data());
+        $dateitem = $dateinfo->dateitem;
+        $startfrom = $dateinfo->startfrom;
         $starttime = null;
 
         if ($preview) {
             $starttime = time();
         } else if ($startfrom == 'coursecomplete') {
-            $courseid = element_helper::get_courseid($this->id);
+            $courseid = \mod_customcert\element_helper::get_courseid($this->id);
             // Get the last completion date.
             $sql = "SELECT MAX(c.timecompleted) as timecompleted
                       FROM {course_completions} c
@@ -344,7 +299,7 @@ class element extends base_element implements
             // Get the page.
             $page = $DB->get_record('customcert_pages', ['id' => $this->get_pageid()], '*', MUST_EXIST);
             // Get the customcert this page belongs to.
-            $customcert = (new certificate_repository())->get_by_template_id_or_fail((int)$page->templateid);
+            $customcert = $DB->get_record('customcert', ['templateid' => $page->templateid], '*', MUST_EXIST);
             // Now we can get the issue for this user.
             $issue = $DB->get_record(
                 'customcert_issues',
@@ -359,7 +314,7 @@ class element extends base_element implements
             return 0;
         }
 
-        return strtotime($this->relative[$dateitem], (int) $starttime);
+        return strtotime($this->relative[$dateitem], $starttime);
     }
 
     /**
@@ -398,7 +353,7 @@ class element extends base_element implements
             return '';
         }
 
-        $data = new stdClass();
+        $data = new \stdClass();
         $data->date = userdate($expiry);
         $expired = ($expiry - time()) / DAYSECS;
 

@@ -24,8 +24,6 @@
 
 namespace mod_customcert;
 
-use admin_setting_configtext;
-
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/adminlib.php');
@@ -37,16 +35,16 @@ require_once($CFG->libdir . '/adminlib.php');
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class admin_setting_link extends admin_setting_configtext {
+class admin_setting_link extends \admin_setting_configtext {
     /**
      * @var string the link.
      */
-    protected string $link;
+    protected $link;
 
     /**
      * @var string the link name.
      */
-    protected string $linkname;
+    protected $linkname;
 
     /**
      * The admin_setting_link constructor.
@@ -82,7 +80,7 @@ class admin_setting_link extends admin_setting_configtext {
      * @param string $query
      * @return string
      */
-    public function output_html($data, $query = ''): string {
+    public function output_html($data, $query = '') {
         // Create a dummy variable for this field to avoid being redirected back to the upgrade settings page.
         $this->config_write($this->name, '');
 

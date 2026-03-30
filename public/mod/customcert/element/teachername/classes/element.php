@@ -22,24 +22,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace customcertelement_teachername;
-
-use context_system;
-use mod_customcert\element\constructable_element_interface;
-use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element as base_element;
-use mod_customcert\element\element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_buildable_interface;
-use mod_customcert\element\validatable_element_interface;
-use mod_customcert\element\preparable_form_interface;
-use mod_customcert\element_helper;
-use mod_customcert\service\element_renderer;
-use MoodleQuickForm;
-use pdf;
-use stdClass;
 
 /**
  * The customcert element teachername's core interaction API.
@@ -48,22 +31,13 @@ use stdClass;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends base_element implements
-    constructable_element_interface,
-    element_interface,
-    form_buildable_interface,
-    persistable_element_interface,
-    preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
-{
+class element extends \mod_customcert\element {
     /**
-     * Build the configuration form for this element.
+     * This function renders the form elements when adding a customcert element.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function build_form(MoodleQuickForm $mform): void {
+    public function render_form_elements($mform) {
         $mform->addElement(
             'select',
             'teacher',
@@ -72,55 +46,36 @@ class element extends base_element implements
         );
         $mform->addHelpButton('teacher', 'teacher', 'customcertelement_teachername');
 
-        element_helper::render_common_form_elements($mform, $this->showposxy);
+        parent::render_form_elements($mform);
     }
 
     /**
-     * Normalise teacher name element data.
+     * This will handle how form data will be saved into the data column in the
+     * customcert_elements table.
      *
-     * @param stdClass $formdata Form submission data
-     * @return array JSON-serialisable payload
+     * @param \stdClass $data the form data
+     * @return string the text
      */
-    public function normalise_data(stdClass $formdata): array {
-        return ['teacher' => (string)($formdata->teacher ?? '')];
-    }
-
-    /**
-     * Ensures the teacher select shows the stored value on edit and options are refreshed each render.
-     *
-     * @param MoodleQuickForm $mform
-     */
-    public function prepare_form(MoodleQuickForm $mform): void {
-        // Preselect stored teacher id if present.
-        $payload = $this->get_payload();
-        if (isset($payload['teacher'])) {
-            $mform->getElement('teacher')->setValue((int)$payload['teacher']);
+    public function save_unique_data($data) {
+        if (!empty($data->teacher)) {
+            return $data->teacher;
         }
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param pdf $pdf the pdf object
+     * @param \pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param stdClass $user the user we are rendering this for
-     * @param element_renderer|null $renderer the renderer service
+     * @param \stdClass $user the user we are rendering this for
      */
-    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+    public function render($pdf, $preview, $user) {
         global $DB;
 
-        $payload = $this->get_payload();
-        if (!isset($payload['teacher'])) {
-            return;
-        }
-        $teacher = $DB->get_record('user', ['id' => (int)$payload['teacher']]);
+        $teacher = $DB->get_record('user', ['id' => $this->get_data()]);
         $teachername = fullname($teacher);
 
-        if ($renderer) {
-            $renderer->render_content($this, $teachername);
-        } else {
-            element_helper::render_content($pdf, $this, $teachername);
-        }
+        \mod_customcert\element_helper::render_content($pdf, $this, $teachername);
     }
 
     /**
@@ -129,24 +84,15 @@ class element extends base_element implements
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
-     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html(?element_renderer $renderer = null): string {
+    public function render_html() {
         global $DB;
 
-        $payload = $this->get_payload();
-        if (!isset($payload['teacher'])) {
-            return '';
-        }
-        $teacher = $DB->get_record('user', ['id' => (int)$payload['teacher']]);
+        $teacher = $DB->get_record('user', ['id' => $this->get_data()]);
         $teachername = fullname($teacher);
 
-        if ($renderer) {
-            return (string) $renderer->render_content($this, $teachername);
-        }
-
-        return element_helper::render_html_content($this, $teachername);
+        return \mod_customcert\element_helper::render_html_content($this, $teachername);
     }
 
     /**
@@ -158,7 +104,7 @@ class element extends base_element implements
         global $PAGE;
 
         // Return early if we are in a site template.
-        if ($PAGE->context->id == context_system::instance()->id) {
+        if ($PAGE->context->id == \context_system::instance()->id) {
             return [];
         }
 
@@ -176,23 +122,15 @@ class element extends base_element implements
     }
 
     /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
+     * Sets the data on the form when editing an element.
      *
-     * @param array $data
-     * @return array<string,string>
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function validate(array $data): array {
-        return [];
-    }
-
-    /**
-     * Build an element instance from a DB record.
-     *
-     * @param stdClass $record Raw DB row from customcert_elements.
-     * @return static
-     */
-    public static function from_record(stdClass $record): static {
-        return new static($record);
+    public function definition_after_data($mform) {
+        if (!empty($this->get_data())) {
+            $element = $mform->getElement('teacher');
+            $element->setValue($this->get_data());
+        }
+        parent::definition_after_data($mform);
     }
 }

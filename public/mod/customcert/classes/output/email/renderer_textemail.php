@@ -24,8 +24,6 @@
 
 namespace mod_customcert\output\email;
 
-use mod_customcert\output\renderer as customcert_renderer;
-
 /**
  * Email certificate as text renderer.
  *
@@ -33,7 +31,7 @@ use mod_customcert\output\renderer as customcert_renderer;
  * @copyright  2017 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class renderer_textemail extends customcert_renderer {
+class renderer_textemail extends \mod_customcert\output\renderer {
     /**
      * The template name for this renderer.
      *

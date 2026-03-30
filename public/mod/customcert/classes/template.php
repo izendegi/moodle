@@ -22,17 +22,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace mod_customcert;
-
-use context;
-use mod_customcert\event\template_created;
-use mod_customcert\service\template_repository;
-use mod_customcert\service\pdf_generation_service;
-use mod_customcert\service\template_service;
-use pdf;
-use stdClass;
 
 /**
  * Class represents a customcert template.
@@ -45,210 +35,485 @@ class template {
     /**
      * @var int $id The id of the template.
      */
-    protected int $id;
+    protected $id;
 
     /**
      * @var string $name The name of this template
      */
-    protected string $name;
+    protected $name;
 
     /**
      * @var int $contextid The context id of this template
      */
-    protected int $contextid;
-
-    /**
-     * Cached template service instance for deprecated shims.
-     *
-     * @var template_service|null
-     */
-    private ?template_service $service = null;
-
-    /**
-     * Cached PDF generation service for deprecated shims.
-     *
-     * @var pdf_generation_service|null
-     */
-    private ?pdf_generation_service $pdfs = null;
+    protected $contextid;
 
     /**
      * The constructor.
      *
-     * @param stdClass $template
+     * @param \stdClass $template
      */
-    public function __construct(stdClass $template) {
-        $this->id = (int)$template->id;
+    public function __construct($template) {
+        $this->id = $template->id;
         $this->name = $template->name;
-        $this->contextid = (int)$template->contextid;
+        $this->contextid = $template->contextid;
     }
 
     /**
      * Handles saving data.
      *
-     * @deprecated since Moodle 5.2
-     * @param stdClass $data the template data
+     * @param \stdClass $data the template data
      */
-    public function save(stdClass $data): void {
-        debugging('template::save() is deprecated since Moodle 5.2. Use template_service::update() instead.', DEBUG_DEVELOPER);
-        $this->get_service()->update($this, $data);
+    public function save($data) {
+        global $DB;
+
+        $savedata = new \stdClass();
+        $savedata->id = $this->id;
+        $savedata->name = $data->name;
+        $savedata->timemodified = time();
+
+        $DB->update_record('customcert_templates', $savedata);
+
+        // Only trigger event if the name has changed.
+        if ($this->get_name() != $data->name) {
+            \mod_customcert\event\template_updated::create_from_template($this)->trigger();
+        }
     }
 
     /**
      * Handles adding another page to the template.
      *
-     * @deprecated since Moodle 5.2
      * @param bool $triggertemplateupdatedevent
      * @return int the id of the page
      */
-    public function add_page(bool $triggertemplateupdatedevent = true): int {
-        debugging(
-            'template::add_page() is deprecated since Moodle 5.2. Use template_service::add_page() instead.',
-            DEBUG_DEVELOPER
-        );
-        return $this->get_service()->add_page($this, $triggertemplateupdatedevent);
+    public function add_page(bool $triggertemplateupdatedevent = true) {
+        global $DB;
+
+        // Set the page number to 1 to begin with.
+        $sequence = 1;
+        // Get the max page number.
+        $sql = "SELECT MAX(sequence) as maxpage
+                  FROM {customcert_pages} cp
+                 WHERE cp.templateid = :templateid";
+        if ($maxpage = $DB->get_record_sql($sql, ['templateid' => $this->id])) {
+            $sequence = $maxpage->maxpage + 1;
+        }
+
+        // New page creation.
+        $page = new \stdClass();
+        $page->templateid = $this->id;
+        $page->width = '210';
+        $page->height = '297';
+        $page->sequence = $sequence;
+        $page->timecreated = time();
+        $page->timemodified = $page->timecreated;
+
+        // Insert the page.
+        $pageid = $DB->insert_record('customcert_pages', $page);
+
+        $page->id = $pageid;
+
+        \mod_customcert\event\page_created::create_from_page($page, $this)->trigger();
+
+        if ($triggertemplateupdatedevent) {
+            \mod_customcert\event\template_updated::create_from_template($this)->trigger();
+        }
+
+        return $page->id;
     }
 
     /**
      * Handles saving page data.
      *
-     * @deprecated since Moodle 5.2
-     * @param stdClass $data the template data
+     * @param \stdClass $data the template data
      */
-    public function save_page(stdClass $data): void {
-        debugging(
-            'template::save_page() is deprecated since Moodle 5.2. Use template_service::save_pages() instead.',
-            DEBUG_DEVELOPER
-        );
-        $this->get_service()->save_pages($this, $data);
+    public function save_page($data) {
+        global $DB;
+
+        // Set the time to a variable.
+        $time = time();
+
+        // Get the existing pages and save the page data.
+        if ($pages = $DB->get_records('customcert_pages', ['templateid' => $data->tid])) {
+            // Loop through existing pages.
+            foreach ($pages as $page) {
+                // Only update if there is a difference.
+                if ($this->has_page_been_updated($page, $data)) {
+                    $width = 'pagewidth_' . $page->id;
+                    $height = 'pageheight_' . $page->id;
+                    $leftmargin = 'pageleftmargin_' . $page->id;
+                    $rightmargin = 'pagerightmargin_' . $page->id;
+
+                    $p = new \stdClass();
+                    $p->id = $page->id;
+                    $p->width = $data->$width;
+                    $p->height = $data->$height;
+                    $p->leftmargin = $data->$leftmargin;
+                    $p->rightmargin = $data->$rightmargin;
+                    $p->timemodified = $time;
+
+                    // Update the page.
+                    $DB->update_record('customcert_pages', $p);
+
+                    // Calling code is expected to trigger template_updated
+                    // after this method.
+                    \mod_customcert\event\page_updated::create_from_page($p, $this)->trigger();
+                }
+            }
+        }
     }
 
     /**
      * Handles deleting the template.
      *
-     * @deprecated since Moodle 5.2
      * @return bool return true if the deletion was successful, false otherwise
      */
-    public function delete(): bool {
-        debugging('template::delete() is deprecated since Moodle 5.2. Use template_service::delete() instead.', DEBUG_DEVELOPER);
-        return $this->get_service()->delete($this);
+    public function delete() {
+        global $DB;
+
+        // Delete the pages.
+        if ($pages = $DB->get_records('customcert_pages', ['templateid' => $this->id])) {
+            foreach ($pages as $page) {
+                $this->delete_page($page->id, false);
+            }
+        }
+
+        // Now, finally delete the actual template.
+        if (!$DB->delete_records('customcert_templates', ['id' => $this->id])) {
+            return false;
+        }
+
+        \mod_customcert\event\template_deleted::create_from_template($this)->trigger();
+
+        return true;
     }
 
     /**
      * Handles deleting a page from the template.
      *
-     * @deprecated since Moodle 5.2
      * @param int $pageid the template page
      * @param bool $triggertemplateupdatedevent False if page is being deleted
      * during deletion of template.
      */
     public function delete_page(int $pageid, bool $triggertemplateupdatedevent = true): void {
-        debugging(
-            'template::delete_page() is deprecated since Moodle 5.2. Use template_service::delete_page() instead.',
-            DEBUG_DEVELOPER
-        );
-        $this->get_service()->delete_page($this, $pageid, $triggertemplateupdatedevent);
+        global $DB;
+
+        // Get the page.
+        $page = $DB->get_record('customcert_pages', ['id' => $pageid], '*', MUST_EXIST);
+
+        // The element may have some extra tasks it needs to complete to completely delete itself.
+        if ($elements = $DB->get_records('customcert_elements', ['pageid' => $page->id])) {
+            foreach ($elements as $element) {
+                // Get an instance of the element class.
+                if ($e = \mod_customcert\element_factory::get_element_instance($element)) {
+                    $e->delete();
+                } else {
+                    // The plugin files are missing, so just remove the entry from the DB.
+                    $DB->delete_records('customcert_elements', ['id' => $element->id]);
+                }
+            }
+        }
+
+        // Delete this page.
+        $DB->delete_records('customcert_pages', ['id' => $page->id]);
+
+        \mod_customcert\event\page_deleted::create_from_page($page, $this)->trigger();
+
+        // Now we want to decrease the page number values of
+        // the pages that are greater than the page we deleted.
+        $sql = "UPDATE {customcert_pages}
+                   SET sequence = sequence - 1
+                 WHERE templateid = :templateid
+                   AND sequence > :sequence";
+        $DB->execute($sql, ['templateid' => $this->id, 'sequence' => $page->sequence]);
+
+        if ($triggertemplateupdatedevent) {
+            \mod_customcert\event\template_updated::create_from_template($this)->trigger();
+        }
     }
 
     /**
      * Handles deleting an element from the template.
      *
-     * @deprecated since Moodle 5.2
      * @param int $elementid the template page
      */
-    public function delete_element(int $elementid): void {
-        debugging(
-            'template::delete_element() is deprecated since Moodle 5.2. '
-            . 'Use template_service::delete_element() instead.',
-            DEBUG_DEVELOPER
-        );
-        $this->get_service()->delete_element($this, $elementid);
+    public function delete_element($elementid) {
+        global $DB;
+
+        // Ensure element exists and delete it.
+        $element = $DB->get_record('customcert_elements', ['id' => $elementid], '*', MUST_EXIST);
+
+        // Get an instance of the element class.
+        if ($e = \mod_customcert\element_factory::get_element_instance($element)) {
+            $e->delete();
+        } else {
+            // The plugin files are missing, so just remove the entry from the DB.
+            $DB->delete_records('customcert_elements', ['id' => $elementid]);
+        }
+
+        // Now we want to decrease the sequence numbers of the elements
+        // that are greater than the element we deleted.
+        $sql = "UPDATE {customcert_elements}
+                   SET sequence = sequence - 1
+                 WHERE pageid = :pageid
+                   AND sequence > :sequence";
+        $DB->execute($sql, ['pageid' => $element->pageid, 'sequence' => $element->sequence]);
+
+        \mod_customcert\event\template_updated::create_from_template($this)->trigger();
     }
 
     /**
      * Generate the PDF for the template.
      *
-     * @deprecated since Moodle 5.2
      * @param bool $preview true if it is a preview, false otherwise
      * @param int|null $userid the id of the user whose certificate we want to view
      * @param bool $return Do we want to return the contents of the PDF?
      * @return string|void Can return the PDF in string format if specified.
      */
     public function generate_pdf(bool $preview = false, ?int $userid = null, bool $return = false) {
-        debugging(
-            'template::generate_pdf() is deprecated since Moodle 5.2. '
-            . 'Use pdf_generation_service::generate_pdf() instead.',
-            DEBUG_DEVELOPER
-        );
-        return $this->get_pdf_service()->generate_pdf($this, $preview, $userid, $return);
-    }
+        global $CFG, $DB, $USER;
 
-    /**
-     * Create and configure a PDF instance suitable for preview rendering.
-     *
-     * This helper mirrors the setup used in {@see template::generate_pdf} for preview
-     * and can be used by alternate preview flows (e.g., the V2 orchestrator).
-     *
-     * @deprecated since Moodle 5.2
-     * @param stdClass $user The user that the preview is for.
-     * @return pdf A configured PDF instance ready for element rendering.
-     */
-    public function create_preview_pdf(stdClass $user): pdf {
-        debugging(
-            'template::create_preview_pdf() is deprecated since Moodle 5.2. '
-            . 'Use pdf_generation_service::create_preview_pdf() instead.',
-            DEBUG_DEVELOPER
-        );
-        return $this->get_pdf_service()->create_preview_pdf($this, $user);
-    }
+        if (empty($userid)) {
+            $user = $USER;
+        } else {
+            $user = \core_user::get_user($userid);
+        }
 
+        require_once($CFG->libdir . '/pdflib.php');
+        require_once($CFG->dirroot . '/mod/customcert/lib.php');
 
-    /**
-     * Compute filename for the current user/certificate using template and pattern settings.
-     * Mirrors the logic in generate_pdf(). Returns a clean filename with .pdf suffix.
-     *
-     * @deprecated since Moodle 5.2
-     * @param stdClass $user
-     * @param stdClass|null $customcert
-     * @return string
-     */
-    public function compute_filename_for_user(stdClass $user, ?stdClass $customcert): string {
-        debugging(
-            'template::compute_filename_for_user() is deprecated since Moodle 5.2. '
-            . 'Use pdf_generation_service::compute_filename_for_user() instead.',
-            DEBUG_DEVELOPER
-        );
-        return $this->get_pdf_service()->compute_filename_for_user($this, $user, $customcert);
+        // Get the pages for the template, there should always be at least one page for each template.
+        if ($pages = $DB->get_records('customcert_pages', ['templateid' => $this->id], 'sequence ASC')) {
+            // Create the pdf object.
+            $pdf = new \pdf();
+
+            $customcert = $DB->get_record('customcert', ['templateid' => $this->id]);
+
+            // Snapshot the current runtime language to restore later.
+            $originallang = current_language();
+
+            // If this template belongs to a certificate, pick language and apply it for this run.
+            if ($customcert) {
+                $uselang = mod_customcert_get_language_to_use($customcert, $user);
+                $switched = mod_customcert_apply_runtime_language($uselang);
+                if ($switched) {
+                    // This is a failsafe -- if an exception triggers during the template rendering, this should still execute.
+                    // Preventing a user from getting trapped with the wrong language.
+                    \core_shutdown_manager::register_function('force_current_language', [$originallang]);
+                }
+            }
+
+            // If the template belongs to a certificate then we need to check what permissions we set for it.
+            if (!empty($customcert->protection)) {
+                $protection = explode(', ', $customcert->protection);
+                $pdf->SetProtection($protection);
+            }
+
+            if (empty($customcert->deliveryoption)) {
+                $deliveryoption = certificate::DELIVERY_OPTION_INLINE;
+            } else {
+                $deliveryoption = $customcert->deliveryoption;
+            }
+
+            // Set up PDF document properties — no header/footer, auto page break.
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+            $pdf->SetAutoPageBreak(true, 0);
+
+            // Get filename pattern from global settings.
+            if (empty($customcert->usecustomfilename) || empty($customcert->customfilenamepattern)) {
+                // Use the custom cert name as the base filename (strip any trailing dot).
+                $filename = rtrim(format_string($this->name, true, ['context' => $this->get_context()]), '.');
+            } else {
+                // Get issue record for date (if issued); fallback to current date if not found.
+                $issue = $DB->get_record('customcert_issues', [
+                    'userid' => $user->id,
+                    'customcertid' => $customcert->id,
+                ]);
+
+                if ($issue && !empty($issue->timecreated)) {
+                    $issuedate = date('Y-m-d', $issue->timecreated);
+                } else {
+                    $issuedate = date('Y-m-d');
+                }
+
+                $course = $DB->get_record('course', ['id' => $customcert->course]);
+
+                $values = [
+                    '{FIRST_NAME}' => $user->firstname ?? '',
+                    '{LAST_NAME}' => $user->lastname ?? '',
+                    '{COURSE_SHORT_NAME}' => $course ? $course->shortname : '',
+                    '{COURSE_FULL_NAME}' => $course ? $course->fullname : '',
+                    '{ISSUE_DATE}' => $issuedate,
+                ];
+
+                // Handle group if needed.
+                $groups = groups_get_all_groups($course->id, $user->id);
+                if (!empty($groups)) {
+                    $groupnames = array_map(function ($g) {
+                        return $g->name;
+                    }, $groups);
+                    $values['{GROUP_NAME}'] = implode(', ', $groupnames);
+                } else {
+                    $values['{GROUP_NAME}'] = '';
+                }
+
+                // Replace placeholders with actual values.
+                $filename = strtr($customcert->customfilenamepattern, $values);
+
+                // Remove trailing dot to avoid "..pdf" issues.
+                $filename = rtrim($filename, '.');
+            }
+
+            // This is the logic the TCPDF library uses when processing the name. This makes names
+            // such as 'الشهادة' become empty, so set a default name in these cases.
+            $filename = preg_replace('/[\s]+/', '_', $filename);
+            $filename = preg_replace('/[^a-zA-Z0-9_\.-]/', '', $filename);
+
+            // If filename ends up empty (e.g. after removing unsupported characters), use default string.
+            if (empty($filename)) {
+                $filename = get_string('certificate', 'customcert');
+            }
+
+            // Remove existing ".pdf" extension if present to avoid duplication.
+            $filename = preg_replace('/\.pdf$/i', '', $filename);
+
+            // Clean the final filename and append ".pdf".
+            $filename = clean_filename($filename . '.pdf');
+
+            // Set the PDF document title (for metadata, not the filename itself).
+            $pdf->SetTitle($filename);
+
+            // Loop through the pages and display their content.
+            foreach ($pages as $page) {
+                // Add the page to the PDF.
+                if ($page->width > $page->height) {
+                    $orientation = 'L';
+                } else {
+                    $orientation = 'P';
+                }
+                $pdf->AddPage($orientation, [$page->width, $page->height]);
+                $pdf->SetMargins($page->leftmargin, 0, $page->rightmargin);
+                // Get the elements for the page.
+                if ($elements = $DB->get_records('customcert_elements', ['pageid' => $page->id], 'sequence ASC')) {
+                    // Loop through and display.
+                    foreach ($elements as $element) {
+                        // Get an instance of the element class.
+                        if ($e = \mod_customcert\element_factory::get_element_instance($element)) {
+                            $e->render($pdf, $preview, $user);
+                        }
+                    }
+                }
+            }
+
+            // Restore original language if we changed it.
+            if ($customcert) {
+                if ($originallang !== $uselang) {
+                    mod_customcert_apply_runtime_language($originallang);
+                }
+            }
+
+            if ($return) {
+                return $pdf->Output('', 'S');
+            }
+
+            $pdf->Output($filename, $deliveryoption);
+        }
     }
 
     /**
      * Handles copying this template into another.
      *
-     * @deprecated since Moodle 5.2
-     * @param template $copytotemplate The template instance to copy to
+     * @param object $copytotemplate The template instance to copy to
      */
-    public function copy_to_template(template $copytotemplate): void {
-        debugging(
-            'template::copy_to_template() is deprecated since Moodle 5.2. '
-            . 'Use template_service::copy_to_template() instead.',
-            DEBUG_DEVELOPER
-        );
-        $this->get_service()->copy_to_template($this, $copytotemplate);
+    public function copy_to_template($copytotemplate) {
+        global $DB;
+
+        $copytotemplateid = $copytotemplate->get_id();
+
+        // Get the pages for the template, there should always be at least one page for each template.
+        if ($templatepages = $DB->get_records('customcert_pages', ['templateid' => $this->id])) {
+            // Loop through the pages.
+            foreach ($templatepages as $templatepage) {
+                $page = clone($templatepage);
+                $page->templateid = $copytotemplateid;
+                $page->timecreated = time();
+                $page->timemodified = $page->timecreated;
+                // Insert into the database.
+                $page->id = $DB->insert_record('customcert_pages', $page);
+                \mod_customcert\event\page_created::create_from_page($page, $copytotemplate)->trigger();
+                // Now go through the elements we want to load.
+                if ($templateelements = $DB->get_records('customcert_elements', ['pageid' => $templatepage->id])) {
+                    foreach ($templateelements as $templateelement) {
+                        $element = clone($templateelement);
+                        $element->pageid = $page->id;
+                        $element->timecreated = time();
+                        $element->timemodified = $element->timecreated;
+                        // Ok, now we want to insert this into the database.
+                        $element->id = $DB->insert_record('customcert_elements', $element);
+                        // Load any other information the element may need to for the template.
+                        if ($e = \mod_customcert\element_factory::get_element_instance($element)) {
+                            if (!$e->copy_element($templateelement)) {
+                                // Failed to copy - delete the element.
+                                $e->delete();
+                            } else {
+                                \mod_customcert\event\element_created::create_from_element($e)->trigger();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Trigger event if loading a template in a course module instance.
+            // (No event triggered if copying a system-wide template as
+            // create() triggers this).
+            if ($copytotemplate->get_context() != \context_system::instance()) {
+                \mod_customcert\event\template_updated::create_from_template($copytotemplate)->trigger();
+            }
+        }
     }
 
     /**
      * Handles moving an item on a template.
      *
-     * @deprecated since Moodle 5.2
      * @param string $itemname the item we are moving
      * @param int $itemid the id of the item
      * @param string $direction the direction
      */
-    public function move_item(string $itemname, int $itemid, string $direction): void {
-        debugging(
-            'template::move_item() is deprecated since Moodle 5.2. Use template_service::move_item() instead.',
-            DEBUG_DEVELOPER
-        );
-        $this->get_service()->move_item($this, $itemname, $itemid, $direction);
+    public function move_item($itemname, $itemid, $direction) {
+        global $DB;
+
+        $table = 'customcert_';
+        if ($itemname == 'page') {
+            $table .= 'pages';
+        } else { // Must be an element.
+            $table .= 'elements';
+        }
+
+        if ($moveitem = $DB->get_record($table, ['id' => $itemid])) {
+            // Check which direction we are going.
+            if ($direction == 'up') {
+                $sequence = $moveitem->sequence - 1;
+            } else { // Must be down.
+                $sequence = $moveitem->sequence + 1;
+            }
+
+            // Get the item we will be swapping with. Make sure it is related to the same template (if it's
+            // a page) or the same page (if it's an element).
+            if ($itemname == 'page') {
+                $params = ['templateid' => $moveitem->templateid];
+            } else { // Must be an element.
+                $params = ['pageid' => $moveitem->pageid];
+            }
+            $swapitem = $DB->get_record($table, $params + ['sequence' => $sequence]);
+        }
+
+        // Check that there is an item to move, and an item to swap it with.
+        if ($moveitem && !empty($swapitem)) {
+            $DB->set_field($table, 'sequence', $swapitem->sequence, ['id' => $moveitem->id]);
+            $DB->set_field($table, 'sequence', $moveitem->sequence, ['id' => $swapitem->id]);
+
+            \mod_customcert\event\template_updated::create_from_template($this)->trigger();
+        }
     }
 
     /**
@@ -256,8 +521,8 @@ class template {
      *
      * @return int the id of the template
      */
-    public function get_id(): int {
-        return (int)$this->id;
+    public function get_id() {
+        return $this->id;
     }
 
     /**
@@ -265,18 +530,8 @@ class template {
      *
      * @return string the name of the template
      */
-    public function get_name(): string {
+    public function get_name() {
         return $this->name;
-    }
-
-    /**
-     * Update the in-memory template name.
-     *
-     * @param string $name
-     * @return void
-     */
-    public function set_name(string $name): void {
-        $this->name = $name;
     }
 
     /**
@@ -284,7 +539,7 @@ class template {
      *
      * @return int the context id
      */
-    public function get_contextid(): int {
+    public function get_contextid() {
         return $this->contextid;
     }
 
@@ -293,8 +548,8 @@ class template {
      *
      * @return \context the context
      */
-    public function get_context(): \context {
-        return context::instance_by_id($this->contextid);
+    public function get_context() {
+        return \context::instance_by_id($this->contextid);
     }
 
     /**
@@ -302,7 +557,7 @@ class template {
      *
      * @return \context_module|null the context module, null if there is none
      */
-    public function get_cm(): ?stdClass {
+    public function get_cm() {
         $context = $this->get_context();
         if ($context->contextlevel === CONTEXT_MODULE) {
             return get_coursemodule_from_id('customcert', $context->instanceid, 0, false, MUST_EXIST);
@@ -316,7 +571,7 @@ class template {
      *
      * @throws \required_capability_exception if the user does not have the necessary capabilities (ie. Fred)
      */
-    public function require_manage(): void {
+    public function require_manage() {
         require_capability('mod/customcert:manage', $this->get_context());
     }
 
@@ -325,47 +580,54 @@ class template {
      *
      * @param string $templatename the name of the template
      * @param int $contextid the context id
-     * @return template the template object
+     * @return \mod_customcert\template the template object
      */
-    public static function create(string $templatename, int $contextid): template {
-        $repository = new template_repository();
-        $id = $repository->create((object) ['name' => $templatename, 'contextid' => $contextid]);
-        $record = $repository->get_by_id_or_fail($id);
+    public static function create($templatename, $contextid) {
+        global $DB;
 
-        $template = new template($record);
+        $template = new \stdClass();
+        $template->name = $templatename;
+        $template->contextid = $contextid;
+        $template->timecreated = time();
+        $template->timemodified = $template->timecreated;
+        $template->id = $DB->insert_record('customcert_templates', $template);
 
-        template_created::create_from_template($template)->trigger();
+        $template = new \mod_customcert\template($template);
+
+        \mod_customcert\event\template_created::create_from_template($template)->trigger();
 
         return $template;
     }
 
     /**
-     * Load an existing template by id.
+     * Checks if a page has been updated given form information
      *
-     * @param int $templateid
-     * @return template
+     * @param \stdClass $page
+     * @param \stdClass $formdata
+     * @return bool
      */
-    public static function load(int $templateid): template {
-        $repository = new template_repository();
-        $record = $repository->get_by_id_or_fail($templateid);
-        return new template($record);
-    }
+    private function has_page_been_updated($page, $formdata): bool {
+        $width = 'pagewidth_' . $page->id;
+        $height = 'pageheight_' . $page->id;
+        $leftmargin = 'pageleftmargin_' . $page->id;
+        $rightmargin = 'pagerightmargin_' . $page->id;
 
-    /**
-     * Lazily build a template_service instance.
-     *
-     * @return template_service
-     */
-    private function get_service(): template_service {
-        return $this->service ??= template_service::create();
-    }
+        if ($page->width != $formdata->$width) {
+            return true;
+        }
 
-    /**
-     * Lazily build a pdf_generation_service instance.
-     *
-     * @return pdf_generation_service
-     */
-    private function get_pdf_service(): pdf_generation_service {
-        return $this->pdfs ??= pdf_generation_service::create();
+        if ($page->height != $formdata->$height) {
+            return true;
+        }
+
+        if ($page->leftmargin != $formdata->$leftmargin) {
+            return true;
+        }
+
+        if ($page->rightmargin != $formdata->$rightmargin) {
+            return true;
+        }
+
+        return false;
     }
 }

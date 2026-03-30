@@ -35,32 +35,32 @@ class grade_information {
     /**
      * @var string The grade name.
      */
-    protected string $name;
+    protected $name;
 
     /**
      * @var float The raw grade.
      */
-    protected ?float $grade;
+    protected $grade;
 
     /**
      * @var string The grade to display
      */
-    protected string $displaygrade;
+    protected $displaygrade;
 
     /**
-     * @var int|null The date it was graded.
+     * @var int The date it was graded.
      */
-    protected ?int $dategraded;
+    protected $dategraded;
 
     /**
      * The constructor.
      *
      * @param string $name
-     * @param float|null $grade
+     * @param float $grade
      * @param string $displaygrade
-     * @param int|null $dategraded
+     * @param int $dategraded
      */
-    public function __construct(string $name, ?float $grade, string $displaygrade, ?int $dategraded) {
+    public function __construct($name, $grade, $displaygrade, $dategraded) {
         $this->name = $name;
         $this->grade = $grade;
         $this->displaygrade = $displaygrade;
@@ -72,16 +72,16 @@ class grade_information {
      *
      * @return string
      */
-    public function get_name(): string {
+    public function get_name() {
         return $this->name;
     }
 
     /**
      * Returns the raw grade.
      *
-     * @return float|null
+     * @return float
      */
-    public function get_grade(): ?float {
+    public function get_grade() {
         return $this->grade;
     }
 
@@ -90,16 +90,16 @@ class grade_information {
      *
      * @return string
      */
-    public function get_displaygrade(): string {
+    public function get_displaygrade() {
         return $this->displaygrade;
     }
 
     /**
      * Returns the date it was graded.
      *
-     * @return int|null
+     * @return int
      */
-    public function get_dategraded(): ?int {
+    public function get_dategraded() {
         return $this->dategraded;
     }
 }
