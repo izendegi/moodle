@@ -29,7 +29,7 @@ global $CFG;
 
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once($CFG->dirroot . '/mod/quiz/report/reportlib.php');
-require_once($CFG->dirroot . '/mod/quiz/report/default.php');
+require_once($CFG->dirroot . '/mod/quiz/classes/local/reports/report_base.php');
 require_once($CFG->dirroot . '/mod/quiz/report/filedownloader/report.php');
 
 /**
