@@ -100,7 +100,7 @@ if ($ADMIN->fulltree) {
     $title = get_string('loginlayout', 'theme_moove');
     $description = get_string('loginlayout_desc', 'theme_moove');
     $layoutchoices = [
-        'custom' => get_string('loginlayout_custom', 'theme_moove'),
+        'custom' => get_string('loginlayout_modified', 'theme_moove'),
         'base' => get_string('loginlayout_base', 'theme_moove'),
     ];
     $setting = new admin_setting_configselect($name, $title, $description, 'custom', $layoutchoices);
