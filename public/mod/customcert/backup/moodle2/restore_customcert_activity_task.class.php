@@ -22,12 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_customcert\service\element_factory;
-use mod_customcert\element\restorable_element_interface;
-
 defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
 
-global $CFG;
 require_once($CFG->dirroot . '/mod/customcert/backup/moodle2/restore_customcert_stepslib.php');
 
 /**
@@ -38,24 +34,6 @@ require_once($CFG->dirroot . '/mod/customcert/backup/moodle2/restore_customcert_
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class restore_customcert_activity_task extends restore_activity_task {
-    /**
-     * @var element_factory|null Element factory for constructing element instances.
-     */
-    private ?element_factory $factory = null;
-
-    /**
-     * Build or return the shared element factory for this restore task.
-     *
-     * @return element_factory
-     */
-    protected function get_element_factory(): element_factory {
-        if ($this->factory === null) {
-            $this->factory = element_factory::build_with_defaults();
-        }
-
-        return $this->factory;
-    }
-
     /**
      * Define  particular settings this activity can have.
      */
@@ -130,38 +108,12 @@ class restore_customcert_activity_task extends restore_activity_task {
                  WHERE c.id = :customcertid";
         if ($elements = $DB->get_records_sql($sql, ['customcertid' => $this->get_activityid()])) {
             // Go through the elements for the certificate.
-            $factory = $this->get_element_factory();
-            foreach ($elements as $element) {
+            foreach ($elements as $e) {
                 // Get an instance of the element class.
-                if ($instance = $factory->create_from_legacy_record($element)) {
-                    // Prefer the new typed restore hook when implemented; otherwise fall back to legacy method.
-                    if ($instance instanceof restorable_element_interface) {
-                        $instance->after_restore_from_backup($this);
-                    } else if (method_exists($instance, 'after_restore')) {
-                        debugging(
-                            'after_restore() is deprecated since Moodle 5.2. Implement ' .
-                            'mod_customcert\element\restorable_element_interface::after_restore_from_backup() instead.',
-                            DEBUG_DEVELOPER
-                        );
-                        $instance->after_restore($this);
-                    }
+                if ($e = \mod_customcert\element_factory::get_element_instance($e)) {
+                    $e->after_restore($this);
                 }
             }
         }
-    }
-
-    /**
-     * Convenience wrapper to fetch mapped ids during element restore hooks.
-     *
-     * Matches the core restore API signature for compatibility with legacy callers.
-     *
-     * @param string $itemname Mapping name, e.g. 'course_module' or 'grade_item'.
-     * @param int $oldid Source id from the backup file.
-     * @param bool $ifnotfound Value to return when the mapping does not exist (default false).
-     * @return int|bool New id when a mapping exists, or $ifnotfound when not found.
-     */
-    public function get_mappingid($itemname, $oldid, $ifnotfound = false) {
-        $mapping = \restore_dbops::get_backup_ids_record($this->get_restoreid(), $itemname, $oldid);
-        return ($mapping && isset($mapping->newitemid)) ? (int)$mapping->newitemid : $ifnotfound;
     }
 }

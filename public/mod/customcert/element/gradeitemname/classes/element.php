@@ -22,24 +22,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace customcertelement_gradeitemname;
-
-use grade_item;
-use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element as base_element;
-use mod_customcert\element\element_interface;
-use mod_customcert\element\form_buildable_interface;
-use mod_customcert\element\validatable_element_interface;
-use mod_customcert\element\preparable_form_interface;
-use mod_customcert\element_helper;
-use mod_customcert\service\element_renderer;
-use MoodleQuickForm;
-use pdf;
-use restore_customcert_activity_task;
-use stdClass;
-use mod_customcert\element\restorable_element_interface;
 
 /**
  * The customcert element gradeitemname's core interaction API.
@@ -48,85 +31,52 @@ use mod_customcert\element\restorable_element_interface;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends base_element implements
-    element_interface,
-    form_buildable_interface,
-    persistable_element_interface,
-    preparable_form_interface,
-    restorable_element_interface,
-    validatable_element_interface
-{
+class element extends \mod_customcert\element {
     /**
-     * Build the configuration form for this element.
+     * This function renders the form elements when adding a customcert element.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function build_form(MoodleQuickForm $mform): void {
+    public function render_form_elements($mform) {
         global $COURSE;
 
         $mform->addElement(
             'select',
             'gradeitem',
             get_string('gradeitem', 'customcertelement_gradeitemname'),
-            element_helper::get_grade_items($COURSE)
+            \mod_customcert\element_helper::get_grade_items($COURSE)
         );
         $mform->addHelpButton('gradeitem', 'gradeitem', 'customcertelement_gradeitemname');
 
-        element_helper::render_common_form_elements($mform, $this->showposxy);
+        parent::render_form_elements($mform);
     }
 
     /**
-     * Normalise grade item name element data.
+     * This will handle how form data will be saved into the data column in the
+     * customcert_elements table.
      *
-     * @param stdClass $formdata Form submission data
-     * @return array JSON-serialisable payload
+     * @param \stdClass $data the form data
+     * @return string the text
      */
-    public function normalise_data(stdClass $formdata): array {
-        return ['gradeitem' => (string)($formdata->gradeitem ?? '')];
-    }
-
-    /**
-     * Prepare the form by populating the gradeitem field from stored data.
-     *
-     * @param MoodleQuickForm $mform
-     * @return void
-     */
-    public function prepare_form(MoodleQuickForm $mform): void {
-        $payload = $this->get_payload();
-        if (isset($payload['gradeitem'])) {
-            $mform->getElement('gradeitem')->setValue((string)$payload['gradeitem']);
+    public function save_unique_data($data) {
+        if (!empty($data->gradeitem)) {
+            return $data->gradeitem;
         }
-    }
 
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
+        return '';
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param pdf $pdf the pdf object
+     * @param \pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param stdClass $user the user we are rendering this for
-     * @param element_renderer|null $renderer the renderer service
+     * @param \stdClass $user the user we are rendering this for
      */
-    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+    public function render($pdf, $preview, $user) {
         // Check that the grade item is not empty.
         if (!empty($this->get_data())) {
-            $name = $this->get_grade_item_name();
-            if ($renderer) {
-                $renderer->render_content($this, $name);
-            } else {
-                element_helper::render_content($pdf, $this, $name);
-            }
+            \mod_customcert\element_helper::render_content($pdf, $this, $this->get_grade_item_name());
         }
     }
 
@@ -136,23 +86,29 @@ class element extends base_element implements
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
-     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html(?element_renderer $renderer = null): string {
+    public function render_html() {
         // Check that the grade item is not empty.
         if (!empty($this->get_data())) {
-            $name = $this->get_grade_item_name();
-            if ($renderer) {
-                return (string) $renderer->render_content($this, $name);
-            }
-
-            return element_helper::render_html_content($this, $name);
+            return \mod_customcert\element_helper::render_html_content($this, $this->get_grade_item_name());
         }
 
         return '';
     }
 
+    /**
+     * Sets the data on the form when editing an element.
+     *
+     * @param \MoodleQuickForm $mform the edit_form instance
+     */
+    public function definition_after_data($mform) {
+        if (!empty($this->get_data())) {
+            $element = $mform->getElement('gradeitem');
+            $element->setValue($this->get_data());
+        }
+        parent::definition_after_data($mform);
+    }
 
     /**
      * This function is responsible for handling the restoration process of the element.
@@ -160,34 +116,29 @@ class element extends base_element implements
      * We will want to update the course module the grade element is pointing to as it will
      * have changed in the course restore.
      *
-     * @param restore_customcert_activity_task $restore
+     * @param \restore_customcert_activity_task $restore
      */
-    public function after_restore_from_backup(restore_customcert_activity_task $restore): void {
+    public function after_restore($restore) {
         global $DB;
 
-        $data = $this->get_payload();
-        if (empty($data)) {
-            return;
-        }
+        $gradeinfo = $this->get_data();
 
-        // Legacy fixtures may store the reference in 'value' rather than 'gradeitem'.
-        $gradeitemref = $data['gradeitem'] ?? ($data['value'] ?? '');
-        if ($gradeitemref === '' || $gradeitemref === null) {
-            return;
+        $isgradeitem = false;
+        $oldid = $gradeinfo;
+        if (str_starts_with($gradeinfo, 'gradeitem:')) {
+            $isgradeitem = true;
+            $oldid = str_replace('gradeitem:', '', $gradeinfo);
         }
-
-        $gradeitemref = (string)$gradeitemref;
-        $isgradeitem = str_starts_with($gradeitemref, 'gradeitem:');
-        $oldid = $isgradeitem ? substr($gradeitemref, 10) : $gradeitemref;
 
         $itemname = $isgradeitem ? 'grade_item' : 'course_module';
-        $newid = $restore->get_mappingid($itemname, (int)$oldid);
-        if ($newid) {
-            $newref = ($isgradeitem ? 'gradeitem:' : '') . $newid;
-            $data['gradeitem'] = $newref;
-            // Keep legacy consumers aligned by mirroring into value when present.
-            $data['value'] = $newref;
-            $DB->set_field('customcert_elements', 'data', json_encode($data), ['id' => $this->get_id()]);
+        if ($newitem = \restore_dbops::get_backup_ids_record($restore->get_restoreid(), $itemname, $oldid)) {
+            $gradeinfo = new \stdClass();
+            $gradeinfo->gradeitem = '';
+            if ($isgradeitem) {
+                $gradeinfo->gradeitem = 'gradeitem:';
+            }
+            $gradeinfo->gradeitem = $gradeinfo->gradeitem . $newitem->newitemid;
+            $DB->set_field('customcert_elements', 'data', $this->save_unique_data($gradeinfo), ['id' => $this->get_id()]);
         }
     }
 
@@ -199,15 +150,11 @@ class element extends base_element implements
     protected function get_grade_item_name(): string {
         global $DB;
 
-        $data = $this->get_payload();
-        if (empty($data) || empty($data['gradeitem'])) {
-            return '';
-        }
+        $gradeitem = $this->get_data();
 
-        $gradeitem = $data['gradeitem'];
         if (strpos($gradeitem, 'gradeitem:') === 0) {
             $gradeitemid = substr($gradeitem, 10);
-            $gradeitem = grade_item::fetch(['id' => $gradeitemid]);
+            $gradeitem = \grade_item::fetch(['id' => $gradeitemid]);
 
             // If the gradeitem was not found, return an empty string.
             // This will effectively prevent the element from rendering.
@@ -229,7 +176,7 @@ class element extends base_element implements
                 'itemnumber' => 0,
             ];
 
-            $gradeitem = grade_item::fetch($params);
+            $gradeitem = \grade_item::fetch($params);
 
             // If the gradeitem was not found, return an empty string.
             // This will effectively prevent the element from rendering.

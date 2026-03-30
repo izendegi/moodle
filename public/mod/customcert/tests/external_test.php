@@ -25,9 +25,10 @@
 
 namespace mod_customcert;
 
+use context_module;
 use core_external\external_api;
+use stdClass;
 use advanced_testcase;
-use mod_customcert\service\certificate_issue_service;
 
 /**
  * Unit tests for the webservices.
@@ -45,237 +46,6 @@ final class external_test extends advanced_testcase {
         $this->resetAfterTest();
 
         parent::setUp();
-    }
-
-    /**
-     * Test that save_element merges visual fields into JSON data and avoids writing removed columns.
-     *
-     * @covers \mod_customcert\external::save_element
-     */
-    public function test_save_element_merges_visuals_into_json(): void {
-        global $DB;
-
-        $this->setAdminUser();
-
-        // Create a minimal template + page in system context.
-        $template = (object) [
-            'name' => 'WS Save Template',
-            'contextid' => \context_system::instance()->id,
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ];
-        $template->id = (int)$DB->insert_record('customcert_templates', $template, true);
-
-        $page = (object) [
-            'templateid' => $template->id,
-            'width' => 210,
-            'height' => 297,
-            'leftmargin' => 0,
-            'rightmargin' => 0,
-            'sequence' => 1,
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ];
-        $page->id = (int)$DB->insert_record('customcert_pages', $page, true);
-
-        // Insert an element with some existing JSON data.
-        $element = (object) [
-            'pageid' => $page->id,
-            'element' => 'text',
-            'name' => 'Text',
-            'posx' => 10,
-            'posy' => 20,
-            'refpoint' => 1,
-            'alignment' => 'L',
-            'data' => json_encode(['foo' => 'bar']),
-            'sequence' => 1,
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ];
-        $element->id = (int)$DB->insert_record('customcert_elements', $element, true);
-
-        // Call the WS with visual scalars and an incoming data JSON to ensure merge and type handling.
-        $values = [
-            ['name' => 'width', 'value' => '25'],
-            ['name' => 'font', 'value' => 'helvetica'],
-            ['name' => 'fontsize', 'value' => '12'],
-            ['name' => 'colour', 'value' => '#112233'],
-            ['name' => 'data', 'value' => json_encode(['baz' => 'qux'])],
-        ];
-
-        $result = external::save_element($template->id, $element->id, $values);
-        // Simulate WS return value cleaning.
-        external_api::clean_returnvalue(external::save_element_returns(), $result);
-        $this->assertTrue($result);
-
-        // Verify DB JSON was merged and numeric types are handled.
-        $row = $DB->get_record('customcert_elements', ['id' => $element->id], '*', MUST_EXIST);
-        $this->assertIsString($row->data);
-        $decoded = json_decode($row->data, true);
-        $this->assertIsArray($decoded);
-        $this->assertSame('bar', $decoded['foo'] ?? null, 'Existing JSON should be preserved');
-        $this->assertSame('qux', $decoded['baz'] ?? null, 'Incoming data JSON should be merged');
-        $this->assertSame(25, $decoded['width'] ?? null, 'Width should be merged as int');
-        $this->assertSame(12, $decoded['fontsize'] ?? null, 'Font size should be merged as int');
-        $this->assertSame('helvetica', $decoded['font'] ?? null);
-        $this->assertSame('#112233', $decoded['colour'] ?? null);
-    }
-
-    /**
-     * A teacher with mod/customcert:manage in Course A must not be able to overwrite
-     * an element belonging to Course B by supplying a foreign elementid.
-     *
-     * @covers \mod_customcert\external::save_element
-     */
-    public function test_save_element_rejects_foreign_elementid(): void {
-        global $DB;
-
-        // Set up Course A with a customcert and a teacher.
-        $coursea = $this->getDataGenerator()->create_course();
-        $courseb = $this->getDataGenerator()->create_course();
-
-        $teacher = $this->getDataGenerator()->create_user();
-        $this->getDataGenerator()->enrol_user($teacher->id, $coursea->id, 'editingteacher');
-
-        // Course A certificate — teacher has manage capability here.
-        $customcerta = $this->getDataGenerator()->create_module('customcert', ['course' => $coursea->id]);
-        $templateida = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcerta->id], MUST_EXIST);
-
-        // Course B certificate — teacher has no access.
-        $customcertb = $this->getDataGenerator()->create_module('customcert', ['course' => $courseb->id]);
-        $templateidb = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcertb->id], MUST_EXIST);
-
-        // Insert an element into Course B's template.
-        $pageb = (object)[
-            'templateid' => $templateidb,
-            'width' => 210, 'height' => 297,
-            'leftmargin' => 0, 'rightmargin' => 0,
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $pageb->id = (int)$DB->insert_record('customcert_pages', $pageb, true);
-
-        $elementb = (object)[
-            'pageid' => $pageb->id,
-            'element' => 'text',
-            'name' => 'Secret element',
-            'posx' => 0, 'posy' => 0,
-            'refpoint' => 0, 'alignment' => 'L',
-            'data' => json_encode(['value' => 'secret']),
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $elementb->id = (int)$DB->insert_record('customcert_elements', $elementb, true);
-
-        // Authenticate as the Course A teacher and attempt to overwrite Course B's element.
-        $this->setUser($teacher);
-
-        $this->expectException(\moodle_exception::class);
-        external::save_element($templateida, $elementb->id, [
-            ['name' => 'name', 'value' => 'Modified by attacker'],
-        ]);
-    }
-
-    /**
-     * A teacher with mod/customcert:manage in Course A must not be able to read
-     * an element belonging to Course B via get_element_html.
-     *
-     * @covers \mod_customcert\external::get_element_html
-     */
-    public function test_get_element_html_rejects_foreign_elementid(): void {
-        global $DB;
-
-        $coursea = $this->getDataGenerator()->create_course();
-        $courseb = $this->getDataGenerator()->create_course();
-
-        $teacher = $this->getDataGenerator()->create_user();
-        $this->getDataGenerator()->enrol_user($teacher->id, $coursea->id, 'editingteacher');
-
-        $customcerta = $this->getDataGenerator()->create_module('customcert', ['course' => $coursea->id]);
-        $templateida = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcerta->id], MUST_EXIST);
-
-        $customcertb = $this->getDataGenerator()->create_module('customcert', ['course' => $courseb->id]);
-        $templateidb = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcertb->id], MUST_EXIST);
-
-        $pageb = (object)[
-            'templateid' => $templateidb,
-            'width' => 210, 'height' => 297,
-            'leftmargin' => 0, 'rightmargin' => 0,
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $pageb->id = (int)$DB->insert_record('customcert_pages', $pageb, true);
-
-        $elementb = (object)[
-            'pageid' => $pageb->id,
-            'element' => 'text',
-            'name' => 'Confidential',
-            'posx' => 0, 'posy' => 0,
-            'refpoint' => 0, 'alignment' => 'L',
-            'data' => json_encode(['value' => 'confidential text']),
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $elementb->id = (int)$DB->insert_record('customcert_elements', $elementb, true);
-
-        $this->setUser($teacher);
-
-        $this->expectException(\moodle_exception::class);
-        external::get_element_html($templateida, $elementb->id);
-    }
-
-    /**
-     * A teacher with mod/customcert:manage in Course A must not be able to read
-     * an element belonging to Course B via the editelement fragment callback.
-     *
-     * @covers \mod_customcert_output_fragment_editelement
-     */
-    public function test_editelement_fragment_rejects_foreign_elementid(): void {
-        global $DB;
-
-        $coursea = $this->getDataGenerator()->create_course();
-        $courseb = $this->getDataGenerator()->create_course();
-
-        $teacher = $this->getDataGenerator()->create_user();
-        $this->getDataGenerator()->enrol_user($teacher->id, $coursea->id, 'editingteacher');
-
-        $customcerta = $this->getDataGenerator()->create_module('customcert', ['course' => $coursea->id]);
-        $cma = get_coursemodule_from_instance('customcert', $customcerta->id, $coursea->id, false, MUST_EXIST);
-        $contexta = \context_module::instance($cma->id);
-
-        $customcertb = $this->getDataGenerator()->create_module('customcert', ['course' => $courseb->id]);
-        $templateidb = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcertb->id], MUST_EXIST);
-
-        $pageb = (object)[
-            'templateid' => $templateidb,
-            'width' => 210, 'height' => 297,
-            'leftmargin' => 0, 'rightmargin' => 0,
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $pageb->id = (int)$DB->insert_record('customcert_pages', $pageb, true);
-
-        $elementb = (object)[
-            'pageid' => $pageb->id,
-            'element' => 'text',
-            'name' => 'Confidential',
-            'posx' => 0, 'posy' => 0,
-            'refpoint' => 0, 'alignment' => 'L',
-            'data' => json_encode(['value' => 'confidential text']),
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $elementb->id = (int)$DB->insert_record('customcert_elements', $elementb, true);
-
-        $this->setUser($teacher);
-
-        // The fragment callback receives the already-validated context (Course A's module context).
-        // Supplying Course B's elementid must be rejected.
-        $this->expectException(\moodle_exception::class);
-        mod_customcert_output_fragment_editelement([
-            'elementid' => $elementb->id,
-            'context'   => $contexta,
-        ]);
     }
 
     /**
@@ -303,8 +73,8 @@ final class external_test extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($student2->id, $course->id);
 
         // Issue them both certificates.
-        $i1 = $this->issue_certificate((int)$customcert->id, (int)$student1->id);
-        $i2 = $this->issue_certificate((int)$customcert->id, (int)$student2->id);
+        $i1 = certificate::issue_certificate($customcert->id, $student1->id);
+        $i2 = certificate::issue_certificate($customcert->id, $student2->id);
 
         $this->assertEquals(2, $DB->count_records('customcert_issues'));
 
@@ -343,8 +113,8 @@ final class external_test extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($student2->id, $course->id);
 
         // Issue them both certificates.
-        $i1 = $this->issue_certificate((int)$customcert->id, (int)$student1->id);
-        $i2 = $this->issue_certificate((int)$customcert->id, (int)$student2->id);
+        $i1 = certificate::issue_certificate($customcert->id, $student1->id);
+        $i2 = certificate::issue_certificate($customcert->id, $student2->id);
 
         $this->assertEquals(2, $DB->count_records('customcert_issues'));
 
@@ -378,8 +148,8 @@ final class external_test extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($student2->id, $course->id);
 
         // Issue them both certificates.
-        $i1 = $this->issue_certificate((int)$customcert->id, (int)$student1->id);
-        $i2 = $this->issue_certificate((int)$customcert->id, (int)$student2->id);
+        $i1 = certificate::issue_certificate($customcert->id, $student1->id);
+        $i2 = certificate::issue_certificate($customcert->id, $student2->id);
 
         $this->assertEquals(2, $DB->count_records('customcert_issues'));
 
@@ -405,7 +175,7 @@ final class external_test extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($student->id, $course->id);
 
         // Issue certificate.
-        $issueid = $this->issue_certificate((int)$customcert->id, (int)$student->id);
+        $issueid = certificate::issue_certificate($customcert->id, $student->id);
 
         // Call the external function.
         $result = external::list_issues(null, null, null, false, 100, 0);
@@ -437,8 +207,8 @@ final class external_test extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($student2->id, $course->id);
 
         // Issue certificates.
-        $i1 = $this->issue_certificate((int)$customcert->id, (int)$student1->id);
-        $i2 = $this->issue_certificate((int)$customcert->id, (int)$student2->id);
+        $i1 = certificate::issue_certificate($customcert->id, $student1->id);
+        $i2 = certificate::issue_certificate($customcert->id, $student2->id);
 
         // Filter by student1.
         $result = external::list_issues(null, $student1->id, null, false, 100, 0);
@@ -464,9 +234,9 @@ final class external_test extends advanced_testcase {
 
         // Issue 3 certificates.
         $ids = [];
-        $ids[] = $this->issue_certificate((int)$customcert->id, (int)$student->id);
-        $ids[] = $this->issue_certificate((int)$customcert->id, (int)$student->id);
-        $ids[] = $this->issue_certificate((int)$customcert->id, (int)$student->id);
+        $ids[] = certificate::issue_certificate($customcert->id, $student->id);
+        $ids[] = certificate::issue_certificate($customcert->id, $student->id);
+        $ids[] = certificate::issue_certificate($customcert->id, $student->id);
 
         // Get first two with limit=2.
         $result1 = external::list_issues(null, null, null, false, 2, 0);
@@ -495,7 +265,7 @@ final class external_test extends advanced_testcase {
         $student = $this->getDataGenerator()->create_user();
         $this->getDataGenerator()->enrol_user($student->id, $course->id);
 
-        $issueid = $this->issue_certificate((int)$customcert->id, (int)$student->id);
+        $issueid = certificate::issue_certificate($customcert->id, $student->id);
 
         $result = external::list_issues(null, null, null, true, 100, 0);
         $result = external_api::clean_returnvalue(external::list_issues_returns(), $result);
@@ -537,15 +307,118 @@ final class external_test extends advanced_testcase {
     }
 
     /**
-     * Issue a certificate via the service for test setup.
+     * Helper to create a customcert with a template, page, and element.
      *
-     * @param int $customcertid
-     * @param int $userid
-     * @return int
+     * @param stdClass $course
+     * @return array [$customcert, $template, $pageid, $elementid]
      */
-    private function issue_certificate(int $customcertid, int $userid): int {
-        $service = certificate_issue_service::create();
+    private function create_cert_with_element(stdClass $course): array {
+        global $DB;
 
-        return $service->issue_certificate($customcertid, $userid);
+        $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
+        $templaterecord = $DB->get_record('customcert_templates', ['id' => $customcert->templateid], '*', MUST_EXIST);
+        $template = new template($templaterecord);
+
+        $pageid = $template->add_page();
+
+        $element = new stdClass();
+        $element->pageid = $pageid;
+        $element->name = 'Test element';
+        $element->element = 'text';
+        $element->data = 'Sample text';
+        $element->font = 'freesans';
+        $element->fontsize = 12;
+        $element->colour = '#000000';
+        $element->posx = 0;
+        $element->posy = 0;
+        $element->width = 0;
+        $element->refpoint = 0;
+        $element->sequence = 1;
+        $element->timecreated = time();
+        $element->timemodified = time();
+        $elementid = $DB->insert_record('customcert_elements', $element);
+
+        return [$customcert, $template, $pageid, $elementid];
+    }
+
+    /**
+     * Test that save_element rejects an element belonging to a different template.
+     *
+     * @covers \mod_customcert\external::save_element
+     */
+    public function test_save_element_cross_template_access_denied(): void {
+        $this->setAdminUser();
+
+        // Course A with its own certificate and element.
+        $coursea = $this->getDataGenerator()->create_course();
+        [$certa] = $this->create_cert_with_element($coursea);
+
+        // Course B with its own certificate and element.
+        $courseb = $this->getDataGenerator()->create_course();
+        [, , , $elementidb] = $this->create_cert_with_element($courseb);
+
+        // Try to save element from Course B using Course A's templateid.
+        $this->expectException(\moodle_exception::class);
+        external::save_element($certa->templateid, $elementidb, []);
+    }
+
+    /**
+     * Test that save_element succeeds when element belongs to the given template.
+     *
+     * @covers \mod_customcert\external::save_element
+     */
+    public function test_save_element_same_template_allowed(): void {
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        [$cert, , , $elementid] = $this->create_cert_with_element($course);
+
+        // Should not throw — element belongs to the template.
+        $result = external::save_element(
+            $cert->templateid,
+            $elementid,
+            [
+                ['name' => 'name', 'value' => 'Updated'],
+                ['name' => 'text', 'value' => 'Updated text'],
+            ]
+        );
+        $this->assertTrue($result);
+    }
+
+    /**
+     * Test that get_element_html rejects an element belonging to a different template.
+     *
+     * @covers \mod_customcert\external::get_element_html
+     */
+    public function test_get_element_html_cross_template_access_denied(): void {
+        $this->setAdminUser();
+
+        // Course A.
+        $coursea = $this->getDataGenerator()->create_course();
+        [$certa] = $this->create_cert_with_element($coursea);
+
+        // Course B.
+        $courseb = $this->getDataGenerator()->create_course();
+        [, , , $elementidb] = $this->create_cert_with_element($courseb);
+
+        // Try to get HTML for element from Course B using Course A's templateid.
+        $this->expectException(\moodle_exception::class);
+        external::get_element_html($certa->templateid, $elementidb);
+    }
+
+    /**
+     * Test that get_element_html succeeds when element belongs to the given template.
+     *
+     * @covers \mod_customcert\external::get_element_html
+     */
+    public function test_get_element_html_same_template_allowed(): void {
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        [$cert, , , $elementid] = $this->create_cert_with_element($course);
+
+        // Should not throw — element belongs to the template.
+        $result = external::get_element_html($cert->templateid, $elementid);
+        $this->assertIsString($result);
     }
 }

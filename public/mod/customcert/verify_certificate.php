@@ -26,11 +26,6 @@
 // @codingStandardsIgnoreLine
 require_once('../../config.php');
 
-use mod_customcert\helper;
-use mod_customcert\output\verify_certificate_results;
-use mod_customcert\page_helper;
-use mod_customcert\verify_certificate_form;
-
 $contextid = optional_param('contextid', context_system::instance()->id, PARAM_INT);
 $code = optional_param('code', '', PARAM_ALPHANUMEXT); // The code for the certificate we are verifying.
 $qrcode = optional_param('qrcode', false, PARAM_BOOL);
@@ -67,7 +62,7 @@ if ($context->contextlevel != CONTEXT_SYSTEM) {
     $checkallofsite = true;
 }
 
-page_helper::page_setup($pageurl, $context, $title);
+\mod_customcert\page_helper::page_setup($pageurl, $context, $title);
 $PAGE->activityheader->set_attrs(['hidecompletion' => true,
             'description' => '']);
 
@@ -90,14 +85,14 @@ if ($checkallofsite) {
 }
 
 // The form we are using to verify these codes.
-$form = new verify_certificate_form($pageurl);
+$form = new \mod_customcert\verify_certificate_form($pageurl);
 
 if ($code) {
     $result = new stdClass();
     $result->issues = [];
 
     // Ok, now check if the code is valid.
-    $userfields = helper::get_all_user_name_fields('u');
+    $userfields = \mod_customcert\helper::get_all_user_name_fields('u');
     $sql = "SELECT ci.id, u.id as userid, $userfields, co.id as courseid,
                    co.fullname as coursefullname, c.id as certificateid,
                    c.name as certificatename, c.verifyany, ci.timecreated
@@ -147,7 +142,7 @@ if (!$qrcode) {
 }
 if (isset($result)) {
     $renderer = $PAGE->get_renderer('mod_customcert');
-    $result = new verify_certificate_results($result);
+    $result = new \mod_customcert\output\verify_certificate_results($result);
     echo $renderer->render($result);
 }
 echo $OUTPUT->footer();

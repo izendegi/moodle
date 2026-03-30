@@ -22,23 +22,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace customcertelement_coursename;
-
-use mod_customcert\element\constructable_element_interface;
-use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element as base_element;
-use mod_customcert\element\element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_buildable_interface;
-use mod_customcert\element\validatable_element_interface;
-use mod_customcert\element\preparable_form_interface;
-use mod_customcert\element_helper;
-use mod_customcert\service\element_renderer;
-use MoodleQuickForm;
-use pdf;
-use stdClass;
 
 /**
  * The customcert element coursename's core interaction API.
@@ -47,91 +31,56 @@ use stdClass;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends base_element implements
-    constructable_element_interface,
-    element_interface,
-    form_buildable_interface,
-    persistable_element_interface,
-    preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
-{
+class element extends \mod_customcert\element {
     /**
      * The course short name.
      */
-    public const int COURSE_SHORT_NAME = 1;
+    const COURSE_SHORT_NAME = 1;
 
     /**
      * The course fullname.
      */
-    public const int COURSE_FULL_NAME = 2;
+    const COURSE_FULL_NAME = 2;
 
     /**
-     * Build the configuration form for this element.
+     * This function renders the form elements when adding a customcert element.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function build_form(MoodleQuickForm $mform): void {
+    public function render_form_elements($mform) {
+        // The course name display options.
         $mform->addElement(
             'select',
             'coursenamedisplay',
             get_string('coursenamedisplay', 'customcertelement_coursename'),
             self::get_course_name_display_options()
         );
-        $mform->addHelpButton('coursenamedisplay', 'coursenamedisplay', 'customcertelement_coursename');
         $mform->setType('coursenamedisplay', PARAM_INT);
+        $mform->addHelpButton('coursenamedisplay', 'coursenamedisplay', 'customcertelement_coursename');
 
-        element_helper::render_common_form_elements($mform, $this->showposxy);
+        parent::render_form_elements($mform);
     }
 
     /**
-     * Ensures the coursenamedisplay select shows the stored value on edit and
-     * options are refreshed each render.
+     * This will handle how form data will be saved into the data column in the
+     * customcert_elements table.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \stdClass $data the form data
+     * @return string the text
      */
-    public function prepare_form(MoodleQuickForm $mform): void {
-        // Preselect the stored value if present (options populated centrally).
-        $value = $this->get_selected_display_field();
-        if ($value !== null) {
-            $mform->getElement('coursenamedisplay')->setValue($value);
-        }
-    }
-
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
-
-    /**
-     * Normalise coursename element data.
-     *
-     * @param stdClass $formdata Form submission data
-     * @return array JSON-serialisable payload
-     */
-    public function normalise_data(stdClass $formdata): array {
-        // Store selection in a consistent JSON structure.
-        return ['value' => isset($formdata->coursenamedisplay) ? (int)$formdata->coursenamedisplay : 0];
+    public function save_unique_data($data) {
+        return $data->coursenamedisplay;
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param pdf $pdf the pdf object
+     * @param \pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param stdClass $user the user we are rendering this for
-     * @param element_renderer|null $renderer the renderer service
+     * @param \stdClass $user the user we are rendering this for
      */
-    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
-        element_helper::render_content($pdf, $this, $this->get_course_name_detail());
+    public function render($pdf, $preview, $user) {
+        \mod_customcert\element_helper::render_content($pdf, $this, $this->get_course_name_detail());
     }
 
     /**
@@ -140,11 +89,23 @@ class element extends base_element implements
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
-     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html(?element_renderer $renderer = null): string {
-        return element_helper::render_html_content($this, $this->get_course_name_detail());
+    public function render_html() {
+        return \mod_customcert\element_helper::render_html_content($this, $this->get_course_name_detail());
+    }
+
+    /**
+     * Sets the data on the form when editing an element.
+     *
+     * @param \MoodleQuickForm $mform the edit_form instance
+     */
+    public function definition_after_data($mform) {
+        if (!empty($this->get_data())) {
+            $element = $mform->getElement('coursenamedisplay');
+            $element->setValue($this->get_data());
+        }
+        parent::definition_after_data($mform);
     }
 
     /**
@@ -153,12 +114,12 @@ class element extends base_element implements
      * @return string
      */
     protected function get_course_name_detail(): string {
-        $courseid = element_helper::get_courseid($this->get_id());
+        $courseid = \mod_customcert\element_helper::get_courseid($this->get_id());
         $course = get_course($courseid);
-        $context = element_helper::get_context($this->get_id());
+        $context = \mod_customcert\element_helper::get_context($this->get_id());
 
         // The name field to display.
-        $field = $this->get_selected_display_field() ?? self::COURSE_FULL_NAME;
+        $field = $this->get_data();
         // The name value to display.
         $value = $course->fullname;
         if ($field == self::COURSE_SHORT_NAME) {
@@ -178,34 +139,5 @@ class element extends base_element implements
             self::COURSE_FULL_NAME => get_string('coursefullname', 'customcertelement_coursename'),
             self::COURSE_SHORT_NAME => get_string('courseshortname', 'customcertelement_coursename'),
         ];
-    }
-
-    /**
-     * Resolve the selected display field from stored data, handling JSON-wrapped scalars.
-     *
-     * @return int|null One of COURSE_FULL_NAME or COURSE_SHORT_NAME, or null if not set.
-     */
-    private function get_selected_display_field(): ?int {
-        $raw = $this->get_data();
-        if ($raw === null || $raw === '') {
-            return null;
-        }
-        if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            if (is_array($decoded) && array_key_exists('value', $decoded)) {
-                return (int)$decoded['value'];
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Build an element instance from a DB record.
-     *
-     * @param stdClass $record Raw DB row from customcert_elements.
-     * @return static
-     */
-    public static function from_record(stdClass $record): static {
-        return new static($record);
     }
 }

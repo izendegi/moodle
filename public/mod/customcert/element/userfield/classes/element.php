@@ -22,25 +22,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace customcertelement_userfield;
 
-use availability_profile\condition;
-use core_collator;
 use core_user\fields;
-use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element as base_element;
-use mod_customcert\element\element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_buildable_interface;
-use mod_customcert\element\validatable_element_interface;
-use mod_customcert\element\preparable_form_interface;
-use mod_customcert\element_helper;
-use mod_customcert\service\element_renderer;
-use MoodleQuickForm;
-use pdf;
-use stdClass;
 
 /**
  * The customcert element userfield's core interaction API.
@@ -49,21 +33,13 @@ use stdClass;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends base_element implements
-    element_interface,
-    form_buildable_interface,
-    persistable_element_interface,
-    preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
-{
+class element extends \mod_customcert\element {
     /**
-     * Build the configuration form for this element.
+     * This function renders the form elements when adding a customcert element.
      *
-     * @param MoodleQuickForm $mform
-     * @return void
+     * @param \MoodleQuickForm $mform the edit_form instance
      */
-    public function build_form(MoodleQuickForm $mform): void {
+    public function render_form_elements($mform) {
         // Get the user profile fields.
         $userfields = [
             'firstname' => fields::get_display_name('firstname'),
@@ -81,61 +57,43 @@ class element extends base_element implements
             'address' => fields::get_display_name('address'),
         ];
         // Get the user custom fields.
-        $arrcustomfields = condition::get_custom_profile_fields();
+        $arrcustomfields = \availability_profile\condition::get_custom_profile_fields();
         $customfields = [];
         foreach ($arrcustomfields as $key => $customfield) {
             $customfields[$customfield->id] = $customfield->name;
         }
         // Combine the two.
         $fields = $userfields + $customfields;
-        core_collator::asort($fields);
+        \core_collator::asort($fields);
 
+        // Create the select box where the user field is selected.
         $mform->addElement('select', 'userfield', get_string('userfield', 'customcertelement_userfield'), $fields);
-        $mform->addHelpButton('userfield', 'userfield', 'customcertelement_userfield');
         $mform->setType('userfield', PARAM_ALPHANUM);
+        $mform->addHelpButton('userfield', 'userfield', 'customcertelement_userfield');
 
-        element_helper::render_common_form_elements($mform, $this->showposxy);
+        parent::render_form_elements($mform);
     }
 
     /**
-     * Normalise userfield element data.
+     * This will handle how form data will be saved into the data column in the
+     * customcert_elements table.
      *
-     * @param stdClass $formdata Form submission data
-     * @return array JSON-serialisable payload
+     * @param \stdClass $data the form data
+     * @return string the text
      */
-    public function normalise_data(stdClass $formdata): array {
-        // Persist the selected user field identifier under the key 'userfield'.
-        return ['userfield' => (string)($formdata->userfield ?? '')];
-    }
-
-    /**
-     * Prepare the form by populating the userfield field from stored data.
-     *
-     * @param MoodleQuickForm $mform
-     * @return void
-     */
-    public function prepare_form(MoodleQuickForm $mform): void {
-        $payload = $this->get_payload();
-        if (isset($payload['userfield'])) {
-            $mform->getElement('userfield')->setValue((string)$payload['userfield']);
-        }
+    public function save_unique_data($data) {
+        return $data->userfield;
     }
 
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param pdf $pdf the pdf object
+     * @param \pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param stdClass $user the user we are rendering this for
-     * @param element_renderer|null $renderer the renderer service
+     * @param \stdClass $user the user we are rendering this for
      */
-    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
-        $value = $this->get_user_field_value($user, $preview);
-        if ($renderer) {
-            $renderer->render_content($this, $value);
-        } else {
-            element_helper::render_content($pdf, $this, $value);
-        }
+    public function render($pdf, $preview, $user) {
+        \mod_customcert\element_helper::render_content($pdf, $this, $this->get_user_field_value($user, $preview));
     }
 
     /**
@@ -143,35 +101,38 @@ class element extends base_element implements
      *
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
-     *
-     * @param element_renderer|null $renderer the renderer service
-     * @return string the html
      */
-    public function render_html(?element_renderer $renderer = null): string {
+    public function render_html() {
         global $USER;
 
-        $value = $this->get_user_field_value($USER, true);
-        if ($renderer) {
-            return (string) $renderer->render_content($this, $value);
-        }
-
-        return element_helper::render_html_content($this, $value);
+        return \mod_customcert\element_helper::render_html_content($this, $this->get_user_field_value($USER, true));
     }
 
+    /**
+     * Sets the data on the form when editing an element.
+     *
+     * @param \MoodleQuickForm $mform the edit_form instance
+     */
+    public function definition_after_data($mform) {
+        if (!empty($this->get_data())) {
+            $element = $mform->getElement('userfield');
+            $element->setValue($this->get_data());
+        }
+        parent::definition_after_data($mform);
+    }
 
     /**
      * Helper function that returns the text.
      *
-     * @param stdClass $user the user we are rendering this for
+     * @param \stdClass $user the user we are rendering this for
      * @param bool $preview Is this a preview?
      * @return string
      */
-    protected function get_user_field_value(stdClass $user, bool $preview): string {
+    protected function get_user_field_value(\stdClass $user, bool $preview): string {
         global $CFG, $DB;
 
         // The user field to display.
-        $payload = $this->get_payload();
-        $field = isset($payload['userfield']) ? $payload['userfield'] : '';
+        $field = $this->get_data();
         // The value to display - we always want to show a value here so it can be repositioned.
         if ($preview) {
             $value = $field;
@@ -195,18 +156,7 @@ class element extends base_element implements
             $value = $user->$field;
         }
 
-        $context = element_helper::get_context($this->get_id());
+        $context = \mod_customcert\element_helper::get_context($this->get_id());
         return format_string($value, true, ['context' => $context]);
-    }
-
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
     }
 }

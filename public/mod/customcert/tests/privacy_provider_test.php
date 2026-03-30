@@ -24,14 +24,10 @@
 
 namespace mod_customcert;
 
-use core_privacy\local\request\approved_contextlist;
-use core_privacy\local\request\approved_userlist;
-use core_privacy\local\request\userlist;
 use stdClass;
 use context_module;
 use context_system;
 use mod_customcert\privacy\provider;
-use mod_customcert\service\certificate_issue_service;
 
 /**
  * Privacy provider tests class.
@@ -89,7 +85,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         // Call get_users_in_context() when the customcert hasn't any user.
         $cm = get_coursemodule_from_instance('customcert', $customcert1->id);
         $cmcontext = context_module::instance($cm->id);
-        $userlist = new userlist($cmcontext, 'mod_customcert');
+        $userlist = new \core_privacy\local\request\userlist($cmcontext, 'mod_customcert');
         provider::get_users_in_context($userlist);
 
         // Check no user has been returned.
@@ -121,7 +117,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
     public function test_get_users_in_context_invalid_context_type(): void {
         $systemcontext = context_system::instance();
 
-        $userlist = new userlist($systemcontext, 'mod_customcert');
+        $userlist = new \core_privacy\local\request\userlist($systemcontext, 'mod_customcert');
         \mod_customcert\privacy\provider::get_users_in_context($userlist);
 
         $this->assertCount(0, $userlist->get_userids());
@@ -232,7 +228,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $this->assertEquals(2, $count);
 
         $context = \context_module::instance($customcert->cmid);
-        $contextlist = new approved_contextlist(
+        $contextlist = new \core_privacy\local\request\approved_contextlist(
             $user1,
             'customcert',
             [$context->id]
@@ -264,7 +260,6 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $course = $this->getDataGenerator()->create_course();
         $customcert1 = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
         $customcert2 = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-
         $cm1 = get_coursemodule_from_instance('customcert', $customcert1->id);
         $cm2 = get_coursemodule_from_instance('customcert', $customcert2->id);
         $user1 = $this->getDataGenerator()->create_user();
@@ -283,7 +278,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $this->assertEquals(2, $count);
 
         $context1 = context_module::instance($cm1->id);
-        $approveduserlist = new approved_userlist(
+        $approveduserlist = new \core_privacy\local\request\approved_userlist(
             $context1,
             'customcert',
             [$user1->id, $user2->id]
@@ -319,8 +314,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $customcertissue = new stdClass();
         $customcertissue->customcertid = $customcertid;
         $customcertissue->userid = $userid;
-        $service = certificate_issue_service::create();
-        $customcertissue->code = $service->generate_code();
+        $customcertissue->code = certificate::generate_code();
         $customcertissue->timecreated = time() + $i;
 
         // Insert the record into the database.

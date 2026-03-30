@@ -24,23 +24,12 @@
 
 namespace mod_customcert;
 
-use core_text;
-use moodle_exception;
-use mod_customcert\service\element_factory;
-use mod_customcert\service\form_service;
-use mod_customcert\service\validation_service;
-use mod_customcert\element\preparable_form_interface;
-use moodleform;
-use MoodleQuickForm;
-
 defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
-
-global $CFG;
 
 require_once($CFG->dirroot . '/course/moodleform_mod.php');
 require_once($CFG->dirroot . '/mod/customcert/includes/colourpicker.php');
 
-MoodleQuickForm::registerElementType(
+\MoodleQuickForm::registerElementType(
     'customcert_colourpicker',
     $CFG->dirroot . '/mod/customcert/includes/colourpicker.php',
     'MoodleQuickForm_customcert_colourpicker'
@@ -53,11 +42,11 @@ MoodleQuickForm::registerElementType(
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class edit_element_form extends moodleform {
+class edit_element_form extends \moodleform {
     /**
-     * @var element The element object.
+     * @var \mod_customcert\element The element object.
      */
-    protected element $element;
+    protected $element;
 
     /**
      * Form definition.
@@ -76,16 +65,9 @@ class edit_element_form extends moodleform {
         $mform->addRule('name', get_string('required'), 'required', null, 'client');
         $mform->addHelpButton('name', 'elementname', 'customcert');
 
-        $factory = $this->_customdata['factory'] ?? element_factory::build_with_defaults();
-        $this->element = $factory->create_from_legacy_record($element);
-        if (!$this->element) {
-            throw new moodle_exception('invalidrecord', 'error');
-        }
+        $this->element = \mod_customcert\element_factory::get_element_instance($element);
         $this->element->set_edit_element_form($this);
-
-        $formservice = new form_service();
-        $formservice->build_form($mform, $this->element);
-
+        $this->element->render_form_elements($mform);
         $buttonarray = [];
         $buttonarray[] = $mform->createElement('submit', 'savechanges', get_string('savechanges', 'customcert'));
 
@@ -103,38 +85,9 @@ class edit_element_form extends moodleform {
 
     /**
      * Fill in the current page data for this customcert.
-     *
-     * This method populates standard element fields (name, font, fontsize, colour, position, width,
-     * refpoint, alignment) from the element's getter methods. Element-specific fields are then
-     * populated by calling prepare_after_data() on the form service at the correct lifecycle point.
      */
     public function definition_after_data() {
-        $mform = $this->_form;
-
-        // Populate standard fields from element getters.
-        $properties = [
-            'name' => $this->element->get_name(),
-            'font' => $this->element->get_font(),
-            'fontsize' => $this->element->get_fontsize(),
-            'colour' => $this->element->get_colour(),
-            'posx' => $this->element->get_posx(),
-            'posy' => $this->element->get_posy(),
-            'width' => $this->element->get_width(),
-            'refpoint' => $this->element->get_refpoint(),
-            'alignment' => $this->element->get_alignment(),
-        ];
-
-        foreach ($properties as $property => $value) {
-            if ($value !== null && $mform->elementExists($property)) {
-                $mform->getElement($property)->setValue($value);
-            }
-        }
-
-        // Run element-specific form preparation (e.g., filemanager draft areas,
-        // dependent selects, default values). This is the correct lifecycle point
-        // for these operations — after set_data() has been called.
-        $formservice = new form_service();
-        $formservice->prepare_after_data($mform, $this->element);
+        $this->element->definition_after_data($this->_form);
     }
 
     /**
@@ -147,12 +100,11 @@ class edit_element_form extends moodleform {
     public function validation($data, $files) {
         $errors = [];
 
-        if (core_text::strlen($data['name'] ?? '') > 255) {
+        if (\core_text::strlen($data['name']) > 255) {
             $errors['name'] = get_string('nametoolong', 'customcert');
         }
 
-        $validationservice = new validation_service();
-        $errors += $validationservice->validate($this->element, $data);
+        $errors += $this->element->validate_form_elements($data, $files);
 
         return $errors;
     }

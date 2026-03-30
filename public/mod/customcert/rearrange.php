@@ -22,36 +22,17 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use action_link;
-use mod_customcert\element;
-use mod_customcert\element_helper;
-use mod_customcert\page_helper;
-use mod_customcert\service\element_factory;
-use mod_customcert\service\element_repository;
-use mod_customcert\service\page_repository;
-use mod_customcert\template;
-
 require_once('../../config.php');
 
 // The page of the customcert we are editing.
 $pid = required_param('pid', PARAM_INT);
 
-$pagerepo = new page_repository();
-$page = $pagerepo->get_by_id_or_fail($pid);
-
-
-
-$factory = element_factory::build_with_defaults();
-$elementrepo = new element_repository($factory);
-
-$elementrecords = $elementrepo->list_by_page($pid);
-$elementinstances = [];
-foreach ($elementrepo->load_by_page_id($pid) as $instance) {
-    $elementinstances[$instance->get_id()] = $instance;
-}
+$page = $DB->get_record('customcert_pages', ['id' => $pid], '*', MUST_EXIST);
+$template = $DB->get_record('customcert_templates', ['id' => $page->templateid], '*', MUST_EXIST);
+$elements = $DB->get_records('customcert_elements', ['pageid' => $pid], 'sequence');
 
 // Set the template.
-$template = template::load((int)$page->templateid);
+$template = new \mod_customcert\template($template);
 // Perform checks.
 if ($cm = $template->get_cm()) {
     require_login($cm->course, false, $cm);
@@ -72,7 +53,7 @@ if ($template->get_context()->contextlevel == CONTEXT_MODULE) {
 
 // Set the $PAGE settings.
 $pageurl = new moodle_url('/mod/customcert/rearrange.php', ['pid' => $pid]);
-page_helper::page_setup($pageurl, $template->get_context(), $title);
+\mod_customcert\page_helper::page_setup($pageurl, $template->get_context(), $title);
 $PAGE->activityheader->set_attrs(['hidecompletion' => true,
             'description' => '']);
 
@@ -80,12 +61,12 @@ $PAGE->activityheader->set_attrs(['hidecompletion' => true,
 if (!$cm = $template->get_cm()) {
     $str = get_string('managetemplates', 'customcert');
     $link = new moodle_url('/mod/customcert/manage_templates.php');
-    $PAGE->navbar->add($str, new action_link($link, $str));
+    $PAGE->navbar->add($str, new \action_link($link, $str));
 }
 
 $str = get_string('editcustomcert', 'customcert');
 $link = new moodle_url('/mod/customcert/edit.php', ['tid' => $template->get_id()]);
-$PAGE->navbar->add($str, new action_link($link, $str));
+$PAGE->navbar->add($str, new \action_link($link, $str));
 
 $PAGE->navbar->add(get_string('rearrangeelements', 'customcert'));
 
@@ -95,7 +76,7 @@ $PAGE->requires->yui_module(
     'Y.M.mod_customcert.rearrange.init',
     [$template->get_id(),
           $page,
-    $elementrecords]
+    $elements]
 );
 
 // Create the buttons to save the position of the elements.
@@ -132,35 +113,34 @@ if ($page->leftmargin) {
     $position = 'left:' . $page->leftmargin . 'mm;';
     $html .= "<div id='leftmargin' style='$position $marginstyle'></div>";
 }
-if ($elementrecords) {
-    foreach ($elementrecords as $element) {
-        $instance = $elementinstances[(int)$element->id] ?? null;
-
-        if ($instance) {
+if ($elements) {
+    foreach ($elements as $element) {
+        // Get an instance of the element class.
+        if ($e = \mod_customcert\element_factory::get_element_instance($element)) {
             switch ($element->refpoint) {
-                case element_helper::CUSTOMCERT_REF_POINT_TOPRIGHT:
+                case \mod_customcert\element_helper::CUSTOMCERT_REF_POINT_TOPRIGHT:
                     $class = 'element refpoint-right';
                     break;
-                case element_helper::CUSTOMCERT_REF_POINT_TOPCENTER:
+                case \mod_customcert\element_helper::CUSTOMCERT_REF_POINT_TOPCENTER:
                     $class = 'element refpoint-center';
                     break;
-                case element_helper::CUSTOMCERT_REF_POINT_TOPLEFT:
+                case \mod_customcert\element_helper::CUSTOMCERT_REF_POINT_TOPLEFT:
                 default:
                     $class = 'element refpoint-left';
             }
             switch ($element->alignment) {
-                case element::ALIGN_CENTER:
+                case \mod_customcert\element::ALIGN_CENTER:
                     $class .= ' align-center';
                     break;
-                case element::ALIGN_RIGHT:
+                case \mod_customcert\element::ALIGN_RIGHT:
                     $class .= ' align-right';
                     break;
-                case element::ALIGN_LEFT:
+                case \mod_customcert\element::ALIGN_LEFT:
                 default:
                     $class .= ' align-left';
                     break;
             }
-            $html .= html_writer::tag('div', $instance->render_html(), ['class' => $class,
+            $html .= html_writer::tag('div', $e->render_html(), ['class' => $class,
                 'data-refpoint' => $element->refpoint, 'id' => 'element-' . $element->id]);
         }
     }

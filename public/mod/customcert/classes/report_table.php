@@ -24,15 +24,7 @@
 
 namespace mod_customcert;
 
-use context_module;
-use mod_customcert\service\issue_repository;
-use core\session\manager;
-use core_user\fields;
 use customcertelement_expiry\element as expiry_element;
-use moodle_url;
-use pix_icon;
-use stdClass;
-use table_sql;
 
 defined('MOODLE_INTERNAL') || die;
 
@@ -47,30 +39,35 @@ require_once($CFG->libdir . '/tablelib.php');
  * @copyright  2016 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class report_table extends table_sql {
+class report_table extends \table_sql {
     /**
      * @var int $customcertid The custom certificate id
      */
-    protected int $customcertid;
+    protected $customcertid;
 
     /**
-     * @var stdClass $cm The course module.
+     * @var \stdClass $cm The course module.
      */
-    protected stdClass $cm;
+    protected $cm;
 
+    /**
+     * @var bool $groupmode are we in group mode?
+     */
+    protected $groupmode;
 
     /**
      * Sets up the table.
      *
      * @param int $customcertid
-     * @param stdClass $cm the course module
+     * @param \stdClass $cm the course module
+     * @param bool $groupmode are we in group mode?
      * @param string|null $download The file type, null if we are not downloading
      */
-    public function __construct($customcertid, $cm, $download = null) {
+    public function __construct($customcertid, $cm, $groupmode, $download = null) {
         parent::__construct('mod_customcert_report_table');
 
-        $context = context_module::instance($cm->id);
-        $extrafields = fields::for_identity($context)->get_required_fields();
+        $context = \context_module::instance($cm->id);
+        $extrafields = \core_user\fields::for_identity($context)->get_required_fields();
         $showexpiry = false;
 
         if (class_exists('\customcertelement_expiry\element')) {
@@ -93,7 +90,7 @@ class report_table extends table_sql {
         $headers = [];
         $headers[] = get_string('fullname');
         foreach ($extrafields as $extrafield) {
-            $headers[] = fields::get_display_name($extrafield);
+            $headers[] = \core_user\fields::get_display_name($extrafield);
         }
         $headers[] = get_string('receiveddate', 'customcert');
 
@@ -128,12 +125,13 @@ class report_table extends table_sql {
 
         $this->customcertid = $customcertid;
         $this->cm = $cm;
+        $this->groupmode = $groupmode;
     }
 
     /**
      * Generate the fullname column.
      *
-     * @param stdClass $user
+     * @param \stdClass $user
      * @return string
      */
     public function col_fullname($user) {
@@ -149,7 +147,7 @@ class report_table extends table_sql {
     /**
      * Generate the certificate time created column.
      *
-     * @param stdClass $user
+     * @param \stdClass $user
      * @return string
      */
     public function col_timecreated($user) {
@@ -163,7 +161,7 @@ class report_table extends table_sql {
     /**
      * Generate the optional certificate expires time column.
      *
-     * @param stdClass $user
+     * @param \stdClass $user
      * @return string
      */
     public function col_timeexpires($user) {
@@ -177,7 +175,7 @@ class report_table extends table_sql {
     /**
      * Generate the code column.
      *
-     * @param stdClass $user
+     * @param \stdClass $user
      * @return string
      */
     public function col_code($user) {
@@ -187,14 +185,14 @@ class report_table extends table_sql {
     /**
      * Generate the download column.
      *
-     * @param stdClass $user
+     * @param \stdClass $user
      * @return string
      */
     public function col_download($user) {
         global $OUTPUT;
 
-        $icon = new pix_icon('download', get_string('download'), 'customcert');
-        $link = new moodle_url(
+        $icon = new \pix_icon('download', get_string('download'), 'customcert');
+        $link = new \moodle_url(
             '/mod/customcert/view.php',
             [
                 'id' => $this->cm->id,
@@ -208,14 +206,14 @@ class report_table extends table_sql {
     /**
      * Generate the actions column.
      *
-     * @param stdClass $user
+     * @param \stdClass $user
      * @return string
      */
     public function col_actions($user) {
         global $OUTPUT;
 
-        $icon = new pix_icon('i/delete', get_string('delete'));
-        $link = new moodle_url(
+        $icon = new \pix_icon('i/delete', get_string('delete'));
+        $link = new \moodle_url(
             '/mod/customcert/view.php',
             [
                 'id' => $this->cm->id,
@@ -234,13 +232,13 @@ class report_table extends table_sql {
      * @param bool $useinitialsbar do you want to use the initials bar.
      */
     public function query_db($pagesize, $useinitialsbar = true) {
-        $issuerepo = new issue_repository();
-        $total = $issuerepo->get_number_of_issues($this->customcertid, $this->cm);
+        $total = \mod_customcert\certificate::get_number_of_issues($this->customcertid, $this->cm, $this->groupmode);
 
         $this->pagesize($pagesize, $total);
 
-        $this->rawdata = $issuerepo->get_issues(
+        $this->rawdata = \mod_customcert\certificate::get_issues(
             $this->customcertid,
+            $this->groupmode,
             $this->cm,
             $this->get_page_start(),
             $this->get_page_size(),
@@ -257,9 +255,8 @@ class report_table extends table_sql {
      * Download the data.
      */
     public function download() {
-        manager::write_close();
-        $issuerepo = new issue_repository();
-        $total = $issuerepo->get_number_of_issues($this->customcertid, $this->cm);
+        \core\session\manager::write_close();
+        $total = \mod_customcert\certificate::get_number_of_issues($this->customcertid, $this->cm, $this->groupmode);
         $this->out($total, false);
         exit;
     }

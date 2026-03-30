@@ -24,9 +24,6 @@
 
 namespace mod_customcert;
 
-use mod_customcert\service\page_update;
-use mod_customcert\service\template_service;
-
 /**
  * Contains tests for template's page operations.
  *
@@ -54,54 +51,27 @@ final class page_test extends \advanced_testcase {
      *   4. Delete the second page.
      * Previously the above scenario resulted in an error (#571).
      *
-     * @covers \mod_customcert\service\template_service::delete_page
+     * @covers \template::delete_page
      */
     public function test_delete_non_empty_page(): void {
         global $DB;
 
-        $template = template::create('Test name', \context_system::instance()->id);
-        $service = template_service::create();
+        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
 
         // Add a second page and add an element to it.
-        $page2id = $service->add_page($template);
+        $page2id = $template->add_page();
         $element = new \stdClass();
         $element->pageid = $page2id;
         $element->name = 'Image';
         $element->element = 'image';
         $DB->insert_record('customcert_elements', $element);
 
-        $service->delete_page($template, $page2id);
+        $template->delete_page($page2id);
 
         $records = $DB->count_records('customcert_elements', ['pageid' => $page2id]);
         $this->assertEquals(0, $records);
 
         $records = $DB->count_records('customcert_pages', ['id' => $page2id]);
         $this->assertEquals(0, $records);
-        $this->assertDebuggingNotCalled();
-    }
-
-    /**
-     * page_update uses the current time when $timemodified is not provided.
-     *
-     * @covers \mod_customcert\service\page_update::__construct
-     */
-    public function test_page_update_null_timemodified_defaults_to_current_time(): void {
-        $before = time();
-        $update = new page_update(210, 297, 10, 10);
-        $after = time();
-
-        $this->assertGreaterThanOrEqual($before, $update->timemodified);
-        $this->assertLessThanOrEqual($after, $update->timemodified);
-    }
-
-    /**
-     * page_update uses the explicitly provided $timemodified when given.
-     *
-     * @covers \mod_customcert\service\page_update::__construct
-     */
-    public function test_page_update_explicit_timemodified_is_preserved(): void {
-        $update = new page_update(210, 297, 10, 10, 1_000_000);
-
-        $this->assertSame(1_000_000, $update->timemodified);
     }
 }

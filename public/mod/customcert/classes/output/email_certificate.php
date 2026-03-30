@@ -24,48 +24,42 @@
 
 namespace mod_customcert\output;
 
-use moodle_url;
-use renderable;
-use renderer_base;
-use stdClass;
-use templatable;
-
 /**
  * Email certificate renderable.
  *
  * @copyright  2017 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class email_certificate implements renderable, templatable {
+class email_certificate implements \renderable, \templatable {
     /**
      * @var bool Are we emailing the student?
      */
-    public bool $isstudent;
+    public $isstudent;
 
     /**
      * @var string The name of the user who owns the certificate.
      */
-    public string $userfullname;
+    public $userfullname;
 
     /**
      * @var string The course short name.
      */
-    public string $courseshortname;
+    public $courseshortname;
 
     /**
      * @var string The course full name.
      */
-    public string $coursefullname;
+    public $coursefullname;
 
     /**
-     * @var string The certificate name.
+     * @var int The certificate name.
      */
-    public string $certificatename;
+    public $certificatename;
 
     /**
      * @var int The course module id.
      */
-    public int $cmid;
+    public $cmid;
 
     /**
      * Constructor.
@@ -75,16 +69,9 @@ class email_certificate implements renderable, templatable {
      * @param string $courseshortname The short name of the course.
      * @param string $coursefullname The full name of the course.
      * @param string $certificatename The name of the certificate.
-     * @param int $cmid The course module id.
+     * @param string $cmid The course module id.
      */
-    public function __construct(
-        bool $isstudent,
-        string $userfullname,
-        string $courseshortname,
-        string $coursefullname,
-        string $certificatename,
-        int $cmid
-    ) {
+    public function __construct($isstudent, $userfullname, $courseshortname, $coursefullname, $certificatename, $cmid) {
         $this->isstudent = $isstudent;
         $this->userfullname = $userfullname;
         $this->courseshortname = $courseshortname;
@@ -96,19 +83,19 @@ class email_certificate implements renderable, templatable {
     /**
      * Export this data so it can be used as the context for a mustache template.
      *
-     * @param renderer_base $renderer The render to be used for formatting the email
-     * @return stdClass The data ready for use in a mustache template
+     * @param \renderer_base $renderer The render to be used for formatting the email
+     * @return \stdClass The data ready for use in a mustache template
      */
-    public function export_for_template(renderer_base $renderer): stdClass {
-        $data = new stdClass();
+    public function export_for_template(\renderer_base $renderer) {
+        $data = new \stdClass();
 
         // Used for the body text.
-        $info = new stdClass();
+        $info = new \stdClass();
         $info->userfullname = $this->userfullname;
         $info->certificatename = $this->certificatename;
         $info->courseshortname = $this->courseshortname;
         $info->coursefullname = $this->coursefullname;
-        $info->emailcertificatelink = new moodle_url('/mod/customcert/view.php', ['id' => $this->cmid]);
+        $info->emailcertificatelink = new \moodle_url('/mod/customcert/view.php', ['id' => $this->cmid]);
 
         if ($this->isstudent) {
             $info->emailcertificatelinktext = get_string('emailstudentcertificatelinktext', 'customcert');

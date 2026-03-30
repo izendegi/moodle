@@ -22,32 +22,15 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_customcert\edit_element_form;
-use mod_customcert\element;
-use mod_customcert\event\template_updated;
-use mod_customcert\page_helper;
-use mod_customcert\service\element_factory;
-use mod_customcert\service\element_repository;
-use mod_customcert\service\form_service;
-use mod_customcert\service\persistence_helper;
-use mod_customcert\service\page_repository;
-use mod_customcert\service\template_repository;
-use mod_customcert\template;
-
 require_once('../../config.php');
-
-$templaterepo = new template_repository();
-$pagerepo = new page_repository();
-
-
-$factory = element_factory::build_with_defaults();
-$elementrepo = new element_repository($factory);
 
 $tid = required_param('tid', PARAM_INT);
 $action = required_param('action', PARAM_ALPHA);
 
+$template = $DB->get_record('customcert_templates', ['id' => $tid], '*', MUST_EXIST);
+
 // Set the template object.
-$template = template::load((int)$tid);
+$template = new \mod_customcert\template($template);
 
 // Perform checks.
 if ($cm = $template->get_cm()) {
@@ -68,7 +51,7 @@ if ($template->get_context()->contextlevel == CONTEXT_MODULE) {
 if ($action == 'edit') {
     // The id of the element must be supplied if we are currently editing one.
     $id = required_param('id', PARAM_INT);
-    $element = $elementrepo->get_by_id_or_fail($id);
+    $element = $DB->get_record('customcert_elements', ['id' => $id], '*', MUST_EXIST);
     $pageurl = new moodle_url('/mod/customcert/edit_element.php', ['id' => $id, 'tid' => $tid, 'action' => $action]);
 } else { // Must be adding an element.
     // We need to supply what element we want added to what page.
@@ -80,7 +63,7 @@ if ($action == 'edit') {
 }
 
 // Set up the page.
-page_helper::page_setup($pageurl, $template->get_context(), $title);
+\mod_customcert\page_helper::page_setup($pageurl, $template->get_context(), $title);
 $PAGE->activityheader->set_attrs(['hidecompletion' => true,
             'description' => '']);
 
@@ -97,7 +80,7 @@ $PAGE->navbar->add(get_string('editcustomcert', 'customcert'), new moodle_url(
 ));
 $PAGE->navbar->add(get_string('editelement', 'customcert'));
 
-$mform = new edit_element_form($pageurl, ['element' => $element, 'factory' => $factory]);
+$mform = new \mod_customcert\edit_element_form($pageurl, ['element' => $element]);
 
 // Check if they cancelled.
 if ($mform->is_cancelled()) {
@@ -115,92 +98,26 @@ if ($data = $mform->get_data()) {
     }
     // Set the element variable.
     $data->element = $element->element;
-
-    // Normalise submission: process file uploads from draft areas before saving.
-    $formservice = new form_service();
-    $dataarray = (array) $data;
-    $formservice->normalise_submission($dataarray);
-    // Merge back any changes (e.g., file metadata populated from fileid).
-    foreach ($dataarray as $key => $value) {
-        $data->$key = $value;
-    }
-
     // Get an instance of the element class.
-    $elementinstance = $factory->create_from_legacy_record($data);
-    if ($elementinstance) {
-        // Build record similar to legacy element::save_form_elements().
-        $record = new stdClass();
-        $record->pageid = (int)$data->pageid;
-        $record->element = (string)$data->element;
-        $record->name = $data->name;
+    if ($e = \mod_customcert\element_factory::get_element_instance($data)) {
+        $newlyid = $e->save_form_elements($data);
 
-        if (!empty($data->id)) {
-            $record->id = (int)$data->id;
-            // Preserve existing positional fields when not provided in the form.
-            $record->posx = $element->posx ?? null;
-            $record->posy = $element->posy ?? null;
-            $record->refpoint = $element->refpoint ?? null;
-            $record->alignment = $element->alignment ?? element::ALIGN_LEFT;
-        }
-        // Persist JSON using helper (supports persistable and legacy elements).
-        $record->data = persistence_helper::to_json_data($elementinstance, $data);
-        // Merge font-related fields into JSON 'data' rather than separate DB columns.
-        $rawjson = $record->data;
-        $decoded = is_string($rawjson) && $rawjson !== '' ? json_decode($rawjson, true) : null;
-        if (!is_array($decoded)) {
-            // Start from an envelope if we had scalar/non-JSON previously.
-            $decoded = [];
-        }
-        if (isset($data->font) && $data->font !== '') {
-            $decoded['font'] = (string)$data->font;
-        }
-        if (isset($data->fontsize) && $data->fontsize !== '') {
-            $decoded['fontsize'] = (int)$data->fontsize;
-        }
-        if (isset($data->colour) && $data->colour !== '') {
-            $decoded['colour'] = (string)$data->colour;
-        }
-        if (!empty(get_config('customcert', 'showposxy'))) {
-            $record->posx = $data->posx ?? null;
-            $record->posy = $data->posy ?? null;
-        }
-        // Merge width into JSON 'data' rather than a dropped DB column.
-        if (isset($data->width) && $data->width !== '') {
-            $decoded['width'] = (int)$data->width;
-        }
-        // Persist the merged JSON payload.
-        $record->data = json_encode($decoded);
-        $record->refpoint = $data->refpoint ?? $record->refpoint ?? null;
-        $record->alignment = $data->alignment ?? $record->alignment ?? element::ALIGN_LEFT;
-
-        $instance = $factory->create($record->element, $record);
-
-        if (!empty($record->id)) {
-            $elementrepo->save($instance);
-            $newlyid = $record->id;
-        } else {
-            $newlyid = $elementrepo->create($instance);
-        }
-
-        // Trigger updated event for the template containing the element.
-        template_updated::create_from_template($template)->trigger();
-
-        $url = new moodle_url('/mod/customcert/edit.php', ['tid' => $tid]);
-        $editurl = new moodle_url('/mod/customcert/edit_element.php', [
-                'id' => $newlyid,
-                'tid' => $tid,
-                'action' => 'edit',
-        ]);
-        $redirecturl = $url;
-
-        if (isset($data->saveandcontinue)) {
-            $redirecturl = ($action === 'add') ? $editurl : $PAGE->url;
-        }
-        redirect($redirecturl);
+        // Trigger updated event.
+        \mod_customcert\event\template_updated::create_from_template($template)->trigger();
     }
 
-    // Element type could not be resolved; redirect back without saving.
-    redirect(new moodle_url('/mod/customcert/edit.php', ['tid' => $tid]));
+    $url = new moodle_url('/mod/customcert/edit.php', ['tid' => $tid]);
+    $editurl = new moodle_url('/mod/customcert/edit_element.php', [
+            'id' => $newlyid,
+            'tid' => $tid,
+            'action' => 'edit',
+    ]);
+    $redirecturl = $url;
+
+    if (isset($data->saveandcontinue)) {
+        $redirecturl = ($action === 'add') ? $editurl : $PAGE->url;
+    }
+    redirect($redirecturl);
 }
 
 echo $OUTPUT->header();
