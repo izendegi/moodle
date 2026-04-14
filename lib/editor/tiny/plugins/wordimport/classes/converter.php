@@ -52,7 +52,13 @@ class converter {
 
         // Convert the Word file content into XHTML and an array of images.
         $imagesforzipping = [];
-        $word2xml = new wordconverter();
+
+        if (class_exists('\tiny_footnotes\wordconverter')) {
+            $word2xml = new \tiny_footnotes\wordconverter();
+        } else {
+            $word2xml = new wordconverter();
+        }
+
         $word2xml->set_heading1styleoffset((int) get_config('tiny_wordimport', 'heading1stylelevel'));
         $xsltoutput = $word2xml->import($wordfilename, $imagesforzipping);
         $htmlcontent = $word2xml->htmlbody($xsltoutput);

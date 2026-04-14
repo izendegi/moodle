@@ -12,10 +12,10 @@ moodle_plugin_ci:
     MOODLE_DIR: "/var/www/html/moodle"
     MOODLE_BEHAT_WDHOST: "http://selenium-standalone-chrome:4444/wd/hub"
     MOODLE_START_BEHAT_SERVERS: "NO"
-    NODE_VERSION: "v20.16.0"
+    NODE_VERSION: "v22.21.0"
     COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer/cache"
-    MOODLE_REPO: "https://gitlab-ci-token:${GROUP_READ_ONLY_TOKEN}@gitlab.uni-graz.at/715-scrum1/grp_moodle/moodle.git"
-    NVM_VERSION: "v0.40.1"
+    MOODLE_REPO: "https://gitlab-ci-token:${MOODLE_READ_ONLY}@gitlab.uni-graz.at/715-scrum1/grp_moodle/moodle.git"
+    NVM_VERSION: "v0.40.3"
   cache:
     paths:
       - .composer/cache
@@ -39,24 +39,16 @@ moodle_plugin_ci:
     - chmod u+x ci/bin/moodle-plugin-ci
     - chmod u+x ci/bin/*
     - umask u+x
-    # Add AMC SSH Key
-    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
-    - eval $(ssh-agent -s)
-    - echo -n "$AMC_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    # This should be replaced with a proper known_hosts (see https://docs.gitlab.com/ee/ci/ssh_keys/)
-    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" >> ~/.ssh/config
     # Install booktool_wordimport
     - rm -rf moodle-plugin-ci-plugins/moodle-booktool_wordimport
-    - moodle-plugin-ci add-plugin --branch v1.4.12 ecampbell/moodle-booktool_wordimport
+    - moodle-plugin-ci add-plugin --branch master ecampbell/moodle-booktool_wordimport
     # Install Moodle (ommit the --moodle argument if not needed)
     - cd $CI_PROJECT_DIR
     - moodle-plugin-ci install --moodle=$MOODLE_DIR --db-type=pgsql --db-host=postgres # -vvv
     - cd $MOODLE_DIR
     - composer install
     - php -S $IPADDRESS:8000 -t $MOODLE_DIR > /dev/null 2>&1 &
-    - php admin/tool/behat/cli/init.php --add-core-features-to-theme --parallel=1 --optimize-runs=@local_ffhs_exam_toolbox
+    - php $BEHAT_INIT_FILE --add-core-features-to-theme --parallel=1 --optimize-runs=@local_ffhs_exam_toolbox
   script:
     # Documentation for each step: https://moodlehq.github.io/moodle-plugin-ci/Help.html
     - moodle-plugin-ci phplint
@@ -79,6 +71,7 @@ moodle_plugin_ci:
 
   parallel:
     matrix:
-      - MOODLE_BRANCH: [MOODLE_405_STABLE]
-        MOODLE_PHP_IMAGE: ["moodlehq/moodle-php-apache:8.1"]
-        POSTGRES_IMAGE: ["postgres:14-alpine"]
+      - MOODLE_BRANCH: ["MOODLE_501_STABLE"]
+        BEHAT_INIT_FILE: ["public/admin/tool/behat/cli/init.php"]
+        MOODLE_PHP_IMAGE: ["moodlehq/moodle-php-apache:8.4"]
+        POSTGRES_IMAGE: ["postgres:18-alpine"]
