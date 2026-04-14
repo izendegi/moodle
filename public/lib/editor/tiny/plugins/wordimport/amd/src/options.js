@@ -29,7 +29,6 @@ import {
 import {pluginName} from './common';
 
 // Helper variables for the option names.
-const heading1StyleLevelName = getPluginOptionName(pluginName, 'heading1StyleLevel');
 const wordFilePickerOptionName = getPluginOptionName(pluginName, 'wordFilePickerOption');
 
 /**
@@ -45,10 +44,6 @@ export const register = (editor) => {
 
     // For each option, register it with the editor.
     // Valid type are defined in https://www.tiny.cloud/docs/tinymce/6/apis/tinymce.editoroptions/
-    registerOption(heading1StyleLevelName, {
-        processor: 'int',
-    });
-
     registerOption(wordFilePickerOptionName, {
         processor: 'object',
         "default": {},
@@ -63,18 +58,10 @@ export const register = (editor) => {
 };
 
 /**
- * Fetch the heading1StyleLevel value for this editor instance.
- *
- * @param {tinyMCE} editor The editor instance to fetch the value for
- * @returns {object} The value of the heading1StyleLevel option
- */
-export const getHeading1StyleLevel = (editor) => editor.options.get(heading1StyleLevelName);
-
-/**
  * Fetch the wordFilePickerOptionName value for this editor instance.
  *
  * @param {tinyMCE} editor The editor instance to fetch the value for
- * @returns {object} The value of the heading1StyleLevel option
+ * @returns {object} The filepicker object.
  */
 export const getWordFilePickerOption = (editor) => editor.options.get(wordFilePickerOptionName);
 

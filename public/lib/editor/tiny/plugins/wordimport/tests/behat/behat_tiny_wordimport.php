@@ -157,4 +157,3 @@ class behat_tiny_wordimport extends behat_base implements \core_behat\settable_e
         }
     }
 }
-

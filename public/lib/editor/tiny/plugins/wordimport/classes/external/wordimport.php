@@ -80,7 +80,7 @@ class wordimport extends external_api {
         self::validate_context($context);
 
         // The rest of this function is forked from atto_wordimport by Eoin Campbell.
-        list($context, $course, $cm) = get_context_info_array($contextid);
+        [$context, $course, $cm] = get_context_info_array($contextid);
 
         // Check that this user is logged in before proceeding.
         require_login($course, false, $cm);

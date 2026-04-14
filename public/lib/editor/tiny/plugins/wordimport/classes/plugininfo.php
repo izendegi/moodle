@@ -30,6 +30,7 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/repository/lib.php');
 
 use context;
+use editor_tiny\editor;
 use editor_tiny\plugin;
 use editor_tiny\plugin_with_buttons;
 use editor_tiny\plugin_with_menuitems;
@@ -38,7 +39,7 @@ use editor_tiny\plugin_with_configuration;
 /**
  * Pluginfo class which handles all information which is passed to the TinyMCE editor.
  */
-class plugininfo extends plugin implements plugin_with_configuration, plugin_with_buttons, plugin_with_menuitems {
+class plugininfo extends plugin implements plugin_with_buttons, plugin_with_configuration, plugin_with_menuitems {
     /**
      * Add buttons to Tiny-Editor.
      *
@@ -74,7 +75,7 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
         context $context,
         array $options,
         array $fpoptions,
-        ?\editor_tiny\editor $editor = null
+        ?editor $editor = null
     ): bool {
         // Hack to make neither PHP Code Checker nor PHP Mess Detector complain.
         unset($options, $fpoptions, $editor);
@@ -87,14 +88,14 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
      * @param context $context
      * @param array $options
      * @param array $fpoptions
-     * @param \editor_tiny\editor|null $editor
+     * @param editor|null $editor
      * @return array
      */
     public static function get_plugin_configuration_for_context(
         context $context,
         array $options,
         array $fpoptions,
-        ?\editor_tiny\editor $editor = null
+        ?editor $editor = null
     ): array {
         // Hack to make neither PHP Code Checker nor PHP Mess Detector complain.
         unset($options, $fpoptions, $editor);
@@ -109,9 +110,6 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
         $filepicker->client_id = uniqid();
         $filepicker->env = 'editor';
         return [
-            // Your values go here.
-            // These will be mapped to a namespaced EditorOption in Tiny.
-            'heading1StyleLevel' => 'TODO Calculate your values here',
             'wordFilePickerOption' => $filepicker,
         ];
     }
