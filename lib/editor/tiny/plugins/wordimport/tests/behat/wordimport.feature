@@ -22,6 +22,7 @@ Feature: Tiny editor admin settings for wordimport plugin
       | capability          | permission | role           | contextlevel | reference |
       | tiny/wordimport:add | Prohibit   | editingteacher | Course       | C1        |
     When I am on the "PageName1" "page activity editing" page logged in as "teacher1"
+    And I wait until the page is ready
     Then "Import Word File" "button" should not exist
 
   @javascript
