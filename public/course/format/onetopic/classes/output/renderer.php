@@ -52,10 +52,10 @@ class renderer extends section_renderer {
      * course format templatables can be rendered using the core_course/local/* templates.
      * Format plugins are free to override the default template location using render_xxx methods as usual.
      *
-     * @param \renderable $widget instance with renderable interface
+     * @param \core\output\renderable $widget instance with renderable interface
      * @return string the widget HTML
      */
-    public function render(\renderable $widget) {
+    public function render(\core\output\renderable $widget) {
         global $CFG;
         $fullpath = str_replace('\\', '/', get_class($widget));
 
@@ -106,11 +106,11 @@ class renderer extends section_renderer {
     /**
      * In Moodle 4.5 we may have sub-sections.
      * We override this here and use existing local code for subtiles pending full refactoring.
-     * @param \renderable $widget
+     * @param \core\output\renderable $widget
      * @return bool|string
      * @throws \coding_exception
      * @throws \dml_exception
-     * @throws \moodle_exception
+     * @throws \core\exception\moodle_exception
      */
     public function render_delegatedsection($widget) {
         $displaymode = $widget->get_displaymode();

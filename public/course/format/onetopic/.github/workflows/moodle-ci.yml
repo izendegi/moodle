@@ -1,4 +1,4 @@
-# Copied from https://github.com/moodlehq/moodle-plugin-ci/blob/master/gha.dist.yml
+# Copied from https://github.com/moodlehq/moodle-plugin-ci/blob/main/.github/workflows/test.yml
 
 name: Moodle Plugin CI
 
@@ -10,7 +10,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14
+        image: postgres:15
         env:
           POSTGRES_USER: 'postgres'
           POSTGRES_HOST_AUTH_METHOD: 'trust'
@@ -32,19 +32,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Moodle 5.0, PHP 8.2, MariaDB
+          # Moodle 5.1, PHP 8.2, MariaDB
           - php: '8.2'
-            moodle-branch: 'MOODLE_500_STABLE'
+            moodle-branch: 'MOODLE_501_STABLE'
             database: mariadb
             plugin-ci: ^4
-          # Moodle 5.0, PHP 8.3, MariaDB
-          - php: '8.3'
-            moodle-branch: 'MOODLE_500_STABLE'
-            database: mariadb
-            plugin-ci: ^4
-          # Moodle 5.0, PHP 8.2, PostgreSQL
-          - php: '8.3'
-            moodle-branch: 'MOODLE_500_STABLE'
+          # Moodle 5.1, PHP 8.2, PostgreSQL
+          - php: '8.4'
+            moodle-branch: 'MOODLE_501_STABLE'
             database: pgsql
             plugin-ci: ^4
     steps:
@@ -120,7 +115,7 @@ jobs:
       - name: Behat features
         id: behat
         if: ${{ !cancelled() }}
-        run: moodle-plugin-ci behat --profile chrome
+        run: moodle-plugin-ci behat --profile chrome --scss-deprecations
 
       - name: Upload Behat Faildump
         if: ${{ failure() && steps.behat.outcome == 'failure' }}
