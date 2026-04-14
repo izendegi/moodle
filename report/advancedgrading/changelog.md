@@ -1,3 +1,6 @@
+### Version 1.05 Apr 2026
+Confirmed compatibility with Moodle 5.2.
+
 ### Version 1.04 Oct 2025
 Confirmed compatibility with Moodle 5.1.
 
@@ -6,7 +9,7 @@ Exported files (Excel or CSV) now have a name that combines the course name and 
 Thanks to  Dragos Suciu for suggesting this feature
 https://github.com/marcusgreen/moodle-report_advancedgrading/issues/45
 
-### Version 1.03 JUly 2025
+### Version 1.03 July 2025
 Add a separate advancedgrading/view capability, so people can be granted the ability to view without being able to edit.
 Useful for external examiners/moderators. With thanks to Jordi Pujol-Ahulló for the idea, the code, testing and all round positive attitude.
 
