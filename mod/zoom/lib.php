@@ -71,7 +71,7 @@ function zoom_add_instance(stdClass $zoom, ?mod_zoom_mod_form $mform = null) {
     global $CFG, $DB;
     require_once($CFG->dirroot . '/mod/zoom/locallib.php');
 
-    if (defined('PHPUNIT_TEST') && PHPUNIT_TEST) {
+    if ((defined('PHPUNIT_TEST') && PHPUNIT_TEST) || (defined('BEHAT_TEST') && BEHAT_TEST)) {
         $zoom->id = $DB->insert_record('zoom', $zoom);
         zoom_grade_item_update($zoom);
         zoom_calendar_item_update($zoom);
@@ -871,6 +871,14 @@ function zoom_reset_userdata($data) {
         $status[] = [
             'component' => $componentstr,
             'item' => get_string('meetingrecordingviewsdeleted', 'zoom'),
+            'error' => false,
+        ];
+
+        // The Zoom reset checkbox resets all user grades, always.
+        zoom_reset_gradebook($data->courseid);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('grades'),
             'error' => false,
         ];
     }
