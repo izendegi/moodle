@@ -314,7 +314,7 @@ class webservice {
                         if ($header['x-ratelimit-remaining'] == 0 && !empty($retryafter)) {
                             set_config('retry-after', $retryafter, 'zoom');
                             throw new api_limit_exception($response->message, $response->code, $retryafter);
-                        } else if (!(defined('PHPUNIT_TEST') && PHPUNIT_TEST)) {
+                        } else if (!((defined('PHPUNIT_TEST') && PHPUNIT_TEST) || (defined('BEHAT_TEST') && BEHAT_TEST))) {
                             // When running CLI we might want to know how many calls remaining.
                             debugging('x-ratelimit-remaining = ' . $header['x-ratelimit-remaining']);
                         }
@@ -322,7 +322,7 @@ class webservice {
 
                     debugging('Received 429 response, sleeping ' . strval($timediff) .
                             ' seconds until next retry. Current retry: ' . $this->makecallretries);
-                    if ($timediff > 0 && !(defined('PHPUNIT_TEST') && PHPUNIT_TEST)) {
+                    if ($timediff > 0 && !((defined('PHPUNIT_TEST') && PHPUNIT_TEST) || (defined('BEHAT_TEST') && BEHAT_TEST))) {
                         sleep($timediff);
                     }
                     return $this->make_call($path, $data, $method);
@@ -558,7 +558,7 @@ class webservice {
 
         // Set a default meeting password requirment if it is not present.
         if (!isset($meetingsecurity->meeting_password_requirement)) {
-              $meetingsecurity->meeting_password_requirement = (object) self::DEFAULT_MEETING_PASSWORD_REQUIREMENT;
+            $meetingsecurity->meeting_password_requirement = (object) self::DEFAULT_MEETING_PASSWORD_REQUIREMENT;
         }
 
         // Set a default encryption setting if it is not present.
@@ -790,10 +790,12 @@ class webservice {
 
         $data['tracking_fields'] = $tfarray;
 
-        if (isset($zoom->breakoutrooms)) {
+        if (get_config('zoom', 'preassignbreakoutrooms') && isset($zoom->breakoutrooms)) {
             $breakoutroom = ['enable' => true, 'rooms' => $zoom->breakoutrooms];
-            $data['settings']['breakout_room'] = $breakoutroom;
+        } else {
+            $breakoutroom = ['enable' => false];
         }
+        $data['settings']['breakout_room'] = $breakoutroom;
 
         return $data;
     }
@@ -1133,9 +1135,26 @@ class webservice {
         // Classic: recording:read:admin.
         // Granular: cloud_recording:read:list_recording_files:admin.
         $url = 'meetings/' . $this->encode_uuid($meetingid) . '/recordings';
-        $response = $this->make_call($url);
 
-        if (!empty($response->recording_files)) {
+        try {
+            $response = $this->make_call($url);
+        } catch (not_found_exception $e) {
+            // If the meeting was not found (1001) or there are no recordings (3301), return an empty array.
+            return [];
+        }
+
+        if (empty($response->recording_files)) {
+            if (!isset($response->recording_count)) {
+                throw new bad_request_exception('recording_count: undefined', 400);
+            }
+
+            $recordingcount = (int) $response->recording_count;
+            $audiocount = count($response->participant_audio_files);
+            if ($recordingcount !== $audiocount) {
+                // If there are no recording files and the recording count does not match, throw an exception.
+                throw new bad_request_exception("recording_count: $recordingcount != participant_audio_files: $audiocount", 400);
+            }
+        } else {
             foreach ($response->recording_files as $recording) {
                 $url = $recording->play_url ?? $recording->download_url ?? null;
                 if (!empty($url) && isset($allowedrecordingtypes[$recording->file_type])) {
@@ -1240,7 +1259,9 @@ class webservice {
             $this->get_access_token();
         }
 
-        mtrace('checking has_scope(' . implode(' || ', $scopes) . ')');
+        if (CLI_SCRIPT) {
+            mtrace('checking has_scope(' . implode(' || ', $scopes) . ')');
+        }
 
         $matchingscopes = \array_intersect($scopes, $this->scopes);
         return !empty($matchingscopes);
