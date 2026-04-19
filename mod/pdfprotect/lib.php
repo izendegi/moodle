@@ -35,7 +35,7 @@ require_once("{$CFG->dirroot}/mod/pdfprotect/lib.php");
  *
  * @param string $feature FEATURE_xx constant for requested feature
  *
- * @return mixed True if module supports feature, false if not, null if doesn't know
+ * @return bool|int|string|null True if module supports feature, false if not, null if doesn't know
  */
 function pdfprotect_supports($feature) {
     switch ($feature) {
@@ -62,7 +62,7 @@ function pdfprotect_supports($feature) {
         case FEATURE_MOD_ARCHETYPE:
             return MOD_ARCHETYPE_RESOURCE;
         case FEATURE_MOD_PURPOSE:
-            return MOD_PURPOSE_CONTENT;
+            return 'content';
         default:
             return null;
     }
@@ -213,9 +213,11 @@ function pdfprotect_get_coursemodule_info($coursemodule) {
     require_once("{$CFG->libdir}/filelib.php");
     require_once("{$CFG->libdir}/completionlib.php");
 
-    if (!$pdfprotect = $DB->get_record("pdfprotect",
+    if (!$pdfprotect = $DB->get_record(
+        "pdfprotect",
         ["id" => $coursemodule->instance],
-        "id, name, display, revision, intro, introformat")) {
+        "id, name, display, revision, intro, introformat"
+    )) {
         return null;
     }
 
@@ -231,15 +233,15 @@ function pdfprotect_get_coursemodule_info($coursemodule) {
 /**
  * Lists all browsable file areas
  *
- * @package  mod_pdfprotect
- * @category files
- *
- * @param stdClass $course  course object
- * @param stdClass $cm      course module object
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
  * @param stdClass $context context object
  *
  * @return array
  * @throws coding_exception
+ * @category files
+ *
+ * @package  mod_pdfprotect
  */
 function pdfprotect_get_file_areas($course, $cm, $context) {
     $areas = [];
@@ -251,21 +253,21 @@ function pdfprotect_get_file_areas($course, $cm, $context) {
 /**
  * File browsing support for pdfprotect module content area.
  *
- * @package  mod_pdfprotect
- * @category files
- *
  * @param file_browser $browser file browser instance
- * @param stdClass $areas       file areas
- * @param stdClass $course      course object
- * @param stdClass $cm          course module object
- * @param context $context      context object
- * @param string $filearea      file area
- * @param int $itemid           item ID
- * @param string $filepath      file path
- * @param string $filename      file name
+ * @param stdClass $areas file areas
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
+ * @param context $context context object
+ * @param string $filearea file area
+ * @param int $itemid item ID
+ * @param string $filepath file path
+ * @param string $filename file name
  *
  * @return file_info instance or null if not found
  * @throws coding_exception
+ * @package  mod_pdfprotect
+ * @category files
+ *
  */
 function pdfprotect_get_file_info($browser, $areas, $course, $cm, $context, $filearea, $itemid, $filepath, $filename) {
     global $CFG;
@@ -292,7 +294,16 @@ function pdfprotect_get_file_info($browser, $areas, $course, $cm, $context, $fil
         }
 
         return new pdfprotect_content_file_info(
-            $browser, $context, $storedfile, $urlbase, $areas[$filearea], true, true, true, false);
+            $browser,
+            $context,
+            $storedfile,
+            $urlbase,
+            $areas[$filearea],
+            true,
+            true,
+            true,
+            false
+        );
     }
 
     // Note: pdfprotect_intro handled in file_browser automatically.
@@ -303,20 +314,20 @@ function pdfprotect_get_file_info($browser, $areas, $course, $cm, $context, $fil
 /**
  * Serves the pdfprotect files.
  *
- * @package  mod_pdfprotect
- * @category files
- *
- * @param stdClass $course    course object
- * @param stdClass $cm        course module object
- * @param context $context    context object
- * @param string $filearea    file area
- * @param array $args         extra arguments
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
+ * @param context $context context object
+ * @param string $filearea file area
+ * @param array $args extra arguments
  * @param bool $forcedownload whether or not force download
- * @param array $options      additional options affecting the file serving
+ * @param array $options additional options affecting the file serving
  *
  * @return bool false if file not found, does not return if found - just send the file
  * @throws coding_exception
  * @throws dml_exception
+ * @package  mod_pdfprotect
+ * @category files
+ *
  */
 function pdfprotect_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
     global $DB;
@@ -449,6 +460,8 @@ function pdfprotect_readfile_accel($file, $mimetype, $accelerate) {
             }
             if ($ranges) {
                 byteserving_send_file($handle, $mimetype, $ranges, $file->get_filesize());
+                fclose($handle);
+                exit;
             }
         }
     } else {
@@ -473,20 +486,22 @@ function pdfprotect_readfile_accel($file, $mimetype, $accelerate) {
         $size = min($left, 65536);
         $buffer = fread($handle, $size);
         if ($buffer === false) {
+            fclose($handle);
             return;
         }
         echo $buffer;
         $left -= $size;
     }
 
+    fclose($handle);
     exit;
 }
 
 /**
  * Return a list of page types
  *
- * @param string $pagetype         current page type
- * @param stdClass $parentcontext  Block's parent context
+ * @param string $pagetype current page type
+ * @param stdClass $parentcontext Block's parent context
  * @param stdClass $currentcontext Current context of block
  *
  * @return array
@@ -545,13 +560,14 @@ function pdfprotect_export_contents($cm, $baseurl) {
 /**
  * Mark the activity completed (if required) and trigger the course_module_viewed event.
  *
- * @param  stdClass $pdfprotect pdfprotect object
- * @param  stdClass $course     course object
- * @param  stdClass $cm         course module object
- * @param  stdClass $context    context object
+ * @param stdClass $pdfprotect pdfprotect object
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
+ * @param stdClass $context context object
  *
+ * @throws \coding_exception
+ * @throws \moodle_exception
  * @since Moodle 3.0
- * @throws coding_exception
  */
 function pdfprotect_view($pdfprotect, $course, $cm, $context) {
     // Trigger course_module_viewed event.
@@ -569,22 +585,27 @@ function pdfprotect_view($pdfprotect, $course, $cm, $context) {
     // Completion.
     $completion = new completion_info($course);
     $completion->set_module_viewed($cm);
+
+    if ($completion->is_enabled($cm)) {
+        $completion->update_state($cm, COMPLETION_COMPLETE);
+    }
 }
 
 /**
  * Register the ability to handle drag and drop file uploads
  *
  * @return array containing details of the files / types the mod can handle
- * @throws coding_exception
+ * @throws \coding_exception
  */
 function pdfprotect_dndupload_register() {
-    return ["files" =>
-        [
+    return [
+        "files" =>
             [
-                "extension" => "pdf",
-                "message" => get_string("dnduploadpdfprotect", "mod_pdfprotect"),
+                [
+                    "extension" => "pdf",
+                    "message" => get_string("dnduploadpdfprotect", "mod_pdfprotect"),
+                ],
             ],
-        ],
     ];
 }
 
@@ -594,8 +615,8 @@ function pdfprotect_dndupload_register() {
  * @param object $uploadinfo details of the file / content that has been uploaded
  *
  * @return int instance id of the newly created mod
- * @throws coding_exception
- * @throws dml_exception
+ * @throws \coding_exception
+ * @throws \dml_exception
  */
 function pdfprotect_dndupload_handle($uploadinfo) {
     $pdfprotect = new stdClass();
@@ -617,7 +638,7 @@ function pdfprotect_dndupload_handle($uploadinfo) {
  * @param object $course
  *
  * @return void
- * @throws coding_exception
+ * @throws \coding_exception
  */
 function pdfprotect_print_header($pdfprotect, $cm, $course, $embed = false) {
     global $PAGE, $OUTPUT;
