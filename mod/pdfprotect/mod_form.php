@@ -34,10 +34,12 @@ require_once("{$CFG->libdir}/filelib.php");
 class mod_pdfprotect_mod_form extends moodleform_mod {
     /**
      * Function definition
+     *
+     * @throws \coding_exception
      */
     public function definition() {
         global $CFG;
-        $mform =& $this->_form;
+        $mform = &$this->_form;
 
         $mform->addElement("header", "general", get_string("general", "form"));
         $mform->addElement("text", "name", get_string("name"), ["size" => "48"]);
@@ -85,14 +87,11 @@ class mod_pdfprotect_mod_form extends moodleform_mod {
     }
 
     /**
+     * phpcs:disable Generic.CodeAnalysis.UselessOverridingMethod.Found
+     *
      * Function definition_after_data
      */
     public function definition_after_data() {
-        if ($this->current->instance) {
-            // Pdfprotect not migrated yet.
-            return;
-        }
-
         parent::definition_after_data();
     }
 
@@ -102,8 +101,8 @@ class mod_pdfprotect_mod_form extends moodleform_mod {
      * @param $data
      * @param $files
      *
-     * @return mixed
-     * @throws coding_exception
+     * @return array
+     * @throws \coding_exception
      */
     public function validation($data, $files) {
         global $USER;
@@ -130,8 +129,15 @@ class mod_pdfprotect_mod_form extends moodleform_mod {
             // Set a default main file.
             if (!$mainfile) {
                 $file = reset($files);
-                file_set_sortorder($file->get_contextid(), $file->get_component(), $file->get_filearea(), $file->get_itemid(),
-                    $file->get_filepath(), $file->get_filename(), 1);
+                file_set_sortorder(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename(),
+                    1
+                );
             }
         }
         return $errors;
