@@ -4,6 +4,10 @@ Plugin versioning is derived from Moodle releases, it does not comply with the s
 
 The format of this change log follows the advice given at [Keep a CHANGELOG](https://keepachangelog.com).
 
+## [v4.5.11.01](https://github.com/mutms/moodle-tool_muloginas/compare/v4.5.10.06...v4.5.11.01) - 2026-04-18
+
+- No changes
+
 ## [v4.5.10.06](https://github.com/mutms/moodle-tool_muloginas/compare/v4.5.10.05...v4.5.10.06) - 2026-03-29
 
 - No changes
