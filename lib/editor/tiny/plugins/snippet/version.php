@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'tiny_snippet';
-$plugin->release = '1.0.3 (Build 2025071000)';
+$plugin->release = '1.0.4 (Build 2026042000)';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->requires = 2022112800;//Moodle 4.1.0
-$plugin->version = 2025071000;
+$plugin->requires = 2023100900; // Requires Moodle 4.3.
+$plugin->version = 2026042000;

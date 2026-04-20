@@ -1,3 +1,7 @@
+Version 1.0.4 (Build 2026042000)
+- Removed modal_factory and modal_registry calls
+- Updated to require Moodle 4.3
+
 Version 1.0.3 (Build 2025071000)
 - Added better formatting for text input fields
 - Added ability to use Textarea fields in the snippet popup form
