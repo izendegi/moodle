@@ -1,0 +1,165 @@
+@font-face {
+    font-family: FreeSans;
+    /* This URL is necessary as it is modified to call style.php, that does only look for default.ttf in the font folders. */
+    src: url("../../../../lib/default.ttf");
+}
+
+.learningmap-menubar {
+    padding: 0;
+}
+
+#learningmap-advanced-settings-icon {
+    font-size: x-large;
+    cursor: pointer;
+}
+
+.learningmap-render-loading {
+    text-align: center;
+    font-size: large;
+}
+
+.learningmap-mapcontainer {
+    border-color: black;
+    border-width: 1px;
+    border-style: solid;
+}
+
+#learningmap-activity-setting {
+    position: absolute;
+    --pos-x: 0;
+    --pos-y: 0;
+    --map-width: 800;
+    --map-height: 100;
+    display: none;
+    left: 0;
+    top: 0;
+    transform:
+        translate(
+            min(
+                var(--pos-x),
+                calc(var(--map-width) - 100%)
+            ),
+            min(
+                var(--pos-y),
+                calc(var(--map-height) - 100%)
+            )
+        );
+    z-index: 1;
+}
+
+#learningmap-advanced-settings {
+    position: absolute;
+    z-index: 1;
+    right: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 767.98px) {
+    #learningmap-advanced-settings {
+        left: 0;
+        right: 0;
+    }
+}
+
+#learningmap-advanced-settings .col {
+    min-width: 0;
+}
+
+#fitem_id_introeditor_text {
+    display: none;
+}
+
+.learningmap-scaling-svg-container {
+    position: relative;
+    min-height: 100px;
+    width: 100%;
+    max-width: 90vw;
+}
+
+.learningmap-scaling-svg.learningmap-slicemode {
+    width: auto;
+}
+
+.learningmap-scaling-svg {
+    vertical-align: top;
+    width: 100%;
+    left: 0;
+    top: 0;
+}
+
+.learningmap-menubar input[type="color"] {
+    width: 2rem;
+}
+
+.learningmap-editor-main {
+    width: 100%;
+    position: relative;
+}
+
+#page-mod-learningmap-mod #fitem_id_svgcode {
+    display: none;
+}
+
+.learningmap-used-activity {
+    color: green;
+}
+
+.learningmap-disabled-activity {
+    color: lightsalmon;
+}
+
+.learningmap-render-container {
+    width: 100%;
+}
+
+@font-face {
+    font-family: 'Learningmap';
+    src: url([[font:mod_learningmap|learningmap.eot]]);
+    src:
+        url([[font:mod_learningmap|learningmap.eot]]?#iefix) format('embedded-opentype'),
+        url([[font:mod_learningmap|learningmap.woff]]) format('woff'),
+        url([[font:mod_learningmap|learningmap.ttf]]) format('truetype'),
+        url([[font:mod_learningmap|learningmap.svg]]#Learningmap) format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+[class*='learningmap-icon']:before {
+    display: inline-block;
+    font-family: 'Learningmap';
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.learningmap-icon:before {
+    content: 'A';
+    padding-right: 0.5rem;
+}
+
+.learningmap-backlink {
+    padding-top: 1rem;
+}
+
+.learningmap-container {
+    width: 100%;
+}
+
+.learningmap_description_form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.learningmap_description_form input,
+.learningmap_description_form textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+[dir="rtl"] #learningmap-activity-setting {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+}

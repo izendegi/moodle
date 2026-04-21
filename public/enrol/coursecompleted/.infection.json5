@@ -1,0 +1,19 @@
+{
+    "$schema": "https://raw.githubusercontent.com/infection/infection/0.32.0/resources/schema.json",
+    "source": {
+        "directories": [
+            ".",
+        ],
+    },
+    "mutators": {
+        "@default": true,
+    },
+    "phpUnit": {
+        "configDir": ".",
+    },
+    "logs": {
+        "text": "infection.log"
+    },
+    "initialTestsPhpOptions": "-dxdebug.mode=off -dpcov.enabled=1 -dpcov.directory=.",
+    "bootstrap": "./vendor/autoloadmoodle.php"
+}
