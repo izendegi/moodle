@@ -1,0 +1,16 @@
+.core_payment_gateways_modal .mucommerce .icon {
+    height: 40px;
+    width: auto;
+}
+
+.paygw-mucommerce-billing-form .collapsible-actions {
+	display: none !important;
+}
+
+.paygw-mucommerce-billing-form #id_billinghdr {
+   display: none;
+}
+
+.paygw-mucommerce-billing-form #id_billinghdr.display-elm {
+   display: block;
+}

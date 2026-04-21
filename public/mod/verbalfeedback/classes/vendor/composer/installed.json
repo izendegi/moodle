@@ -1,0 +1,117 @@
+{
+    "packages": [
+        {
+            "name": "dallgoot/yaml",
+            "version": "dev-master",
+            "version_normalized": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/dallgoot/yaml.git",
+                "reference": "973c8a646bbb984d93fd26166b1fcfe639bb9da5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/dallgoot/yaml/zipball/973c8a646bbb984d93fd26166b1fcfe639bb9da5",
+                "reference": "973c8a646bbb984d93fd26166b1fcfe639bb9da5",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "ext-pcre": "*",
+                "ext-spl": "*",
+                "lib-pcre": "*",
+                "php": ">=8.1"
+            },
+            "require-dev": {
+                "ext-reflection": "*",
+                "phan/phan": "*",
+                "phpmetrics/phpmetrics": "*",
+                "phpunit/phpunit": "^10",
+                "symfony/yaml": "^7.3"
+            },
+            "time": "2025-06-11T08:27:09+00:00",
+            "default-branch": true,
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Dallgoot\\Yaml\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "dallgoot",
+                    "email": "stephane.rebai@gmail.com"
+                }
+            ],
+            "description": "Provides loader, dumper and an API for YAML content. Loader builds to equivalent data types in PHP 8.x",
+            "homepage": "https://github.com/dallgoot/yaml",
+            "keywords": [
+                "parser",
+                "reader",
+                "writer",
+                "yaml"
+            ],
+            "support": {
+                "issues": "https://github.com/dallgoot/yaml/issues",
+                "source": "https://github.com/dallgoot/yaml/tree/1.0.1"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/dallgoot",
+                    "type": "github"
+                }
+            ],
+            "install-path": "../dallgoot/yaml"
+        },
+        {
+            "name": "goat1000/svggraph",
+            "version": "3.20.2",
+            "version_normalized": "3.20.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/goat1000/SVGGraph.git",
+                "reference": "97f9c3e96c59c27df4e4e5c6444bfa91ddf80343"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/goat1000/SVGGraph/zipball/97f9c3e96c59c27df4e4e5c6444bfa91ddf80343",
+                "reference": "97f9c3e96c59c27df4e4e5c6444bfa91ddf80343",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "lib-pcre": "*",
+                "php": ">=5.4.0"
+            },
+            "suggest": {
+                "ext-iconv": "For non-ASCII text measurement support"
+            },
+            "time": "2024-10-23T12:40:51+00:00",
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Goat1000\\SVGGraph\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0-only"
+            ],
+            "description": "Generates SVG graphs",
+            "homepage": "http://www.goat1000.com/svggraph.php",
+            "support": {
+                "issues": "https://github.com/goat1000/SVGGraph/issues",
+                "source": "https://github.com/goat1000/SVGGraph/tree/3.20.2"
+            },
+            "install-path": "../goat1000/svggraph"
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}

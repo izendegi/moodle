@@ -1,0 +1,4 @@
+/* Do not display the reset user tour icon if a user has disabled Javascript in his browser. */
+body:not(.jsenabled) #localnavbarplus-resetusertour {
+    display: none;
+}

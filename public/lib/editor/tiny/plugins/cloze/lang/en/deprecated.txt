@@ -1,0 +1,2 @@
+helplinktext,tiny_cloze
+cloze:viewplugin,tiny_cloze

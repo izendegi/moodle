@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<COMPATIBILITY_MATRIX>
+    <PLUGIN name="mod_learningmap">
+        <PHP_EXTENSIONS>
+            <PHP_EXTENSION name="dom" level="required"></PHP_EXTENSION>
+            <PHP_EXTENSION name="libxml" level="required"></PHP_EXTENSION>
+            <PHP_EXTENSION name ="gd" level="required"></PHP_EXTENSION>
+        </PHP_EXTENSION>
+        <CUSTOM_CHECKS>
+            <CUSTOM_CHECK file="mod/learningmap/environmentchecks.php" function="mod_learningmap_check_freetype" level="required">
+                <FEEDBACK>
+                    <ON_CHECK message="freetype_required_message" />
+                </FEEDBACK>
+            </CUSTOM_CHECK>
+        </CUSTOM_CHECKS>
+    </PLUGIN>
+</COMPATIBILITY_MATRIX>

@@ -1,0 +1,134 @@
+/* PLUGIN UI STYLES */
+
+.elements-plugin-container {
+    .nav.nav-tabs {
+        flex-wrap: wrap;
+        .nav-item a.active {
+            background-color: #f6f7f8;
+            border-bottom: 1px solid #f6f7f8;
+            &.dropdown-item {
+                color: inherit;
+            }
+        }
+        &,
+        .dropdown-item {
+            font-size: .8rem;
+        }
+        .nav-link {
+            border: 1px solid #d3d3d3;
+            border-bottom: none;
+            border-top-right-radius: .2rem;
+            border-top-left-radius: .2rem;
+        }
+    }
+}
+
+.elements-buttons-preview {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 31vh;
+    max-height: 60vh;
+    background-color: #f6f7f8;
+}
+
+.elements-buttons-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: start;
+    row-gap: 12px;
+    column-gap: 12px;
+    margin-bottom: 0;
+    width: 100%;
+    overflow-y: auto;
+}
+
+.elements-hidden {
+    display: none !important;
+    max-height: 0;
+    padding: 0;
+}
+
+.elementst-dialog-button {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    height: 48px;
+    max-height: 100px;
+    width: 100%;
+    max-width: 100%;
+    background-color: #fff;
+    border: 1px solid #e4e9ec;
+    color: #535d76;
+    box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.10);
+    overflow-wrap: anywhere;
+    overflow: hidden;
+    padding: 0;
+    margin-bottom: 8px;
+}
+
+.elementst-dialog-button.elements-custom-icon .elements-button-text i {
+    position: absolute;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    min-height: 23px;
+    min-width: 49px;
+    top: auto;
+    left: 0;
+    border-right: 1px solid #dce3f0;
+}
+
+.elementst-dialog-button .elements-button-text {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.elementst-dialog-button .elements-button-text::before {
+    position: absolute;
+    left: 0;
+    height: 100%;
+    min-height: 23px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-right: 1px solid #dce3f0;
+    width: 60px;
+    height: 60px;
+    top: 3px;
+    align-content: center;
+}
+
+.elementst-dialog-button:hover,
+.elementst-dialog-button:active {
+    box-shadow: inset 0 0 3px rgba(22, 121, 249, 0.3);
+}
+
+.elementst-dialog-button .elements-button-text {
+    position: relative;
+    font-size: 12px;
+    font-weight: 500;
+    width: 100%;
+    text-align: left;
+    padding-left: 62px;
+}
+
+.elements-code-preview {
+    display: none;
+    overflow: hidden;
+    background-color: #fff;
+    border-top: 2px solid #f6f7f8;
+}
+
+.elements-code-preview .elements-component-code {
+    -webkit-transform: scale(0.6);
+    -ms-transform: scale(0.6);
+    transform: scale(0.6);
+    width: 160%;
+    margin-top: 35px;
+    position: absolute;
+}
+
