@@ -1,15 +1,19 @@
 import React, { Children, createContext, useCallback, useEffect, useRef, useState } from "react";
-import { getModule } from "../lib/moodle";
+import { getModule, isBehatRunning } from "../lib/moodle";
 import { ChevronLeftIconSolid } from "./Icons";
 import Str from "./Str";
 import { CircleButton } from "./Button";
 import { useString } from "../lib/hooks";
+import { classNames } from "../lib/utils";
 
-const slideClasses = "xp-absolute xp-inset-0 xp-transform-gpu xp-transition-transform xp-duration-300";
+const slideClasses = classNames(
+  "xp-absolute xp-inset-0",
+  !isBehatRunning() ? "xp-transform-gpu xp-transition-transform xp-duration-300" : "",
+);
 const slideNextClasses = `${slideClasses} xp-translate-x-full`;
 const slidePrevClasses = `${slideClasses} xp--translate-x-full`;
 
-export const Slider = ({ children: rawChildren, index }: { index: number; children: React.ReactNode[] }) => {
+export const Slider = ({ children: rawChildren, index }: { index: number; children: React.ReactNode | React.ReactNode[] }) => {
   const [internalIndex, setInternalIndex] = useState(index);
   const slidesRef = useRef<(HTMLDivElement | null)[]>([]);
   const children = Children.toArray(rawChildren).filter(Boolean);
@@ -110,6 +114,7 @@ export const Slide = ({
 export const SlideHeader = ({
   children,
   title,
+  subtitle,
   hasBack,
   onBack,
 }: {
@@ -117,6 +122,7 @@ export const SlideHeader = ({
   hasBack?: boolean;
   onBack?: () => void;
   title?: React.ReactNode;
+  subtitle?: React.ReactNode;
 }) => {
   return (
     <div className="xp-mb-2">
@@ -131,7 +137,10 @@ export const SlideHeader = ({
             </CircleButton>
           </div>
         ) : null}
-        <div className="xp-flex-1 xp-text-lg xp-font-bold">{title}</div>
+        <div className="xp-flex-1">
+          {subtitle ? <div className="xp-text-xs xp-leading-none">{subtitle}</div> : null}
+          <div className="xp-text-lg xp-font-bold xp-leading-none">{title}</div>
+        </div>
       </div>
       {children}
     </div>
@@ -158,7 +167,7 @@ export const SlideHeaderWithFilter = ({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onFilterChange && onFilterChange(e.currentTarget.value || "");
     },
-    [onFilterChange]
+    [onFilterChange],
   );
 
   return (
