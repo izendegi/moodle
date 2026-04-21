@@ -16,15 +16,6 @@
 //
 // https://levelup.plus
 
-/**
- * Reason.
- *
- * @package    block_xp
- * @copyright  2017 Frédéric Massart
- * @author     Frédéric Massart <fred@branchup.tech>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace block_xp\local\reason;
 
 /**
@@ -43,6 +34,7 @@ interface reason {
      * Get a signature.
      *
      * @return string
+     * @deprecated Since XP 20
      */
     public function get_signature();
 
@@ -50,6 +42,7 @@ interface reason {
      * Get the type.
      *
      * @return string
+     * @deprecated Since XP 20, use resolver instead.
      */
     public static function get_type();
 
@@ -57,6 +50,7 @@ interface reason {
      * Reloads the object from its signature.
      *
      * @param string $signature The signature.
+     * @deprecated Since XP 20
      * @return self
      */
     public static function from_signature($signature);
