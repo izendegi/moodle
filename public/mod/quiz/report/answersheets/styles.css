@@ -1,0 +1,297 @@
+#page-mod-quiz-report-answersheets-attemptsheet .attempt-sheet-header {
+    display: none;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet .attempt-sheet-header-gecko {
+    display: block;
+    position: absolute;
+    border-bottom: 1px solid grey;
+    left: 15px;
+    right: 15px;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet:not(.gecko) table.attempt-sheet-container {
+    width: 100%;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet:not(.gecko) table.attempt-sheet-container tr {
+    page-break-inside: auto;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet .que .content .question-instruction {
+    font-weight: bold;
+    font-style: italic;
+    padding-bottom: 10px;
+}
+
+#page-mod-quiz-report-answersheets-submitresponses .cancel-submit-responses {
+    float: left;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet .print-sheet,
+#page-mod-quiz-report-answersheets-submitresponses .cancel-submit-responses,
+#page-mod-quiz-report-answersheets-submitresponses .submit-responses {
+    margin-top: 15px;
+}
+
+/* Only hide the feedback for COMBINED_FEEDBACK_QTYPES. */
+#page-mod-quiz-report-answersheets-attemptsheet .que.oumultiresponse .outcome,
+#page-mod-quiz-report-answersheets-attemptsheet .que.match .outcome,
+#page-mod-quiz-report-answersheets-attemptsheet .que.multichoice .outcome,
+#page-mod-quiz-report-answersheets-attemptsheet .que.gapselect .outcome,
+#page-mod-quiz-report-answersheets-attemptsheet .que.truefalse .outcome,
+#page-mod-quiz-report-answersheets-attemptsheet .que.wordselect .outcome,
+#page-mod-quiz-report-answersheets-attemptsheet .que.combined .outcome {
+    display: none;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet .question-feedback h3.question-feedback-title {
+    font-size: 1.28571em;
+    line-height: 1.5;
+    font-weight: 700;
+    color: #00215b;
+    margin: 10px 0 0 0;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet .question-feedback .question-feedback-content {
+    padding: 14px;
+    background: #fff8eb;
+    border: 1px solid #fff8eb;
+    border-radius: 0;
+}
+
+/* For OU Multiple choice. */
+#page-mod-quiz-report-answersheets-attemptsheet .que.multichoice label {
+    display: inline;
+}
+/* End for OU Multiple choice. */
+
+/* For Select missing word. */
+#page-mod-quiz-report-answersheets-attemptsheet .que.gapselect span.control {
+    white-space: nowrap;
+}
+/* End for Select missing word. */
+
+/* For Combined question that contain Pattern Match. */
+#page-mod-quiz-report-answersheets-attemptsheet .que.combined .combined-pmatch-input > a,
+#page-mod-quiz-report-answersheets-submitresponses .que.combined .combined-pmatch-input > a {
+    display: none;
+}
+/* End for Combined question that contain Pattern Match*/
+
+/* For Record audio. */
+#page-mod-quiz-report-answersheets-attemptsheet .que.recordrtc .interactive-content-warning {
+    display: none;
+    border: 1px #000 solid;
+    padding: 10px;
+}
+/* End for Record audio. */
+
+/* For Matching. */
+#page-mod-quiz-report-answersheets-attemptsheet .que.match .formulation .ablock .answer ul.answer-list {
+    margin-bottom: 0;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet .que.match .formulation .ablock .answer td.text {
+    vertical-align: top;
+}
+/* End for Matching. */
+
+/* For TrueFalse. */
+#page-mod-quiz-report-answersheets-attemptsheet .que.truefalse .answer .specificfeedback {
+    display: inline;
+    background: #fff8eb;
+    border: 1px solid #fff8eb;
+    padding: 3px;
+    text-shadow: none;
+    text-indent: 0;
+}
+/* End for TrueFalse. */
+
+#page-mod-quiz-report-answersheets-attemptsheet .que span.answer-list-inline,
+#page-mod-quiz-report-answersheets-attemptsheet .que span.answer-list-inline code {
+    font-style: italic;
+    color: #7e0d08;
+}
+
+#page-mod-quiz-report-answersheets-submitresponses .submit-responses {
+    float: right;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet .im-controls input[type=submit],
+#page-mod-quiz-report-answersheets-submitresponses .im-controls input[type=submit],
+#page-mod-quiz-report-answersheets-attemptsheet .im-controls button[type=submit],
+#page-mod-quiz-report-answersheets-submitresponses .im-controls button[type=submit] {
+    display: none;
+}
+
+#page-mod-quiz-report-answersheets-attemptsheet #page-navbar .breadcrumb-nav {
+    padding-left: 20px;
+    padding-bottom: 20px;
+}
+
+#page-mod-quiz-report tr.lastchanged td {
+    background-color: #afa;
+}
+
+.path-mod-quiz-report-answersheets .que.truefalse .answer div.r0,
+.path-mod-quiz-report-answersheets .que.truefalse .answer div.r1 {
+    display: flex;
+    margin: 0.25rem 0;
+    align-items: flex-start;
+}
+
+#page-mod-quiz-report-answersheets-submitresponses .que.truefalse .answer div.r0,
+#page-mod-quiz-report-answersheets-submitresponses .que.truefalse .answer div.r1 {
+    align-items: center;
+}
+
+@media print {
+    /* Set the page to A4 size to prevent border lost. */
+    body#page-mod-quiz-report-answersheets-attemptsheet:not(.gecko) {
+        height: 297mm;
+        width: 210mm;
+    }
+
+    /* Nasty hack for Firefox. */
+    /* Unfortunately Firefox have problem with display: flex from Bootstrap. We need to change to display: block.*/
+    #page-mod-quiz-report-answersheets-attemptsheet.gecko #page-wrapper,
+    #page-mod-quiz-report-answersheets-attemptsheet.gecko #page,
+    #page-mod-quiz-report-answersheets-attemptsheet.gecko #page-content.row {
+        display: block;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet.gecko #page {
+        box-decoration-break: clone;
+    }
+    /* End nasty hack for Firefox. */
+
+    #page-mod-quiz-report-answersheets-attemptsheet .print-sheet {
+        display: none;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet #region-main {
+        border: none;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet:not(.gecko) .attempt-sheet-header {
+        display: block;
+        /* stylelint-disable */
+        background-color: white !important;
+        /* stylelint-enable */
+        position: relative;
+        z-index: 5;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet:not(.gecko) .attempt-sheet-header:after {
+        display: block;
+        content: '';
+        border-bottom: 1px solid grey;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet:not(.gecko) .attempt-sheet-header-gecko {
+        display: none;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet.gecko .attempt-sheet-header-gecko {
+        position: fixed;
+        left: 35px;
+        right: 35px;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet #page-navbar {
+        display: none;
+    }
+
+    /* Nasty hack to prevent the scrollbar appears in the Print view. */
+    #page-mod-quiz-report-answersheets-attemptsheet .que,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .formulation,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .formulation .question-instruction,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .formulation .qtext,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .formulation .ablock,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .formulation .qtext p,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .info,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .feedback,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .feedback p,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .specificfeedback,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .generalfeedback,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .rightanswer,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .im-feedback,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .question-feedback .question-feedback-content,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .question-feedback .question-feedback-content p {
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    /* End nasty hack. */
+
+    /* Extra space to replace the removed margin and padding. */
+    #page-mod-quiz-report-answersheets-attemptsheet .que:after,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .info:before,
+    #page-mod-quiz-report-answersheets-attemptsheet .que .formulation:after {
+        display: block;
+        content: '\A';
+        white-space: pre-wrap;
+        line-height: inherit;
+    }
+
+    /* For Ordering. */
+    /* We need to remove all the margin, padding and border to prevent page-break issue. */
+    /* Add extra newline '\A' to replace the removed margin and padding. */
+    #page-mod-quiz-report-answersheets-attemptsheet .que.ordering .sortablelist.active {
+        border: none;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet .que.ordering ul.sortablelist li {
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        page-break-inside: avoid;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet .que.ordering ul.sortablelist.horizontal:before {
+        display: block;
+        content: '\A';
+        white-space: pre-wrap;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet .que.ordering ul.sortablelist .orderingmargin {
+        height: 5px;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet .que.ordering ul.sortablelist .orderingmargin.horizontal {
+        position: absolute;
+        bottom: -5px;
+        width: 100%;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet .que.ordering ul.sortablelist .orderingwrapper {
+        display: inline-block;
+        position: relative;
+    }
+    /* End for Ordering. */
+
+    /* For Record audio. */
+    #page-mod-quiz-report-answersheets-attemptsheet .que.recordrtc .interactive-content-warning {
+        display: block;
+    }
+
+    #page-mod-quiz-report-answersheets-attemptsheet .que.recordrtc .no-recording-warning,
+    #page-mod-quiz-report-answersheets-attemptsheet .que.recordrtc .playback-ui-warning,
+    #page-mod-quiz-report-answersheets-attemptsheet .que.recordrtc .omp-wrapper,
+    #page-mod-quiz-report-answersheets-attemptsheet .que.recordrtc .interactive-media-player {
+        display: none;
+    }
+    /* End for Record audio. */
+
+    /* For Word Select. */
+    #page-mod-quiz-report-answersheets-attemptsheet .que.wordselect .qtext span.multiword {
+        border: none;
+    }
+    /* End for Word Select. */
+
+}
