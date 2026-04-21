@@ -1,0 +1,49 @@
+.tiny-orphaned .tiny_orphanedfiles-areaheading {
+    font-size: 20px;
+}
+
+@media only screen and (max-width: 750px) {
+    .tiny-orphaned .table-responsive {
+        width: calc(100vw - 40px);
+        overflow-x: auto;
+    }
+}
+
+.tiny-orphaned .delete {
+    color: #f00;
+}
+
+.tiny-orphaned .delete:hover {
+    color: #771b1b;
+}
+
+.tiny-orphaned .thumbnail {
+    width: 50px;
+    height: 50px;
+}
+
+.tiny-orphaned .areaheadingorphanedfilescounteronly {
+    color: #f00;
+}
+
+/* CSS-Stile für den Pfeil */
+.tiny-orphaned th[data-sort-order]::after {
+    content: "";
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 5px; /* Abstand zum Text */
+    vertical-align: middle;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+}
+
+/* Pfeil nach oben für aktuellen Status anzeigen */
+.tiny-orphaned th[data-sort-order="asc"]::after {
+    border-bottom: 5px solid black;
+}
+
+/* Pfeil nach unten für aktuellen Status anzeigen*/
+.tiny-orphaned th[data-sort-order="desc"]::after {
+    border-top: 5px solid black;
+}

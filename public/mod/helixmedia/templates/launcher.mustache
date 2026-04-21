@@ -1,0 +1,54 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_helixmedia/launcher
+
+    Performs a MEDIAL LTI Launch
+
+    Example context (json):
+    {"preid": "123", "extraid": "", "text": "Please wait", "size": 100, "hideimage": true}
+}}
+<!doctype html>
+<html>
+<head>
+    <title>MEDIAL LTI 1.0 Launch</title>
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+    </style>
+</head>
+<body>
+{{#postscript}}
+<script>
+    window.parent.postMessage('preid_{{preid}}', '*');
+</script>
+{{/postscript}}
+
+{{{legacyjsresize}}}
+
+{{#pleasewait}}
+{{>mod_helixmedia/pleasewait}}
+{{/pleasewait}}
+
+{{{launchcode}}}
+
+<script>
+function closethis() {
+    window.parent.postMessage('close_modal', '*');
+}
+</script>
+</body>
+</html>
