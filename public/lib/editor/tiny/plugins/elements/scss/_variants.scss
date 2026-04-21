@@ -1,0 +1,61 @@
+/* Component variants */
+
+/* Legacy */
+
+.elements-keyconcept.elements-full-width-variant,
+.elements-quote.elements-full-width-variant,
+.elements-dodontcards.elements-full-width-variant,
+.elements-dodontcards-do,
+.elements-dodontcards.elements-full-width-variant .elements-dodontcards-dont,
+.elements-figure.elements-full-width-variant,
+.elements-proceduralcontext.elements-full-width-variant,
+.elements-learningoutcomes.elements-full-width-variant,
+.elements-allpurposecard.elements-full-width-variant {
+    max-width: 100%;
+}
+
+.elements-tip.elements-full-width-variant,
+.elements-reminder.elements-full-width-variant,
+.elements-attention.elements-full-width-variant {
+    /* 100% - 1% due to the outbound icon */
+    max-width: 99%;
+}
+
+.elements-readingcontext.elements-full-width-variant,
+.elements-example.elements-full-width-variant,
+.elements-expectedfeedback.elements-full-width-variant {
+    /* 100% - 6% due to the shadow */
+    max-width: 94%;
+}
+
+/* Variants */
+
+/* .elementsv prefix instead of .elements only for the parent class of an element supporting variants */
+
+.elementsv-keyconcept.elements-full-width-variant,
+.elementsv-quote.elements-full-width-variant,
+.elementsv-dodontcards.elements-full-width-variant,
+.elementsv-dodontcards-do,
+.elementsv-dodontcards.elements-full-width-variant .elements-dodontcards-dont,
+.elementsv-figure.elements-full-width-variant,
+.elementsv-proceduralcontext.elements-full-width-variant,
+.elementsv-learningoutcomes.elements-full-width-variant,
+.elementsv-expectedfeedback.elements-full-width-variant,
+.elementsv-allpurposecard.elements-full-width-variant,
+.elementsv-custom-component.elements-full-width-variant {
+    max-width: 100%;
+}
+
+.elementsv-tip.elements-full-width-variant,
+.elementsv-reminder.elements-full-width-variant,
+.elementsv-attention.elements-full-width-variant {
+    /* 100% - 1% due to the outbound icon */
+    max-width: 99%;
+}
+
+.elementsv-readingcontext.elements-full-width-variant,
+.elementsv-example.elements-full-width-variant,
+.elementsv-expectedfeedback.elements-full-width-variant {
+    /* 100% - 6% due to the shadow */
+    max-width: 94%;
+}

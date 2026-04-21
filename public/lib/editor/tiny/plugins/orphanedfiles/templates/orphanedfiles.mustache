@@ -1,0 +1,154 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template tiny_orphanedfiles/orphanedfilescounteronly
+
+    Template to show a table with the list of orphaned files.
+
+    Example context (json):
+    {
+      "orphanedFiles": [
+        {
+          "filename": "testimage.jpg",
+          "filepath": "/",
+          "fullname": "testimage.jpg",
+          "size": "39814",
+          "filesize": "38.9 KB",
+          "sortorder": "0",
+          "author": "Admin User",
+          "license": "unknown",
+          "datemodified": "1707818232",
+          "datecreated": "1707818224",
+          "isref": false,
+          "refcount": 0,
+          "mimetype": "Bilddatei (JPEG)",
+          "type": "file",
+          "url": "http://localhost:8000/draftfile.php/5/user/draft/149878027/testimage.jpg",
+          "icon": "http://localhost:8000/theme/image.php?theme=sph&component=core&image=f%2Fjpeg-24",
+          "thumbnail": "http://localhost:8000/theme/image.php?theme=sph&component=core&image=f%2Fjpeg-80",
+          "status": 0,
+          "realthumbnail": "http://localhost:8000/draftfile.php/5/user/draft/149878027/testimage.jpg?preview=thumb&oid=1707818232",
+          "realicon": "http://localhost:8000/draftfile.php/5/user/draft/149878027/testimage.jpg?preview=tinyicon&oid=1707818232",
+          "image_width": 512,
+          "image_height": 512,
+          "className": "file-1"
+        },
+        {
+          "filename": "testimage.png",
+          "filepath": "/",
+          "fullname": "testimage.png",
+          "size": "1606518",
+          "filesize": "1.5 MB",
+          "sortorder": "0",
+          "author": "Admin User",
+          "license": "unknown",
+          "datemodified": "1706264779",
+          "datecreated": "1706264770",
+          "isref": false,
+          "refcount": 0,
+          "mimetype": "Bilddatei (PNG)",
+          "type": "file",
+          "url": "http://localhost:8000/draftfile.php/5/user/draft/149878027/testimage.png",
+          "icon": "http://localhost:8000/theme/image.php?theme=sph&component=core&image=f%2Fpng-24",
+          "thumbnail": "http://localhost:8000/theme/image.php?theme=sph&component=core&image=f%2Fpng-80",
+          "status": 0,
+          "realthumbnail": "http://localhost:8000/draftfile.php/5/user/draft/149878027/testimage?preview=thumb&oid=1706264779",
+          "realicon": "http://localhost:8000/draftfile.php/5/user/draft/149878027/testimage.png?preview=tinyicon&oid=1706264779",
+          "image_width": 1024,
+          "image_height": 1024,
+          "className": "file-3"
+        }
+      ],
+      "numberoforphanedfiles": 2,
+      "websitesettings": []
+    }
+
+}}
+
+<div class="tiny_orphanedfiles-container">
+    <div class="tiny_orphanedfiles-areaheading">{{numberoforphanedfiles}} {{#str}}areaheading, tiny_orphanedfiles {{/str}}</div>
+    <div class="tiny_orphanedfiles-areainfo">{{#str}}areainfo, tiny_orphanedfiles {{/str}}</div>
+    <div class="orphaned-table-wrapper table-responsive">
+        <table id="tiny_orphanedfiles_id_table-{{elementId}}" class="tiny_orphanedfiles table table-hover table-sm table-bordered">
+            <thead>
+            <tr>
+                <th class="select" scope="col" data-sortable="false" data-sort-order=""></th>
+                <th class="delete" scope="col" data-sortable="false" data-sort-order=""></th>
+                <th class="preview" scope="col" data-sortable="false" data-sort-order=""></th>
+                <th class="filename" scope="col" data-sortable="true" data-sort-order="" >{{#str}}tableheader:filename, tiny_orphanedfiles {{/str}}</th>
+                <th class="filesize" scope="col" data-sortable="true" data-sort-order="" >{{#str}}tableheader:filesize, tiny_orphanedfiles {{/str}}</th>
+                <th class="filepath" scope="col" data-sortable="true" data-sort-order="" >{{#str}}tableheader:filepath, tiny_orphanedfiles {{/str}}</th>
+                <th class="lastmodified" scope="col" data-sortable="true" data-sort-order="" >{{#str}}tableheader:lastmodified, tiny_orphanedfiles {{/str}}</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            {{#orphanedFiles}}
+                <tr class="orphaned-row {{className}}">
+                    <td class="checkbox">
+                        <input type="checkbox" name="{{filename}}">
+                    </td>
+                    <td>
+                        <span class="delete">
+                            {{#str}} tableheader:delete, tiny_orphanedfiles {{/str}}
+                        </span>
+                    </td>
+
+                    {{#realthumbnail}}
+                    <td>
+                        {{> tiny_orphanedfiles/previewimage}}
+                    </td>
+                    {{/realthumbnail}}
+
+                    {{^realthumbnail}}
+                    <td>
+                        {{> tiny_orphanedfiles/previewaudio}}
+                    </td>
+                    {{/realthumbnail}}
+
+                    <td class='details-filename' data-sort='{{filename}}'>
+                        <a href="{{url}}">{{filename}}</a>
+                        {{#isref}}
+                            <div class="details-isreference"><i class="fa fa-reply fa-flip-horizontal" aria-hidden="true" title="isReference"></i></div>
+                        {{/isref}}
+                        {{#websitesettings.showreferencecountenabled}}
+                            {{#refcount}}
+                                <div class="details-hasreference">
+                                    <i class="fa fa-chain" aria-hidden="true" title="{{#str}} details-hasreference-tooltip, tiny_orphanedfiles {{/str}}">
+                                        {{#str}} details-referencecounter, tiny_orphanedfiles {{/str}}{{.}}
+                                    </i>
+                                </div>
+                            {{/refcount}}
+                        {{/websitesettings.showreferencecountenabled}}
+                    </td>
+
+                    <td data-sort='{{size}}'>{{filesize}}{{#dimensions}}<br>{{.}}{{/dimensions}}</td>
+                    <td data-sort='{{filepath}}'>{{filepath}}</td>
+                    <td data-sort='{{datemodified}}'>{{datemodifiedFormated}}</td>
+                </tr>
+            {{/orphanedFiles}}
+            </tbody>
+
+        </table>
+    </div>
+    <button class="btn btn-primary deleteselected" type="button">{{#str}} deleteselected, tiny_orphanedfiles {{/str}}</button>
+</div>
+{{#js}}
+    require(['tiny_orphanedfiles/tablesorter'], function(tablesorter) {
+    tablesorter.init("tiny_orphanedfiles_id_table-{{elementId}}");
+    });
+{{/js}}
