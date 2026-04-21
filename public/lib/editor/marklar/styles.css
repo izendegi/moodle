@@ -1,0 +1,58 @@
+.marklar-wrapper {
+    padding: 4px;
+    background-color: #f2f2f2;
+    border: 1px solid #bbb;
+}
+
+.marklar-panel .btn + .btn {
+    margin-left: 0.25rem;
+}
+
+.marklar-panel::after {
+    content: " ";
+    display: block;
+    height: 0;
+    clear: both;
+}
+
+.marklar-wrapper [data-marklar-widget] {
+    margin-bottom: 10px;
+}
+
+.marklar-preview {
+    background-color: white;
+    margin: 0 0 10px;
+    border: 1px solid #ccc;
+    padding: 7px;
+    border-radius: 4px;
+    overflow: auto;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+}
+
+.marklar-preview-controls {
+    float: right;
+}
+
+.marklar-preview .marklar-preview-loading {
+    display: inline-block;
+    padding: 5px;
+    color: #ccc;
+}
+
+.marklar-syntax-controls {
+    display: inline-block;
+}
+
+.marklar-syntax-help {
+    padding: 4px 10px;
+    font-size: 80%;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 4px 4px 4px 4px;
+    -moz-border-radius: 4px 4px 4px 4px;
+    -webkit-border-radius: 4px 4px 4px 4px;
+}
+
+.marklar-syntax-help dd code {
+    line-height: 23px;
+}
