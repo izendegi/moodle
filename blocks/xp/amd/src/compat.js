@@ -26,12 +26,22 @@
 
 import DynamicForm from 'core_form/dynamicform';
 import Modal from 'core/modal';
-import ModalFactory from 'core/modal_factory';
 import ModalForm from 'core_form/modalform';
-import ModalRegistry from 'core/modal_registry';
 import Templates from 'core/templates';
 
 const IS_MODAL_TYPE_DEPRECATED = 'create' in Modal;
+
+/**
+ * Load an AMD module.
+ *
+ * @param {String} name
+ * @returns {Promise<*>}
+ */
+const getModuleAsync = (name) => {
+    return new Promise((resolve, reject) => {
+        require([name], resolve, reject);
+    });
+};
 
 /**
  * Render a template asynchronously.
@@ -69,15 +79,37 @@ export function createModal(config, ModalClass = Modal) {
         return ModalClass.create(config);
     }
 
-    const typeName = config.type ?? config.template;
-    let type = ModalRegistry.get(typeName);
-    if (!type) {
-        ModalRegistry.register(typeName, ModalClass, config.template);
-    }
+    return Promise.all([
+        getModuleAsync('core/modal_factory'),
+        getModuleAsync('core/modal_registry'),
+        getModuleAsync('core/modal_save_cancel'),
+        getModuleAsync('core/modal_cancel'),
+    ]).then(([ModalFactory, ModalRegistry, ModalSaveCancel, ModalCancel]) => {
+        let typeName = config.type ?? config.template;
 
-    return ModalFactory.create({
-        ...config,
-        type: typeName,
+        // If config does not provide the type or template, guess the type and template from the class object.
+        let legacyName = 'DEFAULT';
+        let legacyTemplate = 'core/modal';
+        if (!typeName) {
+            if (ModalClass === ModalSaveCancel) {
+                legacyName = 'SAVE_CANCEL';
+                legacyTemplate = 'core/modal_save_cancel';
+            } else if (ModalClass === ModalCancel) {
+                legacyName = 'CANCEL';
+                legacyTemplate = 'core/modal_cancel';
+            }
+        }
+
+        typeName = typeName ?? legacyName;
+        if (!ModalRegistry.get(typeName)) {
+            const templateName = config.template ?? legacyTemplate;
+            ModalRegistry.register(typeName, ModalClass, templateName);
+        }
+
+        return ModalFactory.create({
+            ...config,
+            type: typeName,
+        });
     });
 }
 
