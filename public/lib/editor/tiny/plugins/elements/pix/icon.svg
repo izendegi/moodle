@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.0"
+   width="87.788231mm"
+   height="87.036407mm"
+   viewBox="0 0 87.788228 87.036405"
+   id="svg216"
+   sodipodi:docname="icon.svg"
+   inkscape:version="1.3.1 (9b9bdc1480, 2023-11-25, custom)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs220" />
+  <sodipodi:namedview
+     id="namedview218"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="Mm"
+     showgrid="false"
+     inkscape:zoom="0.71790278"
+     inkscape:cx="-174.81476"
+     inkscape:cy="462.45816"
+     inkscape:window-width="1854"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg216" />
+  <path
+     id="path188-5"
+     d="M 47.97628,0.91272712 C 38.71393,8.542207 28.94034,24.988097 25.70216,10.864849 22.46399,-3.258413 2.4573182,13.221268 15.698818,19.104687 c 13.241522,5.88341 -4.77193,12.32596 -14.0342698,19.95544 0,0 0,0 0,0 7.62948,9.26235 24.0753818,19.03595 9.9521098,22.27412 -14.1232498,3.23817 2.35643,23.24484 8.239852,10.00333 5.88342,-13.2415 12.32597,4.77193 19.95545,14.03428 9.26235,-7.62949 19.03594,-24.07537 22.27412,-9.95212 3.23817,14.12325 23.24483,-2.35643 10.00333,-8.23984 -13.24151,-5.88341 4.77193,-12.32597 14.03427,-19.95545 0,0 0,0 0,0 -7.62948,-9.26234 -14.07203,-27.27578 -19.95544,-14.03427 -5.88342,13.2415 -22.3631,-6.76516 -8.23984,-10.00334 14.12325,-3.23817 -2.32264,-13.011769 -9.95212,-22.27410988"
+     style="display:inline;fill:#000000;fill-opacity:1;stroke:#000002;stroke-width:2.365;stroke-dasharray:none;stroke-opacity:1" />
+</svg>
