@@ -1,0 +1,39 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_helixmedia/modal
+
+    Creates a modal dialog and button
+
+    Example context (json):
+    {"preid": "123", "extraid": "", "text": "text"}
+}}
+<div id="mod_helixmedia_modal_{{preid}}{{extraid}}" class="modal fade" role="dialog" data-backdrop="false" >
+  <div class="modal-dialog" style="max-width:1000px" >
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">{{text}}</h4>
+        <button type="button" class="{{#bs5}}btn-{{/bs5}}close text-right" data-{{#bs5}}bs-{{/bs5}}dismiss="modal" aria-label="Close" id="mod_helixmedia_closemodal_{{preid}}{{extraid}}">
+          {{^bs5}}<span aria-hidden="true">&times;</span>{{/bs5}}
+        </button>
+      </div>
+      <div class="modal-body p-0 pt-2" id="mod_helixmedia_modal_body">
+          {{>mod_helixmedia/modalinner}}
+      </div>
+    </div>
+  </div>
+</div>
