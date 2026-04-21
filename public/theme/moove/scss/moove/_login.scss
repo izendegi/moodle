@@ -1,0 +1,131 @@
+.pagelayout-login {
+    #page {
+        max-width: 100%;
+        background: none;
+    }
+
+    .login-identityprovider-btn.facebook {
+        background-color: $facebook-color;
+        color: #fff;
+    }
+
+    .loginform {
+        .login-form-forgotpassword {
+            text-align: center;
+        }
+
+        .login-heading {
+            text-align: center;
+            font-weight: 500;
+        }
+    }
+}
+
+#page-login-signup {
+    .signupform .full-width-labels {
+        display: flex;
+        flex-wrap: wrap;
+
+        #fitem_id_username,
+        #fitem_id_password,
+        #fitem_id_firstname,
+        #fitem_id_lastname,
+        #fitem_id_city,
+        #fitem_id_country {
+            width: 50%;
+        }
+
+        #fitem_id_username,
+        #fitem_id_firstname,
+        #fitem_id_city {
+            padding-right: .5rem;
+        }
+
+        #fitem_id_password,
+        #fitem_id_lastname,
+        #fitem_id_country {
+            padding-left: .5rem;
+        }
+
+        #fitem_id_email,
+        #fitem_id_email2,
+        #fgroup_id_buttonar {
+            width: 100%;
+        }
+    }
+}
+
+@include media-breakpoint-up(md) {
+    #page-login-signup {
+        .login-container {
+            width: 640px !important; /* stylelint-disable-line declaration-no-important */
+        }
+    }
+}
+
+@include media-breakpoint-up(md) {
+    #page-login-index {
+        .login-container {
+            max-width: 100%;
+            width: 100% !important; /* stylelint-disable-line declaration-no-important */
+        }
+    }
+
+    .login-container {
+        width: 100% !important; /* stylelint-disable-line declaration-no-important */
+    }
+}
+
+@include media-breakpoint-down(md) {
+    #page-login-index {
+        #page {
+            padding-top: 1rem;
+        }
+
+        .login-container {
+            .loginform {
+                .left-column {
+                    padding-right: 0;
+                }
+
+                .right-column {
+                    padding-left: 0;
+                    border-left: none;
+
+                    .column-content {
+                        display: block;
+
+                        .login-heading {
+                            margin-top: 1rem;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #page-login-signup #page-content {
+        padding-top: 15px;
+
+        .login-container {
+            max-width: 100%;
+            padding: 1rem;
+
+            .mform {
+                padding: 0;
+
+                #fgroup_id_buttonar {
+                    .col-md-9 {
+                        .d-flex.flex-wrap.align-items-center {
+                            flex-direction: column;
+
+                            #id_submitbutton {
+                                margin-bottom: 1rem;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
