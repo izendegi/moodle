@@ -18,7 +18,7 @@
  * Displays the form and processes the form submission.
  *
  * @package    local_mailtest
- * @copyright  2015-2025 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2015-2026 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -38,7 +38,7 @@ global $CFG, $OUTPUT, $USER, $SITE, $PAGE;
 $homeurl = new moodle_url('/');
 require_login();
 if (!is_siteadmin()) {
-    redirect($homeurl, "This feature is only available for site administrators.", 5);
+    redirect($homeurl, get_string('siteadminsonly', 'local_mailtest'), 5);
 }
 
 // URL Parameters.
@@ -52,11 +52,7 @@ require_once(dirname(__FILE__) . '/classes/' . $pluginname . '_form.php');
 $title = get_string('pluginname', 'local_' . $pluginname);
 $heading = get_string('heading', 'local_' . $pluginname);
 $url = new moodle_url('/local/' . $pluginname . '/');
-if ($CFG->branch >= 25) { // Moodle 2.5+.
-    $context = context_system::instance();
-} else {
-    $context = get_system_context();
-}
+$context = context_system::instance();
 
 $PAGE->set_pagelayout('admin');
 $PAGE->set_url($url);
@@ -98,11 +94,12 @@ if (!$data) { // Display the form.
 
     $cronwarning = '';
     if ($CFG->branch >= 37) {
-        defined('MINSECS') || define('MINSECS', 200); // For pre-Moodle 3.9 compatibility.
+        defined('MINSECS') || define('MINSECS', 60); // For pre-Moodle 3.9 compatibility.
         $lastcron = get_config('tool_task', 'lastcronstart');
         $cronoverdue = ($lastcron < time() - 3600 * 24);
         $check = $PAGE->get_renderer('core', 'admin');
-        if ($cronoverdue) {
+        if ($cronoverdue && method_exists($check, 'cron_overdue_warning')) {
+            // Deprecated in Moodle 4.2 (MDL-74559); guard in case removed in future.
             $cronwarning .= $check->cron_overdue_warning($cronoverdue);
         }
 
@@ -110,7 +107,8 @@ if (!$data) { // Display the form.
         $expectedfrequency = isset($CFG->expectedcronfrequency) ? $CFG->expectedcronfrequency : MINSECS;
         $croninfrequent = !$cronoverdue && ($lastcroninterval > ($expectedfrequency + MINSECS)
                 || $lastcron < time() - $expectedfrequency);
-        if ($croninfrequent) {
+        if ($croninfrequent && method_exists($check, 'cron_infrequent_warning')) {
+            // Deprecated in Moodle 4.2 (MDL-74559); guard in case removed in future.
             $cronwarning .= $check->cron_infrequent_warning($croninfrequent);
         }
     } else { // Up to and including Moodle 3.6.
@@ -146,8 +144,16 @@ if (!$data) { // Display the form.
             $msg .= html_writer::link($link, $icon, ['class' => 'helplink', 'target' => '_blank', 'rel' => 'external']);
         }
         $msg .= '</p>';
-        $msg .= '<button type="button" class="close" data-dismiss="alert" aria-label="' . get_string('closebuttontitle') . '">'
-                . '<span aria-hidden="true">&times;</span></button>';
+        if ($CFG->branch >= 500) {
+            // Moodle 5.0+ uses Bootstrap 5.
+            $msg .= '<button type="button" class="btn-close" data-bs-dismiss="alert"'
+                    . ' aria-label="' . get_string('closebuttontitle') . '"></button>';
+        } else {
+            // Moodle up to 4.x uses Bootstrap 4.
+            $msg .= '<button type="button" class="close" data-dismiss="alert"'
+                    . ' aria-label="' . get_string('closebuttontitle') . '">'
+                    . '<span aria-hidden="true">&times;</span></button>';
+        }
         local_mailtest_msgbox($msg, null, 3, 'alert alert-danger alert-block alert-dismissible fade show');
     }
 
@@ -185,8 +191,8 @@ if (!$data) { // Display the form.
         $a->regstatus = get_string('notregistered', 'local_' . $pluginname);
     }
     $a->lang = current_language();
-    $a->browser = $_SERVER['HTTP_USER_AGENT'];
-    $a->referer = $_SERVER['HTTP_REFERER'];
+    $a->browser = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+    $a->referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
     $a->release = $CFG->release;
     $a->ip = local_mailtest_getuserip();
     $messagehtml = get_string('message', 'local_' . $pluginname, $a);
@@ -283,10 +289,9 @@ if (!$data) { // Display the form.
                 }
 
                 // Split the host and the port.
-                $host = explode(':', $host . ':25'); // Set default port to 25 in case none was specified.
-                $host = $host[0];
-                $port = $host[1];
-                $port = (int)$port;
+                $parts = explode(':', $host . ':25'); // Set default port to 25 in case none was specified.
+                $host = $parts[0];
+                $port = (int)$parts[1];
 
                 // Check for DNS record lookup failure. Skip if host is an IP address.
                 if (
