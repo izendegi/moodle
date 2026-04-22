@@ -59,11 +59,12 @@ final class condition_test extends \advanced_testcase {
         $controller = new \tool_langimport\controller();
         try {
             $controller->install_languagepacks('nl');
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             // We cannot be 100% sure the language can be downloaded.
-            $this->markTestSkipped($e->getMessage());
+            $this->markTestSkipped($exception->getMessage());
             return;
         }
+
         // Create course with language turned on and a Page.
         set_config('enableavailability', true);
         $generator = $this->getDataGenerator();
@@ -166,15 +167,17 @@ final class condition_test extends \advanced_testcase {
         $structure->id = null;
         try {
             $language = new condition($structure);
-        } catch (\coding_exception $e) {
-            $this->assertStringContainsString('Invalid ->id for language condition', $e->getMessage());
+        } catch (\coding_exception $codingexception) {
+            $this->assertStringContainsString('Invalid ->id for language condition', $codingexception->getMessage());
         }
+
         $structure->id = 12;
         try {
             $language = new condition($structure);
-        } catch (\coding_exception $e) {
-            $this->assertStringContainsString('Invalid ->id for language condition', $e->getMessage());
+        } catch (\coding_exception $codingexception) {
+            $this->assertStringContainsString('Invalid ->id for language condition', $codingexception->getMessage());
         }
+
         $this->assertEquals(null, $language);
     }
 
@@ -183,26 +186,28 @@ final class condition_test extends \advanced_testcase {
      */
     public function test_save(): void {
         $structure = (object)['id' => 'fr'];
-        $cond = new condition($structure);
+        $condition = new condition($structure);
         $structure->type = 'language';
-        $this->assertEqualsCanonicalizing($structure, $cond->save());
-        $this->assertEqualsCanonicalizing((object)['type' => 'language', 'id' => 'nl'], $cond->get_json('nl'));
+        $this->assertEqualsCanonicalizing($structure, $condition->save());
+        $this->assertEqualsCanonicalizing((object)['type' => 'language', 'id' => 'nl'], $condition->get_json('nl'));
     }
 
     /**
      * Tests the get_description and get_standalone_description functions.
      */
     public function test_get_description(): void {
-        $info = new mock_info();
+        $mockinfo = new mock_info();
         $language = new condition((object)['type' => 'language', 'id' => '']);
-        $this->assertEquals($language->get_description(false, false, $info), '');
+        $this->assertSame($language->get_description(false, false, $mockinfo), '');
+        $language = new condition((object)['type' => 'language', 'id' => 'xw']);
+        $this->assertSame($language->get_description(false, false, $mockinfo), '');
         $language = new condition((object)['type' => 'language', 'id' => 'en']);
-        $desc = $language->get_description(true, false, $info);
+        $desc = $language->get_description(true, false, $mockinfo);
         $this->assertEquals('The student\'s language is English ‎(en)‎', $desc);
-        $desc = $language->get_description(true, true, $info);
+        $desc = $language->get_description(true, true, $mockinfo);
         $this->assertEquals('The student\'s language is not English ‎(en)‎', $desc);
-        $desc = $language->get_standalone_description(true, false, $info);
-        $this->assertStringContainsString('Not available unless: The student\'s language is English', $desc);
+        $desc = $language->get_standalone_description(true, false, $mockinfo);
+        $this->assertStringContainsString("Not available unless: The student's language is English", $desc);
         $result = \phpunit_util::call_internal_method($language, 'get_debug_string', [], 'availability_language\condition');
         $this->assertEquals('en', $result);
     }
@@ -223,10 +228,12 @@ final class condition_test extends \advanced_testcase {
         $pg->create_instance(['course' => $course]);
         $modinfo = get_fast_modinfo($course);
         $cm = $modinfo->get_cm($page->cmid);
-        $info = new info_module($cm);
-        $cond = new condition((object)['type' => 'language', 'id' => 'en']);
-        $this->assertTrue($cond->is_available(false, $info, false, $user->id));
-        $this->assertFalse($cond->is_available(true, $info, false, $user->id));
+        $infomodule = new info_module($cm);
+        $condition = new condition((object)['type' => 'language', 'id' => 'en']);
+        $this->assertTrue($condition->is_available(false, $infomodule, false, $user->id));
+        $this->assertFalse($condition->is_available(true, $infomodule, false, $user->id));
+        $this->setAdminUser();
+        $this->assertNotEmpty($USER);
     }
 
     /**
@@ -297,12 +304,13 @@ final class condition_test extends \advanced_testcase {
         $restriction = \core_availability\tree::get_root_json([condition::get_json('nl')]);
         $pagegen->create_instance(['course' => $course, 'availability' => json_encode($restriction)]);
         rebuild_course_cache($course->id, true);
-        $mpage = new \moodle_page();
-        $mpage->set_url('/course/index.php', ['id' => $course->id]);
+        $moodlepage = new \moodle_page();
+        $moodlepage->set_url('/course/index.php', ['id' => $course->id]);
+
         $PAGE->set_url('/course/index.php', ['id' => $course->id]);
-        $mpage->set_context($context);
+        $moodlepage->set_context($context);
         $format = course_get_format($course);
-        $renderer = $mpage->get_renderer('format_topics');
+        $renderer = $moodlepage->get_renderer('format_topics');
         $outputclass = $format->get_output_classname('content');
         $output = new $outputclass($format);
         ob_start();
