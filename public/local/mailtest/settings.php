@@ -18,7 +18,7 @@
  * Adds eMail Test link to the Site Administration > Server menu. There are no settings for this plugin.
  *
  * @package    local_mailtest
- * @copyright  2015-2025 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2015-2026 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -31,8 +31,9 @@ if ($hassiteconfig) {
     } else { // Up to and including Moodle 3.1.
         $section = 'server';
     }
-    $ADMIN->add($section, new admin_externalpage('local_mailtest',
-            get_string('pluginname', 'local_mailtest'),
-            new moodle_url('/local/mailtest/')
+    $ADMIN->add($section, new admin_externalpage(
+        'local_mailtest',
+        get_string('pluginname', 'local_mailtest'),
+        new moodle_url('/local/mailtest/')
     ));
 }

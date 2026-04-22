@@ -18,7 +18,7 @@
  * Library of functions for MailTest.
  *
  * @package    local_mailtest
- * @copyright  2015-2025 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2015-2026 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -34,10 +34,7 @@
  */
 function local_mailtest_generate_email_user($email, $name = '', $id = -99) {
     $emailuser = new stdClass();
-    $emailuser->email = trim(filter_var($email, FILTER_SANITIZE_EMAIL));
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $emailuser->email = '';
-    }
+    $emailuser->email = filter_var(trim($email), FILTER_VALIDATE_EMAIL) ? trim($email) : '';
     $name = format_text($name, FORMAT_HTML, ['trusted' => false, 'noclean' => false]);
     $emailuser->firstname = trim(htmlspecialchars($name, ENT_COMPAT));
     $emailuser->lastname = '';
@@ -116,9 +113,9 @@ function local_mailtest_getuserip() {
                 if (substr_count($ip, ':') == 1) {
                     // IPv4 with a port.
                     $ip = explode(':', $ip)[0];
-                } else if ($start = (substr($ip, 0, 1) == '[') && $end = strpos($ip, ']:') !== false) {
-                    // IPv6 with a port.
-                    $ip = substr($ip, $start + 1, $end - 2);
+                } else if (substr($ip, 0, 1) === '[' && ($bracketend = strpos($ip, ']:')) !== false) {
+                    // IPv6 with a port: [::1]:port — extract address between brackets.
+                    $ip = substr($ip, 1, $bracketend - 1);
                 }
                 // Sanitize so that we only get public addresses.
                 $lastip = $ip; // But save other address just in case.
@@ -148,9 +145,17 @@ function local_mailtest_checkdns($domain) {
     $message = '';
     $success = true;
 
-    $xmark = '<i class="fa fa-times-circle text-danger" aria-hidden="true"></i> ';
-    $checkmark = '<i class="fa fa-check-circle text-success" aria-hidden="true"></i> ';
-    $exclamation = '<i class="fa fa-exclamation-triangle text-warning" aria-hidden="true"></i> ';
+    if ($CFG->branch >= 402) {
+        // Moodle 4.2+ uses Font Awesome 6.
+        $xmark       = '<i class="fa fa-circle-xmark text-danger" aria-hidden="true"></i> ';
+        $checkmark   = '<i class="fa fa-circle-check text-success" aria-hidden="true"></i> ';
+        $exclamation = '<i class="fa fa-triangle-exclamation text-warning" aria-hidden="true"></i> ';
+    } else {
+        // Moodle up to 4.1 uses Font Awesome 4.
+        $xmark       = '<i class="fa fa-times-circle text-danger" aria-hidden="true"></i> ';
+        $checkmark   = '<i class="fa fa-check-circle text-success" aria-hidden="true"></i> ';
+        $exclamation = '<i class="fa fa-exclamation-triangle text-warning" aria-hidden="true"></i> ';
+    }
 
     // Check SPF records.
 
@@ -301,6 +306,7 @@ function local_mailtest_checkdns($domain) {
 
     // Check DMARC records.
 
+    $pctvalue = false; // Initialise before DMARC block; used later by BIMI check.
     $txtrecords = @dns_get_record('_dmarc.' . $domain, DNS_TXT);
     if (empty($txtrecords)) {
         // No DMARC records found.
