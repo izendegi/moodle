@@ -18,7 +18,7 @@
  * Main form for eMailTest.
  *
  * @package    local_mailtest
- * @copyright  2015-2025 TNG Consulting Inc. - www.tngcosulting.ca
+ * @copyright  2015-2026 TNG Consulting Inc. - www.tngcosulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -28,7 +28,7 @@ require_once($CFG->libdir . '/formslib.php');
 
 /**
  * Form to prompt administrator for the recipient's email address.
- * @copyright  2015-2025 TNG Consulting Inc. - www.tngcosulting.ca
+ * @copyright  2015-2026 TNG Consulting Inc. - www.tngcosulting.ca
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mailtest_form extends moodleform {
@@ -73,10 +73,11 @@ class mailtest_form extends moodleform {
             $a->url = '../../user/editadvanced.php?course=1#fitem_id_email';
         }
         $a->type = get_string('youremail', 'local_mailtest');
+        $emailparts = explode('@', $a->email);
         $senderarray[] = $mform->createElement('radio', 'sender', '', get_string('from', 'local_mailtest', $a)
-            . local_mailtest_checkdns(explode('@', $a->email)[1]), $a->email);
+            . local_mailtest_checkdns(isset($emailparts[1]) ? $emailparts[1] : ''), $a->email);
         if (!validate_email($a->email)) {
-            $senderarray[] = $mform->CreateElement(
+            $senderarray[] = $mform->createElement(
                 'static',
                 'error',
                 '',
@@ -89,10 +90,11 @@ class mailtest_form extends moodleform {
         $a->email = empty($CFG->supportemail) ? $primaryadmin->email : $CFG->supportemail;
         $a->url = '../../admin/settings.php?section=supportcontact';
         $a->type = get_string('supportemail', 'admin');
+        $emailparts = explode('@', $a->email);
         $senderarray[] = $mform->createElement('radio', 'sender', '', get_string('from', 'local_mailtest', $a)
-            . local_mailtest_checkdns(explode('@', $a->email)[1]), $a->email);
+            . local_mailtest_checkdns(isset($emailparts[1]) ? $emailparts[1] : ''), $a->email);
         if (!validate_email($a->email)) {
-            $senderarray[] = $mform->CreateElement(
+            $senderarray[] = $mform->createElement(
                 'static',
                 'error',
                 '',
@@ -109,10 +111,11 @@ class mailtest_form extends moodleform {
             $a->url = '../../admin/settings.php?section=messagesettingemail#noreplyaddress';
             $a->type = get_string('noreplyaddress', 'message_email');
         }
+        $emailparts = explode('@', $a->email);
         $senderarray[] = $mform->createElement('radio', 'sender', '', get_string('from', 'local_mailtest', $a)
-            . local_mailtest_checkdns(explode('@', $a->email)[1]), $a->email);
+            . local_mailtest_checkdns(isset($emailparts[1]) ? $emailparts[1] : ''), $a->email);
         if (!validate_email($a->email)) {
-            $senderarray[] = $mform->CreateElement(
+            $senderarray[] = $mform->createElement(
                 'static',
                 'error',
                 '',
@@ -125,10 +128,11 @@ class mailtest_form extends moodleform {
         $a->email = $primaryadmin->email;
         $a->url = '../../user/editadvanced.php?id=' . $primaryadmin->id;
         $a->type = get_string('primaryadminemail', 'local_mailtest');
+        $emailparts = explode('@', $a->email);
         $senderarray[] = $mform->createElement('radio', 'sender', '', get_string('from', 'local_mailtest', $a)
-            . local_mailtest_checkdns(explode('@', $a->email)[1]), $a->email);
+            . local_mailtest_checkdns(isset($emailparts[1]) ? $emailparts[1] : ''), $a->email);
         if (!validate_email($a->email)) {
-            $senderarray[] = $mform->CreateElement(
+            $senderarray[] = $mform->createElement(
                 'static',
                 'error',
                 '',
