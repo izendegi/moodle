@@ -18,7 +18,7 @@
  * Strings for component 'local_mailtest', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package    local_mailtest
- * @copyright  2015-2025 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2015-2026 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -53,7 +53,7 @@ $string['connectionlog'] = 'Communications log with mail server';
 $string['credit'] = 'Michael Milette - <a href="https://www.tngconsulting.ca/">TNG Consulting Inc.</a>';
 $string['divertallemails'] = 'Divert all emails';
 $string['divertedto'] = 'Diverted to {$a}';
-$string['dkiminvalidrecord'] = 'DKIM record must contains valid v, k and p tags.';
+$string['dkiminvalidrecord'] = 'DKIM record must contain valid v, k and p tags.';
 $string['dkimmissingselector'] = 'DKIM selector setting has not been configured.';
 $string['dkimnorecordfound'] = 'DKIM record is missing.';
 $string['dkimrecordfound'] = 'DKIM record found.';
@@ -117,8 +117,9 @@ $string['sendtest'] = 'Send a test message';
 $string['sentmail'] = 'Moodle successfully delivered the test message to the SMTP mail server.';
 $string['sentmailphp'] = 'The Moodle test message was successfully accepted by PHP Mail.';
 $string['server'] = 'Server: {$a}';
+$string['siteadminsonly'] = 'This feature is only available for site administrators.';
 $string['smtpmethod'] = 'SMTP hosts: {$a}';
-$string['spfinvalidrecord'] = 'SPF record must contains at least one mechanism.';
+$string['spfinvalidrecord'] = 'SPF record must contain at least one mechanism.';
 $string['spfnorecordfound'] = 'SPF record is missing.';
 $string['spfrecordfound'] = 'SPF record found.';
 $string['spfvalidrecord'] = 'SPF record format is valid.';
