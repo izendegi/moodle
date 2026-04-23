@@ -42,6 +42,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[CoversClass(\enrol_coursecompleted_plugin::class)]
+#[CoversClass(task\process_future::class)]
 #[CoversClass(hook_listener::class)]
 #[CoversClass(observer::class)]
 final class hook_test extends advanced_testcase {
@@ -241,7 +242,7 @@ final class hook_test extends advanced_testcase {
         );
         $this->event->trigger();
         $this->assertTrue(user_has_role_assignment($this->student->id, 5, $this->context1->id));
-        // TODO: Not working.
+        // Works, the student has no more role.
         $this->assertFalse(user_has_role_assignment($this->student->id, 5, $this->context2->id));
     }
 

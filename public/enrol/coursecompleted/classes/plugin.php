@@ -130,7 +130,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
             [
                 'coursetitle' => $name,
                 'courseurl' => new moodle_url('/course/view.php', ['id' => $instance->customint1]),
-                'hasdata' => count($data) >= 2,
+                'hasdata' => count($data) > 1,
                 'items' => $data,
             ];
         $str = $OUTPUT->render_from_template('enrol_coursecompleted/learnpath', $rdata);
@@ -192,7 +192,8 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     public function restore_instance(\restore_enrolments_structure_step $step, stdClass $data, $course, $oldid): void {
         global $DB;
         if ($step->get_task()->get_target() == backup::TARGET_NEW_COURSE) {
-            $merge = false;
+            $instanceid = $this->add_instance($course, (array)$data);
+            $step->set_mapping('enrol', $oldid, $instanceid);
         } else {
             $merge = [
                 'courseid' => $course->id,
@@ -200,16 +201,11 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 'roleid' => $data->roleid,
                 'customint1' => $data->customint1,
             ];
+            if ($instances = $DB->get_records('enrol', $merge, 'id')) {
+                $instance = reset($instances);
+                $step->set_mapping('enrol', $oldid, $instance->id);
+            }
         }
-
-        if ($merge && $instances = $DB->get_records('enrol', $merge, 'id')) {
-            $instance = reset($instances);
-            $instanceid = $instance->id;
-        } else {
-            $instanceid = $this->add_instance($course, (array)$data);
-        }
-
-        $step->set_mapping('enrol', $oldid, $instanceid);
     }
 
     /**
@@ -235,6 +231,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
     ): void {
         global $CFG, $DB;
         if ($this->is_active($instance)) {
+            $userid = (int)$userid;
             // We ignore the role, timestart, timeend and status parameters and fall back on the instance settings.
             $roleid = $instance->roleid ?? $this->get_config('roleid');
             $context1 = context_course::instance($instance->customint1, IGNORE_MISSING);
@@ -267,7 +264,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
 
                     $this->send_course_welcome_message_to_user(
                         instance: $instance,
-                        userid: (int)$userid,
+                        userid: $userid,
                         sendoption: (int)$instance->customint2,
                         message: $message,
                         roleid: (int)$roleid,
@@ -277,13 +274,13 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
                 // Keep the user in a group when needed.
                 if ($instance->customint3 > 0) {
                     require_once($CFG->dirroot . '/group/lib.php');
-                    $groups = groups_get_user_groups((int)$instance->customint1, (int)$userid);
+                    $groups = groups_get_user_groups((int)$instance->customint1, $userid);
                     foreach ($groups as $group) {
                         foreach ($group as $sub) {
                             $groupnamea = groups_get_group_name($sub);
-                            $groupnameb = groups_get_group_by_name((int)$instance->courseid, $groupnamea);
+                            $groupnameb = groups_get_group_by_name($instance->courseid, $groupnamea);
                             if ($groupnameb) {
-                                groups_add_member($groupnameb, (int)$userid);
+                                groups_add_member($groupnameb, $userid);
                             }
                         }
                     }
@@ -299,10 +296,9 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
 
                     foreach ($enrols as $enrol) {
                         $plugin = enrol_get_plugin($enrol->enrolmentinstance->enrol);
-                        if ($instance = $DB->get_record('enrol', ['id' => $enrol->enrolid], '*', MUST_EXIST)) {
-                            if ($plugin->allow_unenrol_user($instance, $enrol)) {
-                                $plugin->unenrol_user($instance, $userid);
-                            }
+                        $instance = $DB->get_record('enrol', ['id' => $enrol->enrolid], '*', MUST_EXIST);
+                        if ($plugin->allow_unenrol_user($instance, $enrol)) {
+                            $plugin->unenrol_user($instance, $userid);
                         }
                     }
                 }
@@ -419,8 +415,8 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
         $mform->addElement('select', 'status', get_string('enabled', 'admin'), $options);
         $mform->setDefault('status', $this->get_config('status'));
 
-        $role = ($instance && isset($instance->roleid)) ? $instance->roleid : $this->get_config('roleid');
-        $start = ($instance && isset($instance->customint1)) ? get_course($instance->customint1)->startdate : time();
+        $role = isset($instance->roleid) ? $instance->roleid : $this->get_config('roleid');
+        $start = isset($instance->customint1) ? get_course($instance->customint1)->startdate : time();
 
         $roles = get_default_enrol_roles($context, $role);
         $mform->addElement('select', 'roleid', get_string('assignrole', $plugin), $roles);
@@ -545,8 +541,8 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
      * @return array $items Children and Parents
      */
     private function build_course_path(stdClass $instance): array {
-        $parents = $this->search_parents((int) $instance->customint1);
-        $children = $this->search_children((int) $instance->courseid);
+        $parents = $this->search_parents((int)$instance->customint1);
+        $children = $this->search_children((int)$instance->courseid);
         return array_unique(array_merge($parents, $children));
     }
 
@@ -564,7 +560,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
             $level++;
             $params = ['enrol' => 'coursecompleted', 'courseid' => $courseid];
             if ($parent = $DB->get_field('enrol', 'customint1', $params, IGNORE_MULTIPLE)) {
-                $arr = array_merge($this->search_parents((int) $parent, $level), $arr);
+                $arr = array_merge($this->search_parents((int)$parent, $level), $arr);
             }
         }
 
@@ -585,7 +581,7 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
             $level++;
             $params = ['enrol' => 'coursecompleted', 'customint1' => $courseid];
             if ($child = $DB->get_field('enrol', 'courseid', $params, IGNORE_MULTIPLE)) {
-                $arr = array_merge($arr, $this->search_children((int) $child, $level));
+                $arr = array_merge($arr, $this->search_children((int)$child, $level));
             }
         }
 
@@ -599,15 +595,12 @@ class enrol_coursecompleted_plugin extends enrol_plugin {
      * @return bool true is active
      */
     private function is_active($instance): bool {
-        $time = time();
-        $start = is_null($instance->enrolstartdate) ? 0 : $instance->enrolstartdate;
-        if ($start > $time) {
+        $now = time();
+        if ($instance->enrolstartdate && $instance->enrolstartdate > $now) {
             return false;
         }
 
-        $end = is_null($instance->enrolenddate) ? 0 : $instance->enrolenddate;
-        if ($end != 0 && $end < $time) {
-            // Past enrolment.
+        if ($instance->enrolenddate && $instance->enrolenddate < $now) {
             return false;
         }
 

@@ -46,11 +46,23 @@ use PHPUnit\Framework\Attributes\{DataProvider, CoversClass};
 final class time_enrolled_test extends advanced_testcase {
     #[\core\attribute\label('Initial setup')]
     protected function setUp(): void {
-        global $CFG;
+        global $CFG, $DB;
         require_once($CFG->dirroot . '/enrol/locallib.php');
         parent::setUp();
         $CFG->enablecompletion = true;
         $this->resetAfterTest(true);
+
+        // Add random data.
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['enablecompletion' => 1]);
+        $generator->create_and_enrol($course, 'student');
+        $records = $DB->get_records('user_enrolments', []);
+        foreach ($records as $record) {
+            $record->customint1 = 1;
+            $record->customint2 = 1;
+            $record->customint4 = 1;
+            $DB->update_record('user_enrolments', $record);
+        }
     }
 
     #[\core\attribute\label('Test adhoc task')]
@@ -195,8 +207,7 @@ final class time_enrolled_test extends advanced_testcase {
         $course2 = $generator->create_course();
         $plugin = enrol_get_plugin('coursecompleted');
         $student = $generator->create_and_enrol($course1, 'student');
-        $input = array_merge($input, ['customint1' => $course1->id, 'roleid' => 5]);
-        $plugin->add_instance($course2, $input);
+        $plugin->add_instance($course2, ['customint1' => $course1->id, 'roleid' => 5] + $input);
         $compevent = \core\event\course_completed::create(
             [
                 'objectid' => $course2->id,
