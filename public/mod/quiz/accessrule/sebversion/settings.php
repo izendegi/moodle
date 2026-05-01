@@ -40,7 +40,7 @@ if ($hassiteconfig && $ADMIN->fulltree) {
             'quizaccess_sebversion/minversionmac',
             new lang_string('minversionmac', 'quizaccess_sebversion'),
             new lang_string('minversionmac_desc', 'quizaccess_sebversion'),
-            '3.6.0',
+            '3.6.1',
             PARAM_RAW,
             10,
         )
@@ -51,7 +51,7 @@ if ($hassiteconfig && $ADMIN->fulltree) {
             'quizaccess_sebversion/minversionwin',
             new lang_string('minversionwin', 'quizaccess_sebversion'),
             new lang_string('minversionwin_desc', 'quizaccess_sebversion'),
-            '3.10.0',
+            '3.10.1',
             PARAM_RAW,
             10
         )
