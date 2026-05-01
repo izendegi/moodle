@@ -26,10 +26,10 @@ use mod_quiz\local\access_rule_base;
  */
 class quizaccess_sebversion extends access_rule_base {
     /** @var string */
-    const DEFAULT_MIN_VERSION_WIN = '3.10.0';
+    const DEFAULT_MIN_VERSION_WIN = '3.10.1';
 
     /** @var string */
-    const DEFAULT_MIN_VERSION_MAC = '3.6.0';
+    const DEFAULT_MIN_VERSION_MAC = '3.6.1';
 
     #[\Override]
     public static function make(quiz_settings $quizobj, $timenow, $canignoretimelimits) {
