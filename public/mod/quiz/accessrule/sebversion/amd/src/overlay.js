@@ -42,7 +42,6 @@ const DEFAULT_MESSAGES = {
  * @param {boolean} behat wheter we are currently in a Behat acceptance test.
  */
 export const init = async(minVersionWin, minVersionMac, behat) => {
-    testisVersionAtLeast();
     // Inside Safe Exam Browser, there is a global SafeExamBrowser object with, among others,
     // a version attribute. The object is not normally available in other browsers. As acceptance
     // tests use regular browsers, we will have to simulate being in Safe Exam Browser. The
