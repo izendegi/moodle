@@ -25,9 +25,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025122100;
+$plugin->version   = 2026050100;
 $plugin->requires  = 2022112800;
-$plugin->supported = [405, 501];
+$plugin->supported = [405, 502];
 $plugin->component = 'quiz_heartbeat';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0.6';
+$plugin->release   = '1.0.7';
