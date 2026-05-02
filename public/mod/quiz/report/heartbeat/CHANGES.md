@@ -1,5 +1,10 @@
 # Changelog
 
+### 1.0.7 (2026-05-01)
+
+- assure compatibility with Moodle 5.2
+- internal: update CI
+
 ### 1.0.6 (2025-12-21)
 
 - change report name to "Heartbeat (Status overview)" to be more clear
