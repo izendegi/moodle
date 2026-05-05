@@ -15,23 +15,18 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Install script for Board
- *
- * Documentation: {@link https://moodledev.io/docs/guides/upgrade}
+ * The mod_board instance list viewed event.
  *
  * @package    mod_board
- * @copyright  2025 Brickfield Education Labs <https://www.brickfield.ie/>
+ * @copyright  2026 Luca Bösch <luca.boesch@bfh.ch>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_board\local\install;
+namespace mod_board\event;
 
 /**
- * Executed on installation of Board
- *
- * @return bool
+ * The mod_board instance list viewed event class.
  */
-function xmldb_board_install() {
-    install::setup_builtin_templates();
-    return true;
+class course_module_instance_list_viewed extends \core\event\course_module_instance_list_viewed {
+    // No need for any code here as everything is handled by the parent class.
 }
