@@ -15,23 +15,21 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Install script for Board
- *
- * Documentation: {@link https://moodledev.io/docs/guides/upgrade}
- *
- * @package    mod_board
- * @copyright  2025 Brickfield Education Labs <https://www.brickfield.ie/>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * The message provider script.
+ * @package     mod_board
+ * @author      Karen Holland <karen@brickfieldlabs.ie>
+ * @copyright   2026 Brickfield Education Labs <https://www.brickfield.ie/>
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use mod_board\local\install;
+defined('MOODLE_INTERNAL') || die;
 
-/**
- * Executed on installation of Board
- *
- * @return bool
- */
-function xmldb_board_install() {
-    install::setup_builtin_templates();
-    return true;
-}
+$messageproviders = [
+    // Notify post author that a comment has been added.
+    'comment_added' => [
+        'defaults' => [
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+        ],
+    ],
+];
