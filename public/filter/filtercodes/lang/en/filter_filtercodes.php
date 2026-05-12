@@ -18,7 +18,7 @@
  * English strings for FilterCodes plugin.
  *
  * @package    filter_filtercodes
- * @copyright  2017-2025 TNG Consulting Inc. - www.tngconsulting.ca
+ * @copyright  2017-2026 TNG Consulting Inc. - www.tngconsulting.ca
  * @author     Michael Milette
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -29,7 +29,7 @@ $string['brief'] = 'Brief';
 $string['categorycardshowpic'] = 'Show {categorycards} background';
 $string['categorycardshowpic_desc'] = 'If enabled, will display a background colour/pattern for {categorycards} tag similar to the course images when no image was specified.';
 $string['chartprogressbarlabel'] = '{$a->label}: {$a->value}';
-$string['contentmissing'] = '<h1>Content is missing.</h1><p>Please notify the webmaster.</p>';
+$string['contentmissing'] = '<p>[Content is missing. Please notify the site administrator.]</p>';
 $string['coursecardsbyenrol'] = 'Maximum {coursecardsbyenrol} cards.';
 $string['coursecardsbyenrol_desc'] = 'Maximum number of course cards to display for {coursecardsbyenrol} tag. Set to zero for unlimited (not recommended).';
 $string['coursecardsformat'] = 'Course cards layout';
@@ -50,11 +50,8 @@ $string['defaultfirstname'] = '';
 $string['defaultsurname'] = '';
 $string['defaultusername'] = '';
 $string['disabled_customnav_description'] = '<strong>Note regarding support for custom menu</strong> - To enable support for FilterCodes in your Moodle site\'s custom menu, you may need to customize your theme or Moodle core. <a href="https://github.com/michael-milette/moodle-filter_filtercodes#filtercodes-in-a-custom-menu">Information on how to add FilterCodes support in custom menus</a>.';
-$string['enable_customnav'] = 'Custom navigation support';
-$string['enable_customnav_description'] = '<strong>Experimental</strong>: Enable support for FilterCode tags in Moodle custom navigation menu.
-Note: Is known to be compatible with Clean and Boost based themes in Moodle 3.2 to 3.4 only. Does not filter tags on the Moodle Theme Settings page.';
 $string['enable_scrape'] = 'Scrape tag support';
-$string['enable_scrape_description'] = 'Enable the scrape tag.';
+$string['enable_scrape_description'] = 'Enable the scrape tag. Users who can create filtered content can cause the Moodle server to request allowed public HTTP/HTTPS URLs.';
 $string['enable_sesskey'] = 'Sesskey tag support';
 $string['enable_sesskey_description'] = 'Enable the sesskey tag globally. This feature is disabled in forums even when enabled globally.';
 $string['escapebraces'] = 'Escape tags';
@@ -225,6 +222,17 @@ $string['photoeditor'] = 'Photo editor';
 $string['photoeditorlink'] = 'https://pixlr.com/editor/';
 $string['pluginname'] = 'Filter Codes';
 $string['privacy:metadata'] = 'The Filter Codes plugin does not store any personal data about any user.';
+$string['scrape_allowed_hosts'] = 'Allowed scrape hosts';
+$string['scrape_allowed_hosts_desc'] = 'Optional comma or newline separated list of hosts that the scrape tag may request. Leave empty to allow public HTTP/HTTPS hosts subject to Moodle cURL security. Use exact hosts such as example.com or leading wildcards such as *.example.com (matches subdomains only; list the apex separately to include it).';
+$string['scrape_cachettl'] = 'Scrape cache time-to-live';
+$string['scrape_cachettl_desc'] = 'How long to cache successful scrape tag output. Choose <strong>Disabled</strong> to fetch fresh content on every page render.';
+$string['scrape_cachettl_disabled'] = 'Disabled';
+$string['scrape_maxbytes'] = 'Scrape maximum response size';
+$string['scrape_maxbytes_desc'] = 'Maximum amount of data to retrieve for one scrape request. Larger values allow longer remote pages but use more memory and bandwidth during page rendering.';
+$string['scrape_show_missing'] = 'Display message when scrape content is unavailable';
+$string['scrape_show_missing_desc'] = 'When enabled, displays a message: {$a} Where the scraped content would have appeared if the request fails or returns no matching element. When disabled (default), the broken scrape renders nothing so page layout is preserved.';
+$string['scrapeheading'] = 'Scrape tag settings';
+$string['scrapeheadingdesc'] = 'Configure how the {scrape} tag fetches, restricts, caches and displays remote HTML content.';
 $string['screenrec'] = 'Screen recorder';
 $string['screenreclink'] = 'https://screenapp.io/#/recording';
 $string['showhiddenprofilefields'] = 'Show hidden profile fields';
