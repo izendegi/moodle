@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="MoodleCore">
+  <description>Moodle coding standards for FilterCodes plugin</description>
+
+  <!-- Include the whole Moodle standard -->
+  <rule ref="moodle"/>
+  <exclude-pattern>*thirdparty*</exclude-pattern>
+
+  <!-- Show progress and use colors -->
+  <arg name="colors"/>
+  <arg value="p"/>
+
+  <!-- Check PHP files only -->
+  <arg name="extensions" value="php"/>
+
+  <!-- Suppress deprecation warnings for deprecated sniffs -->
+  <config name="ignore_warnings_on_exit" value="1"/>
+</ruleset>
