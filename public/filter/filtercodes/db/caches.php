@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Main filter code for FilterCodes.
+ * Cache definitions for FilterCodes.
  *
  * @package    filter_filtercodes
  * @copyright  2017-2026 TNG Consulting Inc. - www.tngconsulting.ca
@@ -23,13 +23,14 @@
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Settings have been split into separate files, one for each tab. These are called from this main settings.php file.
+defined('MOODLE_INTERNAL') || die();
 
-defined('MOODLE_INTERNAL') || die;
-
-if ($hassiteconfig) {
-    if ($ADMIN->fulltree) {
-        require($CFG->dirroot . '/filter/filtercodes/settings/general.php');
-        require($CFG->dirroot . '/filter/filtercodes/settings/global.php');
-    }
-}
+$definitions = [
+    'scrape' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => false,
+        'staticacceleration' => true,
+        'staticaccelerationsize' => 16,
+    ],
+];
