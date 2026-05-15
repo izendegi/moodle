@@ -1,0 +1,11 @@
+/**
+ * Styles for the tiny_justify plugin.
+ *
+ * @package    tiny_justify
+ * @copyright  2026 CTE-ZL IFRN
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+.tiny-justify-icon {
+    fill: currentColor;
+}
