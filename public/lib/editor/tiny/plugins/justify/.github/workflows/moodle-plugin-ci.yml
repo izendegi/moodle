@@ -1,0 +1,170 @@
+##
+# GitHub Actions workflow: moodle-plugin-ci continuous integration.
+#
+# Runs on every push and pull-request to verify the plugin against multiple
+# Moodle versions using the official moodle-plugin-ci toolchain.
+##
+name: Moodle Plugin CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'MOODLE_*'
+  pull_request:
+    branches:
+      - main
+      - 'MOODLE_*'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Moodle ${{ matrix.moodle-branch }} / PHP ${{ matrix.php }} / DB ${{ matrix.database }}
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    strategy:
+      fail-fast: true
+      matrix:
+        php:
+          - '8.1'
+          - '8.2'
+          - '8.3'
+          - '8.4'
+        moodle-branch:
+          - 'MOODLE_405_STABLE'
+          - 'MOODLE_500_STABLE'
+          - 'MOODLE_501_STABLE'
+        database:
+          - pgsql
+          - mariadb
+        include:
+          - database: mariadb
+            service: mariadb
+        exclude:
+          - moodle-branch: 'MOODLE_405_STABLE'
+            php: '8.4'
+          - moodle-branch: 'MOODLE_500_STABLE'
+            php: '8.1'
+          - moodle-branch: 'MOODLE_501_STABLE'
+            php: '8.1'
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo, pdo_pgsql, pgsql, mysqli, gd, intl, xml, zip, curl
+          ini-values: max_input_vars=5000
+          coverage: none
+
+      - name: Start MariaDB service
+        if: matrix.database == 'mariadb'
+        run: |
+          docker run -d \
+            --name mariadb \
+            -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
+            -e MYSQL_CHARACTER_SET_SERVER=utf8mb4 \
+            -e MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci \
+            -p 3306:3306 \
+            mariadb:10.11
+          sleep 10
+
+      - name: Initialise moodle-plugin-ci
+        run: |
+          composer create-project -n --no-dev --prefer-dist \
+            moodlehq/moodle-plugin-ci ci ^4
+          echo "$(cd ci && pwd)/bin" >> $GITHUB_PATH
+          echo "$(cd ci && pwd)/vendor/bin" >> $GITHUB_PATH
+          sudo locale-gen en_AU.UTF-8
+        env:
+          COMPOSER_ALLOW_SUPERUSER: 1
+
+      - name: Install Moodle
+        id: install
+        run: |
+          if [ "${{ matrix.database }}" = "pgsql" ]; then
+            moodle-plugin-ci install \
+              --plugin ./plugin \
+              --db-host=127.0.0.1 \
+              --branch ${{ matrix.moodle-branch }}
+          else
+            moodle-plugin-ci install \
+              --plugin ./plugin \
+              --db-type mariadb \
+              --db-host=127.0.0.1 \
+              --branch ${{ matrix.moodle-branch }}
+          fi
+        env:
+          DB: ${{ matrix.database }}
+          MOODLE_BRANCH: ${{ matrix.moodle-branch }}
+
+      - name: PHP Lint
+        run: moodle-plugin-ci phplint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+
+      - name: PHP Copy/Paste Detector
+        run: moodle-plugin-ci phpcpd
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        continue-on-error: true
+
+      - name: PHP Mess Detector
+        run: moodle-plugin-ci phpmd
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        continue-on-error: true
+
+      - name: Moodle Code Checker
+        run: moodle-plugin-ci codechecker
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+
+      - name: Moodle PHPDoc Checker
+        run: moodle-plugin-ci phpdoc
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        continue-on-error: true
+
+      - name: Validating
+        run: moodle-plugin-ci validate
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+
+      - name: Check upgrade savepoints
+        run: moodle-plugin-ci savepoints
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+
+      - name: Mustache Lint
+        run: moodle-plugin-ci mustache
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        continue-on-error: true
+
+      - name: Grunt
+        run: moodle-plugin-ci grunt
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        continue-on-error: true
+
+      - name: PHPUnit tests
+        run: moodle-plugin-ci phpunit
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+
+      - name: Behat features
+        run: moodle-plugin-ci behat --profile chrome
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        continue-on-error: true
