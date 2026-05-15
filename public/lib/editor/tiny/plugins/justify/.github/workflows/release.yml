@@ -1,0 +1,100 @@
+##
+# GitHub Actions workflow: generate an installable Moodle plugin ZIP on every tag push.
+#
+# Usage:
+#   git tag -a v1.0.0 -m "Release 1.0.0"
+#   git push origin v1.0.0
+#
+# The resulting tiny_justify.zip can be uploaded directly to
+# Site administration → Plugins → Install plugins in Moodle.
+##
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    name: Build and release plugin ZIP
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract and validate plugin version
+        id: version
+        run: |
+          VERSION=$(grep -oP '\$plugin->version\s*=\s*\K[0-9]+' version.php)
+          RELEASE=$(grep -oP "\\\$plugin->release\s*=\s*'\K[^']+" version.php)
+
+          VERSION_SUFFIX="${VERSION: -2}"
+          RELEASE_SUFFIX="${RELEASE##*.}"
+
+          echo "Plugin version: $VERSION (suffix: $VERSION_SUFFIX)"
+          echo "Plugin release: $RELEASE (suffix: $RELEASE_SUFFIX)"
+
+          TAG="${GITHUB_REF_NAME#v}"
+
+          echo "Tag (sem prefixo v): $TAG"
+
+          if [ "$VERSION_SUFFIX" != "$RELEASE_SUFFIX" ]; then
+            echo "::error::Os 2 últimos dígitos de \$plugin->version ($VERSION_SUFFIX) não correspondem aos 2 últimos dígitos de \$plugin->release ($RELEASE_SUFFIX) em version.php"
+            exit 1
+          fi
+
+          if [ "$RELEASE" != "$TAG" ]; then
+            echo "::error::\$plugin->release ($RELEASE) não corresponde ao nome da tag ($TAG). Atualize version.php antes de criar a tag."
+            exit 1
+          fi
+
+          echo "number=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build plugin ZIP
+        run: |
+          # Create a clean directory named after the plugin so that unzipping inside
+          # Moodle's admin interface lands in the correct location.
+          mkdir -p /tmp/build/tiny_justify
+
+          # Copy all plugin files, excluding VCS and CI-only directories.
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            . /tmp/build/tiny_justify/
+
+          # Create the ZIP from the parent directory so the archive contains the
+          # top-level tiny_justify/ folder, as Moodle's plugin installer expects.
+          cd /tmp/build
+          zip -r "$GITHUB_WORKSPACE/tiny_justify-${{ steps.version.outputs.number }}.zip" tiny_justify/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tiny_justify-${{ steps.version.outputs.number }}.zip
+          generate_release_notes: true
+
+      - name: Upload to Moodle Plugin Directory
+        if: ${{ secrets.MOODLE_DIRECTORY_TOKEN != '' }}
+        env:
+          MOODLE_DIRECTORY_TOKEN: ${{ secrets.MOODLE_DIRECTORY_TOKEN }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -F data=@"$GITHUB_WORKSPACE/tiny_justify-${{ steps.version.outputs.number }}.zip" \
+            "https://moodle.org/webservice/upload.php?token=$MOODLE_DIRECTORY_TOKEN")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ne 200 ] || echo "$BODY" | grep -q '"error"'; then
+            echo "::error::Falha ao enviar o plugin para o Moodle Plugin Directory"
+            exit 1
+          fi
+
+          echo "Plugin enviado com sucesso para o Moodle Plugin Directory"
