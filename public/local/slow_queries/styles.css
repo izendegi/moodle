@@ -1,0 +1,81 @@
+.local-slow-queries {
+  /* Timeline */
+}
+.local-slow-queries .lsq-sql-preview {
+  max-width: 720px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: bottom;
+}
+.local-slow-queries .generaltable tbody tr {
+  cursor: pointer;
+}
+.local-slow-queries .generaltable tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+.local-slow-queries pre.lsq-pre {
+  max-height: 420px;
+}
+.local-slow-queries textarea.lsq-pre {
+  height: 350px;
+  white-space: nowrap;
+}
+.local-slow-queries .lsq-pre {
+  width: 100%;
+  background: #fbfbfc;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 0.9rem;
+  margin: 0;
+  overflow: auto;
+  font-size: 0.9rem;
+  line-height: 1.35rem;
+}
+.local-slow-queries .lsq-badge {
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.local-slow-queries .text-nowrap-width {
+  display: block;
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.local-slow-queries .lsq-axis {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  width: 100%;
+}
+.local-slow-queries .lsq-day-label {
+  width: 110px;
+  flex: 0 0 110px;
+}
+.local-slow-queries .lsq-timeline-grid {
+  position: relative;
+  height: 30px;
+  border-radius: 12px;
+  background-color: #fbfbfc;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: calc(100% / 24) 100%;
+  background-repeat: repeat;
+}
+.local-slow-queries .lsq-timeline-grid .lsq-timeline-seg {
+  position: absolute;
+  top: 3px;
+  height: 22px;
+  border-radius: 999px;
+  text-decoration: none;
+  background: rgba(13, 110, 253, 0.45);
+  min-width: 5px;
+}
+.local-slow-queries .lsq-timeline-grid .lsq-timeline-seg:hover {
+  background: rgba(13, 110, 253, 0.6);
+}
