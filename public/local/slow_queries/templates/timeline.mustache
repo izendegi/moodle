@@ -1,0 +1,89 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_slow_queries/timeline
+
+    Example context (json):
+    {
+        "totalcount": 42,
+        "totaltime": "1h 12m 35s",
+        "secpx": 5,
+        "days": [
+            {
+                "daylabel": "Sáb, 24/01",
+                "segments": [
+                    { "left": 8.33, "width": 18, "title": "02:00 - 90s" },
+                    { "left": 39.58, "width": 26, "title": "09:30 - 130s" },
+                    { "left": 77.08, "width": 14, "title": "18:30 - 70s" }
+                ]
+            },
+            {
+                "daylabel": "Dom, 25/01",
+                "segments": [
+                    { "left": 12.5, "width": 22, "title": "03:00 - 110s" },
+                    { "left": 52.08, "width": 30, "title": "12:30 - 150s" }
+                ]
+            }
+        ]
+    }
+}}
+
+<div class="card h-100">
+    <div class="card-header">
+        {{#str}}timeline_title, local_slow_queries{{/str}}
+    </div>
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <ul>
+                <li>{{#str}}timeline_last_7, local_slow_queries, {{{totalcount}}}{{/str}}</li>
+                <li>{{#str}}timeline_totaltime, local_slow_queries, {{{totaltime}}}{{/str}}</li>
+                <li>{{#str}}timeline_scale, local_slow_queries, {{{secpx}}}{{/str}}</li>
+            </ul>
+        </div>
+
+        <table style="width: 100%;">
+            <tr class="card-header">
+                <th class="fw-semibold text-nowrap pr-3">
+                    {{#str}}timeline_calendar, local_slow_queries{{/str}}
+                </th>
+                <th>
+                    <div class="lsq-axis small text-muted">
+                        <span>00:00</span>
+                        <span>06:00</span>
+                        <span>12:00</span>
+                        <span>18:00</span>
+                        <span>24:00</span>
+                    </div>
+                </th>
+            </tr>
+            {{#days}}
+                <tr>
+                    <td class="lsq-day-label text-nowrap pr-3">{{{daylabel}}}</td>
+                    <td>
+                        <div class="lsq-timeline-grid flex-grow-1" aria-label="{{{daylabel}}}">
+                            {{#segments}}
+                                <span class="lsq-timeline-seg"
+                                      style="left:{{{left}}}%;width:{{{width}}}px;"
+                                      title="{{title}}"></span>
+                            {{/segments}}
+                        </div>
+                    </td>
+                </tr>
+            {{/days}}
+        </table>
+    </div>
+</div>
