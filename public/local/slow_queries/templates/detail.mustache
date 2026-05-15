@@ -1,0 +1,129 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_slow_queries/detail
+
+    Example context (json):
+    {
+      "backurl": "https://seu-moodle/local/slow_queries/",
+      "timelogged": "28/01/2026 14:03:11",
+      "exectime": "3.421",
+      "iscron": true,
+
+      "sqltext": "SELECT u.id, u.username FROM {user} u WHERE u.deleted = 0 AND u.suspended = 0 ORDER BY u.id DESC",
+      "paramsblock": "deleted => 0\nsuspended => 0",
+      "origin": "/local/slow_queries/classes/observer.php:87\n/cron.php:123",
+      "expandedsql": "SELECT u.id, u.username FROM mdl_user u WHERE u.deleted = 0 AND u.suspended = 0 ORDER BY u.id DESC",
+
+      "hassuggestions": true,
+      "suggestions": [
+        {
+          "table": "mdl_user",
+          "columns": "deleted, suspended",
+          "reason": "Filtro frequente por colunas booleanas; um índice composto pode reduzir varreduras.",
+          "create": "CREATE INDEX mdl_user_del_susp_ix ON mdl_user (deleted, suspended);"
+        },
+        {
+          "table": "mdl_user",
+          "columns": "id",
+          "reason": "ORDER BY id DESC em grande volume pode se beneficiar do índice (geralmente PK já cobre).",
+          "create": "-- Provavelmente já existe (PRIMARY KEY)."
+        }
+      ]
+    }
+}}
+
+<div class="row g-3">
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="fw-semibold">{{#str}}detail_sql, local_slow_queries{{/str}}</div>
+                <div class="small text-muted">{{timelogged}} • {{exectime}}s {{#iscron}}•
+                    <span class="lsq-badge">{{#str}}col_cron, local_slow_queries{{/str}}</span>{{/iscron}}</div>
+            </div>
+            <div class="card-body">
+                <pre class="lsq-pre">{{sqltext}}</pre>
+
+                <div class="mt-3 mb-2 small text-muted">{{#str}}col_parameters, local_slow_queries{{/str}}</div>
+                <pre class="lsq-pre">{{paramsblock}}</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="fw-semibold">{{#str}}detail_sql_expanded, local_slow_queries{{/str}}</div>
+                <div class="small text-muted">{{#str}}detail_sql_expanded_desc, local_slow_queries{{/str}}</div>
+            </div>
+            <div class="card-body">
+                <pre class="lsq-pre">{{expandedsql}}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{#timeline_html}}
+    <div class="card mt-3">
+        {{{timeline_html}}}
+    </div>
+{{/timeline_html}}
+
+<div class="card mt-3">
+    <div class="card-header">
+        {{#str}}comments_title, local_slow_queries{{/str}}
+    </div>
+    <div class="card-body">
+        <form method="post">
+            <textarea name="comments" style="height:130px;width:100%;">{{{comments}}}</textarea>
+            <input type="submit" value="{{#str}}save{{/str}}">
+        </form>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        {{#str}}col_origin, local_slow_queries{{/str}}
+    </div>
+    <div class="card-body">
+        <pre class="lsq-pre">{{origin}}</pre>
+    </div>
+</div>
+
+<div class="card mt-3" style="display:none">
+    <div class="card-header">
+        <div class="fw-semibold">{{#str}}detail_indexes, local_slow_queries{{/str}}</div>
+        <div class="small text-muted mt-1">{{#str}}detail_indexes_notice, local_slow_queries{{/str}}</div>
+    </div>
+    <div class="card-body">
+        {{#hassuggestions}}
+            <div class="d-flex flex-column gap-3">
+                {{#suggestions}}
+                    <div class="p-3 rounded-3 border" style="border-color: rgba(0,0,0,.06);">
+                        <div class="fw-semibold mb-1">{{table}} <span class="text-muted fw-normal">({{columns}})</span>
+                        </div>
+                        <div class="small text-muted mb-2">{{reason}}</div>
+                        <pre class="lsq-pre">{{create}}</pre>
+                    </div>
+                {{/suggestions}}
+            </div>
+        {{/hassuggestions}}
+        {{^hassuggestions}}
+            <div class="text-muted">{{#str}}detail_indexes_none, local_slow_queries{{/str}}</div>
+        {{/hassuggestions}}
+    </div>
+</div>
