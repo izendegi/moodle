@@ -14,7 +14,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package    assignsubmission_helixassign
+ * @package
  * @copyright  2021 Tim Williams Streaming LTD
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -31,18 +31,18 @@ define([], function() {
     };
 
     module.bind = function() {
-        var cbtn=document.getElementById('id_cancel');
-        if (cbtn!=null) {
+        var cbtn = document.getElementById('id_cancel');
+        if (cbtn !== null) {
             cbtn.addEventListener('click', module.helixCancelClick);
         }
-    }
-    
+    };
+
     module.init = function(resID, userID, statusURL) {
         module.resID = resID;
         module.userID = userID;
         module.statusURL = statusURL;
         module.bind();
-    }
+    };
 
     return module;
 });
