@@ -24,14 +24,15 @@
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import ModalFactory from 'core/modal_factory';
+import Modal from 'core/modal';
 import ModalEvents from 'core/modal_events';
-import MedialModal from 'tiny_medial/modal';
 import {getBaseurl, getLtiurl, getLaunchType, getLibLaunchType, getModType, getUserId, getOauthConsumerKey, getStatusUrl,
     getHideInsert, getEmbedOpt, getInsertDelay, getBs5} from './options';
 
 import {setLink, setLinkCustom, setMedialLink} from "tiny_medial/link";
 import Selectors from 'tiny_medial/selectors';
+import * as Templates from 'core/templates';
+import {getString} from 'core/str';
 
 let preid = -1;
 let gotIn = false;
@@ -64,13 +65,14 @@ export const handleAction = (editor, unlink = false) => {
 const displayDialogue = async(editor) => {
     ed = editor;
 
-    modalPromises = await ModalFactory.create({
-        type: MedialModal.TYPE,
-        templateContext: getTemplateContext(editor),
-        large: true,
-    });
+    const data = {
+            title: getString('modaltitle', 'tiny_medial'),
+            body:  Templates.render('tiny_medial/modal', getTemplateContext(editor)),
+            large: true,
+            show: true
+        };
 
-    modalPromises.show();
+    modalPromises = await Modal.create(data);
     const $root = await modalPromises.getRoot();
     const root = $root[0];
 
@@ -197,7 +199,7 @@ const checkStatus = () => {
 
 const setInsertDisplay = (state) => {
     var e = document.getElementById('mod_helixmedia_launchframebutton_' + ed.id);
-    if (typeof e != 'undefined') {
+    if (e !== null) {
         e.style.display = state;
     }
 };
