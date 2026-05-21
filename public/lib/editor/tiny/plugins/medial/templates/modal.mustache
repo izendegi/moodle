@@ -17,8 +17,7 @@
 {{!
     @template tiny_medial/modal
 
-    Modal to manage a link within the Tiny Editor.
-
+    Modal to manage a MEDIAL video selection within the Tiny Editor.
 
     Context variables required for this template:
 
@@ -27,37 +26,28 @@
         "medialurl": "https://medial.com",
         "launchurl": "https://medial.com",
         "elementid": 100,
-        "embedopt": false
+        "embedopt": false,
+        "bs5": true
     }
 }}
 
-{{< core/modal }}
-
-    {{$title}}
-        {{#str}} modaltitle, tiny_medial {{/str}}
-    {{/title}}
-
-    {{$body}}
-        <div class="{{^bs5}}embed-responsive embed-responsive-4by3{{/bs5}}{{#bs5}}ratio ratio-4x3{{/bs5}}">
-            <iframe src="{{launchurl}}" id="mod_helixmedia_launchframe_{{elementid}}" class="{{^bs5}}embed-responsive-item{{/bs5}} overflow-auto border-0" 
-                allow="fullscreen; microphone {{medialurl}}; camera {{medialurl}}; display-capture {{medialurl}};"></iframe>
-        </div>
-    {{/body}}
-    {{$footer}}
-       <div class='container'><div class='row'><div class='col-6 text-left {{^embedopt}}d-none{{/embedopt}}'>
-           {{#str}} inserttype, tiny_medial {{/str}}
-            <select id="medial_insert_type_{{elementid}}" name="medial_insert_type" class="custom-select">
-                <option value="iframe">{{#str}} iframe, tiny_medial {{/str}}</option>
-                <option value="thumbnail">{{#str}} thumbnail, tiny_medial {{/str}}</option>
-                <option value="link">{{#str}} link, tiny_medial {{/str}}</option>
-            </select>
-        </div><div class='col-6 text-right'>
-            <div id="mod_helixmedia_launchframebutton_{{elementid}}" style='display:none'>
-                <button type="button" class="btn btn-primary" data-action="save">
-                    {{#str}} button_insertmedial, tiny_medial {{/str}}
-                </button>
-            </div>
-        </div></div></div>
-    {{/footer}}
-
-{{/ core/modal }}
+<div class="{{^bs5}}embed-responsive embed-responsive-4by3{{/bs5}}{{#bs5}}ratio ratio-4x3{{/bs5}}">
+    <iframe src="{{launchurl}}" id="mod_helixmedia_launchframe_{{elementid}}" class="{{^bs5}}embed-responsive-item{{/bs5}} overflow-auto border-0" 
+        allow="fullscreen; microphone {{medialurl}}; camera {{medialurl}}; display-capture {{medialurl}};"></iframe>
+</div>
+<hr>
+<div class='container w-100'><div class='row'><div class='d-inline col-2 text-right no-wrap {{^embedopt}}d-none{{/embedopt}}'>
+    <label class='align-middle pt-1' for='medial_insert_type_{{elementid}}'>{{#str}} inserttype, tiny_medial {{/str}}</label>
+</div><div class='col-4 text-left {{^embedopt}}d-none{{/embedopt}}'>
+    <select id="medial_insert_type_{{elementid}}" name="medial_insert_type" class="custom-select">
+        <option value="iframe">{{#str}} iframe, tiny_medial {{/str}}</option>
+        <option value="thumbnail">{{#str}} thumbnail, tiny_medial {{/str}}</option>
+        <option value="link">{{#str}} link, tiny_medial {{/str}}</option>
+    </select>
+</div><div class='col-6 text-right'>
+    <div id="mod_helixmedia_launchframebutton_{{elementid}}" style='display:none'>
+        <button type="button" class="btn btn-primary" data-action="save">
+            {{#str}} button_insertmedial, tiny_medial {{/str}}
+        </button>
+    </div>
+</div></div></div>

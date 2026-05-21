@@ -101,7 +101,6 @@ export const setLinkCustom = (preid, inserttype, editor, data) => {
     if (data.custom.audioonly.toLowerCase() == "true") {
         audioonly = 1;
     }
-
     setMedialLink(preid, inserttype, editor, audioonly, getViewLaunchType(editor), getTemplate(inserttype, editor),
         data.title, data.custom.video_ref);
 };
@@ -134,23 +133,56 @@ const getTemplate = (inserttype, editor) => {
  * @param {String} videoref
  */
 export const setMedialLink = async(preid, inserttype, editor, audioonly, launchtype, template, title, videoref) => {
-    var url = getEmbedUrl(editor) + "?type=" + launchtype + "&responsive=1&medialembed=" + inserttype + "&audioonly=" + audioonly + "&l=" + preid;
-    if (videoref) {
-        url += "&video_ref=" + videoref;
-    }
-    var context = {
-        url: url,
-        title: title,
-        bs5: getBs5(editor)
+    var data = {
+        "type": launchtype,
+        "responsive": 1,
+        "medialembed": inserttype,
+        "audioonly": audioonly,
+        "l": preid
     };
 
-    if (audioonly == 1) {
-        context.audioonly = true;
+    if (videoref) {
+        /* eslint-disable-next-line camelcase */
+        data.video_ref = videoref;
     }
 
-    const {html} = await Templates.renderForPromise(template, context);
-    window.console.log(html);
-    editor.insertContent(html);
+    generateSHA256Hash(JSON.stringify(data)).then(async hash => {
+        data.sig = hash;
+        data = JSON.stringify(data);
+        var url = getEmbedUrl(editor) + "?data=" + btoa(data);
+
+        var context = {
+            url: url,
+            title: title,
+            bs5: getBs5(editor)
+        };
+
+        if (audioonly == 1) {
+            context.audioonly = true;
+        }
+
+        const {html} = await Templates.renderForPromise(template, context);
+        editor.insertContent(html);
+        return true;
+    }).catch(error => {
+        /* eslint-disable-next-line no-console */
+        console.log(error);
+    });
+};
+
+export const generateSHA256Hash = async(inputString) => {
+    // Step 1: Convert string to ArrayBuffer
+    const encoder = new TextEncoder();
+    const data = encoder.encode(inputString);
+
+    // Step 2: Generate hash using Web Crypto API
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+
+    // Step 3: Convert ArrayBuffer to hex string
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+
+    return hashHex;
 };
 
 /**
