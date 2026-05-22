@@ -53,7 +53,7 @@ class converter {
         // Convert the Word file content into XHTML and an array of images.
         $imagesforzipping = [];
 
-        if (class_exists('\tiny_footnotes\wordconverter')) {
+        if (class_exists('\tiny_footnotes\wordconverter') && get_config('tiny_wordimport', 'experimentalfeatures') === '1') {
             $word2xml = new \tiny_footnotes\wordconverter();
         } else {
             $word2xml = new wordconverter();
