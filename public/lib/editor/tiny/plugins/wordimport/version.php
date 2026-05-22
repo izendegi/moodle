@@ -26,8 +26,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component    = 'tiny_wordimport';
-$plugin->release      = '1.1.4';
-$plugin->version      = 2026041300;
+$plugin->release      = '1.1.5';
+$plugin->version      = 2026050600;
 $plugin->requires     = 2024100710; // Requires Moodle 4.4.3 or higher.
 $plugin->dependencies = ['booktool_wordimport' => 2025042300];
 $plugin->maturity     = MATURITY_STABLE;
