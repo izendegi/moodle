@@ -27,6 +27,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['button_wordimport'] = 'Import Word File';
+$string['experimentalfeatures'] = 'Experimental features';
+$string['experimentalfeatures_desc'] = 'Whether to enable experimental features, like parse footnotes during import.';
 $string['heading1stylelevel'] = 'Heading element level for Heading 1 style';
 $string['heading1stylelevel_desc'] = 'HTML heading element level to which the Word "Heading 1" style should be mapped';
 $string['menuitem_wordimport'] = 'Import Word File';

@@ -30,20 +30,19 @@ if ($hassiteconfig) {
     $settings = new admin_settingpage('tiny_wordimport_settings', new lang_string('pluginname', 'tiny_wordimport'));
 
     if ($ADMIN->fulltree) {
-        // What HTML heading element should be used for the Word Heading 1 style?
-        $name = new lang_string('heading1stylelevel', 'tiny_wordimport');
-        $desc = new lang_string('heading1stylelevel_desc', 'tiny_wordimport');
-        $default = 3;
-        $options = array_combine(range(1, 6), ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
-
-        $setting = new admin_setting_configselect(
+        $settings->add(new admin_setting_configselect(
             'tiny_wordimport/heading1stylelevel',
-            $name,
-            $desc,
-            $default,
-            $options
-        );
+            new lang_string('heading1stylelevel', 'tiny_wordimport'),
+            new lang_string('heading1stylelevel_desc', 'tiny_wordimport'),
+            3,
+            array_combine(range(1, 6), ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        ));
 
-        $settings->add($setting);
+        $settings->add(new admin_setting_configcheckbox(
+            'tiny_wordimport/experimentalfeatures',
+            new lang_string('experimentalfeatures', 'tiny_wordimport'),
+            new lang_string('experimentalfeatures_desc', 'tiny_wordimport'),
+            '0',
+        ));
     }
 }
