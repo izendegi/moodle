@@ -22,7 +22,27 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace mod_customcert;
+
+use coding_exception;
+use InvalidArgumentException;
+use mod_customcert\element\element_interface;
+use mod_customcert\element\layout_element_interface;
+use mod_customcert\element\legacy_element_adapter;
+use mod_customcert\element\form_element_interface;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element\stylable_element_interface;
+use mod_customcert\event\element_created;
+use mod_customcert\event\element_updated;
+use mod_customcert\service\element_renderer;
+use mod_customcert\service\element_factory;
+use mod_customcert\service\element_repository;
+use mod_customcert\service\persistence_helper;
+use MoodleQuickForm;
+use pdf;
+use stdClass;
 
 /**
  * Class element
@@ -33,120 +53,112 @@ namespace mod_customcert;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-abstract class element {
+abstract class element implements
+    form_element_interface,
+    layout_element_interface,
+    renderable_element_interface,
+    stylable_element_interface {
     /**
      * @var string The left alignment constant.
      */
-    const ALIGN_LEFT = 'L';
+    public const string ALIGN_LEFT = 'L';
 
     /**
      * @var string The centered alignment constant.
      */
-    const ALIGN_CENTER = 'C';
+    public const string ALIGN_CENTER = 'C';
 
     /**
      * @var string The right alignment constant.
      */
-    const ALIGN_RIGHT = 'R';
-
-    /**
-     * @var \stdClass $element The data for the element we are adding - do not use, kept for legacy reasons.
-     */
-    protected $element;
+    public const string ALIGN_RIGHT = 'R';
 
     /**
      * @var int The id.
      */
-    protected $id;
+    protected int $id;
 
     /**
      * @var int The page id.
      */
-    protected $pageid;
+    protected int $pageid;
 
     /**
      * @var string The name.
      */
-    protected $name;
+    protected string $name;
 
     /**
      * @var mixed The data.
      */
-    protected $data;
-
-    /**
-     * @var string The font name.
-     */
-    protected $font;
-
-    /**
-     * @var int The font size.
-     */
-    protected $fontsize;
-
-    /**
-     * @var string The font colour.
-     */
-    protected $colour;
+    protected mixed $data;
 
     /**
      * @var int The position x.
      */
-    protected $posx;
+    protected ?int $posx;
 
     /**
      * @var int The position y.
      */
-    protected $posy;
-
-    /**
-     * @var int The width.
-     */
-    protected $width;
+    protected ?int $posy;
 
     /**
      * @var int The refpoint.
      */
-    protected $refpoint;
+    protected ?int $refpoint;
+
+    /**
+     * @var string The element type (plugin name, e.g. 'text', 'code').
+     */
+    private string $customcertelementtype;
 
     /**
      * @var string The alignment.
      */
-    protected $alignment;
+    protected string $alignment;
 
     /**
      * @var bool $showposxy Show position XY form elements?
      */
-    protected $showposxy;
+    protected bool $showposxy;
 
     /**
      * @var edit_element_form Element edit form instance.
      */
-    private $editelementform;
+    private ?edit_element_form $editelementform = null;
 
     /**
      * Constructor.
      *
-     * @param \stdClass $element the element data
+     * @param stdClass $element the element data
      */
-    public function __construct($element) {
+    public function __construct(stdClass $element) {
         $showposxy = get_config('customcert', 'showposxy');
 
-        // Keeping this for legacy reasons so we do not break third-party elements.
-        $this->element = clone($element);
+        // Normalise types defensively — DB/fixtures may provide strings for numeric fields.
+        // Helper: return null if unset or empty string, otherwise cast.
+        $optional = static function ($value, callable $cast) {
+            return (isset($value) && $value !== '') ? $cast($value) : null;
+        };
 
-        $this->id = $element->id;
-        $this->pageid = $element->pageid;
-        $this->name = $element->name;
-        $this->data = $element->data;
-        $this->font = $element->font;
-        $this->fontsize = $element->fontsize;
-        $this->colour = $element->colour;
-        $this->posx = $element->posx;
-        $this->posy = $element->posy;
-        $this->width = $element->width;
-        $this->refpoint = $element->refpoint;
-        $this->showposxy = isset($showposxy) && $showposxy;
+        // Required scalars.
+        $this->id = isset($element->id) ? (int) $element->id : 0;
+        $this->pageid = isset($element->pageid) ? (int) $element->pageid : 0;
+        $this->name = isset($element->name) ? (string) $element->name : '';
+
+        // Element type (plugin name).
+        $this->customcertelementtype = isset($element->element) ? (string) $element->element : '';
+
+        // Mixed data payload.
+        $this->data = $element->data ?? null;
+
+        // Optional fields (preserve NULL when unset or empty string).
+        $this->posx = $optional($element->posx ?? null, 'intval');
+        $this->posy = $optional($element->posy ?? null, 'intval');
+        $this->refpoint = $optional($element->refpoint ?? null, 'intval');
+
+        $this->showposxy = (bool) ($showposxy ?? false);
         $this->set_alignment($element->alignment ?? self::ALIGN_LEFT);
     }
 
@@ -155,7 +167,7 @@ abstract class element {
      *
      * @return int
      */
-    public function get_id() {
+    public function get_id(): int {
         return $this->id;
     }
 
@@ -164,7 +176,7 @@ abstract class element {
      *
      * @return int
      */
-    public function get_pageid() {
+    public function get_pageid(): int {
         return $this->pageid;
     }
 
@@ -173,71 +185,214 @@ abstract class element {
      *
      * @return int
      */
-    public function get_name() {
+    public function get_name(): string {
         return $this->name;
     }
 
     /**
      * Returns the data.
      *
+     * For legacy backwards-compatibility: if the stored data is a generic migration wrapper
+     * (a JSON object with a 'value' key and only migration visual/layout metadata keys),
+     * AND the element type is not a known bundled element type, this method unwraps and
+     * returns the scalar value directly so that legacy third-party elements extending this
+     * class continue to receive the original scalar they stored.
+     *
+     * Bundled element types always receive the raw stored data, even if the JSON object
+     * contains a 'value' key, because their save/load code expects the full JSON payload.
+     *
      * @return mixed
      */
-    public function get_data() {
+    public function get_data(): mixed {
+        if (
+            is_string($this->data)
+            && $this->should_unwrap_generic_migration_wrapper()
+            && self::is_generic_migration_wrapper($this->data)
+        ) {
+            $decoded = json_decode($this->data, true);
+            return $decoded['value'];
+        }
         return $this->data;
+    }
+
+    /**
+     * Return true if this element instance should unwrap a generic migration wrapper in get_data().
+     *
+     * Unwrapping is only applied to unknown/third-party element types. Bundled element types
+     * use structured JSON payloads and must not be unwrapped.
+     *
+     * @return bool
+     */
+    private function should_unwrap_generic_migration_wrapper(): bool {
+        if ($this->customcertelementtype === '') {
+            return false;
+        }
+        return !in_array($this->customcertelementtype, self::BUNDLED_ELEMENT_TYPES, true);
+    }
+
+    /**
+     * The set of JSON keys that the upgrade migration adds as visual/layout metadata.
+     * A JSON object is only considered a generic migration wrapper if all its keys
+     * are either 'value' or one of these migration-only keys.
+     *
+     * @var string[]
+     */
+    private const MIGRATION_VISUAL_KEYS = ['width', 'height', 'font', 'fontsize', 'colour', 'alphachannel'];
+
+    /**
+     * Bundled/core customcert element types that use structured JSON payloads.
+     * These element types must never have their data unwrapped by get_data(),
+     * even if the JSON object looks like a generic migration wrapper.
+     *
+     * @var string[]
+     */
+    private const BUNDLED_ELEMENT_TYPES = [
+        'bgimage',
+        'border',
+        'categoryname',
+        'code',
+        'coursefield',
+        'coursename',
+        'date',
+        'digitalsignature',
+        'expiry',
+        'grade',
+        'gradeitemname',
+        'image',
+        'qrcode',
+        'studentname',
+        'teachername',
+        'text',
+        'userfield',
+        'userpicture',
+    ];
+
+    /**
+     * Return true if the given JSON string is a generic migration scalar wrapper.
+     *
+     * A generic migration wrapper is a JSON object that:
+     *  - Has a 'value' key.
+     *  - Has no keys other than 'value' and the known migration visual/layout metadata keys
+     *    (width, height, font, fontsize, colour, alphachannel).
+     *
+     * This is used by get_data() to provide backwards-compatibility for legacy third-party
+     * elements that call get_data() and expect the original scalar value.
+     *
+     * @param string $data The raw JSON string from the data column.
+     * @return bool
+     */
+    public static function is_generic_migration_wrapper(string $data): bool {
+        $decoded = json_decode($data, true);
+        if (!is_array($decoded) || !array_key_exists('value', $decoded)) {
+            return false;
+        }
+        $value = $decoded['value'];
+        if (
+            $value !== null
+            && !is_scalar($value)
+            && !(is_array($value) && array_is_list($value))
+        ) {
+            return false;
+        }
+        $allowed = array_merge(['value'], self::MIGRATION_VISUAL_KEYS);
+        foreach (array_keys($decoded) as $key) {
+            if (!in_array($key, $allowed, true)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
      * Returns the font name.
      *
-     * @return string
+     * @return string|null
      */
-    public function get_font() {
-        return $this->font;
+    public function get_font(): ?string {
+        return $this->get_string_from_data_key('font');
     }
 
     /**
      * Returns the font size.
      *
-     * @return int
+     * @return int|null
      */
-    public function get_fontsize() {
-        return $this->fontsize;
+    public function get_fontsize(): ?int {
+        return $this->get_int_from_data_key('fontsize');
     }
 
     /**
      * Returns the font colour.
      *
-     * @return string
+     * @return string|null
      */
-    public function get_colour() {
-        return $this->colour;
+    public function get_colour(): ?string {
+        return $this->get_string_from_data_key('colour');
+    }
+
+    /**
+     * Return the decoded JSON payload stored in 'data' or an empty array when not valid JSON.
+     *
+     * This helper is intended for element implementations that store structured data
+     * in the JSON 'data' column. It never throws; invalid or non-JSON values produce [].
+     *
+     * @return array<string,mixed>
+     */
+    public function get_payload(): array {
+        $raw = $this->data;
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+        return [];
+    }
+
+    /**
+     * Return a scalar value for simple elements.
+     *
+     * For JSON payloads containing {"value": <scalar>}, this returns that scalar cast to string.
+     * For structured payloads without a single 'value', returns null.
+     *
+     * @return string|null The scalar value or null if not applicable.
+     */
+    public function get_value(): ?string {
+        $raw = $this->data;
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded) && array_key_exists('value', $decoded)) {
+                return is_scalar($decoded['value']) ? (string)$decoded['value'] : null;
+            }
+        }
+        return null;
     }
 
     /**
      * Returns the position x.
      *
-     * @return int
+     * @return int|null
      */
-    public function get_posx() {
-        return $this->posx;
+    public function get_posx(): ?int {
+        return $this->posx ?? null;
     }
 
     /**
      * Returns the position y.
      *
-     * @return int
+     * @return int|null
      */
-    public function get_posy() {
-        return $this->posy;
+    public function get_posy(): ?int {
+        return $this->posy ?? null;
     }
 
     /**
      * Returns the width.
      *
-     * @return int
+     * @return int|null
      */
-    public function get_width() {
-        return $this->width;
+    public function get_width(): ?int {
+        return $this->get_int_from_data_key('width');
     }
 
     /**
@@ -245,8 +400,8 @@ abstract class element {
      *
      * @return int
      */
-    public function get_refpoint() {
-        return $this->refpoint;
+    public function get_refpoint(): ?int {
+        return $this->refpoint ?? null;
     }
 
     /**
@@ -254,8 +409,21 @@ abstract class element {
      *
      * @return string The current alignment value.
      */
-    public function get_alignment() {
+    public function get_alignment(): ?string {
         return $this->alignment ?? self::ALIGN_LEFT;
+    }
+
+    /**
+     * Returns the type of the element.
+     *
+     * @return string
+     */
+    public function get_type(): string {
+        $classname = get_class($this);
+        $parts = explode('\\', $classname);
+        $pluginname = reset($parts);
+
+        return str_replace('customcertelement_', '', $pluginname);
     }
 
     /**
@@ -263,24 +431,72 @@ abstract class element {
      *
      * @param string $alignment The new alignment.
      *
-     * @throws \InvalidArgumentException if the provided new alignment is not valid.
+     * @throws InvalidArgumentException if the provided new alignment is not valid.
      */
-    protected function set_alignment(string $alignment) {
+    protected function set_alignment(string $alignment): void {
         $validvalues = [self::ALIGN_LEFT, self::ALIGN_CENTER, self::ALIGN_RIGHT];
         if (!in_array($alignment, $validvalues)) {
-            throw new \InvalidArgumentException("'$alignment' is not a valid alignment value. It has to be one of " .
+            throw new InvalidArgumentException("'$alignment' is not a valid alignment value. It has to be one of " .
                 implode(', ', $validvalues));
         }
         $this->alignment = $alignment;
     }
 
     /**
-     * This function renders the form elements when adding a customcert element.
-     * Can be overridden if more functionality is needed.
+     * Helper to extract an integer value from the JSON-encoded data by key.
+     * Returns null when the key is missing or empty; preserves 0 as meaningful.
      *
-     * @param \MoodleQuickForm $mform the edit_form instance.
+     * @param string $key
+     * @return int|null
+     */
+    private function get_int_from_data_key(string $key): ?int {
+        $payload = $this->get_payload();
+        if (array_key_exists($key, $payload)) {
+            $value = $payload[$key];
+            return ($value === '' || $value === null) ? null : (int)$value;
+        }
+        return null;
+    }
+
+    /**
+     * Helper to extract a string value from the JSON-encoded data by key.
+     * Returns null when the key is missing or empty.
+     *
+     * @param string $key
+     * @return string|null
+     */
+    private function get_string_from_data_key(string $key): ?string {
+        $payload = $this->get_payload();
+        if (array_key_exists($key, $payload)) {
+            $value = $payload[$key];
+            return ($value === '' || $value === null) ? null : (string)$value;
+        }
+        return null;
+    }
+
+
+    /**
+     * Renders common form elements (font, colour, position, width, refpoint, alignment).
+     *
+     * @deprecated since Moodle 5.2
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public function build_form(\MoodleQuickForm $mform): void {
+        $this->render_form_elements($mform);
+    }
+
+    /**
+     * Renders common form elements (font, colour, position, width, refpoint, alignment).
+     *
+     * @deprecated since Moodle 5.2
+     * @param MoodleQuickForm $mform the edit_form instance.
      */
     public function render_form_elements($mform) {
+        debugging(
+            'render_form_elements() is deprecated since Moodle 5.2. '
+            . 'Use element_helper::render_common_form_elements() instead.',
+            DEBUG_DEVELOPER
+        );
         // Render the common elements.
         element_helper::render_form_element_font($mform);
         element_helper::render_form_element_colour($mform);
@@ -296,19 +512,25 @@ abstract class element {
      * Sets the data on the form when editing an element.
      * Can be overridden if more functionality is needed.
      *
-     * @param edit_element_form $mform the edit_form instance
+     * @param MoodleQuickForm $mform the edit_form instance
+     * @deprecated since Moodle 5.2
      */
     public function definition_after_data($mform) {
+        debugging(
+            'definition_after_data() is deprecated since Moodle 5.2. '
+            . 'Implement mod_customcert\\element\\preparable_form_interface::prepare_form() instead.',
+            DEBUG_DEVELOPER
+        );
         // Loop through the properties of the element and set the values
         // of the corresponding form element, if it exists.
         $properties = [
             'name' => $this->name,
-            'font' => $this->font,
-            'fontsize' => $this->fontsize,
-            'colour' => $this->colour,
+            'font' => $this->get_font(),
+            'fontsize' => $this->get_fontsize(),
+            'colour' => $this->get_colour(),
             'posx' => $this->posx,
             'posy' => $this->posy,
-            'width' => $this->width,
+            'width' => $this->get_width(),
             'refpoint' => $this->refpoint,
             'alignment' => $this->get_alignment(),
         ];
@@ -327,8 +549,14 @@ abstract class element {
      * @param array $data the submitted data
      * @param array $files the submitted files
      * @return array the validation errors
+     * @deprecated since Moodle 5.2
      */
     public function validate_form_elements($data, $files) {
+        debugging(
+            'validate_form_elements() is deprecated since Moodle 5.2. '
+            . 'Implement mod_customcert\\element\\validatable_element_interface::validate() instead.',
+            DEBUG_DEVELOPER
+        );
         // Array to return the errors.
         $errors = [];
 
@@ -346,24 +574,46 @@ abstract class element {
      * Handles saving the form elements created by this element.
      * Can be overridden if more functionality is needed.
      *
-     * @param \stdClass $data the form data
-     * @return bool true of success, false otherwise.
+     * @param stdClass $data the form data
+     * @return int|bool true if updated was a success, id of the new element otherwise.
+     * @deprecated since Moodle 5.2
      */
     public function save_form_elements($data) {
+        debugging(
+            'save_form_elements() is deprecated since Moodle 5.2. '
+            . 'Implement mod_customcert\\element\\persistable_element_interface::normalise_data() and '
+            . 'use element_repository for persistence.',
+            DEBUG_DEVELOPER
+        );
         global $DB;
 
         // Get the data from the form.
-        $element = new \stdClass();
+        $element = new stdClass();
         $element->name = $data->name;
-        $element->data = $this->save_unique_data($data);
-        $element->font = $data->font ?? null;
-        $element->fontsize = $data->fontsize ?? null;
-        $element->colour = $data->colour ?? null;
+        // Persist element data as JSON using a single helper policy.
+        $element->data = persistence_helper::to_json_data($this, $data);
+        // Visual attributes are stored within JSON 'data', not as separate columns.
         if ($this->showposxy) {
             $element->posx = $data->posx ?? null;
             $element->posy = $data->posy ?? null;
         }
-        $element->width = $data->width ?? null;
+        // Merge width into JSON data rather than a (now removed) DB column.
+        if (isset($data->width) && $data->width !== '') {
+            $current = $element->data;
+            $merged = null;
+            if ($current === null || $current === '') {
+                $merged = json_encode(['width' => (int)$data->width]);
+            } else {
+                $decoded = json_decode($current, true);
+                if (is_array($decoded)) {
+                    $decoded['width'] = (int)$data->width;
+                    $merged = json_encode($decoded);
+                } else {
+                    $merged = json_encode(['width' => (int)$data->width]);
+                }
+            }
+            $element->data = $merged;
+        }
         $element->refpoint = $data->refpoint ?? null;
         $element->alignment = $data->alignment ?? self::ALIGN_LEFT;
         $element->timemodified = time();
@@ -373,43 +623,72 @@ abstract class element {
             $element->id = $this->id;
             $return = $DB->update_record('customcert_elements', $element);
 
-            \mod_customcert\event\element_updated::create_from_element($this)->trigger();
+            $target = ($this instanceof element_interface) ? $this : new legacy_element_adapter($this);
+            element_updated::create_from_element($target)->trigger();
 
             return $return;
         } else { // Must be adding a new one.
             $element->element = $data->element;
             $element->pageid = $data->pageid;
-            $element->sequence = \mod_customcert\element_helper::get_element_sequence($element->pageid);
+            $element->sequence = element_helper::get_element_sequence($element->pageid);
             $element->timecreated = time();
             $element->id = $DB->insert_record('customcert_elements', $element, true);
             $this->id = $element->id;
 
-            \mod_customcert\event\element_created::create_from_element($this)->trigger();
+            $target = ($this instanceof element_interface) ? $this : new legacy_element_adapter($this);
+            element_created::create_from_element($target)->trigger();
 
             return $element->id;
         }
     }
 
+
     /**
-     * This will handle how form data will be saved into the data column in the
-     * customcert_elements table.
+     * Handles saving any element data introduced by this element.
      * Can be overridden if more functionality is needed.
      *
-     * @param \stdClass $data the form data
-     * @return string the unique data to save
+     * @deprecated since Moodle 5.2 — implement persistable_element_interface::normalise_data() instead.
+     * @param stdClass $data the form data
+     * @return string the unique data to store
      */
     public function save_unique_data($data) {
+        debugging(
+            'save_unique_data() is deprecated since Moodle 5.2. '
+            . 'Implement mod_customcert\\element\\persistable_element_interface::normalise_data() instead.',
+            DEBUG_DEVELOPER
+        );
         return '';
+    }
+
+    /**
+     * Handles any extra processing needed when an element is restored from a backup.
+     * Can be overridden if more functionality is needed.
+     *
+     * @deprecated since Moodle 5.2 — implement restorable_element_interface::after_restore_from_backup() instead.
+     * @param mixed $restore the restore task
+     */
+    public function after_restore($restore) {
+        debugging(
+            'after_restore() is deprecated since Moodle 5.2. '
+            . 'Implement mod_customcert\\element\\restorable_element_interface::after_restore_from_backup() instead.',
+            DEBUG_DEVELOPER
+        );
     }
 
     /**
      * This handles copying data from another element of the same type.
      * Can be overridden if more functionality is needed.
      *
-     * @param \stdClass $data the form data
+     * @deprecated since Moodle 5.2 — implement mod_customcert\element\copyable_element_interface::copy_from() instead.
+     * @param mixed $data legacy form/element data
      * @return bool returns true if the data was copied successfully, false otherwise
      */
     public function copy_element($data) {
+        debugging(
+            'element::copy_element() is deprecated since Moodle 5.2. '
+            . 'Implement mod_customcert\\element\\copyable_element_interface::copy_from() instead.',
+            DEBUG_DEVELOPER
+        );
         return true;
     }
 
@@ -419,7 +698,7 @@ abstract class element {
      *
      * @return bool returns true if the element can be added, false otherwise
      */
-    public static function can_add() {
+    public static function can_add(): bool {
         return true;
     }
 
@@ -428,11 +707,12 @@ abstract class element {
      *
      * Must be overridden.
      *
-     * @param \pdf $pdf the pdf object
+     * @param pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param \stdClass $user the user we are rendering this for
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
      */
-    abstract public function render($pdf, $preview, $user);
+    abstract public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void;
 
     /**
      * Render the element in html.
@@ -442,67 +722,47 @@ abstract class element {
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
+     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    abstract public function render_html();
+    abstract public function render_html(?element_renderer $renderer = null): string;
 
     /**
      * Handles deleting any data this element may have introduced.
      * Can be overridden if more functionality is needed.
      *
+     * @deprecated since Moodle 5.2
      * @return bool success return true if deletion success, false otherwise
      */
     public function delete() {
-        global $DB;
+        debugging(
+            'element::delete() is deprecated since Moodle 5.2. Use element_repository::delete() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        $return = $DB->delete_records('customcert_elements', ['id' => $this->id]);
-
-        \mod_customcert\event\element_deleted::create_from_element($this)->trigger();
-
-        return $return;
+        $repository = new element_repository(element_factory::build_with_defaults());
+        $target = ($this instanceof element_interface) ? $this : new legacy_element_adapter($this);
+        return $repository->delete($target);
     }
 
-    /**
-     * This function is responsible for handling the restoration process of the element.
-     *
-     * For example, the function may save data that is related to another course module, this
-     * data will need to be updated if we are restoring the course as the course module id will
-     * be different in the new course.
-     *
-     * @param \restore_customcert_activity_task $restore
-     */
-    public function after_restore($restore) {
-    }
-
-    /**
-     * Magic getter for read only access.
-     *
-     * @param string $name
-     */
-    public function __get($name) {
-        debugging('Please call the appropriate get_* function instead of relying on magic getters', DEBUG_DEVELOPER);
-        if (property_exists($this->element, $name)) {
-            return $this->element->$name;
-        }
-    }
 
     /**
      * Set edit form instance for the custom cert element.
      *
-     * @param \mod_customcert\edit_element_form $editelementform
+     * @param edit_element_form $editelementform
      */
-    public function set_edit_element_form(edit_element_form $editelementform) {
+    public function set_edit_element_form(edit_element_form $editelementform): void {
         $this->editelementform = $editelementform;
     }
 
     /**
      * Get edit form instance for the custom cert element.
      *
-     * @return \mod_customcert\edit_element_form
+     * @return edit_element_form
      */
-    public function get_edit_element_form() {
+    public function get_edit_element_form(): edit_element_form {
         if (empty($this->editelementform)) {
-            throw new \coding_exception('Edit element form instance is not set.');
+            throw new coding_exception('Edit element form instance is not set.');
         }
 
         return $this->editelementform;
