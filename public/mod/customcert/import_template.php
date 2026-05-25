@@ -1,0 +1,99 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Imports a custom certificate template from an uploaded ZIP file.
+ *
+ * This script presents a form to upload a template backup, handles the upload,
+ * processes the import using the configured file manager, and displays status
+ * notifications. Requires a valid context ID.
+ *
+ * @package    mod_customcert
+ * @copyright  2025, oncampus GmbH
+ * @author     Konrad Ebel <konrad.ebel@oncampus.de>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+require_once('../../config.php');
+
+use core\di;
+use core\notification;
+use mod_customcert\export\import_exception;
+use mod_customcert\export\template_file_manager_interface;
+use mod_customcert\export\template_import_logger_interface;
+use mod_customcert\export\import_form;
+use mod_customcert\page_helper;
+
+require_login();
+
+$contextid = required_param('context_id', PARAM_INT);
+
+$context = context::instance_by_id($contextid);
+require_capability('mod/customcert:manage', $context);
+
+$pageurl = new moodle_url('/mod/customcert/import_template.php', ['context_id' => $contextid]);
+page_helper::page_setup($pageurl, $context, $SITE->fullname);
+
+$PAGE->navbar->add(
+    get_string('managetemplates', 'customcert'),
+    new moodle_url('/mod/customcert/manage_templates.php', ['contextid' => $contextid])
+);
+$PAGE->navbar->add(get_string('importtemplate', 'customcert'));
+
+$mform = new import_form();
+
+if ($fromform = $mform->get_data()) {
+    $zipstring = $mform->get_file_content('backup');
+    $tempdir = make_temp_directory('customcert_import/' . uniqid(more_entropy: true));
+    $zippath = "$tempdir/import.zip";
+    file_put_contents($zippath, $zipstring);
+
+    $importsuccess = false;
+    try {
+        $backupmng = di::get(template_file_manager_interface::class);
+        $backupmng->import($fromform->context_id, $tempdir);
+
+        // Queue any import warnings into the session so they display on the redirected page.
+        di::get(template_import_logger_interface::class)->print_notification();
+
+        $importsuccess = true;
+    } catch (import_exception $e) {
+        // Known import failure: show a friendly error notification and redisplay the form.
+        notification::add($e->getMessage(), notification::ERROR);
+    } catch (\Throwable $e) {
+        // Unexpected failure: surface a generic message and log the detail for admins.
+        notification::add(get_string('importfailed', 'mod_customcert'), notification::ERROR);
+        debugging('customcert import failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString(), DEBUG_DEVELOPER);
+    } finally {
+        // Always clean up the temporary directory before any redirect.
+        if (is_dir($tempdir)) {
+            remove_dir($tempdir);
+        }
+    }
+
+    if ($importsuccess) {
+        redirect(
+            new moodle_url('/mod/customcert/manage_templates.php', ['contextid' => $contextid]),
+            get_string('importsuccessful', 'mod_customcert'),
+            null,
+            notification::SUCCESS
+        );
+    }
+}
+
+echo $OUTPUT->header();
+$mform->display();
+echo $OUTPUT->footer();
