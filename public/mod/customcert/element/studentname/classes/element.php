@@ -22,7 +22,21 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace customcertelement_studentname;
+
+use mod_customcert\element as base_element;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element\form_element_interface;
+use mod_customcert\element\validatable_element_interface;
+use mod_customcert\element_helper;
+use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use pdf;
+use stdClass;
+
 
 /**
  * The customcert element studentname's core interaction API.
@@ -31,16 +45,36 @@ namespace customcertelement_studentname;
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends \mod_customcert\element {
+class element extends base_element implements
+    form_element_interface,
+    persistable_element_interface,
+    renderable_element_interface,
+    validatable_element_interface
+{
+    /**
+     * Build the configuration form for this element.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function build_form(MoodleQuickForm $mform): void {
+        element_helper::render_common_form_elements($mform, $this->showposxy);
+    }
+
     /**
      * Handles rendering the element on the pdf.
      *
-     * @param \pdf $pdf the pdf object
+     * @param pdf $pdf the pdf object
      * @param bool $preview true if it is a preview, false otherwise
-     * @param \stdClass $user the user we are rendering this for
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
      */
-    public function render($pdf, $preview, $user) {
-        \mod_customcert\element_helper::render_content($pdf, $this, fullname($user));
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+        if ($renderer) {
+            $renderer->render_content($this, fullname($user));
+        } else {
+            element_helper::render_content($pdf, $this, fullname($user));
+        }
     }
 
     /**
@@ -49,11 +83,42 @@ class element extends \mod_customcert\element {
      * This function is used to render the element when we are using the
      * drag and drop interface to position it.
      *
+     * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
-    public function render_html() {
+    public function render_html(?element_renderer $renderer = null): string {
         global $USER;
 
-        return \mod_customcert\element_helper::render_html_content($this, fullname($USER));
+        if ($renderer) {
+            return (string) $renderer->render_content($this, fullname($USER));
+        }
+
+        return element_helper::render_html_content($this, fullname($USER));
+    }
+
+    /**
+     * No unique data is persisted for studentname.
+     *
+     * @param stdClass $formdata
+     * @return array
+     */
+    public function normalise_data(stdClass $formdata): array {
+        return [
+            'font' => (string)($formdata->font ?? ''),
+            'fontsize' => (int)($formdata->fontsize ?? 0),
+            'colour' => (string)($formdata->colour ?? ''),
+            'width' => (int)($formdata->width ?? 0),
+        ];
+    }
+
+    /**
+     * Validate submitted form data for this element.
+     * Core validations are handled by validation_service; no extra rules here.
+     *
+     * @param array $data
+     * @return array<string,string>
+     */
+    public function validate(array $data): array {
+        return [];
     }
 }
