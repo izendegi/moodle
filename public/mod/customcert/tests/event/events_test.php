@@ -18,23 +18,45 @@
  * Contains the event tests for the module customcert.
  *
  * @package   mod_customcert
+ * @category  test
  * @copyright 2023 Mark Nelson <mdjnelson@gmail.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace mod_customcert\event;
 
+use customcertelement_text\element as text_element;
+use mod_customcert\event\element_created;
+use mod_customcert\event\element_deleted;
+use mod_customcert\event\element_updated;
+use mod_customcert\event\page_created;
+use mod_customcert\event\page_deleted;
+use mod_customcert\event\page_updated;
+use mod_customcert\event\template_created;
+use mod_customcert\event\template_deleted;
+use mod_customcert\event\template_updated;
+use mod_customcert\service\certificate_issue_service;
+use mod_customcert\service\element_factory;
+use mod_customcert\service\item_move_service;
+use mod_customcert\service\template_service;
+use mod_customcert\template;
+use advanced_testcase;
+use context_course;
+use context_module;
+use context_system;
+use mod_customcert\event\issue_created;
+use mod_customcert\event\issue_deleted;
+use stdClass;
+
 /**
- * Contains the event tests for the module customcert.
+ * Event behavior test coverage for customcert.
  *
  * @package   mod_customcert
- * @copyright 2023 Mark Nelson <mdjnelson@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @category  test
  */
-final class events_test extends \advanced_testcase {
+final class events_test extends advanced_testcase {
     public function setUp(): void {
         $this->resetAfterTest();
-
         parent::setUp();
     }
 
@@ -44,30 +66,79 @@ final class events_test extends \advanced_testcase {
      * @covers \mod_customcert\template::create
      */
     public function test_creating_a_template(): void {
-        // Trigger and capture the event.
         $sink = $this->redirectEvents();
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
+        $template = template::create('Test name', context_system::instance()->id);
         $events = $sink->get_events();
         $this->assertCount(1, $events);
 
         $event = reset($events);
 
-        // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\template_created', $event);
+        $this->assertInstanceOf(template_created::class, $event);
         $this->assertEquals($template->get_id(), $event->objectid);
-        $this->assertEquals(\context_system::instance()->id, $event->contextid);
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
     }
 
     /**
-     * Tests the events are fired correctly when creating a page.
+     * Tests the events are fired correctly when updating a template.
      *
-     * @covers \mod_customcert\template::add_page
+     * @covers \mod_customcert\service\template_service::update
      */
-    public function test_creating_a_page(): void {
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
+    public function test_updating_a_template(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $context = context_course::instance($course->id);
+        $template = template::create('Test name', $context->id);
+        $service = template_service::create();
+        $data = new stdClass();
+        $data->id = $template->get_id();
+        $data->name = 'Test name 2';
 
         $sink = $this->redirectEvents();
-        $page = $template->add_page();
+        $service->update($template, $data);
+        $events = $sink->get_events();
+        $this->assertCount(1, $events);
+
+        $event = reset($events);
+
+        $this->assertInstanceOf(template_updated::class, $event);
+        $this->assertEquals($template->get_id(), $event->objectid);
+        $this->assertEquals($context->id, $event->contextid);
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Tests the events are fired correctly when updating a template with no
+     * changes.
+     *
+     * @covers \mod_customcert\service\template_service::update
+     */
+    public function test_updating_a_template_no_change(): void {
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $data = new stdClass();
+        $data->id = $template->get_id();
+        $data->name = $template->get_name();
+
+        // Trigger and capture the event using service API; expect no events when unchanged.
+        $sink = $this->redirectEvents();
+        $service->update($template, $data);
+        $events = $sink->get_events();
+
+        // Check that no events were triggered.
+        $this->assertCount(0, $events);
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Tests the events are fired correctly when creating a page via the service.
+     *
+     * @covers \mod_customcert\service\template_service::add_page
+     */
+    public function test_creating_a_page_via_service(): void {
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+
+        $sink = $this->redirectEvents();
+        $pageid = $service->add_page($template);
         $events = $sink->get_events();
         $this->assertCount(2, $events);
 
@@ -75,103 +146,50 @@ final class events_test extends \advanced_testcase {
         $templateupdateevent = array_shift($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\page_created', $pagecreatedevent);
-        $this->assertEquals($page, $pagecreatedevent->objectid);
-        $this->assertEquals(\context_system::instance()->id, $pagecreatedevent->contextid);
-        $this->assertDebuggingNotCalled();
+        $this->assertInstanceOf(page_created::class, $pagecreatedevent);
+        $this->assertEquals($pageid, $pagecreatedevent->objectid);
+        $this->assertEquals(context_system::instance()->id, $pagecreatedevent->contextid);
 
-        $this->assertInstanceOf('\mod_customcert\event\template_updated', $templateupdateevent);
+        $this->assertInstanceOf(template_updated::class, $templateupdateevent);
         $this->assertEquals($template->get_id(), $templateupdateevent->objectid);
-        $this->assertEquals(\context_system::instance()->id, $templateupdateevent->contextid);
+        $this->assertEquals(context_system::instance()->id, $templateupdateevent->contextid);
         $this->assertDebuggingNotCalled();
     }
 
     /**
-     * Tests the events are fired correctly when moving an item.
+     * Tests the events are fired correctly when moving an item via the service.
      *
-     * @covers \mod_customcert\template::move_item
+     * @covers \mod_customcert\service\template_service::move_item
      */
-    public function test_moving_item(): void {
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $page1id = $template->add_page();
-        $template->add_page();
+    public function test_moving_item_via_service(): void {
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
+        $service->add_page($template);
 
         $sink = $this->redirectEvents();
-        $template->move_item('page', $page1id, 'down');
+        $service->move_item($template, item_move_service::ITEM_PAGE, $page1id, item_move_service::DIRECTION_DOWN);
         $events = $sink->get_events();
         $this->assertCount(1, $events);
 
         $event = reset($events);
-        $this->assertInstanceOf('\mod_customcert\event\template_updated', $event);
+        $this->assertInstanceOf(template_updated::class, $event);
         $this->assertEquals($template->get_id(), $event->objectid);
-        $this->assertEquals(\context_system::instance()->id, $event->contextid);
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
         $this->assertDebuggingNotCalled();
-    }
-
-    /**
-     * Tests the events are fired correctly when updating a template.
-     *
-     * @covers \mod_customcert\template::save
-     */
-    public function test_updating_a_template(): void {
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-
-        // Date we are updating to.
-        $data = new \stdClass();
-        $data->id = $template->get_id();
-        $data->name = 'Test name 2';
-
-        // Trigger and capture the event.
-        $sink = $this->redirectEvents();
-        $template->save($data);
-        $events = $sink->get_events();
-        $this->assertCount(1, $events);
-
-        $event = reset($events);
-
-        // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\template_updated', $event);
-        $this->assertEquals($template->get_id(), $event->objectid);
-        $this->assertEquals(\context_system::instance()->id, $event->contextid);
-    }
-
-    /**
-     * Tests the events are fired correctly when updating a template with no
-     * changes.
-     *
-     * @covers \mod_customcert\template::save
-     */
-    public function test_updating_a_template_no_change(): void {
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-
-        $data = new \stdClass();
-        $data->id = $template->get_id();
-        $data->name = $template->get_name();
-
-        // Trigger and capture the event.
-        $sink = $this->redirectEvents();
-        $template->save($data);
-        $events = $sink->get_events();
-
-        // Check that no events were triggered.
-        $this->assertCount(0, $events);
     }
 
     /**
      * Tests the events are fired correctly when deleting a template.
      *
-     * @covers \mod_customcert\template::delete
+     * @covers \mod_customcert\service\template_service::delete
      */
     public function test_deleting_a_template(): void {
         global $DB;
 
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-
-        $data = new \stdClass();
-        $data->name = $template->get_name();
-        $template->save($data);
-
-        $page1id = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
 
         // Check the created objects exist in the database as we will check the
         // triggered events correspond to the deletion of these records.
@@ -181,21 +199,19 @@ final class events_test extends \advanced_testcase {
         $this->assertEquals(1, count($pages));
 
         $sink = $this->redirectEvents();
-        $template->delete();
+        $service->delete($template);
         $events = $sink->get_events();
         $this->assertCount(2, $events);
 
         $event = array_shift($events);
-        $this->assertInstanceOf('\mod_customcert\event\page_deleted', $event);
+        $this->assertInstanceOf(page_deleted::class, $event);
         $this->assertEquals($page1id, $event->objectid);
-        $this->assertEquals(\context_system::instance()->id, $event->contextid);
-        $this->assertDebuggingNotCalled();
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
 
         $event = array_shift($events);
-        $this->assertInstanceOf('\mod_customcert\event\template_deleted', $event);
+        $this->assertInstanceOf(template_deleted::class, $event);
         $this->assertEquals($template->get_id(), $event->objectid);
-        $this->assertEquals(\context_system::instance()->id, $event->contextid);
-        $this->assertDebuggingNotCalled();
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
 
         // Check the above page_deleted and template_deleted events correspond
         // to actual deletions in the database.
@@ -203,19 +219,21 @@ final class events_test extends \advanced_testcase {
         $this->assertEquals(0, count($templates));
         $pages = $DB->get_records('customcert_pages', ['templateid' => $template->get_id()]);
         $this->assertEquals(0, count($pages));
+        $this->assertDebuggingNotCalled();
     }
 
     /**
      * Tests the events are fired correctly when deleting a page.
      *
-     * @covers \mod_customcert\template::delete_page
+     * @covers \mod_customcert\service\template_service::delete_page
      */
     public function test_deleting_a_page(): void {
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $page1id = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
 
         $sink = $this->redirectEvents();
-        $template->delete_page($page1id);
+        $service->delete_page($template, $page1id);
         $events = $sink->get_events();
         $this->assertCount(2, $events);
 
@@ -223,32 +241,32 @@ final class events_test extends \advanced_testcase {
         $templateupdatedevent = array_shift($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\page_deleted', $pagedeletedevent);
+        $this->assertInstanceOf(page_deleted::class, $pagedeletedevent);
         $this->assertEquals($page1id, $pagedeletedevent->objectid);
-        $this->assertEquals(\context_system::instance()->id, $pagedeletedevent->contextid);
-        $this->assertDebuggingNotCalled();
+        $this->assertEquals(context_system::instance()->id, $pagedeletedevent->contextid);
 
-        $this->assertInstanceOf('\mod_customcert\event\template_updated', $templateupdatedevent);
+        $this->assertInstanceOf(template_updated::class, $templateupdatedevent);
         $this->assertEquals($template->get_id(), $templateupdatedevent->objectid);
-        $this->assertEquals(\context_system::instance()->id, $templateupdatedevent->contextid);
+        $this->assertEquals(context_system::instance()->id, $templateupdatedevent->contextid);
         $this->assertDebuggingNotCalled();
     }
 
     /**
      * Tests the events are fired correctly when saving a page.
      *
-     * @covers \mod_customcert\template::save_page
+     * @covers \mod_customcert\service\template_service::save_pages
      */
     public function test_updating_a_page(): void {
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $pageid = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $pageid = $service->add_page($template);
 
         $width = 'pagewidth_' . $pageid;
         $height = 'pageheight_' . $pageid;
         $leftmargin = 'pageleftmargin_' . $pageid;
         $rightmargin = 'pagerightmargin_' . $pageid;
 
-        $p = new \stdClass();
+        $p = new stdClass();
         $p->tid = $template->get_id();
         $p->$width = 1;
         $p->$height = 1;
@@ -256,16 +274,16 @@ final class events_test extends \advanced_testcase {
         $p->$rightmargin = 1;
 
         $sink = $this->redirectEvents();
-        $template->save_page($p);
+        $service->save_pages($template, $p);
         $events = $sink->get_events();
         $this->assertCount(1, $events);
 
         $pageupdatedevent = array_shift($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\page_updated', $pageupdatedevent);
+        $this->assertInstanceOf(page_updated::class, $pageupdatedevent);
         $this->assertEquals($pageid, $pageupdatedevent->objectid);
-        $this->assertEquals(\context_system::instance()->id, $pageupdatedevent->contextid);
+        $this->assertEquals(context_system::instance()->id, $pageupdatedevent->contextid);
         $this->assertDebuggingNotCalled();
     }
 
@@ -275,17 +293,19 @@ final class events_test extends \advanced_testcase {
      * @covers \mod_customcert\element::save_form_elements
      */
     public function test_save_form_elements_insert(): void {
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $page1id = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
 
-        $data = new \stdClass();
+        $data = new stdClass();
         $data->pageid = $page1id;
         $data->name = 'A name';
         $data->element = 'text';
         $data->text = 'Some text';
 
+        $factory = element_factory::build_with_defaults();
         $sink = $this->redirectEvents();
-        $e = \mod_customcert\element_factory::get_element_instance($data);
+        $e = $factory->create_from_legacy_record($data);
         $e->save_form_elements($data);
         $events = $sink->get_events();
         $this->assertCount(1, $events);
@@ -293,10 +313,11 @@ final class events_test extends \advanced_testcase {
         $event = reset($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\element_created', $event);
+        $this->assertInstanceOf(element_created::class, $event);
         $this->assertEquals($e->get_id(), $event->objectid);
-        $this->assertEquals(\context_system::instance()->id, $event->contextid);
-        $this->assertDebuggingNotCalled();
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
+        // The method save_form_elements() is deprecated and should trigger debugging().
+        $this->assertDebuggingCalled();
     }
 
     /**
@@ -307,11 +328,12 @@ final class events_test extends \advanced_testcase {
     public function test_save_form_elements_update(): void {
         global $DB;
 
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $page1id = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
 
         // Add an element to the page.
-        $element = new \stdClass();
+        $element = new stdClass();
         $element->pageid = $page1id;
         $element->name = 'Image';
         $elementid = $DB->insert_record('customcert_elements', $element);
@@ -319,9 +341,9 @@ final class events_test extends \advanced_testcase {
         $element = $DB->get_record('customcert_elements', ['id' => $elementid]);
 
         // Add an element to the page.
-        $element = new \customcertelement_text\element($element);
+        $element = new text_element($element);
 
-        $data = new \stdClass();
+        $data = new stdClass();
         $data->name = 'A new name';
         $data->text = 'New text';
 
@@ -333,25 +355,27 @@ final class events_test extends \advanced_testcase {
         $event = reset($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\element_updated', $event);
+        $this->assertInstanceOf(element_updated::class, $event);
         $this->assertEquals($element->get_id(), $event->objectid);
-        $this->assertEquals(\context_system::instance()->id, $event->contextid);
-        $this->assertDebuggingNotCalled();
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
+        // The method save_form_elements() is deprecated and should trigger debugging().
+        $this->assertDebuggingCalled();
     }
 
     /**
      * Tests the events are fired correctly when copying to a template.
      *
-     * @covers \mod_customcert\element::copy_to_template
+     * @covers \mod_customcert\service\template_service::copy_to_template
      */
     public function test_copy_to_template(): void {
         global $DB;
 
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $page1id = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
 
         // Add an element to the page.
-        $element = new \stdClass();
+        $element = new stdClass();
         $element->pageid = $page1id;
         $element->name = 'image';
         $element->element = 'image';
@@ -359,10 +383,10 @@ final class events_test extends \advanced_testcase {
         $element->id = $DB->insert_record('customcert_elements', $element);
 
         // Add another template.
-        $template2 = \mod_customcert\template::create('Test name 2', \context_system::instance()->id);
+        $template2 = template::create('Test name 2', context_system::instance()->id);
 
         $sink = $this->redirectEvents();
-        $template->copy_to_template($template2);
+        $service->copy_to_template($template, $template2);
         $events = $sink->get_events();
         $this->assertCount(2, $events);
 
@@ -370,12 +394,12 @@ final class events_test extends \advanced_testcase {
         $elementcreatedevent = array_shift($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\page_created', $pagecreatedevent);
-        $this->assertEquals(\context_system::instance()->id, $pagecreatedevent->contextid);
+        $this->assertInstanceOf(page_created::class, $pagecreatedevent);
+        $this->assertEquals(context_system::instance()->id, $pagecreatedevent->contextid);
         $this->assertDebuggingNotCalled();
 
-        $this->assertInstanceOf('\mod_customcert\event\element_created', $elementcreatedevent);
-        $this->assertEquals(\context_system::instance()->id, $elementcreatedevent->contextid);
+        $this->assertInstanceOf(element_created::class, $elementcreatedevent);
+        $this->assertEquals(context_system::instance()->id, $elementcreatedevent->contextid);
         $this->assertDebuggingNotCalled();
     }
 
@@ -383,16 +407,17 @@ final class events_test extends \advanced_testcase {
      * Tests the events are fired correctly when loading a template into a
      * course-level certificate.
      *
-     * @covers \mod_customcert\element::copy_to_template
+     * @covers \mod_customcert\service\template_service::copy_to_template
      */
     public function test_load_template(): void {
         global $DB;
 
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $page1id = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
 
         // Add an element to the page.
-        $element = new \stdClass();
+        $element = new stdClass();
         $element->pageid = $page1id;
         $element->name = 'image';
         $element->element = 'image';
@@ -401,11 +426,11 @@ final class events_test extends \advanced_testcase {
 
         $course = $this->getDataGenerator()->create_course();
         $activity = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-        $contextid = \context_module::instance($activity->cmid)->id;
-        $template2 = \mod_customcert\template::create($activity->name, $contextid);
+        $contextid = context_module::instance($activity->cmid)->id;
+        $template2 = template::create($activity->name, $contextid);
 
         $sink = $this->redirectEvents();
-        $template->copy_to_template($template2);
+        $service->copy_to_template($template, $template2);
         $events = $sink->get_events();
         $this->assertCount(3, $events);
 
@@ -414,15 +439,14 @@ final class events_test extends \advanced_testcase {
         $templateupdatedevent = array_shift($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\page_created', $pagecreatedevent);
+        $this->assertInstanceOf(page_created::class, $pagecreatedevent);
         $this->assertEquals($contextid, $pagecreatedevent->contextid);
-        $this->assertDebuggingNotCalled();
 
-        $this->assertInstanceOf('\mod_customcert\event\element_created', $elementcreatedevent);
+        $this->assertInstanceOf(element_created::class, $elementcreatedevent);
         $this->assertEquals($contextid, $elementcreatedevent->contextid);
         $this->assertDebuggingNotCalled();
 
-        $this->assertInstanceOf('\mod_customcert\event\template_updated', $templateupdatedevent);
+        $this->assertInstanceOf(template_updated::class, $templateupdatedevent);
         $this->assertEquals($contextid, $templateupdatedevent->contextid);
         $this->assertDebuggingNotCalled();
     }
@@ -430,16 +454,17 @@ final class events_test extends \advanced_testcase {
     /**
      * Tests the events are fired correctly when deleting an element
      *
-     * @covers \mod_customcert\template::delete_element
+     * @covers \mod_customcert\service\template_service::delete_element
      */
     public function test_deleting_an_element(): void {
         global $DB;
 
-        $template = \mod_customcert\template::create('Test name', \context_system::instance()->id);
-        $page1id = $template->add_page();
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+        $page1id = $service->add_page($template);
 
         // Add an element to the page.
-        $element = new \stdClass();
+        $element = new stdClass();
         $element->pageid = $page1id;
         $element->name = 'image';
         $element->element = 'image';
@@ -447,7 +472,7 @@ final class events_test extends \advanced_testcase {
         $element->id = $DB->insert_record('customcert_elements', $element);
 
         $sink = $this->redirectEvents();
-        $template->delete_element($element->id);
+        $service->delete_element($template, $element->id);
         $events = $sink->get_events();
         $this->assertCount(2, $events);
 
@@ -455,21 +480,21 @@ final class events_test extends \advanced_testcase {
         $templateupdatedevent = array_shift($events);
 
         // Check that the event data is valid.
-        $this->assertInstanceOf('\mod_customcert\event\element_deleted', $elementdeletedevent);
+        $this->assertInstanceOf(element_deleted::class, $elementdeletedevent);
         $this->assertEquals($elementdeletedevent->objectid, $element->id);
-        $this->assertEquals($elementdeletedevent->contextid, \context_system::instance()->id);
+        $this->assertEquals($elementdeletedevent->contextid, context_system::instance()->id);
         $this->assertDebuggingNotCalled();
 
-        $this->assertInstanceOf('\mod_customcert\event\template_updated', $templateupdatedevent);
+        $this->assertInstanceOf(template_updated::class, $templateupdatedevent);
         $this->assertEquals($templateupdatedevent->objectid, $template->get_id());
-        $this->assertEquals($templateupdatedevent->contextid, \context_system::instance()->id);
+        $this->assertEquals($templateupdatedevent->contextid, context_system::instance()->id);
         $this->assertDebuggingNotCalled();
     }
 
     /**
      * Tests that the issue_created event is fired correctly.
      *
-     * @covers \mod_customcert\certificate::issue_certificate
+     * @covers \mod_customcert\service\certificate_issue_service::issue_certificate
      * @covers \mod_customcert\event\issue_created
      */
     public function test_issue_created_event(): void {
@@ -478,29 +503,28 @@ final class events_test extends \advanced_testcase {
         $course = $this->getDataGenerator()->create_course();
         $user = $this->getDataGenerator()->create_user();
         $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-        $context = \context_module::instance($customcert->cmid);
+        $context = context_module::instance($customcert->cmid);
 
         $sink = $this->redirectEvents();
 
         // Call the actual function that creates an issue and triggers the event.
-        $issueid = \mod_customcert\certificate::issue_certificate($customcert->id, $user->id);
+        $issueid = $this->issue_certificate((int)$customcert->id, (int)$user->id);
 
         $events = $sink->get_events();
         $this->assertCount(1, $events);
 
         $event = reset($events);
-        $this->assertInstanceOf(\mod_customcert\event\issue_created::class, $event);
+        $this->assertInstanceOf(issue_created::class, $event);
         $this->assertEquals($issueid, $event->objectid);
         $this->assertEquals($context->id, $event->contextid);
         $this->assertEquals($user->id, $event->relateduserid);
-        $this->assertDebuggingNotCalled();
     }
 
     /**
      * Tests that the issue_deleted event is fired correctly.
      * This simulates the deletion process that happens in view.php.
      *
-     * @covers \mod_customcert\certificate::issue_certificate
+     * @covers \mod_customcert\service\certificate_issue_service::issue_certificate
      * @covers \mod_customcert\event\issue_deleted
      */
     public function test_issue_deleted_event(): void {
@@ -519,10 +543,10 @@ final class events_test extends \advanced_testcase {
         ]);
 
         $cm = get_coursemodule_from_instance('customcert', $customcert->id);
-        $context = \context_module::instance($cm->id);
+        $context = context_module::instance($cm->id);
 
         // Create an issue using the natural method.
-        $issueid = \mod_customcert\certificate::issue_certificate($customcert->id, $student->id);
+        $issueid = $this->issue_certificate((int)$customcert->id, (int)$student->id);
 
         // Get the issue record (as view.php does).
         $issue = $DB->get_record('customcert_issues', [
@@ -543,7 +567,7 @@ final class events_test extends \advanced_testcase {
         ]);
 
         if ($deleted) {
-            $event = \mod_customcert\event\issue_deleted::create([
+            $event = issue_deleted::create([
                 'objectid'      => $issue->id,
                 'context'       => $context,
                 'relateduserid' => $issue->userid,
@@ -558,14 +582,26 @@ final class events_test extends \advanced_testcase {
         $this->assertTrue($deleted);
         $this->assertCount(1, $events);
         $event = reset($events);
-        $this->assertInstanceOf(\mod_customcert\event\issue_deleted::class, $event);
+        $this->assertInstanceOf(issue_deleted::class, $event);
         $this->assertEquals($issueid, $event->objectid);
         $this->assertEquals($student->id, $event->relateduserid);
         $this->assertEquals($context->id, $event->contextid);
-        $this->assertDebuggingNotCalled();
 
         // Verify the issue was actually deleted from database.
         $issueexists = $DB->record_exists('customcert_issues', ['id' => $issueid]);
         $this->assertFalse($issueexists);
+    }
+
+    /**
+     * Issue a certificate via the service for test setup.
+     *
+     * @param int $customcertid
+     * @param int $userid
+     * @return int
+     */
+    private function issue_certificate(int $customcertid, int $userid): int {
+        $service = certificate_issue_service::create();
+
+        return $service->issue_certificate($customcertid, $userid);
     }
 }
