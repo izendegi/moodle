@@ -24,8 +24,15 @@
 
 namespace mod_customcert;
 
+use context_system;
+use html_writer;
+use moodle_url;
+use moodleform;
+use mod_customcert\service\template_repository;
+
 defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
 
+global $CFG;
 require_once($CFG->libdir . '/formslib.php');
 
 /**
@@ -35,35 +42,35 @@ require_once($CFG->libdir . '/formslib.php');
  * @copyright  2013 Mark Nelson <markn@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class load_template_form extends \moodleform {
+class load_template_form extends moodleform {
     /**
      * Form definition.
      */
     public function definition() {
-        global $DB;
-
         $mform =& $this->_form;
 
         // Get the context.
         $context = $this->_customdata['context'];
-        $syscontext = \context_system::instance();
+        $syscontext = context_system::instance();
+
+        $templatesrepo = new template_repository();
 
         $mform->addElement('header', 'loadtemplateheader', get_string('loadtemplate', 'customcert'));
 
         // Display a link to the manage templates page.
         if ($context->contextlevel != CONTEXT_SYSTEM && has_capability('mod/customcert:manage', $syscontext)) {
-            $link = \html_writer::link(
-                new \moodle_url('/mod/customcert/manage_templates.php'),
+            $link = html_writer::link(
+                new moodle_url('/mod/customcert/manage_templates.php'),
                 get_string('managetemplates', 'customcert')
             );
             $mform->addElement('static', 'managetemplates', '', $link);
         }
 
-        $arrtemplates = $DB->get_records_menu('customcert_templates', ['contextid' => $syscontext->id], 'name ASC', 'id, name');
-        if ($arrtemplates) {
+        $records = $templatesrepo->list_by_context((int)$syscontext->id);
+        if ($records) {
             $templates = [];
-            foreach ($arrtemplates as $key => $template) {
-                $templates[$key] = format_string($template, true, ['context' => $context]);
+            foreach ($records as $record) {
+                $templates[$record->id] = format_string($record->name, true, ['context' => $context]);
             }
             $group = [];
             $group[] = $mform->createElement('select', 'ltid', '', $templates);
@@ -71,7 +78,7 @@ class load_template_form extends \moodleform {
             $mform->addElement('group', 'loadtemplategroup', '', $group, '', false);
             $mform->setType('ltid', PARAM_INT);
         } else {
-            $msg = \html_writer::tag('div', get_string('notemplates', 'customcert'), ['class' => 'alert']);
+            $msg = html_writer::tag('div', get_string('notemplates', 'customcert'), ['class' => 'alert']);
             $mform->addElement('static', 'notemplates', '', $msg);
         }
     }

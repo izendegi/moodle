@@ -22,7 +22,17 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+declare(strict_types=1);
+
 namespace mod_customcert;
+
+use mod_customcert\service\certificate_download_service;
+use mod_customcert\service\form_service;
+use mod_customcert\service\certificate_repository;
+use mod_customcert\service\issue_repository;
+use mod_customcert\service\certificate_issue_service;
+use mod_customcert\service\certificate_time_service;
+use stdClass;
 
 /**
  * Class certificate.
@@ -36,564 +46,309 @@ namespace mod_customcert;
 class certificate {
     /**
      * Send the file inline to the browser.
+     *
+     * @deprecated since Moodle 5.2
      */
-    const DELIVERY_OPTION_INLINE = 'I';
+    public const string DELIVERY_OPTION_INLINE = 'I';
 
     /**
-     * Send to the browser and force a file download
+     * Send to the browser and force a file download.
+     *
+     * @deprecated since Moodle 5.2
      */
-    const DELIVERY_OPTION_DOWNLOAD = 'D';
+    public const string DELIVERY_OPTION_DOWNLOAD = 'D';
 
     /**
      * @var string the print protection variable
+     *
+     * @deprecated since Moodle 5.2
      */
-    const PROTECTION_PRINT = 'print';
+    public const string PROTECTION_PRINT = 'print';
 
     /**
      * @var string the modify protection variable
+     *
+     * @deprecated since Moodle 5.2
      */
-    const PROTECTION_MODIFY = 'modify';
+    public const string PROTECTION_MODIFY = 'modify';
 
     /**
      * @var string the copy protection variable
+     *
+     * @deprecated since Moodle 5.2
      */
-    const PROTECTION_COPY = 'copy';
+    public const string PROTECTION_COPY = 'copy';
 
     /**
      * @var int the number of issues that will be displayed on each page in the report
      *      If you want to display all customcerts on a page set this to 0.
-     */
-    const CUSTOMCERT_PER_PAGE = '50';
-
-    /**
-     * Date format in filename for download all zip file.
-     */
-    private const ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES_DATE_FORMAT = '%Y%m%d%H%M%S';
-
-    /**
-     * The ending part of the name of the zip file.
-     */
-    private const ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES = 'all_certificates.zip';
-
-    /**
-     * Handles setting the protection field for the customcert
      *
-     * @param \stdClass $data
+     * @deprecated since Moodle 5.2
+     */
+    public const int CUSTOMCERT_PER_PAGE = 50;
+
+    /**
+     * Handles setting the protection field for the customcert.
+     *
+     * @deprecated since Moodle 5.2
+     * @param stdClass $data
      * @return string the value to insert into the protection field
      */
-    public static function set_protection($data) {
-        $protection = [];
+    public static function set_protection(stdClass $data): string {
+        debugging(
+            'certificate::set_protection() is deprecated since Moodle 5.2. '
+            . 'Use form_service::set_protection() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        if (!empty($data->protection_print)) {
-            $protection[] = self::PROTECTION_PRINT;
-        }
-        if (!empty($data->protection_modify)) {
-            $protection[] = self::PROTECTION_MODIFY;
-        }
-        if (!empty($data->protection_copy)) {
-            $protection[] = self::PROTECTION_COPY;
-        }
-
-        // Return the protection string.
-        return implode(', ', $protection);
+        return form_service::set_protection($data);
     }
 
     /**
      * Handles uploading an image for the customcert module.
      *
+     * @deprecated since Moodle 5.2
      * @param int $draftitemid the draft area containing the files
      * @param int $contextid the context we are storing this image in
-     * @param string $filearea indentifies the file area.
+     * @param string $filearea identifies the file area.
      */
-    public static function upload_files($draftitemid, $contextid, $filearea = 'image') {
-        global $CFG;
+    public static function upload_files(int $draftitemid, int $contextid, string $filearea = 'image'): void {
+        debugging(
+            'certificate::upload_files() is deprecated since Moodle 5.2. '
+            . 'Use form_service::upload_files() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        // Save the file if it exists that is currently in the draft area.
-        require_once($CFG->dirroot . '/lib/filelib.php');
-        file_save_draft_area_files($draftitemid, $contextid, 'mod_customcert', $filearea, 0);
+        form_service::upload_files($draftitemid, $contextid, $filearea);
     }
 
     /**
      * Return the list of possible fonts to use.
+     *
+     * @deprecated since Moodle 5.2
+     * @return array
      */
-    public static function get_fonts() {
-        global $CFG;
+    public static function get_fonts(): array {
+        debugging(
+            'certificate::get_fonts() is deprecated since Moodle 5.2. '
+            . 'Use element_helper::get_fonts() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        require_once($CFG->libdir . '/pdflib.php');
-
-        $arrfonts = [];
-        $pdf = new \pdf();
-        $fontfamilies = $pdf->get_font_families();
-        foreach ($fontfamilies as $fontfamily => $fontstyles) {
-            foreach ($fontstyles as $fontstyle) {
-                $fontstyle = strtolower($fontstyle);
-                if ($fontstyle == 'r') {
-                    $filenamewoextension = $fontfamily;
-                } else {
-                    $filenamewoextension = $fontfamily . $fontstyle;
-                }
-                $fullpath = \TCPDF_FONTS::_getfontpath() . $filenamewoextension;
-                // Set the name of the font to null, the include next should then set this
-                // value, if it is not set then the file does not include the necessary data.
-                $name = null;
-                // Some files include a display name, the include next should then set this
-                // value if it is present, if not then $name is used to create the display name.
-                $displayname = null;
-                // Some of the TCPDF files include files that are not present, so we have to
-                // suppress warnings, this is the TCPDF libraries fault, grrr.
-                @include($fullpath . '.php');
-                // If no $name variable in file, skip it.
-                if (is_null($name)) {
-                    continue;
-                }
-                // Check if there is no display name to use.
-                if (is_null($displayname)) {
-                    // Format the font name, so "FontName-Style" becomes "Font Name - Style".
-                    $displayname = preg_replace("/([a-z])([A-Z])/", "$1 $2", $name);
-                    $displayname = preg_replace("/([a-zA-Z])-([a-zA-Z])/", "$1 - $2", $displayname);
-                }
-
-                $arrfonts[$filenamewoextension] = $displayname;
-            }
-        }
-        ksort($arrfonts);
-
-        return $arrfonts;
+        return element_helper::get_fonts();
     }
 
     /**
      * Return the list of possible font sizes to use.
+     *
+     * @deprecated since Moodle 5.2
+     * @return array
      */
-    public static function get_font_sizes() {
-        // Array to store the sizes.
-        $sizes = [];
+    public static function get_font_sizes(): array {
+        debugging(
+            'certificate::get_font_sizes() is deprecated since Moodle 5.2. '
+            . 'Use element_helper::get_font_sizes() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        for ($i = 1; $i <= 200; $i++) {
-            $sizes[$i] = $i;
-        }
-
-        return $sizes;
+        return element_helper::get_font_sizes();
     }
 
     /**
      * Get the time the user has spent in the course.
      *
+     * @deprecated since Moodle 5.2
      * @param int $courseid
      * @param int $userid
      * @return int the total time spent in seconds
      */
     public static function get_course_time(int $courseid, int $userid = 0): int {
-        global $CFG, $DB, $USER;
+        debugging(
+            'certificate::get_course_time() is deprecated since Moodle 5.2. '
+            . 'Use certificate_time_service::get_course_time() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        if (empty($userid)) {
-            $userid = $USER->id;
-        }
-
-        $logmanager = get_log_manager();
-        $readers = $logmanager->get_readers();
-        $enabledreaders = get_config('tool_log', 'enabled_stores');
-        if (empty($enabledreaders)) {
-            return 0;
-        }
-        $enabledreaders = explode(',', $enabledreaders);
-
-        // Go through all the readers until we find one that we can use.
-        foreach ($enabledreaders as $enabledreader) {
-            $reader = $readers[$enabledreader];
-            if ($reader instanceof \logstore_legacy\log\store) {
-                $logtable = 'log';
-                $coursefield = 'course';
-                $timefield = 'time';
-                break;
-            } else if ($reader instanceof \core\log\sql_internal_table_reader) {
-                $logtable = $reader->get_internal_log_table_name();
-                $coursefield = 'courseid';
-                $timefield = 'timecreated';
-                break;
-            }
-        }
-
-        // If we didn't find a reader then return 0.
-        if (!isset($logtable)) {
-            return 0;
-        }
-
-        $sql = "SELECT id, $timefield
-                  FROM {{$logtable}}
-                 WHERE userid = :userid
-                   AND $coursefield = :courseid
-              ORDER BY $timefield ASC";
-        $params = ['userid' => $userid, 'courseid' => $courseid];
-        $totaltime = 0;
-        if ($logs = $DB->get_recordset_sql($sql, $params)) {
-            foreach ($logs as $log) {
-                if (!isset($login)) {
-                    // For the first time $login is not set so the first log is also the first login.
-                    $login = $log->$timefield;
-                    $lasthit = $log->$timefield;
-                    $totaltime = 0;
-                }
-                $delay = $log->$timefield - $lasthit;
-                if ($delay > $CFG->sessiontimeout) {
-                    // The difference between the last log and the current log is more than
-                    // the timeout Register session value so that we have found a session!
-                    $login = $log->$timefield;
-                } else {
-                    $totaltime += $delay;
-                }
-                // Now the actual log became the previous log for the next cycle.
-                $lasthit = $log->$timefield;
-            }
-
-            return $totaltime;
-        }
-
-        return 0;
+        $service = certificate_time_service::create();
+        return $service->get_course_time($courseid, $userid);
     }
 
     /**
      * Download all certificate issues.
      *
+     * @deprecated since Moodle 5.2
      * @param template $template
      * @param array $issues
      * @return void
      * @throws \moodle_exception
      */
-    public static function download_all_issues_for_instance(\mod_customcert\template $template, array $issues): void {
-        $zipdir = make_request_directory();
-        if (!$zipdir) {
-            return;
-        }
+    public static function download_all_issues_for_instance(template $template, array $issues): void {
+        debugging(
+            'certificate::download_all_issues_for_instance() is deprecated since Moodle 5.2. '
+            . 'Use certificate_download_service::download_all_issues_for_instance() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        $zipfilenameprefix = userdate(time(), self::ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES_DATE_FORMAT);
-        $zipfilename = $zipfilenameprefix . "_" . self::ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES;
-        $zipfullpath = $zipdir . DIRECTORY_SEPARATOR . $zipfilename;
-
-        $ziparchive = new \zip_archive();
-        if ($ziparchive->open($zipfullpath)) {
-            foreach ($issues as $issue) {
-                $userfullname = str_replace(' ', '_', mb_strtolower(format_text(fullname($issue), FORMAT_PLAIN)));
-                $pdfname = $userfullname . DIRECTORY_SEPARATOR . 'certificate.pdf';
-                $filecontents = $template->generate_pdf(false, $issue->id, true);
-                $ziparchive->add_file_from_string($pdfname, $filecontents);
-            }
-            $ziparchive->close();
-        }
-
-        send_file($zipfullpath, $zipfilename);
-        exit();
+        $service = certificate_download_service::create();
+        $service->download_all_issues_for_instance($template, $issues);
     }
 
     /**
      * Download all certificates on the site.
      *
+     * @deprecated since Moodle 5.2
      * @return void
      */
     public static function download_all_for_site(): void {
-        global $DB;
+        debugging(
+            'certificate::download_all_for_site() is deprecated since Moodle 5.2. '
+            . 'Use certificate_download_service::download_all_for_site() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        [$namefields, $nameparams] = \core_user\fields::get_sql_fullname();
-        $sql = "SELECT ci.*, $namefields as fullname, ct.id as templateid, ct.name as templatename, ct.contextid
-                  FROM {customcert_issues} ci
-                  JOIN {user} u
-                    ON ci.userid = u.id
-                  JOIN {customcert} c
-                    ON ci.customcertid = c.id
-                  JOIN {customcert_templates} ct
-                    ON c.templateid = ct.id";
-        if ($issues = $DB->get_records_sql($sql, $nameparams)) {
-            $zipdir = make_request_directory();
-            if (!$zipdir) {
-                return;
-            }
-
-            $zipfilenameprefix = userdate(time(), self::ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES_DATE_FORMAT);
-            $zipfilename = $zipfilenameprefix . "_" . self::ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES;
-            $zipfullpath = $zipdir . DIRECTORY_SEPARATOR . $zipfilename;
-
-            $ziparchive = new \zip_archive();
-            if ($ziparchive->open($zipfullpath)) {
-                foreach ($issues as $issue) {
-                    $template = new \stdClass();
-                    $template->id = $issue->templateid;
-                    $template->name = $issue->templatename;
-                    $template->contextid = $issue->contextid;
-                    $template = new \mod_customcert\template($template);
-
-                    $ctname = str_replace(' ', '_', mb_strtolower($template->get_name()));
-                    $userfullname = str_replace(' ', '_', mb_strtolower($issue->fullname));
-                    $pdfname = $userfullname . DIRECTORY_SEPARATOR . $ctname . '_' . 'certificate.pdf';
-                    $filecontents = $template->generate_pdf(false, $issue->userid, true);
-                    $ziparchive->add_file_from_string($pdfname, $filecontents);
-                }
-                $ziparchive->close();
-            }
-
-            send_file($zipfullpath, $zipfilename);
-            exit();
-        }
+        $service = certificate_download_service::create();
+        $service->download_all_for_site();
     }
 
     /**
      * Returns a list of issued customcerts.
      *
+     * @deprecated since Moodle 5.2
      * @param int $customcertid
-     * @param bool $groupmode are we in group mode
-     * @param \stdClass $cm the course module
+     * @param int $groupmode the group mode
+     * @param stdClass $cm the course module
      * @param int $limitfrom
      * @param int $limitnum
      * @param string $sort
      * @return array the users
      */
-    public static function get_issues($customcertid, $groupmode, $cm, $limitfrom, $limitnum, $sort = '') {
-        global $DB;
+    public static function get_issues(
+        int $customcertid,
+        int $groupmode,
+        stdClass $cm,
+        int $limitfrom,
+        int $limitnum,
+        string $sort = ''
+    ): array {
+        debugging(
+            'certificate::get_issues() is deprecated since Moodle 5.2. '
+            . 'Use issue_repository::get_issues() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        // Get the conditional SQL.
-        [$conditionssql, $conditionsparams] = self::get_conditional_issues_sql($cm, $groupmode);
-
-        // If it is empty then return an empty array.
-        if (empty($conditionsparams)) {
-            return [];
-        }
-
-        // Return the issues.
-        $context = \context_module::instance($cm->id);
-        $query = \core_user\fields::for_identity($context)->with_userpic()->get_sql('u', true, '', '', false);
-
-        // Add the conditional SQL and the customcertid to form all used parameters.
-        $allparams = $query->params + $conditionsparams + ['customcertid' => $customcertid];
-
-        $orderby = $sort ?: $DB->sql_fullname();
-
-        $sql = "SELECT $query->selects, ci.id as issueid, ci.code, ci.timecreated
-                  FROM {user} u
-            INNER JOIN {customcert_issues} ci ON (u.id = ci.userid)
-                       $query->joins
-                 WHERE u.deleted = 0 AND ci.customcertid = :customcertid
-                       $conditionssql
-              ORDER BY $orderby";
-
-        return $DB->get_records_sql($sql, $allparams, $limitfrom, $limitnum);
+        $repo = new issue_repository();
+        return $repo->get_issues($customcertid, $cm, $limitfrom, $limitnum, $sort);
     }
 
     /**
      * Returns the total number of issues for a given customcert.
      *
+     * @deprecated since Moodle 5.2
      * @param int $customcertid
-     * @param \stdClass $cm the course module
-     * @param bool $groupmode the group mode
-     * @return int the number of issues
+     * @param stdClass $cm the course module
+     * @param int $groupmode the group mode
      */
-    public static function get_number_of_issues($customcertid, $cm, $groupmode) {
-        global $DB;
+    public static function get_number_of_issues(int $customcertid, stdClass $cm, int $groupmode): int {
+        debugging(
+            'certificate::get_number_of_issues() is deprecated since Moodle 5.2. '
+            . 'Use issue_repository::get_number_of_issues() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        // Get the conditional SQL.
-        [$conditionssql, $conditionsparams] = self::get_conditional_issues_sql($cm, $groupmode);
-
-        // If it is empty then return 0.
-        if (empty($conditionsparams)) {
-            return 0;
-        }
-
-        // Add the conditional SQL and the customcertid to form all used parameters.
-        $allparams = $conditionsparams + ['customcertid' => $customcertid];
-
-        // Return the number of issues.
-        $sql = "SELECT COUNT(u.id) as count
-                  FROM {user} u
-            INNER JOIN {customcert_issues} ci
-                    ON u.id = ci.userid
-                 WHERE u.deleted = 0
-                   AND ci.customcertid = :customcertid
-                       $conditionssql";
-        return $DB->count_records_sql($sql, $allparams);
+        $repo = new issue_repository();
+        return $repo->get_number_of_issues($customcertid, $cm);
     }
 
     /**
      * Returns an array of the conditional variables to use in the get_issues SQL query.
      *
-     * @param \stdClass $cm the course module
-     * @param bool $groupmode are we in group mode ?
+     * @deprecated since Moodle 5.2
+     * @param stdClass $cm the course module
+     * @param int $groupmode the group mode
      * @return array the conditional variables
      */
-    public static function get_conditional_issues_sql($cm, $groupmode) {
-        global $DB, $USER;
+    public static function get_conditional_issues_sql(stdClass $cm, int $groupmode): array {
+        debugging(
+            'certificate::get_conditional_issues_sql() is deprecated since Moodle 5.2. '
+            . 'Use issue_repository::get_conditional_issues_sql() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        // Get all users that can manage this customcert to exclude them from the report.
-        $context = \context_module::instance($cm->id);
-        $conditionssql = '';
-        $conditionsparams = [];
-
-        // Get all users that can manage this certificate to exclude them from the report.
-        $certmanagers = array_keys(get_users_by_capability($context, 'mod/customcert:manage', 'u.id'));
-        $certmanagers = array_merge($certmanagers, array_keys(get_admins()));
-        [$sql, $params] = $DB->get_in_or_equal($certmanagers, SQL_PARAMS_NAMED, 'cert');
-        $conditionssql .= "AND NOT u.id $sql \n";
-        $conditionsparams += $params;
-
-        if ($groupmode) {
-            $canaccessallgroups = has_capability('moodle/site:accessallgroups', $context);
-            $currentgroup = groups_get_activity_group($cm);
-
-            // If we are viewing all participants and the user does not have access to all groups then return nothing.
-            if (!$currentgroup && !$canaccessallgroups) {
-                return ['', []];
-            }
-
-            if ($currentgroup) {
-                if (!$canaccessallgroups) {
-                    // Guest users do not belong to any groups.
-                    if (isguestuser()) {
-                        return ['', []];
-                    }
-
-                    // Check that the user belongs to the group we are viewing.
-                    $usersgroups = groups_get_all_groups($cm->course, $USER->id, $cm->groupingid);
-                    if ($usersgroups) {
-                        if (!isset($usersgroups[$currentgroup])) {
-                            return ['', []];
-                        }
-                    } else { // They belong to no group, so return an empty array.
-                        return ['', []];
-                    }
-                }
-
-                $groupusers = array_keys(groups_get_members($currentgroup, 'u.*'));
-                if (empty($groupusers)) {
-                    return ['', []];
-                }
-
-                [$sql, $params] = $DB->get_in_or_equal($groupusers, SQL_PARAMS_NAMED, 'grp');
-                $conditionssql .= "AND u.id $sql ";
-                $conditionsparams += $params;
-            }
-        }
-
-        return [$conditionssql, $conditionsparams];
+        $repo = new issue_repository();
+        return $repo->get_conditional_issues_sql($cm);
     }
 
     /**
      * Get number of certificates for a user.
      *
+     * @deprecated since Moodle 5.2
      * @param int $userid
      * @return int
      */
-    public static function get_number_of_certificates_for_user($userid) {
-        global $DB;
+    public static function get_number_of_certificates_for_user(int $userid): int {
+        debugging(
+            'certificate::get_number_of_certificates_for_user() is deprecated since Moodle 5.2. '
+            . 'Use certificate_repository::get_number_of_certificates_for_user() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        $sql = "SELECT COUNT(*)
-                  FROM {customcert} c
-            INNER JOIN {customcert_issues} ci
-                    ON c.id = ci.customcertid
-                 WHERE ci.userid = :userid";
-        return $DB->count_records_sql($sql, ['userid' => $userid]);
+        $repo = new certificate_repository();
+        return $repo->get_number_of_certificates_for_user($userid);
     }
 
     /**
      * Gets the certificates for the user.
      *
+     * @deprecated since Moodle 5.2
      * @param int $userid
      * @param int $limitfrom
      * @param int $limitnum
      * @param string $sort
      * @return array
      */
-    public static function get_certificates_for_user($userid, $limitfrom, $limitnum, $sort = '') {
-        global $DB;
+    public static function get_certificates_for_user(int $userid, int $limitfrom, int $limitnum, string $sort = ''): array {
+        debugging(
+            'certificate::get_certificates_for_user() is deprecated since Moodle 5.2. '
+            . 'Use certificate_repository::get_certificates_for_user() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        if (empty($sort)) {
-            $sort = 'ci.timecreated DESC';
-        }
-
-        $sql = "SELECT c.id, c.name, co.fullname as coursename, ci.code, ci.timecreated
-                  FROM {customcert} c
-            INNER JOIN {customcert_issues} ci
-                    ON c.id = ci.customcertid
-            INNER JOIN {course} co
-                    ON c.course = co.id
-                 WHERE ci.userid = :userid
-              ORDER BY $sort";
-        return $DB->get_records_sql($sql, ['userid' => $userid], $limitfrom, $limitnum);
+        $repo = new certificate_repository();
+        return $repo->get_certificates_for_user($userid, $limitfrom, $limitnum, $sort);
     }
 
     /**
      * Issues a certificate to a user.
      *
+     * @deprecated since Moodle 5.2
      * @param int $certificateid The ID of the certificate
      * @param int $userid The ID of the user to issue the certificate to
      * @return int The ID of the issue
      */
-    public static function issue_certificate($certificateid, $userid) {
-        global $DB;
+    public static function issue_certificate(int $certificateid, int $userid): int {
+        debugging(
+            'certificate::issue_certificate() is deprecated since Moodle 5.2. '
+            . 'Use certificate_issue_service::issue_certificate() instead.',
+            DEBUG_DEVELOPER
+        );
 
-        $issue = new \stdClass();
-        $issue->userid = $userid;
-        $issue->customcertid = $certificateid;
-        $issue->code = self::generate_code();
-        $issue->emailed = 0;
-        $issue->timecreated = time();
-
-        // Insert the record into the database.
-        $issueid = $DB->insert_record('customcert_issues', $issue);
-
-        // Get course module context for event.
-        $cm = get_coursemodule_from_instance('customcert', $certificateid, 0, false, MUST_EXIST);
-        $context = \context_module::instance($cm->id);
-
-        // Trigger event.
-        $event = \mod_customcert\event\issue_created::create([
-            'objectid' => $issueid,
-            'context' => $context,
-            'relateduserid' => $userid,
-        ]);
-        $event->trigger();
-
-        return $issueid;
+        $service = certificate_issue_service::create();
+        return $service->issue_certificate($certificateid, $userid);
     }
 
     /**
      * Generates an unused code of random letters and numbers.
      *
+     * @deprecated since Moodle 5.2
      * @return string
      */
     public static function generate_code(): string {
-        global $DB;
-
-        // Get the user's selected method from settings.
-        $method = get_config('customcert', 'codegenerationmethod');
-
-        do {
-            $code = match ($method) {
-                '0' => self::generate_code_upper_lower_digits(),
-                '1' => self::generate_code_digits_with_hyphens(),
-                default => self::generate_code_upper_lower_digits(),
-            };
-        } while ($DB->record_exists('customcert_issues', ['code' => $code]));
-        return $code;
-    }
-
-    /**
-     * Generate a random code of the format XXXXXXXXXX, where each X is a character from the set [A-Za-z0-9].
-     * Does not check that it is unused.
-     *
-     * @return string
-     */
-    private static function generate_code_upper_lower_digits(): string {
-        return random_string(10);
-    }
-
-    /**
-     * Generate an random code of the format XXXX-XXXX-XXXX, where each X is a random digit.
-     * Does not check that it is unused.
-     *
-     * @return string
-     */
-    private static function generate_code_digits_with_hyphens(): string {
-        return sprintf(
-            '%04d-%04d-%04d',
-            random_int(0, 9999),
-            random_int(0, 9999),
-            random_int(0, 9999)
+        debugging(
+            'certificate::generate_code() is deprecated since Moodle 5.2. Use certificate_issue_service::generate_code() instead.',
+            DEBUG_DEVELOPER
         );
+
+        $service = certificate_issue_service::create();
+        return $service->generate_code();
     }
 }
