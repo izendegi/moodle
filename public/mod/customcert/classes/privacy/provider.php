@@ -23,6 +23,8 @@
  */
 namespace mod_customcert\privacy;
 
+use context;
+use context_module;
 use core_privacy\local\metadata\collection;
 use core_privacy\local\metadata\provider as metadata_provider;
 use core_privacy\local\request\approved_contextlist;
@@ -34,6 +36,7 @@ use core_privacy\local\request\plugin\provider as plugin_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
+use moodle_recordset;
 
 /**
  * Privacy Subsystem implementation for mod_customcert.
@@ -101,10 +104,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      *
      * @param userlist $userlist The userlist containing the list of users who have data in this context/plugin combination.
      */
-    public static function get_users_in_context(userlist $userlist) {
+    public static function get_users_in_context(userlist $userlist): void {
         $context = $userlist->get_context();
 
-        if (!$context instanceof \context_module) {
+        if (!$context instanceof context_module) {
             return;
         }
 
@@ -132,7 +135,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      *
      * @param approved_contextlist $contextlist a list of contexts approved for export.
      */
-    public static function export_user_data(approved_contextlist $contextlist) {
+    public static function export_user_data(approved_contextlist $contextlist): void {
         global $DB;
 
         // Filter out any contexts that are not related to modules.
@@ -168,7 +171,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             ];
             return $carry;
         }, function ($customcertid, $data) use ($user, $customcertidstocmids) {
-            $context = \context_module::instance($customcertidstocmids[$customcertid]);
+            $context = context_module::instance($customcertidstocmids[$customcertid]);
             $contextdata = helper::get_context_data($context, $user);
             $finaldata = (object) array_merge((array) $contextdata, ['issues' => $data]);
             helper::export_context_files($context, $user);
@@ -179,12 +182,12 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
     /**
      * Delete all data for all users in the specified context.
      *
-     * @param \context $context the context to delete in.
+     * @param context $context the context to delete in.
      */
-    public static function delete_data_for_all_users_in_context(\context $context) {
+    public static function delete_data_for_all_users_in_context(context $context): void {
         global $DB;
 
-        if (!$context instanceof \context_module) {
+        if (!$context instanceof context_module) {
             return;
         }
 
@@ -200,7 +203,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      *
      * @param approved_contextlist $contextlist a list of contexts approved for deletion.
      */
-    public static function delete_data_for_user(approved_contextlist $contextlist) {
+    public static function delete_data_for_user(approved_contextlist $contextlist): void {
         global $DB;
 
         if (empty($contextlist->count())) {
@@ -209,7 +212,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
 
         $userid = $contextlist->get_user()->id;
         foreach ($contextlist->get_contexts() as $context) {
-            if (!$context instanceof \context_module) {
+            if (!$context instanceof context_module) {
                 continue;
             }
             $instanceid = $DB->get_field('course_modules', 'instance', ['id' => $context->instanceid], MUST_EXIST);
@@ -222,11 +225,11 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      *
      * @param approved_userlist $userlist The approved context and user information to delete information for.
      */
-    public static function delete_data_for_users(approved_userlist $userlist) {
+    public static function delete_data_for_users(approved_userlist $userlist): void {
         global $DB;
 
         $context = $userlist->get_context();
-        if (!$context instanceof \context_module) {
+        if (!$context instanceof context_module) {
             return;
         }
 
@@ -250,7 +253,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      * @param array $cmids The course module IDs.
      * @return array In the form of [$customcertid => $cmid].
      */
-    protected static function get_customcert_ids_to_cmids_from_cmids(array $cmids) {
+    protected static function get_customcert_ids_to_cmids_from_cmids(array $cmids): array {
         global $DB;
 
         [$insql, $inparams] = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
@@ -278,12 +281,12 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      * @return void
      */
     protected static function recordset_loop_and_export(
-        \moodle_recordset $recordset,
-        $splitkey,
-        $initial,
+        moodle_recordset $recordset,
+        string $splitkey,
+        mixed $initial,
         callable $reducer,
         callable $export
-    ) {
+    ): void {
         $data = $initial;
         $lastid = null;
 
