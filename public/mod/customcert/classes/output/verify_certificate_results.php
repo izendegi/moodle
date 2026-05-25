@@ -25,6 +25,8 @@
 namespace mod_customcert\output;
 
 use renderable;
+use renderer_base;
+use stdClass;
 use templatable;
 
 /**
@@ -38,24 +40,24 @@ class verify_certificate_results implements renderable, templatable {
     /**
      * @var bool Was the code successfully verified?
      */
-    public $success;
+    public bool $success;
 
     /**
      * @var string The message to display.
      */
-    public $message;
+    public string $message;
 
     /**
      * @var array The certificates issued with the matching code.
      */
-    public $issues;
+    public array $issues;
 
     /**
      * Constructor.
      *
-     * @param \stdClass $result
+     * @param stdClass $result
      */
-    public function __construct($result) {
+    public function __construct(stdClass $result) {
         $this->success = $result->success;
         if ($this->success) {
             $this->message = get_string('verified', 'customcert');
@@ -68,11 +70,11 @@ class verify_certificate_results implements renderable, templatable {
     /**
      * Function to export the renderer data in a format that is suitable for a mustache template.
      *
-     * @param \renderer_base $output Used to do a final render of any components that need to be rendered for export.
-     * @return \stdClass|array
+     * @param renderer_base $output Used to do a final render of any components that need to be rendered for export.
+     * @return stdClass|array
      */
-    public function export_for_template(\renderer_base $output) {
-        $result = new \stdClass();
+    public function export_for_template(renderer_base $output): stdClass {
+        $result = new stdClass();
         $result->success = $this->success;
         $result->message = $this->message;
         $result->issues = [];

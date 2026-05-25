@@ -27,7 +27,11 @@ namespace mod_customcert;
 
 use advanced_testcase;
 use context_module;
+use mod_customcert\service\template_service;
+use moodle_exception;
 use stdClass;
+use tool_langimport\controller;
+use core_php_time_limit;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -72,6 +76,9 @@ final class lib_test extends advanced_testcase {
 
         // 3) Install a single non-English language and verify switching works.
         $this->install_languages(['cs']);
+        if (!array_key_exists('cs', get_string_manager()->get_list_of_translations())) {
+            $this->markTestSkipped('Czech language pack could not be installed (no network access?)');
+        }
         $this->assertTrue(mod_customcert_apply_runtime_language('cs'));
     }
 
@@ -130,10 +137,10 @@ final class lib_test extends advanced_testcase {
         global $USER;
 
         $this->resetAfterTest();
-        $this->setAdminUser();
-        $this->ensure_base_langs();
 
-        $user = $this->getDataGenerator()->create_user(['lang' => 'es']);
+        // Use a plain object — mod_customcert_get_language_to_use only reads $user->lang;
+        // no DB user or installed language pack is required.
+        $user = (object)['lang' => 'es'];
         $USER = $user;
 
         $customcert = (object)[
@@ -174,10 +181,10 @@ final class lib_test extends advanced_testcase {
         global $USER;
 
         $this->resetAfterTest();
-        $this->setAdminUser();
-        $this->ensure_base_langs();
 
-        $user = $this->getDataGenerator()->create_user(['lang' => 'es']);
+        // Use a plain object — mod_customcert_get_language_to_use only reads $USER->lang;
+        // no DB user or installed language pack is required.
+        $user = (object)['lang' => 'es'];
         $USER = $user;
 
         $customcert = (object)['language' => ''];
@@ -225,6 +232,10 @@ final class lib_test extends advanced_testcase {
         $this->setAdminUser();
         $this->install_languages(['cs']);
 
+        if (!array_key_exists('cs', get_string_manager()->get_list_of_translations())) {
+            $this->markTestSkipped('Czech language pack could not be installed (no network access?)');
+        }
+
         $before = current_language();
 
         $forced = mod_customcert_apply_runtime_language('cs');
@@ -266,15 +277,15 @@ final class lib_test extends advanced_testcase {
      * @return bool
      */
     private function install_languages(array $codes): bool {
-        \core_php_time_limit::raise();
+        core_php_time_limit::raise();
         get_string_manager()->reset_caches();
 
-        $controller = new \tool_langimport\controller();
+        $controller = new controller();
         try {
             $controller->install_languagepacks($codes);
             return true;
-        } catch (\moodle_exception $e) {
-            $this->assertInstanceOf('moodle_exception', $e);
+        } catch (moodle_exception $e) {
+            $this->assertInstanceOf(moodle_exception::class, $e);
         }
 
         return false;
@@ -292,19 +303,17 @@ final class lib_test extends advanced_testcase {
      * Helper to create a customcert with a template, page, and element.
      *
      * @param stdClass $course
-     * @return array [$customcert, $pageid, $elementid, $contextid]
+     * @return array [$customcert, $pageid, $elementid, $templateid, $context]
      */
     private function create_cert_with_element(stdClass $course): array {
         global $DB;
 
         $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-        $cm = get_coursemodule_from_instance('customcert', $customcert->id, $course->id, false, MUST_EXIST);
-        $context = context_module::instance($cm->id);
-
         $templaterecord = $DB->get_record('customcert_templates', ['id' => $customcert->templateid], '*', MUST_EXIST);
-        $template = new template($templaterecord);
+        $template = template::from_record($templaterecord);
 
-        $pageid = $template->add_page();
+        $service = template_service::create();
+        $pageid = $service->add_page($template);
 
         $element = new stdClass();
         $element->pageid = $pageid;
@@ -315,54 +324,56 @@ final class lib_test extends advanced_testcase {
         $element->timemodified = time();
         $elementid = $DB->insert_record('customcert_elements', $element);
 
-        return [$customcert, $pageid, $elementid, $context];
+        $context = context_module::instance($customcert->cmid);
+        return [$customcert, $pageid, $elementid, (int)$customcert->templateid, $context];
     }
 
     /**
      * Test that mod_customcert_output_fragment_editelement throws when the element
-     * belongs to a different context (cross-course access attempt).
+     * belongs to a different template (cross-template access attempt).
      *
      * @covers ::mod_customcert_output_fragment_editelement
      */
-    public function test_output_fragment_editelement_cross_context_denied(): void {
+    public function test_output_fragment_editelement_cross_template_denied(): void {
         $this->setAdminUser();
 
-        // Course A — attacker has access to this context.
+        // Course A — attacker has access to this template.
         $coursea = $this->getDataGenerator()->create_course();
-        [, , , $contexta] = $this->create_cert_with_element($coursea);
+        [, , , $templateida, $contexta] = $this->create_cert_with_element($coursea);
 
         // Course B — element belongs here.
         $courseb = $this->getDataGenerator()->create_course();
         [, , $elementidb] = $this->create_cert_with_element($courseb);
 
-        // Pass Course A's context but Course B's elementid.
+        // Pass Course A's templateid but Course B's elementid.
         $args = [
-            'elementid' => $elementidb,
-            'context'   => $contexta,
+            'elementid'  => $elementidb,
+            'templateid' => $templateida,
+            'context'    => $contexta,
         ];
 
-        $this->expectException(\moodle_exception::class);
+        $this->expectException(moodle_exception::class);
         mod_customcert_output_fragment_editelement($args);
     }
 
     /**
      * Test that mod_customcert_output_fragment_editelement succeeds when the element
-     * belongs to the supplied context.
+     * belongs to the supplied template.
      *
      * @covers ::mod_customcert_output_fragment_editelement
      */
-    public function test_output_fragment_editelement_same_context_allowed(): void {
+    public function test_output_fragment_editelement_same_template_allowed(): void {
         $this->setAdminUser();
 
         $course = $this->getDataGenerator()->create_course();
-        [, , $elementid, $context] = $this->create_cert_with_element($course);
-
+        [, , $elementid, $templateid, $context] = $this->create_cert_with_element($course);
         $args = [
-            'elementid' => $elementid,
-            'context'   => $context,
+            'elementid'  => $elementid,
+            'templateid' => $templateid,
+            'context'    => $context,
         ];
 
-        // Should not throw — element belongs to the same context.
+        // Should not throw — element belongs to the same template.
         $html = mod_customcert_output_fragment_editelement($args);
         $this->assertIsString($html);
     }
