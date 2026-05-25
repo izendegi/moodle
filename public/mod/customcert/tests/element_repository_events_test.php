@@ -1,0 +1,234 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Unit tests for element repository events (create/update).
+ *
+ * @package    mod_customcert
+ * @category   test
+ * @copyright  2025 Mark Nelson
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+declare(strict_types=1);
+
+namespace mod_customcert;
+
+use advanced_testcase;
+use context_system;
+use mod_customcert\element\element_interface;
+use mod_customcert\event\element_created;
+use mod_customcert\event\element_updated;
+use mod_customcert\service\element_factory;
+use mod_customcert\service\element_layout;
+use mod_customcert\service\element_registry;
+use mod_customcert\service\element_repository;
+use mod_customcert\service\template_service;
+use mod_customcert\tests\fixtures\dummy_element_interface_element;
+use customcertelement_text\element as text_element;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/fixtures/dummy_element_interface_element.php');
+
+/**
+ * Tests for events emitted by the new repository code path.
+ */
+final class element_repository_events_test extends advanced_testcase {
+    /**
+     * Test set up.
+     *
+     * @return void
+     */
+    public function setUp(): void {
+        $this->resetAfterTest();
+        parent::setUp();
+    }
+
+    /**
+     * Simple test element implementing the v2 element_interface for create().
+     *
+     * @param int $pageid the page id
+     * @param string $type the element type
+     * @return element_interface
+     */
+    private function make_dummy_element(int $pageid, string $type = 'text'): element_interface {
+        return new dummy_element_interface_element($pageid, $type);
+    }
+
+    /**
+     * Ensure element_created event is fired for repository create.
+     *
+     * @covers \mod_customcert\service\element_repository::create
+     */
+    public function test_create_fires_element_created_event(): void {
+        // Create a template and a page to ensure a valid context for events.
+        $template = template::create('Repo events', context_system::instance()->id);
+        $service = template_service::create();
+        $pageid = $service->add_page($template);
+
+        $registry = new element_registry();
+        $registry->register('text', text_element::class);
+        $factory = new element_factory($registry);
+        $repository = new element_repository($factory);
+
+        $element = $this->make_dummy_element($pageid, 'text');
+
+        $layout = new element_layout(null, null, null);
+        $sink = $this->redirectEvents();
+        $newid = $repository->create($element, $layout);
+        $events = $sink->get_events();
+
+        $this->assertGreaterThan(0, $newid);
+        $this->assertCount(1, $events);
+
+        $event = reset($events);
+        $this->assertInstanceOf(element_created::class, $event);
+        $this->assertEquals($newid, $event->objectid);
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Ensure element_updated event is fired by update_position.
+     *
+     * @covers \mod_customcert\service\element_repository::update_position
+     */
+    public function test_update_position_fires_element_updated_event(): void {
+        global $DB;
+
+        $template = template::create('Repo events', context_system::instance()->id);
+        $service = template_service::create();
+        $pageid = $service->add_page($template);
+
+        $registry = new element_registry();
+        $registry->register('text', text_element::class);
+        $factory = new element_factory($registry);
+        $repository = new element_repository($factory);
+
+        $now = time();
+        $id = $DB->insert_record('customcert_elements', (object) [
+            'pageid' => $pageid,
+            'element' => 'text',
+            'name' => 'Pos event',
+            'sequence' => 1,
+            'timecreated' => $now,
+            'timemodified' => $now,
+            'data' => null,
+            'posx' => 0,
+            'posy' => 0,
+        ]);
+
+        $contextid = context_system::instance()->id;
+        $sink = $this->redirectEvents();
+        $repository->update_position($id, 30, 40, $contextid);
+        $events = $sink->get_events();
+
+        $this->assertCount(1, $events);
+        $event = reset($events);
+        $this->assertInstanceOf(element_updated::class, $event);
+        $this->assertEquals($id, $event->objectid);
+        $this->assertEquals($contextid, $event->contextid);
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Ensure element_updated event is fired by update_name.
+     *
+     * @covers \mod_customcert\service\element_repository::update_name
+     */
+    public function test_update_name_fires_element_updated_event(): void {
+        global $DB;
+
+        $template = template::create('Repo events', context_system::instance()->id);
+        $service = template_service::create();
+        $pageid = $service->add_page($template);
+
+        $registry = new element_registry();
+        $registry->register('text', text_element::class);
+        $factory = new element_factory($registry);
+        $repository = new element_repository($factory);
+
+        $now = time();
+        $id = $DB->insert_record('customcert_elements', (object) [
+            'pageid' => $pageid,
+            'element' => 'text',
+            'name' => 'Old name',
+            'sequence' => 1,
+            'timecreated' => $now,
+            'timemodified' => $now,
+            'data' => null,
+        ]);
+
+        $contextid = context_system::instance()->id;
+        $sink = $this->redirectEvents();
+        $repository->update_name($id, 'New name', $contextid);
+        $events = $sink->get_events();
+
+        $this->assertCount(1, $events);
+        $event = reset($events);
+        $this->assertInstanceOf(element_updated::class, $event);
+        $this->assertEquals($id, $event->objectid);
+        $this->assertEquals($contextid, $event->contextid);
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Ensure element_updated event is fired for repository save.
+     *
+     * @covers \mod_customcert\service\element_repository::save
+     */
+    public function test_save_fires_element_updated_event(): void {
+        global $DB;
+
+        $template = template::create('Repo events', context_system::instance()->id);
+        $service = template_service::create();
+        $pageid = $service->add_page($template);
+
+        $registry = new element_registry();
+        $registry->register('text', text_element::class);
+        $factory = new element_factory($registry);
+        $repository = new element_repository($factory);
+
+        // Seed an element record.
+        $id = $DB->insert_record('customcert_elements', (object) [
+            'pageid' => $pageid,
+            'element' => 'text',
+            'name' => 'Before',
+            'sequence' => 1,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'data' => 'Seed data',
+        ]);
+
+        // Load via repository so we have an element_interface instance.
+        $elements = $repository->load_by_page_id($pageid);
+        $this->assertCount(1, $elements);
+        $element = $elements[0];
+
+        $sink = $this->redirectEvents();
+        $layout = new element_layout(null, null, null);
+        $repository->save($element, $layout);
+        $events = $sink->get_events();
+
+        $this->assertCount(1, $events);
+        $event = reset($events);
+        $this->assertInstanceOf(element_updated::class, $event);
+        $this->assertEquals($id, $event->objectid);
+        $this->assertEquals(context_system::instance()->id, $event->contextid);
+        $this->assertDebuggingNotCalled();
+    }
+}

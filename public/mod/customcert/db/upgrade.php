@@ -22,6 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use mod_customcert\local\upgrade\row_migrator;
+
 /**
  * Customcert module upgrade code.
  *
@@ -29,7 +31,7 @@
  * @return bool always true
  */
 function xmldb_customcert_upgrade($oldversion) {
-    global $DB;
+    global $CFG, $DB;
 
     $dbman = $DB->get_manager();
 
@@ -347,6 +349,77 @@ function xmldb_customcert_upgrade($oldversion) {
 
         // Savepoint reached.
         upgrade_mod_savepoint(true, 2025041401, 'customcert');
+    }
+
+    if ($oldversion < 2025122600) {
+        // If date range is no longer present, then delete it.
+        if (!file_exists($CFG->dirroot . '/mod/customcert/element/daterange/version.php')) {
+            uninstall_plugin('customcertelement', 'daterange');
+        }
+
+        // Savepoint reached.
+        upgrade_mod_savepoint(true, 2025122600, 'customcert');
+    }
+
+    // Migrate width, font, fontsize, and colour into data JSON and drop those columns from customcert_elements.
+    if ($oldversion < 2025122800) {
+        // Stream rows in bounded batches to avoid loading the entire table into memory.
+        // Each batch is committed independently so a partial failure can be retried safely.
+        // Only rows whose serialised data actually changes are written back.
+        $batchsize = 1000;
+        $lastid = 0;
+        do {
+            $rowsread = 0;
+            $batch = [];
+            $rs = $DB->get_recordset_select(
+                'customcert_elements',
+                'id > :lastid',
+                ['lastid' => $lastid],
+                'id',
+                '*',
+                0,
+                $batchsize
+            );
+            foreach ($rs as $rec) {
+                $rowsread++;
+                $lastid = (int)$rec->id;
+                // Guard against a partially-failed upgrade where columns may already be gone.
+                $recwidth  = isset($rec->width) ? ($rec->width === null ? null : (int)$rec->width) : null;
+                $recfont   = isset($rec->font) ? ($rec->font === null ? null : (string)$rec->font) : null;
+                $recfsize  = isset($rec->fontsize) ? ($rec->fontsize === null ? null : (int)$rec->fontsize) : null;
+                $reccolour = isset($rec->colour) ? ($rec->colour === null ? null : (string)$rec->colour) : null;
+
+                $migrated = $rec->element === 'border'
+                    ? row_migrator::migrate_border_row($rec->data, $recwidth, $recfont, $recfsize, $reccolour)
+                    : row_migrator::migrate_row($rec->data, $recwidth, $recfont, $recfsize, $reccolour, $rec->element);
+
+                if ($migrated !== $rec->data) {
+                    $batch[] = (object) ['id' => $rec->id, 'data' => $migrated];
+                }
+            }
+            $rs->close();
+
+            if ($batch) {
+                $transaction = $DB->start_delegated_transaction();
+                foreach ($batch as $row) {
+                    $DB->update_record('customcert_elements', $row);
+                }
+                $transaction->allow_commit();
+            }
+        } while ($rowsread === $batchsize);
+
+        // Drop the migrated columns from customcert_elements.
+        // Wrapped in field_exists() guards so a retry after partial failure is safe.
+        $table = new xmldb_table('customcert_elements');
+        foreach (['width', 'font', 'fontsize', 'colour'] as $mfield) {
+            $field = new xmldb_field($mfield);
+            if ($dbman->field_exists($table, $field)) {
+                $dbman->drop_field($table, $field);
+            }
+        }
+
+        // Savepoint reached.
+        upgrade_mod_savepoint(true, 2025122800, 'customcert');
     }
 
     return true;

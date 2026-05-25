@@ -1,0 +1,105 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+declare(strict_types=1);
+
+namespace mod_customcert\export\datatypes;
+
+/**
+ * Handles export and import of user data fields for custom certificate subplugins.
+ *
+ * This class validates and serializes user references, ensuring that user identities
+ * match between stored data and current Moodle user records.
+ *
+ * @package    mod_customcert
+ * @copyright  2026, onCampus GmbH
+ * @author     Konrad Ebel <konrad.ebel@oncampus.de>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class user_field implements field_interface {
+    /**
+     * Constructor.
+     */
+    public function __construct() {
+    }
+
+    /**
+     * Validates and imports user data from a provided array.
+     *
+     * Ensures the user exists in the database and that the full name matches
+     * the expected value from the import data. Note: this will always fail on
+     * cross-site imports since user IDs and names differ between Moodle instances,
+     * causing the fallback (userid = 0) to be used instead.
+     *
+     * @param array $data Associative array with 'userid' and 'fullname'.
+     * @return int The validated user ID.
+     * @throws format_exception If the user does not exist or the name does not match.
+     */
+    public function import(array $data): mixed {
+        global $DB;
+
+        $userid = $data['userid'] ?? -1;
+        $username = $data['fullname'] ?? null;
+        $user = $DB->get_record('user', ['id' => $userid]);
+        if (!$user) {
+            throw new format_exception("User with $userid does not exist");
+        }
+
+        if (fullname($user) !== $username) {
+            throw new format_exception("User with $userid is not the same as in backup.");
+        }
+
+        return $userid;
+    }
+
+    /**
+     * Exports a user field value into a structured array.
+     *
+     * Retrieves the user by ID and includes both ID and full name in the export.
+     * Returns an empty array if the user cannot be found.
+     *
+     * @param mixed $value The user ID to export.
+     * @return array Exported data with 'userid' and 'fullname' keys, or an empty array.
+     */
+    public function export(mixed $value): array {
+        global $DB;
+
+        if (empty($value)) {
+            return [];
+        }
+
+        $userid = (int) $value;
+        $user = $DB->get_record('user', ['id' => $userid]);
+        if (!$user) {
+            return [];
+        }
+
+        return [
+            'userid' => $userid,
+            'fullname' => fullname($user),
+        ];
+    }
+
+    /**
+     * Returns 0 as fallback since user IDs will not match across different Moodle instances.
+     * Elements that depend on a user reference will receive an empty/unset user on import.
+     *
+     * @return int Fallback user ID (0 = no user).
+     */
+    public function get_fallback(): mixed {
+        return 0;
+    }
+}

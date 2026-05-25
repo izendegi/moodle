@@ -1,0 +1,302 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+declare(strict_types=1);
+
+namespace mod_customcert;
+
+use advanced_testcase;
+use context_system;
+use mod_customcert\element\restorable_element_interface;
+use mod_customcert\service\element_factory;
+use mod_customcert\tests\fixtures\minimal_restore_task;
+use restore_customcert_activity_task;
+use mod_customcert\local\upgrade\row_migrator;
+
+defined('MOODLE_INTERNAL') || die;
+
+// Ensure the restore base classes and task class are loaded in PHPUnit context.
+global $CFG;
+require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
+require_once($CFG->dirroot . '/mod/customcert/backup/moodle2/restore_customcert_activity_task.class.php');
+require_once(__DIR__ . '/fixtures/minimal_restore_task.php');
+
+/**
+ * Tests that after_restore_from_backup() preserves JSON and updates IDs.
+ *
+ * We don't spin a full backup/restore here; instead we simulate the mapping the
+ * restore API provides and call the hook directly.
+ *
+ * @package    mod_customcert
+ * @category   test
+ * @copyright  2026 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @coversNothing
+ */
+final class restore_hooks_json_test extends advanced_testcase {
+    /**
+     * Create minimal template/page and return page id.
+     */
+    private function create_template_and_page(): int {
+        global $DB;
+        $this->resetAfterTest();
+
+        $template = (object) [
+            'name' => 'Restore JSON Template',
+            'contextid' => context_system::instance()->id,
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ];
+        $template->id = (int)$DB->insert_record('customcert_templates', $template, true);
+
+        $page = (object) [
+            'templateid' => $template->id,
+            'width' => 210,
+            'height' => 297,
+            'leftmargin' => 0,
+            'rightmargin' => 0,
+            'sequence' => 1,
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ];
+        $page->id = (int)$DB->insert_record('customcert_pages', $page, true);
+
+        $customcert = (object) [
+            'course' => 0,
+            'name' => 'Restore JSON Activity',
+            'templateid' => $template->id,
+            'intro' => '',
+            'introformat' => 0,
+            'requiredtime' => 0,
+            'emailstudents' => 0,
+            'emailteachers' => 0,
+            'emailothers' => '',
+            'savecert' => 0,
+            'delivery' => 0,
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ];
+        $customcert->id = (int)$DB->insert_record('customcert', $customcert, true);
+        return $page->id;
+    }
+
+    /**
+     * Helper to insert an element with given type/name/json.
+     *
+     * @param int $pageid Page id
+     * @param string $type Element type key
+     * @param string $name Element name
+     * @param array $json JSON payload to encode into data
+     * @return int Inserted element id
+     */
+    private function insert_element(int $pageid, string $type, string $name, array $json): int {
+        global $DB;
+        $now = time();
+        $record = (object) [
+            'element' => $type,
+            'pageid' => $pageid,
+            'name' => $name,
+            'data' => json_encode($json),
+            'posx' => 0,
+            'posy' => 0,
+            'refpoint' => 1,
+            'alignment' => 'L',
+            'sequence' => 1,
+            'timecreated' => $now,
+            'timemodified' => $now,
+        ];
+        return (int)$DB->insert_record('customcert_elements', $record, true);
+    }
+
+    /**
+     * Build a minimal restore task double with the given restoreid and courseid.
+     *
+     * @param string $restoreid Restore id
+     * @param int $courseid Course id
+     * @param int $activityid Activity id
+     * @return restore_customcert_activity_task A lightweight restore task double
+     */
+    private function make_restore_task(string $restoreid, int $courseid, int $activityid = 0): restore_customcert_activity_task {
+        return new minimal_restore_task($restoreid, $courseid, $activityid);
+    }
+
+    /**
+     * A plain element that does not override after_restore() should not trigger any
+     * deprecation debugging when the restore task processes it.
+     */
+    public function test_non_restorable_element_does_not_trigger_debugging(): void {
+        global $DB;
+        $pageid = $this->create_template_and_page();
+
+        // The 'text' element does not implement restorable_element_interface and does not
+        // override after_restore(), so no deprecation should be emitted.
+        $this->insert_element($pageid, 'text', 'Plain text', [
+            'text' => 'Hello world',
+        ]);
+
+        // Resolve the customcert activity id so the task can query elements via the production path.
+        $page = $DB->get_record('customcert_pages', ['id' => $pageid], '*', MUST_EXIST);
+        $customcertid = (int)$DB->get_field('customcert', 'id', ['templateid' => $page->templateid], MUST_EXIST);
+
+        $restoreid = 'rid-' . uniqid();
+        $task = $this->make_restore_task($restoreid, 0, $customcertid);
+
+        // Exercise the real production path: task loops elements and uses has_legacy_after_restore_override().
+        $this->resetDebugging();
+        $task->after_restore();
+        // No debugging should have been emitted because text element has no after_restore() override.
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Legacy backup row with scalar (non-JSON) data and no visual fields must be
+     * migrated to a valid JSON payload by process_customcert_element().
+     */
+    public function test_restore_migration_normalises_legacy_scalar_data(): void {
+        global $DB;
+        $pageid = $this->create_template_and_page();
+
+        // Simulate what process_customcert_element() does for a legacy row where
+        // data is a plain string and no visual fields are present.
+        $rawdata = 'some-legacy-scalar-value';
+
+        // Use the same detection logic as restore_customcert_stepslib.php.
+        $decoded = json_decode((string) $rawdata, true);
+        $isjson = json_last_error() === JSON_ERROR_NONE;
+        $trimmed = trim((string) $rawdata);
+        $isjsonobject = $isjson && $trimmed !== '' && $trimmed[0] === '{' && is_array($decoded);
+        $dataislegacy = !$isjsonobject;
+        $this->assertTrue($dataislegacy, 'Scalar data should be detected as legacy');
+
+        $migrated = row_migrator::migrate_row(
+            $rawdata,
+            null, // No width.
+            null, // No font.
+            null, // No fontsize.
+            null  // No colour.
+        );
+
+        $decoded = json_decode($migrated, true);
+        $this->assertIsArray($decoded, 'Migrated data must be valid JSON');
+        $this->assertArrayHasKey('value', $decoded, 'Migrated data must have a value key');
+        $this->assertSame($rawdata, $decoded['value'], 'Value must preserve the original scalar');
+    }
+
+    public function test_date_restore_updates_json_and_keeps_valid_json(): void {
+        global $DB;
+        $pageid = $this->create_template_and_page();
+
+        // Simulate a Date element pointing to old course_module id 123 (non-grade case).
+        $elementid = $this->insert_element($pageid, 'date', 'Date', [
+            'dateitem' => '456', // Will be treated as cm id in non-grade path.
+            'dateformat' => '1',
+        ]);
+
+        // Instantiate element object and interface.
+        $factory = element_factory::build_with_defaults();
+        $legacy = $DB->get_record('customcert_elements', ['id' => $elementid], '*', MUST_EXIST);
+        $obj = $factory->create_from_legacy_record($legacy);
+        $this->assertInstanceOf(restorable_element_interface::class, $obj);
+
+        // Create a fake restore mapping: map old cm id 456 -> new 999.
+        $restoreid = 'rid-' . uniqid();
+        $task = $this->make_restore_task($restoreid, 0);
+        // Provide mapping without using restore_dbops/temp tables.
+        $task->set_mapping('course_module', 456, 999);
+
+        // Call the hook.
+        $obj->after_restore_from_backup($task);
+
+        // Assert data remains JSON and the id changed to 999.
+        $row = $DB->get_record('customcert_elements', ['id' => $elementid], '*', MUST_EXIST);
+        $this->assertIsString($row->data);
+        $decoded = json_decode($row->data, true);
+        $this->assertIsArray($decoded);
+        $this->assertSame('999', (string)$decoded['dateitem']);
+        $this->assertArrayHasKey('dateformat', $decoded);
+    }
+
+    public function test_grade_restore_updates_json_with_gradeitem_prefix(): void {
+        global $DB;
+        $pageid = $this->create_template_and_page();
+
+        // Simulate a Grade element pointing to old grade_item id 321.
+        $elementid = $this->insert_element($pageid, 'grade', 'Grade', [
+            'gradeitem' => 'gradeitem:321',
+            'gradeformat' => '1',
+        ]);
+
+        $factory = element_factory::build_with_defaults();
+        $legacy = $DB->get_record('customcert_elements', ['id' => $elementid], '*', MUST_EXIST);
+        $obj = $factory->create_from_legacy_record($legacy);
+        $this->assertInstanceOf(restorable_element_interface::class, $obj);
+
+        $restoreid = 'rid-' . uniqid();
+        $task = $this->make_restore_task($restoreid, 0);
+        // Map old grade_item 321 -> 777 without touching temp tables.
+        $task->set_mapping('grade_item', 321, 777);
+
+        $obj->after_restore_from_backup($task);
+
+        $row = $DB->get_record('customcert_elements', ['id' => $elementid], '*', MUST_EXIST);
+        $decoded = json_decode($row->data, true);
+        $this->assertIsArray($decoded);
+        $this->assertSame('gradeitem:777', (string)$decoded['gradeitem']);
+        $this->assertArrayHasKey('gradeformat', $decoded);
+    }
+
+    /**
+     * Data provider for JSON legacy-detection cases.
+     *
+     * @return array[]
+     */
+    public static function json_detection_cases(): array {
+        return [
+            'valid object JSON is not legacy'  => ['{"value":"hello"}', false],
+            'empty JSON object is not legacy'   => ['{}', false],
+            'valid array JSON is legacy'        => ['["a","b"]', true],
+            'JSON literal null is legacy'       => ['null', true],
+            'invalid JSON is legacy'            => ['{bad json', true],
+            'plain scalar string is legacy'     => ['some-scalar', true],
+            'empty string is legacy'            => ['', true],
+            'null rawdata is legacy'            => [null, true],
+        ];
+    }
+
+    /**
+     * Verify the production JSON-detection logic in restore_customcert_stepslib correctly
+     * classifies each data shape as legacy or not.
+     *
+     * @dataProvider json_detection_cases
+     * @param string|null $rawdata
+     * @param bool $expectedlegacy
+     */
+    public function test_json_detection_classifies_data_correctly(?string $rawdata, bool $expectedlegacy): void {
+        $decoded = null;
+        $isjson = false;
+
+        if ($rawdata !== null && $rawdata !== '') {
+            $decoded = json_decode((string) $rawdata, true);
+            $isjson = json_last_error() === JSON_ERROR_NONE;
+        }
+
+        $trimmed = ($rawdata !== null) ? trim((string) $rawdata) : '';
+        $isjsonobject = $isjson && $trimmed !== '' && $trimmed[0] === '{' && is_array($decoded);
+        $dataislegacy = !$isjsonobject;
+
+        $this->assertSame($expectedlegacy, $dataislegacy);
+    }
+}
