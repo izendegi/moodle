@@ -23,6 +23,7 @@
  */
 namespace mod_customcert\plugininfo;
 
+use admin_settingpage;
 use core\plugininfo\base;
 
 /**
@@ -38,7 +39,7 @@ class customcertelement extends base {
      *
      * @return bool
      */
-    public function is_uninstall_allowed() {
+    public function is_uninstall_allowed(): bool {
         return false;
     }
 
@@ -49,7 +50,7 @@ class customcertelement extends base {
      * @param string $parentnodename
      * @param bool $hassiteconfig whether the current user has moodle/site:config capability
      */
-    public function load_settings(\part_of_admin_tree $adminroot, $parentnodename, $hassiteconfig) {
+    public function load_settings(\part_of_admin_tree $adminroot, $parentnodename, $hassiteconfig): void {
         global $CFG, $USER, $DB, $OUTPUT, $PAGE;
         $ADMIN = $adminroot;
         $plugininfo = $this;
@@ -63,7 +64,7 @@ class customcertelement extends base {
         }
 
         $section = $this->get_settings_section_name();
-        $settings = new \admin_settingpage($section, $this->displayname, 'moodle/site:config', false);
+        $settings = new admin_settingpage($section, $this->displayname, 'moodle/site:config', false);
 
         include($this->full_path('settings.php'));
         $ADMIN->add($parentnodename, $settings);
@@ -74,7 +75,7 @@ class customcertelement extends base {
      *
      * @return null|string the settings section name.
      */
-    public function get_settings_section_name() {
+    public function get_settings_section_name(): ?string {
         if (file_exists($this->full_path('settings.php'))) {
             return 'customcertelement_' . $this->name;
         } else {

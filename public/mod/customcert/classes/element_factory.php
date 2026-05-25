@@ -15,39 +15,52 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains the factory class responsible for creating custom certificate instances.
+ * Backward-compatibility shim for mod_customcert\element_factory.
  *
  * @package    mod_customcert
- * @copyright  2017 Mark Nelson <markn@moodle.com>
+ * @copyright  2017 Mark Nelson <mdjnelson@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+declare(strict_types=1);
 
 namespace mod_customcert;
 
 /**
- * The factory class responsible for creating custom certificate instances.
+ * Deprecated element factory shim.
  *
- * @package    mod_customcert
- * @copyright  2017 Mark Nelson <markn@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @deprecated since Moodle 5.2 — use mod_customcert\service\element_factory instead.
+ *   This class exists solely to avoid hard BC breaks for third-party code that calls
+ *   \mod_customcert\element_factory::get_element_instance(). It will be removed in a
+ *   future major release.
  */
 class element_factory {
     /**
-     * Returns an instance of the element class.
+     * Returns an element instance for the given record.
      *
-     * @param \stdClass $element the element
-     * @return \mod_customcert\element|bool returns the instance of the element class, or false if element
-     *         class does not exists.
+     * @deprecated since Moodle 5.2 — use mod_customcert\service\element_factory::build_with_defaults()->create_from_legacy_record()
+     *   or inject mod_customcert\service\element_factory and call create() / create_from_legacy_record() instead.
+     * @param mixed $element A record from customcert_elements.
+     * @return mixed Element instance or false if the element class does not exist.
      */
     public static function get_element_instance($element) {
-        // Get the class name.
-        $classname = '\\customcertelement_' . $element->element . '\\element';
+        debugging(
+            '\mod_customcert\element_factory::get_element_instance() is deprecated since Moodle 5.2. '
+            . 'Use \mod_customcert\service\element_factory::build_with_defaults()->create_from_legacy_record() '
+            . 'or inject \mod_customcert\service\element_factory and call create() / create_from_legacy_record().',
+            DEBUG_DEVELOPER
+        );
 
+        $elementtype = $element->element ?? '';
+        $classname = '\\customcertelement_' . $elementtype . '\\element';
+        if (!class_exists($classname)) {
+            return false;
+        }
         $data = new \stdClass();
         $data->id = $element->id ?? null;
         $data->pageid = $element->pageid ?? null;
-        $data->name = $element->name ?? get_string('pluginname', 'customcertelement_' . $element->element);
-        $data->element = $element->element;
+        $data->name = $element->name ?? get_string('pluginname', 'customcertelement_' . $elementtype);
+        $data->element = $element->element ?? null;
         $data->data = $element->data ?? null;
         $data->font = $element->font ?? null;
         $data->fontsize = $element->fontsize ?? null;
@@ -57,12 +70,6 @@ class element_factory {
         $data->width = $element->width ?? null;
         $data->refpoint = $element->refpoint ?? null;
         $data->alignment = $element->alignment ?? null;
-
-        // Ensure the necessary class exists.
-        if (class_exists($classname)) {
-            return new $classname($data);
-        }
-
-        return false;
+        return new $classname($data);
     }
 }

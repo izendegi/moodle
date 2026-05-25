@@ -22,6 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use mod_customcert\local\upgrade\row_migrator;
+
 /**
  * Define the complete customcert structure for restore, with file and id annotations.
  *
@@ -138,6 +140,67 @@ class restore_customcert_activity_structure_step extends restore_activity_struct
         $data->pageid = $this->get_new_parentid('customcert_page');
         $data->timecreated = $this->apply_date_offset($data->timecreated);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        // Legacy backups may contain a separate 'width' field. Since width is now
+        // stored inside the JSON 'data', merge it here before inserting.
+        $legacywidth = null;
+        if (property_exists($data, 'width')) {
+            // Note: width can legitimately be 0 (auto). Only treat NULL as no-op.
+            if ($data->width !== null && $data->width !== '') {
+                $legacywidth = (int) $data->width;
+            }
+            // Do not try to insert an unknown field into DB.
+            unset($data->width);
+        }
+
+        // Merge legacy visual fields into JSON data when present in older backups.
+        $legacyfont = property_exists($data, 'font') ? $data->font : null;
+        $legacyfontsize = property_exists($data, 'fontsize') ? $data->fontsize : null;
+        $legacycolour = property_exists($data, 'colour') ? $data->colour : null;
+
+        // Determine whether the stored data is already a valid JSON object payload.
+        // Non-JSON legacy data (plain strings, scalars, null) must always be migrated
+        // even when no legacy visual fields are present in the backup row.
+        $rawdata = $data->data ?? null;
+        $decoded = null;
+        $isjson = false;
+        if ($rawdata !== null && $rawdata !== '') {
+            $decoded = json_decode((string) $rawdata, true);
+            $isjson = json_last_error() === JSON_ERROR_NONE;
+        }
+        // Legacy data is anything that is not a valid JSON object.
+        // Arrays, scalars, invalid JSON, null, and empty strings are all legacy.
+        // {} and {"x":1} are valid JSON objects and are not legacy.
+        $trimmed = ($rawdata !== null) ? trim((string) $rawdata) : '';
+        $isjsonobject = $isjson && $trimmed !== '' && $trimmed[0] === '{' && is_array($decoded);
+        $dataislegacy = !$isjsonobject;
+
+        if (
+            $legacywidth !== null || $legacyfont !== null || $legacyfontsize !== null || $legacycolour !== null
+            || $dataislegacy
+        ) {
+            // Use the border-specific migration path for border elements, mirroring
+            // the logic in db/upgrade.php so that legacy border thickness is preserved.
+            $data->data = (($data->element ?? null) === 'border')
+                ? row_migrator::migrate_border_row(
+                    $rawdata,
+                    $legacywidth,
+                    $legacyfont,
+                    $legacyfontsize,
+                    $legacycolour
+                )
+                : row_migrator::migrate_row(
+                    $rawdata,
+                    $legacywidth,
+                    $legacyfont,
+                    $legacyfontsize,
+                    $legacycolour,
+                    $data->element ?? null
+                );
+        }
+
+        // Unset legacy fields so they are not inserted as separate columns.
+        unset($data->font, $data->fontsize, $data->colour);
 
         $newitemid = $DB->insert_record('customcert_elements', $data);
         $this->set_mapping('customcert_element', $oldid, $newitemid);
