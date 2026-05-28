@@ -25,6 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2024121601;  // YYYYMMDDHH (year, month, day, 24-hr time)
+$plugin->version = 2026052701;  // YYYYMMDDHH (year, month, day, 24-hr time)
 $plugin->requires = 2015111600; // YYYYMMDDHH
 $plugin->component = 'block_readspeaker_embhl'; // Full name of the plugin (used for diagnostics)
+$plugin->maturity  = MATURITY_STABLE;
+$plugin->release = "dev-r122-f9ba5c8"; 

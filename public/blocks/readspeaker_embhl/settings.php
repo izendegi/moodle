@@ -57,6 +57,7 @@ if ($ADMIN->fulltree) {
         array(
             'af_za' => get_string('afrikaans', 'block_readspeaker_embhl'),
             'ar_ar' => get_string('arabic', 'block_readspeaker_embhl'),
+            'bg_bg' => get_string('bulgarian', 'block_readspeaker_embhl'),
             'eu_es' => get_string('basque', 'block_readspeaker_embhl'),
             'ca_es' => get_string('catalan', 'block_readspeaker_embhl'),
             'zh_cn' => get_string('chinese_mandarin', 'block_readspeaker_embhl'),
@@ -74,6 +75,7 @@ if ($ADMIN->fulltree) {
             'en_sc' => get_string('english_scottish', 'block_readspeaker_embhl'),
             'en_za' => get_string('english_southafrican', 'block_readspeaker_embhl'),
             'en_uk' => get_string('english_brittish', 'block_readspeaker_embhl'),
+            'et_ee' => get_string('estonian', 'block_readspeaker_embhl'),
             'fo_fo' => get_string('faroese', 'block_readspeaker_embhl'),
             'fa_ir' => get_string('farsi', 'block_readspeaker_embhl'),
             'fi_fi' => get_string('finnish', 'block_readspeaker_embhl'),
@@ -94,6 +96,7 @@ if ($ADMIN->fulltree) {
             'it_it' => get_string('italian', 'block_readspeaker_embhl'),
             'ja_jp' => get_string('japanese', 'block_readspeaker_embhl'),
             'ko_kr' => get_string('korean', 'block_readspeaker_embhl'),
+            'lt_lt' => get_string('lithuanian', 'block_readspeaker_embhl'),
             'lv_lv' => get_string('latvian', 'block_readspeaker_embhl'),
             'nso' => get_string('sepedi', 'block_readspeaker_embhl'),
             'st_za' => get_string('sesotho', 'block_readspeaker_embhl'),
@@ -104,6 +107,7 @@ if ($ADMIN->fulltree) {
             'es_us' => get_string('spanish_american', 'block_readspeaker_embhl'),
             'es_co' => get_string('spanish_columbian', 'block_readspeaker_embhl'),
             'es_mx' => get_string('spanish_mexican', 'block_readspeaker_embhl'),
+            'es_419' => get_string('spanish_latin_american', 'block_readspeaker_embhl'),
             'no_nb' => get_string('norwegian_bokmal', 'block_readspeaker_embhl'),
             'no_nn' => get_string('norwegian_nynorsk', 'block_readspeaker_embhl'),
             'pl_pl' => get_string('polish', 'block_readspeaker_embhl'),
@@ -116,7 +120,7 @@ if ($ADMIN->fulltree) {
             'th_th' => get_string('thai', 'block_readspeaker_embhl'),
             've_za' => get_string('tshivenda', 'block_readspeaker_embhl'),
             'tr_tr' => get_string('turkish', 'block_readspeaker_embhl'),
-            'uk_ua' => get_string('ukranian', 'block_readspeaker_embhl'),
+            'uk_ua' => get_string('ukrainian', 'block_readspeaker_embhl'),
             'cy_cy' => get_string('welsh', 'block_readspeaker_embhl'),
             'ts_za' => get_string('xitsonga', 'block_readspeaker_embhl')
         )
