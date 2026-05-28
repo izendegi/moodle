@@ -15,11 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Desc.
+ * Testing regrading activities after merging users.
  *
  * @package   tool_mergeusers
  * @author    Jordi Pujol Ahulló <jordi.pujol@urv.cat>
- * @copyright 2025 onwards to Universitat Rovira i Virgili (https://www.urv.cat)
+ * @copyright 2026 onwards to Universitat Rovira i Virgili (https://www.urv.cat)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -35,7 +35,7 @@ use tool_mergeusers\hook\after_merged_all_tables;
  *
  * @package   tool_mergeusers
  * @author    Jordi Pujol Ahulló <jordi.pujol@urv.cat>
- * @copyright 2025 onwards to Universitat Rovira i Virgili (https://www.urv.cat)
+ * @copyright 2026 onwards to Universitat Rovira i Virgili (https://www.urv.cat)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class regrading_after_merged_callback {
@@ -57,12 +57,30 @@ class regrading_after_merged_callback {
 
         $sql = "SELECT DISTINCT gi.id, gi.iteminstance, gi.itemmodule, gi.courseid
                 FROM {grade_grades} gg
-                INNER JOIN {grade_items} gi on gg.itemid = gi.id
-                WHERE itemtype = :itemtype AND (gg.userid = :toid OR gg.userid = :fromid)";
+                INNER JOIN {grade_items} gi ON gg.itemid = gi.id
+                INNER JOIN {modules} m ON m.name = gi.itemmodule
+                WHERE gi.itemtype = :itemtype AND (gg.userid = :toid OR gg.userid = :fromid)";
 
         $iteminstances = $DB->get_records_sql($sql, ['itemtype' => 'mod', 'toid' => $hook->toid, 'fromid' => $hook->fromid]);
 
+        // Get database manager once for reuse in the loop.
+        $dbman = $DB->get_manager();
+
         foreach ($iteminstances as $iteminstance) {
+            // Check if the plugin table exists (critical: module registered but table missing = corruption).
+            if (!$dbman->table_exists($iteminstance->itemmodule)) {
+                throw new moodle_exception(
+                    'exception:plugintablemissing',
+                    'tool_mergeusers',
+                    '',
+                    [
+                        'module' => $iteminstance->itemmodule,
+                        'itemid' => $iteminstance->id,
+                        'courseid' => $iteminstance->courseid,
+                    ]
+                );
+            }
+
             if (!$activity = $DB->get_record($iteminstance->itemmodule, ['id' => $iteminstance->iteminstance])) {
                 throw new moodle_exception(
                     'exception:nomoduleinstance',
