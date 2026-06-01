@@ -20,15 +20,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die;
+require_once(__DIR__ . '/../../../../config.php');
 
-require_once(__DIR__ . '/backup_wooclap_stepslib.php'); // Because it exists (must).
+require_once($CFG->dirroot . '/mod/wooclap/backup/moodle2/backup_wooclap_stepslib.php'); // Because it exists (must).
 
 /**
  * wooclap backup task that provides all the settings and steps to perform one
  * complete backup of the activity
  */
 class backup_wooclap_activity_task extends backup_activity_task {
+
     /**
      * Define (add) particular settings this activity can have
      */
@@ -54,11 +55,11 @@ class backup_wooclap_activity_task extends backup_activity_task {
         $base = preg_quote($CFG->wwwroot, "/");
 
         // Link to the list of wooclap activities.
-        $search = "/(" . $base . "\/mod\/wooclap\/index.php\?id\=)([0-9]+)/";
+        $search = "/(".$base."\/mod\/wooclap\/index.php\?id\=)([0-9]+)/";
         $content = preg_replace($search, '$@WOOCLAPINDEX*$2@$', $content);
 
         // Link to wooclap view by moduleid.
-        $search = "/(" . $base . "\/mod\/wooclap\/view.php\?id\=)([0-9]+)/";
+        $search = "/(".$base."\/mod\/wooclap\/view.php\?id\=)([0-9]+)/";
         $content = preg_replace($search, '$@WOOCLAPVIEWBYID*$2@$', $content);
 
         return $content;
