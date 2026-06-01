@@ -15,23 +15,28 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Capabilities for the tiny_cloze plugin.
+ * Wooclap event handler definition.
  *
- * @package    tiny_cloze
- * @copyright  2023 MoodleDACH
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package mod_wooclap
+ * @category event
+ * @copyright 2018 CBlue sprl
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+defined('MOODLE_INTERNAL') || die;
 
-$capabilities = [
-    'tiny/cloze:use' => [
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
-            'student' => CAP_ALLOW,
-            'teacher' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-        ],
+// List of observers.
+$observers = [
+    [
+        'eventname' => '\core\event\user_loggedin',
+        'callback' => 'mod_wooclap_observer::user_loggedin',
+    ],
+    [
+        'eventname' => '\core\event\course_module_created',
+        'callback' => 'mod_wooclap_observer::course_module_created',
+    ],
+    [
+        'eventname' => '\core\event\course_module_updated',
+        'callback' => 'mod_wooclap_observer::course_module_updated',
     ],
 ];
