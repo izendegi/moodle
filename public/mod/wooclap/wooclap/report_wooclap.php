@@ -15,23 +15,18 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Capabilities for the tiny_cloze plugin.
+ * Completion and grade update endpoint
  *
- * @package    tiny_cloze
- * @copyright  2023 MoodleDACH
+ * @package    mod_wooclap
+ * @copyright  2018 Cblue sprl
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+// No login check is expected here because this script is called from wooclap
+// ...and we authenticate request with a token
+// @codingStandardsIgnoreLine
+require_once(__DIR__ . '/../../config.php');
 
-$capabilities = [
-    'tiny/cloze:use' => [
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
-            'student' => CAP_ALLOW,
-            'teacher' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-        ],
-    ],
-];
+// Deprecated in favor of report_wooclap_v3.php.
+throw new \moodle_exception('error-reportdeprecated', 'wooclap');
+header("HTTP/1.0 400");

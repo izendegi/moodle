@@ -15,23 +15,34 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Capabilities for the tiny_cloze plugin.
- *
- * @package    tiny_cloze
- * @copyright  2023 MoodleDACH
+ * @package    mod_wooclap
+ * @copyright  2018 Cblue sprl
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = [
-    'tiny/cloze:use' => [
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => [
-            'student' => CAP_ALLOW,
-            'teacher' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-        ],
-    ],
-];
+require_once($CFG->libdir . '/filelib.php');
+
+/**
+ * Helper class for CURL GET requests.
+ */
+class wooclap_curl extends curl {
+    /**
+     * HTTP GET method override for PHP_QUERY_RFC3986
+     *
+     * @param string $url
+     * @param array $params
+     * @param array $options
+     * @return bool
+     */
+    public function get($url, $params = [], $options = []) {
+        $options['CURLOPT_HTTPGET'] = 1;
+
+        if (!empty($params)) {
+            $url .= (stripos($url, '?') !== false) ? '&' : '?';
+            $url .= http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        }
+        return $this->request($url, $options);
+    }
+}
