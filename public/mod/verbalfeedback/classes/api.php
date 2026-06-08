@@ -25,11 +25,11 @@
 namespace mod_verbalfeedback;
 
 use coding_exception;
-use context_course;
 use context_module;
 use dml_exception;
 use Exception;
 use moodle_exception;
+use mod_verbalfeedback\model\instance;
 use mod_verbalfeedback\model\response;
 use mod_verbalfeedback\model\submission;
 use mod_verbalfeedback\model\submission_status;
@@ -181,11 +181,32 @@ class api {
     }
 
     /**
+     * Function that retrieves the fields of the user table for the participants list.
+     *
+     * @return string[] The fields of the user table for the participants list.
+     */
+    public static function get_fields_for_participants(): array {
+        return [
+            'id',
+            'firstname',
+            'lastname',
+            'email',
+            'firstnamephonetic',
+            'lastnamephonetic',
+            'middlename',
+            'alternatename',
+            'picture',
+            'imagealt',
+        ];
+    }
+
+    /**
      * Function that retrieves the participants for the verbal feedback activity.
      *
      * @param int $verbalfeedbackid The verbal feedback instance ID.
      * @param int $currentuserid The current user ID.
      * @param array $filter The filter parameters for the participants list.
+     *                      Filter parameters can be groupid, tifirst, tilast, userid, status and usersearch.
      * @return array
      * @throws coding_exception
      * @throws dml_exception
@@ -203,27 +224,26 @@ class api {
                 $context,
                 'mod/verbalfeedback:receive_rating', // Capability.
                 $groupid,
-                'u.id AS userid,
-                u.firstname,
-                u.lastname,
-                u.email,
-                u.firstnamephonetic,
-                u.lastnamephonetic,
-                u.middlename,
-                u.alternatename', // Userfields.
+                implode(', ', array_map(fn($field) => "u.$field", self::get_fields_for_participants())), // Fields.
                 'u.lastname, u.firstname', // Order by.
             );
 
         $userssql = "SELECT DISTINCT s.touserid AS touserid, s.id AS submissionid, s.status AS submissionstatus
                      FROM {verbalfeedback_submission} s
                      WHERE s.instanceid = :instanceid AND s.fromuserid = :currentuserid";
-
-        $statusrecords = $DB->get_records_sql($userssql, ['instanceid' => $verbalfeedbackid, 'currentuserid' => $currentuserid]);
+        $sqlparams = ['instanceid' => $verbalfeedbackid, 'currentuserid' => $currentuserid];
+        $statusrecords = $DB->get_records_sql($userssql, $sqlparams);
 
         // Combine sql results and drop current user ($includeself) if necessary.
         $filtermap = function ($v) use ($currentuserid, $statusrecords, $filter) {
-            if ($v->userid == $currentuserid) {
+            if ($v->id == $currentuserid) {
                 return false;
+            }
+            if (isset($filter['usersearch']) && !empty($filter['usersearch'])) {
+                $fullnamestring = fullname($v);
+                if (stripos($fullnamestring, $filter['usersearch']) === false) {
+                    return false;
+                }
             }
             if (isset($filter['tifirst']) && !empty($filter['tifirst']) && stripos($v->firstname, $filter['tifirst']) !== 0) {
                 return false;
@@ -231,11 +251,17 @@ class api {
             if (isset($filter['tilast']) && !empty($filter['tilast']) && stripos($v->lastname, $filter['tilast']) !== 0) {
                 return false;
             }
-            if (isset($statusrecords[$v->userid]->submissionid)) {
-                $v->submissionid = $statusrecords[$v->userid]->submissionid;
+            if (isset($filter['userid']) && !empty($filter['userid']) && $v->id != $filter['userid']) {
+                return false;
             }
-            if (isset($statusrecords[$v->userid]->submissionstatus)) {
-                $v->submissionstatus = $statusrecords[$v->userid]->submissionstatus;
+            if (isset($statusrecords[$v->id]->submissionid)) {
+                $v->submissionid = $statusrecords[$v->id]->submissionid;
+            }
+            if (isset($statusrecords[$v->id]->submissionstatus)) {
+                $v->submissionstatus = $statusrecords[$v->id]->submissionstatus;
+                if (isset($filter['status']) && $filter['status'] != -1 && $v->submissionstatus != $filter['status']) {
+                    return false;
+                }
             }
             return true;
         };
@@ -470,7 +496,8 @@ class api {
     public static function count_users_awaiting_feedback($verbalfeedbackid, $user) {
         global $DB;
 
-        $verbalfeedback = self::get_instance($verbalfeedbackid);
+        $record = self::get_instance($verbalfeedbackid);
+        $verbalfeedback = instance::from_record($record);
 
         // Check first if the user can write feedback to other participants.
         if (user_utils::can_respond($verbalfeedback, $user) === true) {
