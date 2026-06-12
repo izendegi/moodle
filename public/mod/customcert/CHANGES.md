@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 
 Note - All hash comments refer to the issue number. Eg. #169 refers to https://github.com/mdjnelson/moodle-mod_customcert/issues/169.
 
-## [5.2.0] - 2026-XX-YY
+## [5.2.2] - 2026-06-10
+
+### Security
+
+- Hardened element and page ownership validation across edit, move, AJAX, external API, and fragment handlers to prevent cross-template access using mismatched request IDs (#818). 
+
+## [5.2.1] - 2026-06-08
+
+### Fixed
+- Fixed `TypeError` caused by `$instanceid` not being cast to `int` in the `coursefield` element (#804).
+- Fixed `TypeError` in the `date` and `grade` elements where `get_mod_grade_info`, `get_grade_item_info`, and `get_course_grade_info` require integer arguments.
+- Fixed `TypeError` in the `date` and `expiry` elements caused by legacy integer `dateformat` values not being cast to `string`.
+
+## [5.2.0] - 2026-05-24
 
 ### Requirements
 - Minimum supported version is **Moodle 5.2** (**PHP 8.3+**).
@@ -154,6 +167,7 @@ After (5.2+):
 - `certificate_issue_service::generate_code()` now throws a `moodle_exception` after 10 failed attempts to generate a unique code, preventing an infinite loop in systems with a very large number of issued certificates.
 - Web service hardening:
   - `external::save_element()` ignores JSON list payloads for `data` to prevent numeric-key pollution of stored element JSON.
+- Fixed issuing certificates to suspended users (#781).
 
 ### Security
 
