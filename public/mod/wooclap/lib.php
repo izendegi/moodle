@@ -595,6 +595,21 @@ function wooclap_grade_item_update($wooclap, $grades = null) {
 }
 
 /**
+ * Update grades in central gradebook.
+ *
+ * Moodle's grading API requires this companion to wooclap_grade_item_update.
+ * Grades are pushed to the gradebook directly by the Wooclap backend via
+ * wooclap_update_grade(), so there is no local store to pull from here.
+ *
+ * @param stdClass $wooclap The wooclap activity record.
+ * @param int $userid Only update grade for this user (0 = all users).
+ * @param bool $nullifnone If true and no grade exists, insert null grade.
+ */
+function wooclap_update_grades($wooclap, $userid = 0, $nullifnone = true) {
+    wooclap_grade_item_update($wooclap);
+}
+
+/**
  * Add a get_coursemodule_info function in case to add 'extra' information
  * for the course (see resource).
  *
