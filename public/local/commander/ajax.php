@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Output the possible menu options TODO rewrite to webservice / externallib.php
+ * Output the possible menu options.
  *
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  *
@@ -34,7 +34,7 @@ $courseid = optional_param('courseid', 0, PARAM_INT);
 // This should be accessed by only valid logged in user.
 require_login(null, false);
 
-$context = empty($COURSE->id) ? context_system::instance() : context_course::instance($courseid);
+$context = ($courseid > 0) ? context_course::instance($courseid) : context_system::instance();
 if (!has_capability('local/commander:display', $context)) {
     return;
 }
@@ -46,6 +46,5 @@ if ($courseid > 0) {
     $PAGE->set_context(context_course::instance($courseid));
 }
 
-// TODO Move to an external service.
 $navigation = new navigation($PAGE, $courseid);
 echo $navigation->get_menu();
