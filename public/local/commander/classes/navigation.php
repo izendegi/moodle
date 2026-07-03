@@ -104,7 +104,9 @@ class navigation {
         if ($node instanceof \admin_settingpage) {
             $attributes['link'] = (new moodle_url('/admin/settings.php', ['section' => $node->name]))->out(false);
         } else if ($node instanceof \admin_externalpage) {
-            $attributes['link'] = $node->url ?? '#';
+            // $node->url may be a plain string or a moodle_url/core\url object; normalise to a string URL.
+            $url = $node->url ?? '#';
+            $attributes['link'] = ($url instanceof moodle_url) ? $url->out(false) : (string)$url;
         }
 
         if ($node instanceof \admin_category && !empty($node->children)) {
@@ -206,9 +208,9 @@ class navigation {
         if (is_string($child->action)) {
             $attributes['link'] = $child->action;
         } else if ($child->action instanceof moodle_url) {
-            $attributes['link'] = $child->action->out();
+            $attributes['link'] = $child->action->out(false);
         } else if ($child->action instanceof action_link) {
-            $attributes['link'] = $child->action->url->out();
+            $attributes['link'] = $child->action->url->out(false);
         }
 
         $attributes['hidden'] = ($child->hidden);
