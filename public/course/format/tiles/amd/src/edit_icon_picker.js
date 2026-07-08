@@ -296,19 +296,16 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
                         wwwroot: config.wwwroot
                     }).done(function (iconsHTML) {
 //                        require(["core/modal_factory"], function (modalFact) {
-//                            modalFact.create({
+                        require(["core/modal"], function (modalFact) {
+                            modalFact.create({
 //                                type: modalFact.types.DEFAULT,
-                        require(["core/modal"], function (modalFact) {//Added
-	                        async function createModal(){//Added
-                                const modal = await modalFact.create({//Added
                                 title: stringStore.pickAnIcon,
-                                show: true,//Added
                                 body: iconsHTML
 //                            }).done(function (modal) {
-                            	});//Added
+                            }).then(function (modal) {
                                 modalStored = modal;
-//                                modal.setLarge();
-//                                modal.show();
+                                modal.setLarge();
+                                modal.show();
                                 var modalRoot = $(modal.root);
                                 modalRoot.attr("id", "icon_picker_modal");
                                 modalRoot.data("true-sectionid", sectionId);
@@ -337,8 +334,7 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
                                     if (searchText.length >= 3) {
                                         modalRoot.find(".pickericon").filter(function (index, icon) {
                                             // Show all icons then hide icons which do not match the search term.
-//                                            return $(icon).data('original-title').toLowerCase().indexOf(searchText) < 0;
-                                            return $(icon).attr('title').toLowerCase().indexOf(searchText) < 0;//Added
+                                            return $(icon).data('original-title').toLowerCase().indexOf(searchText) < 0;
                                         }).hide();
                                     }
                                 });
@@ -361,9 +357,7 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
                                     });
                                 }
                                 $(document).trigger('format-tiles-icon-picker-modal-created');
-//                            });
-		    }//Added
- 		    createModal();//Added
+                            });
                         });
                     });
                 };
@@ -436,3 +430,5 @@ define(["jquery", "core/templates", "core/ajax", "core/str", "core/notification"
         };
     }
 );
+
+
