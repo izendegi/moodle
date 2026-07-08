@@ -104,14 +104,13 @@ define(["jquery", "core/modal", "core/config", "core/templates", "core/notificat
                 completionEnabled, existingCompletionState, isManualCompletion, descriptionHTML
             ) {
 //            modalFactory.create({
-            async function createModal(){//Added
-                const modal = await Modal.create({//Added
+            Modal.create({
 //                type: modalFactory.types.DEFAULT,
                 title: title,
-                    show: true,//Added
+                show: true,//Added
                 body: loadingIconHtml
 //            }).done(function (modal) {
-              	});//Added
+            }).then(function (modal) {
                 modal.setLarge();
                 modal.show();
                 modal.setScrollable(true);
@@ -262,9 +261,7 @@ define(["jquery", "core/modal", "core/config", "core/templates", "core/notificat
                 }, 500);
 
                 return true;
-//            });
-			}//Added
-			createModal();//Added
+            });
             return false;
         };
 
@@ -600,3 +597,6 @@ define(["jquery", "core/modal", "core/config", "core/templates", "core/notificat
         };
     }
 );
+
+
+
