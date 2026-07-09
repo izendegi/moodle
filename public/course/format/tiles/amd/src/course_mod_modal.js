@@ -27,11 +27,9 @@
  * @since       Moodle 3.3
  */
 
-//define(["jquery", "core/modal_factory", "core/config", "core/templates", "core/notification", "core/ajax",
 define(["jquery", "core/modal", "core/config", "core/templates", "core/notification", "core/ajax",
         'core/fragment', "core/modal_events"],
-//    function ($, modalFactory, config, Templates, Notification, ajax, Fragment, ModalEvents) {
-    function ($, Modal, config, Templates, Notification, ajax, Fragment, ModalEvents) {
+    function ($, coreModal, config, Templates, Notification, ajax, Fragment, ModalEvents) {
         "use strict";
 
         var loadingIconHtml;
@@ -103,13 +101,9 @@ define(["jquery", "core/modal", "core/config", "core/templates", "core/notificat
                 cmId, moduleContextId, sectionNum, title, objectType,
                 completionEnabled, existingCompletionState, isManualCompletion, descriptionHTML
             ) {
-//            modalFactory.create({
-            Modal.create({
-//                type: modalFactory.types.DEFAULT,
+            coreModal.create({
                 title: title,
-                show: true,//Added
                 body: loadingIconHtml
-//            }).done(function (modal) {
             }).then(function (modal) {
                 modal.setLarge();
                 modal.show();
@@ -597,6 +591,3 @@ define(["jquery", "core/modal", "core/config", "core/templates", "core/notificat
         };
     }
 );
-
-
-
