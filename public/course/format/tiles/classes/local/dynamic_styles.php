@@ -68,21 +68,15 @@ class dynamic_styles {
         global $CFG, $PAGE;
         $courseid = $PAGE->course->id ?? 0;
         $data = self::data_for_template($courseid);
-
-        $renderer = $PAGE->get_renderer('core');
-        if (method_exists($renderer, 'render_from_template')) {
-            return $renderer->render_from_template('format_tiles/dynamic_styles', $data);
-        }
-
-        if (class_exists('\Mustache_Engine')) {
+        if ($CFG->branch < 502) {
             $m = new \Mustache_Engine();
-            return $m->render(
-                file_get_contents("$CFG->dirroot/course/format/tiles/templates/dynamic_styles.mustache"),
-                $data
-            );
+        } else {
+            $m = new \Mustache\Engine();
         }
-
-        throw new \coding_exception('Could not render format_tiles dynamic styles template.');
+        return $m->render(
+            file_get_contents("$CFG->dirroot/course/format/tiles/templates/dynamic_styles.mustache"),
+            $data
+        );
     }
 
     /**
