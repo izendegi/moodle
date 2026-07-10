@@ -60,7 +60,7 @@ $functions = [
         'methodname' => 'toggledarkmode',
         'description' => 'Toogle dark mode.',
         'type' => 'write',
-        'ajax' => true,
+        'ajax' => true
     ],
     'theme_moove_get_my_learning' => [
         'classname' => 'theme_moove\api\mylearning',
@@ -68,6 +68,6 @@ $functions = [
         'methodname' => 'get',
         'description' => 'Get user learning',
         'type' => 'read',
-        'ajax' => true,
+        'ajax' => true
     ],
 ];
