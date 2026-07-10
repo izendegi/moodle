@@ -1,0 +1,93 @@
+{
+  "name": "kialo/moodle-plugin",
+  "description": "Integrates Kialo Edu into Moodle",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "license": "GPL-3.0-or-later",
+  "authors": [
+    {
+      "name": "Kialo",
+      "email": "support@kialo-edu.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.4.0",
+    "oat-sa/lib-lti1p3-core": "^6.9",
+    "guzzlehttp/guzzle": "^6.5 || ^7.0",
+    "ext-openssl": "*",
+    "ext-json": "*",
+    "cache/adapter-common": "^1.2"
+  },
+  "require-dev": {
+    "squizlabs/php_codesniffer": "^3.13",
+    "moodlehq/moodle-cs": "^v3.5.0",
+    "friendsofphp/php-cs-fixer": "^3.59",
+    "dealerdirect/phpcodesniffer-composer-installer": "^v1.1.1",
+    "phpro/grumphp-shim": "^1.13"
+  },
+  "config": {
+    "platform": {
+      "php": "7.4"
+    },
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true,
+      "phpro/grumphp-shim": true
+    }
+  },
+  "scripts": {
+    "phpcs": "phpcs --standard=moodle",
+    "php-cs-fixer": "php-cs-fixer --config=.php-cs-fixer.php",
+    "post-install-cmd": [
+      "phpcs --config-set default_standard moodle"
+    ],
+    "lint": [
+      "phpcs --standard=moodle --ignore=vendor,development -s .",
+      "php-cs-fixer fix --dry-run --diff"
+    ],
+    "fix": [
+      "phpcbf --standard=moodle --ignore=vendor,development .",
+      "php-cs-fixer fix"
+    ],
+    "test": [
+      "cd development && ./tests-init.sh",
+      "cd development && ./tests-run-all.sh"
+    ],
+    "test-single": [
+      "cd development && ./tests-init.sh",
+      "cd development && ./tests-run.sh"
+    ],
+    "test-privacy": [
+      "cd development && ./tests-init.sh",
+      "cd development && ./tests-privacy.sh"
+    ],
+    "bundle": [
+      "cd development && ./bundle.sh"
+    ],
+    "docker:reset": [
+      "cd development && docker compose down --rmi 'all'"
+    ],
+    "docker:rebuild-moodle": [
+      "cd development && docker compose down moodle && docker compose up -d --build moodle"
+    ],
+    "docker:up": [
+      "cd development && docker compose up -d --build"
+    ],
+    "docker:stop": [
+      "cd development && docker compose stop"
+    ],
+    "docker:down": [
+      "cd development && docker compose down"
+    ],
+    "docker:populate-users": [
+      "sed 's|\\${SITENAME}|local|g' $KIALO_ROOT/deployment/docker-ecr/moodle/sql/populate-moodle-users.sql | docker exec -i mod_kialo-mariadb-1 mariadb --user moodle --password=moodle moodle",
+      "docker exec -i mod_kialo-mariadb-1 mariadb --user moodle --password=moodle moodle < $KIALO_ROOT/deployment/docker-ecr/moodle/sql/populate-moodle-courses-and-groups.sql"
+    ],
+    "docker:logs":[
+      "Composer\\Config::disableProcessTimeout",
+      "cd development && docker compose logs -f"
+    ],
+    "docker:purge-cache":[
+      "docker exec mod_kialo-moodle-1 php admin/cli/purge_caches.php"
+    ]
+  }
+}
