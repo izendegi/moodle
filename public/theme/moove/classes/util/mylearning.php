@@ -16,27 +16,15 @@
 
 namespace theme_moove\util;
 
-use core\exception\moodle_exception;
 use core_course_list_element;
 
 /**
  * My learning class.
  *
- * @package    theme_moove
  * @copyright  2023 Willian Mano <willianmano@conecti.me>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mylearning {
-    /**
-     * Returns the last accessed courses by the user.
-     *
-     * @param int $limit
-     *
-     * @return array
-     *
-     * @throws moodle_exception
-     * @throws \dml_exception
-     */
     public function get_last_accessed_courses($limit) {
         global $DB, $USER;
 
@@ -56,7 +44,9 @@ class mylearning {
                 ORDER BY
                     l.timeaccess DESC';
 
-        $params = ['userid' => $USER->id];
+        $params = [
+            'userid' => $USER->id
+        ];
 
         if (!$courses = $DB->get_records_sql($sql, $params, 0, $limit)) {
             return [];
