@@ -19,7 +19,7 @@
  *
  * @package    theme_moove
  * @copyright  2025 Willian Mano - willianmanoaraujo@gmail.com
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -49,6 +49,10 @@ if ($courseindexopen) {
 
 $blockshtml = $OUTPUT->blocks('side-pre');
 $hasblocks = (strpos($blockshtml, 'data-block=') !== false || !empty($addblockbutton));
+
+$addcontentblockbutton = $OUTPUT->addblockbutton('content');
+$contentblocks = $OUTPUT->custom_block_region('content');
+
 if (!$hasblocks) {
     $blockdraweropen = false;
 }
@@ -108,6 +112,8 @@ $templatecontext = [
     'overflow' => $overflow,
     'headercontent' => $headercontent,
     'addblockbutton' => $addblockbutton,
+    'addcontentblockbutton' => $addcontentblockbutton,
+    'contentblocks' => $contentblocks
 ];
 
 $themesettings = new \theme_moove\util\settings();

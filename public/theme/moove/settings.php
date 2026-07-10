@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 // This is used for performance, we don't need to know about these settings on every page in Moodle, only when
 // we are looking at the admin settings pages.
 if ($ADMIN->fulltree) {
+
     // Boost provides a nice setting page which splits settings onto separate tabs. We want to use it here.
     $settings = new theme_boost_admin_settingspage_tabs('themesettingmoove', get_string('configtitle', 'theme_moove'));
 
@@ -81,14 +82,8 @@ if ($ADMIN->fulltree) {
     $title = get_string('presetfiles', 'theme_moove');
     $description = get_string('presetfiles_desc', 'theme_moove');
 
-    $setting = new admin_setting_configstoredfile(
-        $name,
-        $title,
-        $description,
-        'preset',
-        0,
-        ['maxfiles' => 10, 'accepted_types' => ['.scss']]
-    );
+    $setting = new admin_setting_configstoredfile($name, $title, $description, 'preset', 0,
+        ['maxfiles' => 10, 'accepted_types' => ['.scss']]);
     $page->add($setting);
 
     // Login page background image.
@@ -170,24 +165,14 @@ if ($ADMIN->fulltree) {
     $page = new admin_settingpage('theme_moove_advanced', get_string('advancedsettings', 'theme_moove'));
 
     // Raw SCSS to include before the content.
-    $setting = new admin_setting_scsscode(
-        'theme_moove/scsspre',
-        get_string('rawscsspre', 'theme_moove'),
-        get_string('rawscsspre_desc', 'theme_moove'),
-        '',
-        PARAM_RAW
-    );
+    $setting = new admin_setting_scsscode('theme_moove/scsspre',
+        get_string('rawscsspre', 'theme_moove'), get_string('rawscsspre_desc', 'theme_moove'), '', PARAM_RAW);
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
     // Raw SCSS to include after the content.
-    $setting = new admin_setting_scsscode(
-        'theme_moove/scss',
-        get_string('rawscss', 'theme_moove'),
-        get_string('rawscss_desc', 'theme_moove'),
-        '',
-        PARAM_RAW
-    );
+    $setting = new admin_setting_scsscode('theme_moove/scss', get_string('rawscss', 'theme_moove'),
+        get_string('rawscss_desc', 'theme_moove'), '', PARAM_RAW);
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
@@ -204,8 +189,7 @@ if ($ADMIN->fulltree) {
         'theme_moove/hvpcss',
         get_string('hvpcss', 'theme_moove'),
         get_string('hvpcss_desc', 'theme_moove'),
-        ''
-    );
+        '');
     $page->add($setting);
 
     $settings->add($page);
@@ -472,7 +456,7 @@ if ($ADMIN->fulltree) {
 
     /*
     * --------------------
-    * Footer settings tab
+    * Dark mode settings tab
     * --------------------
     */
     $page = new admin_settingpage('theme_moove_darkmode', get_string('darkmodesettings', 'theme_moove'));
@@ -494,4 +478,86 @@ if ($ADMIN->fulltree) {
     $page->add($setting);
 
     $settings->add($page);
+
+    $license = new \theme_moove\util\license();
+    if ($license->is_active()) {
+        // Premium tab.
+        $page = new admin_settingpage('theme_moove_premium', get_string('premiumsettings', 'theme_moove'));
+
+        // Disable orange footer.
+        $name = 'theme_moove/disableorangefooter';
+        $title = get_string('disableorangefooter', 'theme_moove');
+        $default = 0;
+        $choices = array(0 => get_string('no'), 1 => get_string('yes'));
+        $setting = new admin_setting_configselect($name, $title, '', $default, $choices);
+        $page->add($setting);
+
+        // Login box position.
+        $name = 'theme_moove/loginposition';
+        $title = get_string('loginposition', 'theme_moove');
+        $description = get_string('loginposition_desc', 'theme_moove');
+
+        $choices = [
+            'left' => get_string('loginposition_left', 'theme_moove'),
+            'right' => get_string('loginposition_right', 'theme_moove')
+        ];
+
+        $setting = new admin_setting_configselect($name, $title, $description, 'center', $choices);
+        $page->add($setting);
+
+        // H5P custom CSS.
+        $setting = new admin_setting_configtextarea('theme_moove/hvpcss', get_string('hvpcss', 'theme_moove'), get_string('hvpcss_desc', 'theme_moove'), '');
+        $page->add($setting);
+
+        // Aditional features alert.
+        $setting = new admin_setting_heading('aditionalfeaturesfield', get_string('configreportstitle', 'theme_moove'), get_string('configreportstext', 'theme_moove'));
+        $page->add($setting);
+
+        $settings->add($page);
+    }
+
+    $canseelicensingfields = true;
+    if (isset($OUTPUT) && get_class($OUTPUT) == \core_renderer_maintenance::class) {
+        $canseelicensingfields = false;
+    }
+
+    if ($CFG->theme != 'moove') {
+        $canseelicensingfields = false;
+    }
+
+    if ($canseelicensingfields) {
+        // Licensing tab.
+        $page = new admin_settingpage('theme_moove_licensing', get_string('licensingsettings', 'theme_moove'));
+
+        // License key.
+        $name = 'theme_moove/licensekey';
+        $title = get_string('licensekey', 'theme_moove');
+        $description = get_string('licensekey_desc', 'theme_moove');
+        $default = '';
+        $setting = new admin_setting_configtext($name, $title, $description, $default);
+        $setting->set_updatedcallback('theme_moove_update_license_key');
+        $page->add($setting);
+
+        // License status.
+        $license = new \theme_moove\util\license();
+        $name = 'theme_moove/licensestatus';
+        $title = get_string('licensestatus', 'theme_moove');
+        $licensestatus = $license->get_license_status_badge();
+        $setting = new admin_setting_configempty($name, $title, $licensestatus);
+        $page->add($setting);
+
+        $settings->add($page);
+    }
 }
+
+$ADMIN->add('reports', new admin_category('moovereports', get_string('reports', 'theme_moove')));
+
+// Moove reports links.
+$ADMIN->add('moovereports', new admin_externalpage('reportmoovegraphs', get_string('report_graphs', 'theme_moove'),
+    "$CFG->wwwroot/theme/moove/reports/index.php"));
+
+$ADMIN->add('moovereports', new admin_externalpage('reportmooveperiod', get_string('report_period', 'theme_moove'),
+    "$CFG->wwwroot/theme/moove/reports/period.php"));
+
+$ADMIN->add('moovereports', new admin_externalpage('reportmooveonlineusers', get_string('report_onlineusers', 'theme_moove'),
+    "$CFG->wwwroot/theme/moove/reports/onlineusers.php"));

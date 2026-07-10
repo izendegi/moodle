@@ -86,7 +86,7 @@ class settings {
 
         $settings = [
             'facebook', 'twitter', 'linkedin', 'youtube', 'instagram', 'whatsapp', 'telegram', 'tiktok', 'pinterest',
-            'website', 'mobile', 'mail',
+            'website', 'mobile', 'mail', 'disableorangefooter',
         ];
 
         $templatecontext['hasfootercontact'] = false;
@@ -99,7 +99,7 @@ class settings {
             }
 
             $socialsettings = [
-                'facebook', 'twitter', 'linkedin', 'youtube', 'instagram', 'whatsapp', 'telegram', 'tiktok', 'pinterest',
+                'facebook', 'twitter', 'linkedin', 'youtube', 'instagram', 'whatsapp', 'telegram', 'tiktok', 'pinterest'
             ];
 
             if (in_array($setting, $socialsettings) && !empty($templatecontext[$setting])) {
@@ -124,6 +124,12 @@ class settings {
             if (!empty($setuplink)) {
                 $templatecontext['mobilesetuplink'] = $setuplink;
             }
+        }
+
+        $license = new license();
+
+        if (!$license->is_active()) {
+            $templatecontext['disableorangefooter'] = false;
         }
 
         return $templatecontext;
