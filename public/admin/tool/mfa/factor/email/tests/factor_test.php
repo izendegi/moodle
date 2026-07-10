@@ -81,4 +81,24 @@ final class factor_test extends \advanced_testcase {
         $data = $DB->count_records('tool_mfa', ['factor' => 'email']);
         $this->assertEquals(0, $data);
     }
+
+    /**
+     * Tests get_all_user_factors when the user object does not include an email property.
+     *
+     * @covers ::get_all_user_factors
+     */
+    public function test_get_all_user_factors_without_email_property(): void {
+        global $USER;
+        $this->resetAfterTest(true);
+
+        $user = new \stdClass();
+        $user->id = $USER->id;
+        $user->lastip = '127.0.0.1';
+
+        $factor = new \factor_email\factor('email');
+        $records = $factor->get_all_user_factors($user);
+
+        $this->assertCount(1, $records);
+        $this->assertSame('', $records[0]->label);
+    }
 }
