@@ -64,37 +64,21 @@ class admin_renderer extends \core_admin_renderer {
      *
      * @return string HTML to output.
      */
-    public function admin_notifications_page(
-        $maturity,
-        $insecuredataroot,
-        $errorsdisplayed,
-        $cronoverdue,
-        $dbproblems,
-        $maintenancemode,
-        $availableupdates,
-        $availableupdatesfetch,
-        $buggyiconvnomb,
-        $registered,
-        array $cachewarnings = [],
-        $eventshandlers = 0,
-        $themedesignermode = false,
-        $devlibdir = false,
-        $mobileconfigured = false,
-        $overridetossl = false,
-        $invalidforgottenpasswordurl = false,
-        $croninfrequent = false,
-        $showcampaigncontent = false,
-        bool $showfeedbackencouragement = false,
-        bool $showservicesandsupport = false,
-        $xmlrpcwarning = ''
-    ) {
+    public function admin_notifications_page($maturity, $insecuredataroot, $errorsdisplayed,
+                                             $cronoverdue, $dbproblems, $maintenancemode, $availableupdates, $availableupdatesfetch,
+                                             $buggyiconvnomb, $registered, array $cachewarnings = [], $eventshandlers = 0,
+                                             $themedesignermode = false, $devlibdir = false, $mobileconfigured = false,
+                                             $overridetossl = false, $invalidforgottenpasswordurl = false, $croninfrequent = false,
+                                             $showcampaigncontent = false, bool $showfeedbackencouragement = false,
+                                             bool $showservicesandsupport = false,
+                                             $xmlrpcwarning = '') {
+
         global $CFG;
         $output = '';
 
         $output .= $this->header();
         $output .= $this->output->heading(get_string('notifications', 'admin'));
         $output .= $this->conectime_services_and_support_content();
-        $output .= $this->conectime_partners_content();
         $output .= $this->maturity_info($maturity);
         $output .= empty($CFG->disableupdatenotifications) ?
                         $this->available_updates($availableupdates, $availableupdatesfetch)
@@ -132,14 +116,5 @@ class admin_renderer extends \core_admin_renderer {
      */
     private function conectime_services_and_support_content(): string {
         return $this->render_from_template('theme_moove/moove/conectime_services_and_support_content_banner', []);
-    }
-
-    /**
-     * Display services and support content.
-     *
-     * @return string the campaign content raw html.
-     */
-    private function conectime_partners_content(): string {
-        return $this->render_from_template('theme_moove/moove/conectime_partners_banner', []);
     }
 }
