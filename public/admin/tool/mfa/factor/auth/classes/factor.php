@@ -38,6 +38,7 @@ class factor extends object_factor_base {
      */
     public function get_all_user_factors(stdClass $user): array {
         global $DB;
+        $lastip = property_exists($user, 'lastip') ? $user->lastip : '';
         $records = $DB->get_records('tool_mfa', ['userid' => $user->id, 'factor' => $this->name]);
 
         if (!empty($records)) {
@@ -49,7 +50,7 @@ class factor extends object_factor_base {
             'userid' => $user->id,
             'factor' => $this->name,
             'timecreated' => time(),
-            'createdfromip' => $user->lastip,
+            'createdfromip' => $lastip,
             'timemodified' => time(),
             'revoked' => 0,
         ];
@@ -79,9 +80,10 @@ class factor extends object_factor_base {
         $safetypes = get_config('factor_auth', 'goodauth');
         if (strlen($safetypes) != 0) {
             $safetypes = explode(',', $safetypes);
+            $userauth = property_exists($USER, 'auth') ? $USER->auth : '';
 
             // Check all safetypes against user auth.
-            if (in_array($USER->auth, $safetypes, true)) {
+            if (in_array($userauth, $safetypes, true)) {
                 return \tool_mfa\plugininfo\factor::STATE_PASS;
             }
             return \tool_mfa\plugininfo\factor::STATE_NEUTRAL;
