@@ -31,6 +31,7 @@ use theme_moove\util\settings;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class boostnavbar implements \renderable {
+
     /** @var array The individual items of the navbar. */
     protected $items = [];
     /** @var moodle_page The current moodle page. */
@@ -96,16 +97,13 @@ class boostnavbar implements \renderable {
                 case 'group-assign':
                     // Remove the 'Groups' navbar node in the Groupings, Grouping, group Overview and Assign pages.
                     $this->remove('groups');
-                    break;
                 case 'backup-backup':
                 case 'backup-restorefile':
                 case 'backup-copy':
                 case 'course-reset':
                     // Remove the 'Import' navbar node in the Backup, Restore, Copy course and Reset pages.
                     $this->remove('import');
-                    break;
                 case 'course-user':
-                    // Other cases.
                     $this->remove('mygrades');
                     $this->remove('grades');
             }
@@ -259,10 +257,8 @@ class boostnavbar implements \renderable {
      */
     protected function remove_no_link_items(bool $removesections = true): void {
         foreach ($this->items as $key => $value) {
-            if (
-                !$value->is_last() &&
-                (!$value->has_action() || ($value->type == \navigation_node::TYPE_SECTION && $removesections))
-            ) {
+            if (!$value->is_last() &&
+                    (!$value->has_action() || ($value->type == \navigation_node::TYPE_SECTION && $removesections))) {
                 unset($this->items[$key]);
             }
         }
@@ -282,10 +278,7 @@ class boostnavbar implements \renderable {
         // to compare whether any of the breadcrumb items matches these pairs.
         $navigationviewitems = [];
         foreach ($navigationview->children as $child) {
-            $textactions = $this->get_node_text_and_action($child);
-            $childtext = $textactions[0];
-            $childaction = $textactions[1];
-
+            list($childtext, $childaction) = $this->get_node_text_and_action($child);
             if ($childaction) {
                 $navigationviewitems[$childtext] = $childaction;
             }
@@ -293,15 +286,10 @@ class boostnavbar implements \renderable {
         // Loop through the breadcrumb items and if the item's 'text' and 'action' values matches with any of the
         // existing navigation view items, remove it from the breadcrumbs.
         foreach ($this->items as $item) {
-            $textactions = $this->get_node_text_and_action($item);
-            $itemtext = $textactions[0];
-            $itemaction = $textactions[1];
-
+            list($itemtext, $itemaction) = $this->get_node_text_and_action($item);
             if ($itemaction) {
-                if (
-                    array_key_exists($itemtext, $navigationviewitems) &&
-                    $navigationviewitems[$itemtext] === $itemaction
-                ) {
+                if (array_key_exists($itemtext, $navigationviewitems) &&
+                        $navigationviewitems[$itemtext] === $itemaction) {
                     $this->remove($item->key);
                 }
             }
@@ -316,11 +304,8 @@ class boostnavbar implements \renderable {
     protected function remove_duplicate_items(): void {
         $taken = [];
         // Reverse the order of the items before filtering so that the first occurrence is removed instead of the last.
-        $filtereditems = array_values(array_filter(array_reverse($this->items), function ($item) use (&$taken) {
-            $textactions = $this->get_node_text_and_action($item);
-            $itemtext = $textactions[0];
-            $itemaction = $textactions[1];
-
+        $filtereditems = array_values(array_filter(array_reverse($this->items), function($item) use (&$taken) {
+            list($itemtext, $itemaction) = $this->get_node_text_and_action($item);
             if ($itemaction) {
                 if (array_key_exists($itemtext, $taken) && $taken[$itemtext] === $itemaction) {
                     return false;

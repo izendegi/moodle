@@ -47448,24 +47448,24 @@ body {
   background-color: #f2f3f7 !important; /* stylelint-disable-line */
 }
 
-#page-header {
+full_header.mustache #page-header {
   margin: 1.25rem auto;
   padding: 0;
 }
-#page-header h1, #page-header .h1 {
+full_header.mustache #page-header h1, full_header.mustache #page-header .h1 {
   margin-bottom: 0;
 }
-#page-header #page-navbar {
+full_header.mustache #page-header #page-navbar {
   display: flex;
   align-items: center;
   justify-content: right;
 }
-#page-header .courseheader {
+full_header.mustache #page-header .courseheader {
   display: flex;
   align-items: center;
   white-space: nowrap;
 }
-#page-header .page-header-headings {
+full_header.mustache #page-header .page-header-headings {
   background-color: initial;
 }
 
@@ -47771,13 +47771,6 @@ a {
 }
 
 #page-message-index .container-fluid, #page-message-index .container-sm, #page-message-index .container-md, #page-message-index .container-lg, #page-message-index .container-xl, #page-message-index .container-xxl {
-  max-width: 100%;
-}
-
-.pagelayout-popup {
-  background-color: #fff !important; /* stylelint-disable-line declaration-no-important */
-}
-.pagelayout-popup .container-fluid, .pagelayout-popup .container-sm, .pagelayout-popup .container-md, .pagelayout-popup .container-lg, .pagelayout-popup .container-xl, .pagelayout-popup .container-xxl {
   max-width: 100%;
 }
 

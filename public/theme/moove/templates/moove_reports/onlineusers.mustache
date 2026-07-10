@@ -1,0 +1,29 @@
+<div class="card card-body">
+    <form action="{{config.wwwroot}}/theme/moove/reports/onlineusers.php" method="get" class="row g-3">
+        <div class="form-group col-auto">
+            <label for="starttime">{{#str}}starttime, theme_moove{{/str}}</label>
+            <input type="datetime-local" class="form-control" id="starttime" name="starttime" value="{{{starttime}}}" required>
+        </div>
+        <div class="form-group col-auto">
+            <label for="endtime">{{#str}}endtime, theme_moove{{/str}}</label>
+            <input type="datetime-local" class="form-control" id="endtime" name="endtime" value="{{{endtime}}}" required>
+        </div>
+        <div class="form-group col-auto">
+            <label>&nbsp</label>
+            <button type="submit" class="btn btn-primary btn-block">{{#str}}filter, theme_moove{{/str}}</button>
+        </div>
+    </form>
+</div>
+
+<h2 class="my-3">{{#str}}siteactivity, theme_moove{{/str}}</h2>
+
+<div class="card card-body mt-3">
+    {{#error}}
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">{{#str}}onlineusers_error, theme_moove{{/str}}</h4>
+            <p>{{#str}}onlineusers_error_desc, theme_moove{{/str}}</p>
+        </div>
+    {{/error}}
+
+    {{{ chart }}}
+</div>
