@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * A login page layout for the boost theme.
  *
@@ -22,14 +24,21 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+$themeutil = new \theme_moove\util\settings();
 
-$bodyattributes = $OUTPUT->body_attributes();
+$extraclasses[] = 'moove-login';
+
+if ($themeutil->loginposition != null && $themeutil->loginposition == 'left') {
+    $extraclasses[] = 'login-left';
+}
+
+$bodyattributes = $OUTPUT->body_attributes($extraclasses);
 
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => \core\context\course::instance(SITEID), "escape" => false]),
     'output' => $OUTPUT,
-    'bodyattributes' => $bodyattributes,
+    'bodyattributes' => $bodyattributes
 ];
 
 echo $OUTPUT->render_from_template('theme_moove/login', $templatecontext);
+
