@@ -1,6 +1,6 @@
 @import "moove/transitions";
 @import "moove/variables";
-@import "moove/darkandlightvariables";
+@import "moove/variables_darkandlight";
 @import "../../boost/scss/preset/default";
 @import "moove/general";
 @import "moove/pages";
@@ -19,3 +19,7 @@
 @import "moove/profile";
 @import "moove/enrol";
 @import "moove/quiz";
+@import "premium/reports";
+@import "premium/login";
+@import "premium/buttons";
+@import "premium/labels";
