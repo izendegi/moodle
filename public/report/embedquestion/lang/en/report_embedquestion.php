@@ -1,0 +1,104 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Embedded questions progress report language strings.
+ *
+ * @package   report_embedquestion
+ * @copyright 2019 The Open University
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+defined('MOODLE_INTERNAL') || die();
+
+$string['activityreporttitle'] = 'Embedded question progress for {$a}';
+$string['attempt'] = 'Attempt';
+$string['attempt-detail-page'] = 'Attempt detail view';
+$string['attemptedon'] = 'Attempted on';
+$string['attemptfinal'] = 'Latest attempt';
+$string['attempts'] = 'Embedded question attempts';
+$string['attemptsatquestion'] = 'Attempts at question {$a}';
+$string['attemptscolumn'] = 'Attempts';
+$string['attemptsummary'] = 'Attempt summary';
+$string['attemptsummaryby'] = 'Attempted by: {$a}';
+$string['attemptsummarycontext'] = 'Location: {$a}';
+$string['attemptsummaryembedid'] = 'Embed id: {$a}';
+$string['attemptsummaryfor'] = 'Attempt summary for:';
+$string['attemptsummaryquestion'] = 'Question: {$a}';
+$string['cachedef_reportattempttracker'] = 'Report attempt tracker cache';
+$string['closeattemptview'] = 'Close question attempt review';
+$string['coursereporttitle'] = 'Embedded question progress for {$a}';
+$string['crumbtrailembedquestiondetail'] = '{$a->fullname} ({$a->info})';
+$string['datefilter'] = 'Date filter';
+$string['datefrom'] = 'Attempts made after';
+$string['dateto'] = 'Attempts made before';
+$string['deleteattempt'] = 'Delete attempt';
+$string['deleteattemptwarning'] = 'Are you absolutely sure you want to completely delete the attempt?';
+$string['deleteselectedattempts'] = 'Delete selected question attempts (all)';
+$string['downloadresponse_backtoreport'] = 'Return to the embedded question progress table';
+$string['downloadresponse_buttonall'] = 'Download all response files';
+$string['downloadresponse_buttonselected'] = 'Download selected response files';
+$string['downloadresponse_downloadto_device'] = 'Download to device';
+$string['downloadresponse_error'] = 'The file you requested to download is no longer available.';
+$string['downloadresponse_exportserviceinfo'] = 'You can download, or export, these files for use offline or on a mobile device, using the links below.';
+$string['downloadresponse_exportsuccessheader'] = 'Your file has been exported';
+$string['downloadresponse_filename'] = ' question files';
+$string['downloadresponse_title'] = 'Download zip or export the response files';
+$string['downloadresponseinfo'] = 'Certain question responses can be downloaded.';
+$string['downloadresponseinfo_help'] = 'You can download all responses for specific question types (Record Audio/Video, Drag & Drop, Essay, and CodeRunner with attachments) in this document using the "Download all response files" button. Or you can select the individual questions and use the "Download selected response files" button.';
+$string['embedquestion:deleteanyattempt'] = 'Delete the attempts of other users';
+$string['embedquestion:deletemyattempt'] = 'Delete the own attempts';
+$string['embedquestion:downloadanyattempt'] = 'Download response files for any user\'s attempts';
+$string['embedquestion:downloadmyattempt'] = 'Download response files for own attempts only';
+$string['embedquestion:viewallprogress'] = 'See embedded questions progress for others';
+$string['embedquestion:viewmyprogress'] = 'See your own embedded questions progress';
+$string['err_filterdate'] = 'You cannot filter by both \'Look back\' and \'From/To\' at the same time. Please only use one.';
+$string['err_filterdatetolesthan'] = 'The end date cannot be earlier than the start date.';
+$string['err_pagesize'] = 'The page size can not be a negative number';
+$string['eventactivityreportviewed'] = 'Embedded questions progress activity report viewed';
+$string['eventcoursereportviewed'] = 'Embedded questions progress course report viewed';
+$string['filtering'] = 'Filtering';
+$string['latestattemptstatus'] = 'Latest attempt status';
+$string['locationfilter'] = 'Location filter';
+$string['lookback'] = 'Attempts made in the';
+$string['nday'] = 'Last {$a} day';
+$string['ndays'] = 'Last {$a} days';
+$string['nweek'] = 'Last {$a} week';
+$string['nweeks'] = 'Last {$a} weeks';
+$string['page-report-embedquestion-*'] = 'Any embedded questions progress report';
+$string['page-report-embedquestion-activity'] = 'Activity embedded questions progress report';
+$string['page-report-embedquestion-index'] = 'Course embedded questions progress report';
+$string['page-report-embedquestion-progress-detail'] = 'Embedded question progress detail';
+$string['pluginname'] = 'Embedded questions progress';
+$string['privacy:metadata:core_question'] = 'The embedded questions progress report stores question usage information in the core_question subsystem.';
+$string['privacy:metadata:report_embedquestion_attempt'] = 'Information about which embedded questions each user has attempted.';
+$string['privacy:metadata:report_embedquestion_attempt:contextid'] = 'The Moodle context where the question was attempted';
+$string['privacy:metadata:report_embedquestion_attempt:embedid'] = 'The internal id of the question that was embedded';
+$string['privacy:metadata:report_embedquestion_attempt:pagename'] = 'The name of the page where the question was embedded';
+$string['privacy:metadata:report_embedquestion_attempt:pageurl'] = 'The URL of the page where the question was embedded';
+$string['privacy:metadata:report_embedquestion_attempt:timecreated'] = 'The time when the user started attempting this question';
+$string['privacy:metadata:report_embedquestion_attempt:timemodified'] = 'The time when the user most recently interacted with this question';
+$string['privacy:metadata:report_embedquestion_attempt:userid'] = 'The user who attempted the question';
+$string['privacy:preference:report_embedquestion_attempt:pagesize'] = 'The number of attempts to show on each page of the report';
+$string['reporttablecaption'] = 'Embedded question attempts in {$a}';
+$string['selectattempt'] = 'Select attempt {$a}';
+$string['showeverybody'] = 'Show everybody';
+$string['showonly'] = 'Show only';
+$string['showonly_heading'] = 'Showing only {$a}';
+$string['type'] = 'Type';
+$string['userresponsedeletion'] = 'User response deletion';
+$string['userresponsedeletion_help'] = 'Users are able to delete their own question responses. Certain administrative staff may be able to delete the attempts of others on request.';
+$string['viewallattemptsforthisuser'] = 'View all embedded question latest attempts for this user';
