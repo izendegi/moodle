@@ -1,0 +1,11 @@
+#page-login-index.moove-login {
+    &.login-left #page-content {
+        flex-direction: row-reverse;
+    }
+}
+
+#page-login-signup.moove-login {
+    &.login-left #page-content {
+        flex-direction: row-reverse;
+    }
+}
