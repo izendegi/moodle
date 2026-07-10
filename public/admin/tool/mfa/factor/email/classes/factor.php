@@ -97,10 +97,13 @@ class factor extends object_factor_base {
     public function get_all_user_factors(stdClass $user): array {
         global $DB;
 
+        $email = property_exists($user, 'email') ? $user->email : '';
+        $lastip = property_exists($user, 'lastip') ? $user->lastip : '';
+
         $records = $DB->get_records('tool_mfa', [
             'userid' => $user->id,
             'factor' => $this->name,
-            'label' => $user->email ?? '',
+            'label' => $email,
         ]);
 
         if (!empty($records)) {
@@ -111,8 +114,8 @@ class factor extends object_factor_base {
         $record = [
             'userid' => $user->id,
             'factor' => $this->name,
-            'label' => $user->email ?? '',
-            'createdfromip' => $user->lastip ?? '',
+            'label' => $email,
+            'createdfromip' => $lastip,
             'timecreated' => time(),
             'revoked' => 0,
         ];
