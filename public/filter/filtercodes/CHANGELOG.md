@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.1] 2026-07-22
+
+### Updated
+
+- Fix #369: {coursename} can now be wrapped in other tags.
+- Fix #365, #366, #367: Resolve issue with nested {if...} tags.
+- Fix stylelint errors for @property and aspect-ratio.
+- Fixed PostgreSQL version moodle-ci testing issues.
+
 ## [3.0.0] 2026-05-11
 
 ### Added
