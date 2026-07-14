@@ -795,7 +795,7 @@ class text_filter extends \filtercodes_base_text_filter {
      * @return boolean True of there are more tags to be processed, otherwise false.
      */
     private function generatortags(&$text) {
-        global $CFG, $PAGE, $DB;
+        global $CFG, $PAGE, $DB, $SITE;
 
         $replace = []; // Array of key/value filterobjects.
 
@@ -1131,7 +1131,8 @@ class text_filter extends \filtercodes_base_text_filter {
                         $action = in_array($PAGE->course->id, $wishlist) ? 'remove' : 'add';
                         $url = (new \moodle_url('/filter/filtercodes/action.php', [
                             'courseid' => $PAGE->course->id,
-                            'action' => $action,
+                            'action'   => $action,
+                            'sesskey'  => sesskey(),
                         ]))->out();
                         $menu .= '-' . get_string('wishlist_' . $action, 'filter_filtercodes') . '|' . $url . "\n";
                     }
@@ -1181,6 +1182,49 @@ class text_filter extends \filtercodes_base_text_filter {
                             $replace['/\{coursesummary ' . $course->id . '\}/isuU'] = format_text(
                                 $course->summary,
                                 FORMAT_HTML,
+                                ['context' => $coursecontext]
+                            );
+                        }
+                    }
+                    unset($matches, $course, $courseids, $id);
+                }
+            }
+
+            // Tag: {coursename}.
+            // Description: The full name of a course, or the site name if not in a course.
+            // Parameters: None.
+            if (stripos($text, '{coursename') !== false) {
+                if (stripos($text, '{coursename}') !== false) {
+                    // No course ID was specified.
+                    $course = $PAGE->course;
+                    if ($course->id == $SITE->id) { // If not in a course, use the site name.
+                        $coursecontext = \context_system::instance();
+                        $replace['/\{coursename\}/i'] = format_string(
+                            $SITE->fullname,
+                            true,
+                            ['context' => $coursecontext]
+                        );
+                    } else { // If in a course - use course full name.
+                        $coursecontext = \context_course::instance($course->id);
+                        $replace['/\{coursename\}/i'] = format_string(
+                            $course->fullname,
+                            true,
+                            ['context' => $coursecontext]
+                        );
+                    }
+                }
+                if (stripos($text, '{coursename ') !== false) {
+                    // Course ID was specified.
+                    preg_match_all('/\{coursename ([0-9]+)\}/', $text, $matches);
+                    // Eliminate course IDs.
+                    $courseids = array_unique($matches[1]);
+                    $coursecontext = \context_system::instance();
+                    foreach ($courseids as $id) {
+                        $course = $DB->get_record('course', ['id' => $id]);
+                        if (!empty($course)) {
+                            $replace['/\{coursename ' . $course->id . '\}/isuU'] = format_string(
+                                $course->fullname,
+                                true,
                                 ['context' => $coursecontext]
                             );
                         }
@@ -1557,17 +1601,21 @@ class text_filter extends \filtercodes_base_text_filter {
         $emit = function (array $stack) use (&$replace, $tagname) {
             $key = '';
             $value = '';
+            // Each capture group must not span a closing tag, preventing a nested pattern
+            // (e.g. {tag A}(.*){tag B}...{/tag}...{/tag}) from absorbing a preceding simple
+            // block's closing tag when the two patterns share the same argument.
+            $nocross = '((?:(?!\{\/' . $tagname . '\})[\s\S])*)';
             for ($i = 0; $i < count($stack); $i++) {
                 $isopening = $stack[$i][0];
                 $args = $stack[$i][1];
                 $istrue = $stack[$i][2];
                 if ($isopening) {
-                    $key .= '{' . $tagname . '\s+' . preg_quote($args, '/') . '}(.*)';
+                    $key .= '{' . $tagname . '\s+' . preg_quote($args, '/') . '}' . $nocross;
                     if ($istrue) {
                         $value .= '$' . ($i + 1);
                     }
                 } else {
-                    $key .= '(.*){\/' . $tagname . '}';
+                    $key .= $nocross . '{\/' . $tagname . '}';
                     if ($istrue) {
                         $value .= '$' . ($i + 1);
                     }
@@ -1584,6 +1632,7 @@ class text_filter extends \filtercodes_base_text_filter {
                 $balance = 0;
                 $stack = [];
                 $istrue = [];
+                $balancedgroups = [];
                 foreach ($matches as $match) {
                     $isopening = (!isset($match[2]));
                     if (empty($stack) && !$isopening) {
@@ -1611,11 +1660,28 @@ class text_filter extends \filtercodes_base_text_filter {
                     }
 
                     if ($balance == 0) {
-                        // We are balanced, generate replacement.
-                        $emit($stack);
+                        // We are balanced, collect for later emit.
+                        $balancedgroups[] = $stack;
                         $stack = [];
                     }
                 }
+
+                // Emit deepest (most-nested) patterns first so that a simple pattern like
+                // {tag A}(.*){/tag} does not consume tags belonging to a nested group
+                // {tag B}{tag A}...{/tag}{/tag} before the nested pattern has a chance to run.
+                usort($balancedgroups, function ($a, $b) {
+                    $da = count(array_filter($a, function ($item) {
+                        return $item[0];
+                    }));
+                    $db = count(array_filter($b, function ($item) {
+                        return $item[0];
+                    }));
+                    return $db - $da;
+                });
+                foreach ($balancedgroups as $group) {
+                    $emit($group);
+                }
+
                 if (!empty($stack)) {
                     // Drop opening tags till we are balanced.
                     $newstack = [];
@@ -1639,6 +1705,27 @@ class text_filter extends \filtercodes_base_text_filter {
                 }
             }
         }
+    }
+
+    /**
+     * Dispatch text through the Pro Edition tag processor if installed.
+     *
+     * Loads classes/text_filter_pro.php via Moodle's PSR-4 autoloader. When the
+     * Pro Edition file is absent (free edition), this is a no-op pass-through.
+     * Called before the generatortags() loop so that pro tag output is fed through
+     * the existing nested-tag resolution machinery.
+     *
+     * @param string $text    Text being filtered.
+     * @param array  $options Filter options passed through from filter().
+     * @return string Text with pro tags substituted (or unchanged on free edition).
+     */
+    protected function apply_pro_filters($text, array $options) {
+        static $pro = null;
+        if ($pro === null) {
+            $proclass = '\\filter_filtercodes\\text_filter_pro';
+            $pro = class_exists($proclass) ? new $proclass($this->context ?? \context_system::instance()) : false;
+        }
+        return $pro ? $pro->apply($text, $options) : $text;
     }
 
     /**
@@ -1698,6 +1785,10 @@ class text_filter extends \filtercodes_base_text_filter {
         // ...===================================================================================================================.
         // Tags that may create more content which could possibly include tags. These need to be processed first.
         // ...===================================================================================================================.
+
+        // Pro Edition tags run before the generator loop so that any free tags emitted
+        // by pro tag output are resolved by the existing nested-tag machinery below.
+        $text = $this->apply_pro_filters($text, $options);
 
         // Loop through the tags that may have embedded tags until these generator tags have all been proceseed.
 
@@ -3114,49 +3205,6 @@ class text_filter extends \filtercodes_base_text_filter {
             // Parameters: None.
             if (stripos($text, '{courseidnumber}') !== false) {
                 $replace['/\{courseidnumber\}/i'] = $PAGE->course->idnumber;
-            }
-
-            // Tag: {coursename}.
-            // Description: The full name of a course, or the site name if not in a course.
-            // Parameters: None.
-            if (stripos($text, '{coursename') !== false) {
-                if (stripos($text, '{coursename}') !== false) {
-                    // No course ID was specified.
-                    $course = $PAGE->course;
-                    if ($course->id == $SITE->id) { // If not in a course, use the site name.
-                        $coursecontext = \context_system::instance();
-                        $replace['/\{coursename\}/i'] = format_string(
-                            $SITE->fullname,
-                            true,
-                            ['context' => $coursecontext]
-                        );
-                    } else { // If in a course - use course full name.
-                        $coursecontext = \context_course::instance($course->id);
-                        $replace['/\{coursename\}/i'] = format_string(
-                            $course->fullname,
-                            true,
-                            ['context' => $coursecontext]
-                        );
-                    }
-                }
-                if (stripos($text, '{coursename ') !== false) {
-                    // Course ID was specified.
-                    preg_match_all('/\{coursename ([0-9]+)\}/', $text, $matches);
-                    // Eliminate course IDs.
-                    $courseids = array_unique($matches[1]);
-                    $coursecontext = \context_system::instance();
-                    foreach ($courseids as $id) {
-                        $course = $DB->get_record('course', ['id' => $id]);
-                        if (!empty($course)) {
-                            $replace['/\{coursename ' . $course->id . '\}/isuU'] = format_string(
-                                $course->fullname,
-                                true,
-                                ['context' => $coursecontext]
-                            );
-                        }
-                    }
-                    unset($matches, $course, $courseids, $id);
-                }
             }
 
             if (stripos($text, '{courseimage') !== false) {
