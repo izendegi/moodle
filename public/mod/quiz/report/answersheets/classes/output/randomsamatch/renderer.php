@@ -33,5 +33,4 @@ use quiz_answersheets\output\match\qtype_match_override_renderer;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_randomsamatch_override_renderer extends qtype_match_override_renderer {
-
 }

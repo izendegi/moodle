@@ -38,7 +38,6 @@ require_once($CFG->dirroot . '/question/type/pmatch/renderer.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_pmatch_override_renderer extends \qtype_pmatch_renderer {
-
     /**
      * The code was copied from question/type/pmatch/renderer.php, with modifications.
      *
@@ -50,5 +49,4 @@ class qtype_pmatch_override_renderer extends \qtype_pmatch_renderer {
         // Do not show the question test link.
         return '';
     }
-
 }
