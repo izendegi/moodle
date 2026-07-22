@@ -32,7 +32,6 @@ namespace quiz_answersheets\event;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class attempt_viewed extends base_event {
-
     #[\Override]
     public static function get_name(): string {
         return get_string('event_attempt_viewed', 'quiz_answersheets');

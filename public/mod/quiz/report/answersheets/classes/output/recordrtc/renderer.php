@@ -41,7 +41,6 @@ require_once($CFG->dirroot . '/question/type/recordrtc/renderer.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
-
     /**
      * The code was copied from question/type/recordrtc/renderer.php, with modifications.
      *
@@ -69,13 +68,20 @@ class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
      * @param int $videoheight
      * @return string HTML to output.
      */
-    protected function playback_ui($recordingurl, string $mediatype, string $filename,
-            $videowidth, $videoheight): string {
+    protected function playback_ui(
+        $recordingurl,
+        string $mediatype,
+        string $filename,
+        $videowidth,
+        $videoheight
+    ): string {
         $output = '';
 
         // Add custom class to original playback ui div, so we can control it by CSS selector easily.
-        $output .= html_writer::div(parent::playback_ui($recordingurl, $mediatype, $filename, $videowidth, $videoheight),
-                'playback-ui-warning');
+        $output .= html_writer::div(
+            parent::playback_ui($recordingurl, $mediatype, $filename, $videowidth, $videoheight),
+            'playback-ui-warning'
+        );
         $output .= $this->response_recorded($filename);
 
         return $output;
@@ -132,7 +138,7 @@ class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
      * @return string HTML content
      */
     private function process_feedback_interactive_content(string $feedback): string {
-        $doc = new DOMDocument;
+        $doc = new DOMDocument();
         libxml_use_internal_errors(true);
         $doc->loadHTML(html_entity_decode($feedback));
         libxml_clear_errors();
@@ -159,5 +165,4 @@ class qtype_recordrtc_override_renderer extends \qtype_recordrtc_renderer {
 
         return $doc->saveHTML();
     }
-
 }

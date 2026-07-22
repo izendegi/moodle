@@ -48,15 +48,24 @@ require_sesskey();
 $url = new moodle_url('/mod/quiz/report/answersheets/processresponses.php', ['cmdid' => $cmid]);
 $PAGE->set_url($url);
 
-$reportoptions = new report_display_options('answersheets', $attemptobj->get_quiz(),
-        $attemptobj->get_cm(), $attemptobj->get_course());
+$reportoptions = new report_display_options(
+    'answersheets',
+    $attemptobj->get_quiz(),
+    $attemptobj->get_cm(),
+    $attemptobj->get_course()
+);
 $reportoptions->setup_from_params();
 
 // If the attempt is already closed, send them to the review sheet page.
 if ($attemptobj->is_finished()) {
-    throw new moodle_exception('attemptalreadyclosed', 'quiz',
-            new moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
-                    ['attempt' => $attemptid, 'userinfo' => $reportoptions->combine_user_info_visibility()]));
+    throw new moodle_exception(
+        'attemptalreadyclosed',
+        'quiz',
+        new moodle_url(
+            '/mod/quiz/report/answersheets/attemptsheet.php',
+            ['attempt' => $attemptid, 'userinfo' => $reportoptions->combine_user_info_visibility()]
+        )
+    );
 }
 
 // Process the attempt, getting the new status for the attempt.
@@ -70,12 +79,20 @@ if ($timenow > $quiz->timeclose) {
 $attemptobj->process_attempt($timenow, $finishattempt, false, 0);
 
 if ($redirect == '') {
-    $redirect = new moodle_url('/mod/quiz/report.php',
-            ['id' => $attemptobj->get_cmid(), 'mode' => 'answersheets', 'lastchanged' => $attemptid]);
+    $redirect = new moodle_url(
+        '/mod/quiz/report.php',
+        ['id' => $attemptobj->get_cmid(), 'mode' => 'answersheets', 'lastchanged' => $attemptid]
+    );
 }
 
 // Fire event.
 $context = context_module::instance((int) $attemptobj->get_cmid());
-utils::create_events('responses_submitted', $attemptobj->get_attemptid(), $attemptobj->get_userid(), $attemptobj->get_courseid(),
-        $context, $attemptobj->get_quizid());
+utils::create_events(
+    'responses_submitted',
+    $attemptobj->get_attemptid(),
+    $attemptobj->get_userid(),
+    $attemptobj->get_courseid(),
+    $context,
+    $attemptobj->get_quizid()
+);
 redirect($redirect);

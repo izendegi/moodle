@@ -40,7 +40,6 @@ require_once($CFG->dirroot . '/question/type/truefalse/renderer.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_truefalse_override_renderer extends \qtype_truefalse_renderer {
-
     /**
      * The code was copied from question/type/truefalse/renderer.php, with modifications.
      *
@@ -89,17 +88,7 @@ class qtype_truefalse_override_renderer extends \qtype_truefalse_renderer {
         $truefeedbackimg = '';
         $falsefeedbackimg = '';
         // Modification starts.
-        /* Comment out core code.
-        if ($options->correctness) {
-            if ($truechecked) {
-                $trueclass = ' ' . $this->feedback_class((int) $question->rightanswer);
-                $truefeedbackimg = $this->feedback_image((int) $question->rightanswer);
-            } else if ($falsechecked) {
-                $falseclass = ' ' . $this->feedback_class((int) (!$question->rightanswer));
-                $falsefeedbackimg = $this->feedback_image((int) (!$question->rightanswer));
-            }
-        }
-        */
+        // Core code only set feedback class/image when a choice was checked; removed that condition to always compute feedback.
 
         $truefeedback = '';
         $falsefeedback = '';
@@ -110,12 +99,34 @@ class qtype_truefalse_override_renderer extends \qtype_truefalse_renderer {
             $falsefeedbackimg = $this->feedback_image((int) (!$question->rightanswer));
         }
         if ($options->feedback) {
-            $truefeedback = html_writer::tag('div',
-                $question->make_html_inline($question->format_text($question->truefeedback, $question->truefeedbackformat, $qa,
-                    'question', 'answerfeedback', $question->trueanswerid)), ['class' => 'specificfeedback']);
-            $falsefeedback = html_writer::tag('div',
-                $question->make_html_inline($question->format_text($question->falsefeedback, $question->falsefeedbackformat,
-                    $qa, 'question', 'answerfeedback', $question->falseanswerid)), ['class' => 'specificfeedback']);
+            $truefeedback = html_writer::tag(
+                'div',
+                $question->make_html_inline(
+                    $question->format_text(
+                        $question->truefeedback,
+                        $question->truefeedbackformat,
+                        $qa,
+                        'question',
+                        'answerfeedback',
+                        $question->trueanswerid
+                    )
+                ),
+                ['class' => 'specificfeedback']
+            );
+            $falsefeedback = html_writer::tag(
+                'div',
+                $question->make_html_inline(
+                    $question->format_text(
+                        $question->falsefeedback,
+                        $question->falsefeedbackformat,
+                        $qa,
+                        'question',
+                        'answerfeedback',
+                        $question->falseanswerid
+                    )
+                ),
+                ['class' => 'specificfeedback']
+            );
         }
 
         // Modification ends.
@@ -123,15 +134,17 @@ class qtype_truefalse_override_renderer extends \qtype_truefalse_renderer {
         $choicefalse = html_writer::div(get_string('false', 'qtype_truefalse'), 'flex-fill ml-1');
 
         $radiotrue = html_writer::empty_tag('input', $trueattributes) .
-            html_writer::tag('label', $choicetrue, [
-                'for' => $trueattributes['id'],
-                'class' => 'd-flex w-auto ml-1']
+            html_writer::tag(
+                'label',
+                $choicetrue,
+                ['for' => $trueattributes['id'], 'class' => 'd-flex w-auto ml-1']
             );
         $radiofalse = html_writer::empty_tag('input', $falseattributes) .
-            html_writer::tag('label', $choicefalse, [
-                'for' => $falseattributes['id'],
-                'class' => 'd-flex w-auto ml-1',
-            ]);
+            html_writer::tag(
+                'label',
+                $choicefalse,
+                ['for' => $falseattributes['id'], 'class' => 'd-flex w-auto ml-1']
+            );
 
         $result = '';
         $result .= html_writer::tag('div', $question->format_questiontext($qa), ['class' => 'qtext']);
@@ -141,27 +154,30 @@ class qtype_truefalse_override_renderer extends \qtype_truefalse_renderer {
 
         $result .= html_writer::start_tag('div', ['class' => 'answer']);
         // Modification starts.
-        /* Comment out core code.
-        $result .= html_writer::tag('div', $radiotrue . ' ' . $truefeedbackimg,
-                array('class' => 'r0' . $trueclass));
-        $result .= html_writer::tag('div', $radiofalse . ' ' . $falsefeedbackimg,
-                array('class' => 'r1' . $falseclass));
-        */
-        $result .= html_writer::tag('div', $radiotrue . ' ' . $truefeedbackimg . ' ' . $truefeedback,
-                ['class' => 'r0' . $trueclass]);
-        $result .= html_writer::tag('div', $radiofalse . ' ' . $falsefeedbackimg . ' ' . $falsefeedback,
-                ['class' => 'r1' . $falseclass]);
+        // Core code rendered rows without $truefeedback/$falsefeedback; extended here to include those values.
+        $result .= html_writer::tag(
+            'div',
+            $radiotrue . ' ' . $truefeedbackimg . ' ' . $truefeedback,
+            ['class' => 'r0' . $trueclass]
+        );
+        $result .= html_writer::tag(
+            'div',
+            $radiofalse . ' ' . $falsefeedbackimg . ' ' . $falsefeedback,
+            ['class' => 'r1' . $falseclass]
+        );
         // Modification ends.
         $result .= html_writer::end_tag('div'); // Answer.
 
         $result .= html_writer::end_tag('div'); // Ablock.
 
         if ($qa->get_state() == question_state::$invalid) {
-            $result .= html_writer::nonempty_tag('div',
-                $question->get_validation_error($responsearray), ['class' => 'validationerror']);
+            $result .= html_writer::nonempty_tag(
+                'div',
+                $question->get_validation_error($responsearray),
+                ['class' => 'validationerror']
+            );
         }
 
         return $result;
     }
-
 }
