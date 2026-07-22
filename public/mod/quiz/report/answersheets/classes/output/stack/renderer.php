@@ -45,7 +45,6 @@ require_once($CFG->dirroot . '/question/type/stack/renderer.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_stack_override_renderer extends \qtype_stack_renderer {
-
     /**
      * The code was copied from question/type/stack/renderer.php, with modifications.
      *
@@ -96,9 +95,13 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
 
         // Now format the questiontext.
         $questiontext = $question->format_text(
-                stack_maths::process_display_castext($questiontext, $this),
+            stack_maths::process_display_castext($questiontext, $this),
             FORMAT_HTML,
-                $qa, 'question', 'questiontext', $question->id);
+            $qa,
+            'question',
+            'questiontext',
+            $question->id
+        );
 
         // Get the list of placeholders after format_text.
         $fmtinputph = stack_utils::extract_placeholders($questiontext, 'input');
@@ -110,8 +113,10 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
         // Have we lost some of the placeholders entirely?
         // Duplicates may have been removed by multi-lang,
         // No duplicates should remain.
-        if ($fmtinputph !== $inputplaceholders ||
-                $fmtfbplaceholders !== $feedbackplaceholders) {
+        if (
+            $fmtinputph !== $inputplaceholders ||
+            $fmtfbplaceholders !== $feedbackplaceholders
+        ) {
             throw new coding_exception('Inconsistent placeholders. Possibly due to multi-lang filtter not being active.');
         }
 
@@ -123,16 +128,15 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
             $state = $question->get_input_state($name, $response);
 
             // Modification starts.
-            /* Comment out core code.
-            $questiontext = str_replace("[[input:{$name}]]",
-                    $input->render($state, $fieldname, $options->readonly, $tavalue),
-                    $questiontext);
-            */
+            // Core code used str_replace for all input types; replaced with render_choices() for dropdown inputs.
             if (get_class($input) == 'stack_dropdown_input') {
                 $questiontext = str_replace("[[input:{$name}]]", $this->render_choices($input), $questiontext);
             } else {
-                $questiontext = str_replace("[[input:{$name}]]", $input->render($state, $fieldname, $options->readonly, $tavalue),
-                        $questiontext);
+                $questiontext = str_replace(
+                    "[[input:{$name}]]",
+                    $input->render($state, $fieldname, $options->readonly, $tavalue),
+                    $questiontext
+                );
             }
             // Modification ends.
 
@@ -148,15 +152,17 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
             $feedback = '';
             if ($options->feedback) {
                 $feedback = $this->prt_feedback($index, $response, $qa, $options, $prt->get_feedbackstyle());
-
             } else if (in_array($qa->get_behaviour_name(), ['interactivecountback', 'adaptivemulipart'])) {
                 // The behaviour name test here is a hack. The trouble is that interactive
                 // behaviour or adaptivemulipart does not show feedback if the input
                 // is invalid, but we want to show the CAS errors from the PRT.
                 $result = $question->get_prt_result($index, $response, $qa->get_state()->is_finished());
                 $errors = implode(' ', $result->get_errors());
-                $feedback = html_writer::nonempty_tag('span', $errors,
-                    ['class' => 'stackprtfeedback stackprtfeedback-' . $name]);
+                $feedback = html_writer::nonempty_tag(
+                    'span',
+                    $errors,
+                    ['class' => 'stackprtfeedback stackprtfeedback-' . $name]
+                );
             }
             $questiontext = str_replace("[[feedback:{$index}]]", $feedback, $questiontext);
         }
@@ -170,17 +176,22 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
             } else {
                 $questiondivid = 'q' . $qa->get_slot();
             }
-            $this->page->requires->js_call_amd('qtype_stack/input', 'initInputs',
-                    [$questiondivid, $qa->get_field_prefix(),
-                            $qa->get_database_id(), $inputstovaldiate]);
+            $this->page->requires->js_call_amd(
+                'qtype_stack/input',
+                'initInputs',
+                [$questiondivid, $qa->get_field_prefix(), $qa->get_database_id(), $inputstovaldiate]
+            );
         }
 
         $result = '';
         $result .= $this->question_tests_link($question, $options) . $questiontext;
 
         if ($qa->get_state() == question_state::$invalid) {
-            $result .= html_writer::nonempty_tag('span',
-                $question->get_validation_error($response), ['class' => 'validationerror']);
+            $result .= html_writer::nonempty_tag(
+                'span',
+                $question->get_validation_error($response),
+                ['class' => 'validationerror']
+            );
         }
 
         return $result;
@@ -205,5 +216,4 @@ class qtype_stack_override_renderer extends \qtype_stack_renderer {
 
         return $quizprintingrenderer->render_choices($choices, true);
     }
-
 }

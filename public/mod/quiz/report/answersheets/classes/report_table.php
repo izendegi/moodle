@@ -40,7 +40,6 @@ use stdClass;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_table extends attempts_report_table {
-
     /** @var report_display_options Option */
     protected $options;
 
@@ -62,10 +61,27 @@ class report_table extends attempts_report_table {
      * @param array $questions
      * @param moodle_url $reporturl
      */
-    public function __construct($quiz, $context, $qmsubselect, report_display_options $options,
-            \core\dml\sql_join $groupstudentsjoins, \core\dml\sql_join $studentsjoins, $questions, $reporturl) {
-        parent::__construct('mod-quiz-report-answersheets-report', $quiz, $context,
-                $qmsubselect, $options, $groupstudentsjoins, $studentsjoins, $questions, $reporturl);
+    public function __construct(
+        $quiz,
+        $context,
+        $qmsubselect,
+        report_display_options $options,
+        \core\dml\sql_join $groupstudentsjoins,
+        \core\dml\sql_join $studentsjoins,
+        $questions,
+        $reporturl
+    ) {
+        parent::__construct(
+            'mod-quiz-report-answersheets-report',
+            $quiz,
+            $context,
+            $qmsubselect,
+            $options,
+            $groupstudentsjoins,
+            $studentsjoins,
+            $questions,
+            $reporturl
+        );
         $this->options = $options;
     }
 
@@ -112,7 +128,9 @@ class report_table extends attempts_report_table {
         $fakeuser = clone($row);
         $fakeuser->id = $row->userid;
         return \quiz_gradingstudents_ou_confirmation_code::get_confirmation_code(
-                $this->options->cm, $fakeuser);
+            $this->options->cm,
+            $fakeuser
+        );
     }
 
     /**
@@ -123,7 +141,9 @@ class report_table extends attempts_report_table {
      */
     public function col_attempt_sheet($row) {
         if ($row->state == quiz_attempt::IN_PROGRESS) {
-            return html_writer::link(new moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
+            return html_writer::link(
+                new moodle_url(
+                    '/mod/quiz/report/answersheets/attemptsheet.php',
                     [
                         'attempt' => $row->attempt,
                         'userinfo' => $this->options->combine_user_info_visibility(),
@@ -132,11 +152,15 @@ class report_table extends attempts_report_table {
                         'showcombinefeedback' => $this->options->showcombinefeedback,
                         'showinlinefeedback' => $this->options->showinlinefeedback,
                         'showgeneralfeedback' => $this->options->showgeneralfeedback,
-                    ]),
-                    get_string('attempt_sheet_label', 'quiz_answersheets'),
-                    ['class' => 'reviewlink']);
+                    ]
+                ),
+                get_string('attempt_sheet_label', 'quiz_answersheets'),
+                ['class' => 'reviewlink']
+            );
         } else if ($row->state == quiz_attempt::FINISHED) {
-            return html_writer::link(new moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
+            return html_writer::link(
+                new moodle_url(
+                    '/mod/quiz/report/answersheets/attemptsheet.php',
                     [
                         'attempt' => $row->attempt,
                         'userinfo' => $this->options->combine_user_info_visibility(),
@@ -145,9 +169,11 @@ class report_table extends attempts_report_table {
                         'showcombinefeedback' => $this->options->showcombinefeedback,
                         'showinlinefeedback' => $this->options->showinlinefeedback,
                         'showgeneralfeedback' => $this->options->showgeneralfeedback,
-                    ]),
-                    get_string('review_sheet_label', 'quiz_answersheets'),
-                    ['class' => 'reviewlink']);
+                    ]
+                ),
+                get_string('review_sheet_label', 'quiz_answersheets'),
+                ['class' => 'reviewlink']
+            );
         } else {
             return self::DASH_VALUE;
         }
@@ -161,7 +187,9 @@ class report_table extends attempts_report_table {
      */
     public function col_answer_sheet($row) {
         if ($row->state == quiz_attempt::IN_PROGRESS) {
-            return html_writer::link(new moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
+            return html_writer::link(
+                new moodle_url(
+                    '/mod/quiz/report/answersheets/attemptsheet.php',
                     [
                         'attempt' => $row->attempt,
                         'rightanswer' => 1,
@@ -171,9 +199,11 @@ class report_table extends attempts_report_table {
                         'showcombinefeedback' => $this->options->showcombinefeedback,
                         'showinlinefeedback' => $this->options->showinlinefeedback,
                         'showgeneralfeedback' => $this->options->showgeneralfeedback,
-                    ]),
-                    get_string('answer_sheet_label', 'quiz_answersheets'),
-                    ['class' => 'reviewlink']);
+                    ]
+                ),
+                get_string('answer_sheet_label', 'quiz_answersheets'),
+                ['class' => 'reviewlink']
+            );
         }
 
         return self::DASH_VALUE;
@@ -305,5 +335,4 @@ class report_table extends attempts_report_table {
         $params['quizmaxattempts2'] = $this->quiz->attempts;
         return [$fields, $from, $where, $params];
     }
-
 }

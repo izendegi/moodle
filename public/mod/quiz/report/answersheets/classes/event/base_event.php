@@ -32,7 +32,6 @@ namespace quiz_answersheets\event;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class base_event extends \core\event\base {
-
     #[\Override]
     protected function init() {
         $this->data['crud'] = 'r';
@@ -59,5 +58,4 @@ class base_event extends \core\event\base {
     public static function get_objectid_mapping(): int {
         return \core\event\base::NOT_MAPPED;
     }
-
 }
