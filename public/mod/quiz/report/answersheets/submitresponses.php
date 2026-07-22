@@ -35,8 +35,12 @@ $cmid = optional_param('cmid', null, PARAM_INT);
 $redirect = optional_param('redirect', '', PARAM_LOCALURL);
 
 $attemptobj = quiz_create_attempt_handling_errors($attemptid, $cmid);
-$reportoptions = new report_display_options('answersheets', $attemptobj->get_quiz(),
-    $attemptobj->get_cm(), $attemptobj->get_course());
+$reportoptions = new report_display_options(
+    'answersheets',
+    $attemptobj->get_quiz(),
+    $attemptobj->get_cm(),
+    $attemptobj->get_course()
+);
 $reportoptions->setup_from_params();
 
 // Check login.
@@ -52,7 +56,6 @@ if ($attemptobj->is_finished()) {
 
 // Check the access rules.
 $accessmanager = $attemptobj->get_access_manager(time());
-$accessmanager->setup_attempt_page($PAGE);
 $messages = $accessmanager->prevent_access();
 
 $url = new moodle_url('/mod/quiz/report/answersheets/submitresponses.php', ['attempt' => $attemptid]);

@@ -35,7 +35,6 @@ use mod_quiz\quiz_settings;
  * External API class.
  */
 class quiz_answersheets_external extends external_api {
-
     /**
      * Describes the parameters for create_attempt.
      *
@@ -76,7 +75,7 @@ class quiz_answersheets_external extends external_api {
             'userid' => $userid,
         ]);
 
-        list($course, $cm) = get_course_and_cm_from_instance($params['quizid'], 'quiz');
+        [$course, $cm] = get_course_and_cm_from_instance($params['quizid'], 'quiz');
         $context = context_module::instance($cm->id);
         self::validate_context($context);
 
@@ -96,12 +95,25 @@ class quiz_answersheets_external extends external_api {
         $attemptnumber = count($attempts);
         $lastattempt = array_pop($attempts);
         // TODO: MDL-66633 When we move to Moodle 3.8, use quiz_prepare_and_start_new_attempt in mod/quiz/locallib.php.
-        $attempt = static::quiz_prepare_and_start_new_attempt($quizobj, $attemptnumber + 1, $lastattempt, false, [], [],
-                $params['userid']);
+        $attempt = static::quiz_prepare_and_start_new_attempt(
+            $quizobj,
+            $attemptnumber + 1,
+            $lastattempt,
+            false,
+            [],
+            [],
+            $params['userid']
+        );
         $response = ['success' => true, 'message' => $message, 'id' => $attempt->id];
 
-        utils::create_events(utils::ATTEMPT_SHEET_CREATED, $attempt->id, $params['userid'], $course->id, $context,
-                $params['quizid']);
+        utils::create_events(
+            utils::ATTEMPT_SHEET_CREATED,
+            $attempt->id,
+            $params['userid'],
+            $course->id,
+            $context,
+            $params['quizid']
+        );
 
         return $response;
     }
@@ -122,8 +134,15 @@ class quiz_answersheets_external extends external_api {
      * @return object the new attempt
      * @since  Moodle 3.1
      */
-    public static function quiz_prepare_and_start_new_attempt(quiz_settings $quizobj, $attemptnumber, $lastattempt,
-            $isoffline = false, $forcedrandqs = [], $forcedvariants = [], $userid = null) {
+    public static function quiz_prepare_and_start_new_attempt(
+        quiz_settings $quizobj,
+        $attemptnumber,
+        $lastattempt,
+        $isoffline = false,
+        $forcedrandqs = [],
+        $forcedvariants = [],
+        $userid = null
+    ) {
         global $DB, $USER;
 
         if ($userid === null) {
@@ -143,8 +162,15 @@ class quiz_answersheets_external extends external_api {
         $attempt = quiz_create_attempt($quizobj, $attemptnumber, $lastattempt, $timenow, $ispreviewuser, $userid);
 
         if (!($quizobj->get_quiz()->attemptonlast && $lastattempt)) {
-            $attempt = quiz_start_new_attempt($quizobj, $quba, $attempt, $attemptnumber, $timenow,
-                $forcedrandqs, $forcedvariants);
+            $attempt = quiz_start_new_attempt(
+                $quizobj,
+                $quba,
+                $attempt,
+                $attemptnumber,
+                $timenow,
+                $forcedrandqs,
+                $forcedvariants
+            );
         } else {
             $attempt = quiz_start_attempt_built_on_last($quba, $attempt, $lastattempt);
         }
@@ -203,8 +229,14 @@ class quiz_answersheets_external extends external_api {
             throw new invalid_parameter_exception('Invalid pagetype event');
         }
         $context = context_module::instance($params['cmid']);
-        utils::create_events($params['pagetype'], $params['attemptid'], $params['userid'], $params['courseid'], $context,
-                $params['quizid']);
+        utils::create_events(
+            $params['pagetype'],
+            $params['attemptid'],
+            $params['userid'],
+            $params['courseid'],
+            $context,
+            $params['quizid']
+        );
         return true;
     }
 
@@ -216,5 +248,4 @@ class quiz_answersheets_external extends external_api {
     public static function create_event_returns() {
         return new external_value(PARAM_BOOL, 'Success');
     }
-
 }

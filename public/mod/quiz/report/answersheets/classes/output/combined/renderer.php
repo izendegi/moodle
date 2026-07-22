@@ -25,7 +25,7 @@
 namespace quiz_answersheets\output\combined;
 
 use coding_exception;
-use html_writer;
+use core\output\html_writer;
 use qtype_combined_combinable_base;
 use qtype_combined_combinable_type_base;
 use qtype_combined_response_array_param;
@@ -47,7 +47,6 @@ require_once($CFG->dirroot . '/question/type/oumultiresponse/combinable/renderer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_combined_override_renderer extends \qtype_combined_renderer {
-
     /**
      * The code was copied from question/type/combined/renderer.php, with modifications.
      *
@@ -62,18 +61,18 @@ class qtype_combined_override_renderer extends \qtype_combined_renderer {
         $questiontext = $question->format_questiontext($qa);
 
         // Modification starts.
-        /* Comment out core code.
-        $questiontext = $question->combiner->render_subqs($questiontext, $qa, $options);
-        */
-
+        // Core code called $question->combiner->render_subqs() directly; replaced with local render_subqs() method.
         $questiontext = $this->render_subqs($questiontext, $qa, $options);
         // Modification ends.
 
         $result = html_writer::tag('div', $questiontext, ['class' => 'qtext']);
 
         if ($qa->get_state() == question_state::$invalid) {
-            $result .= html_writer::nonempty_tag('div',
-                $question->get_validation_error($qa->get_last_step()->get_all_data()), ['class' => 'validationerror']);
+            $result .= html_writer::nonempty_tag(
+                'div',
+                $question->get_validation_error($qa->get_last_step()->get_all_data()),
+                ['class' => 'validationerror']
+            );
         }
         return $result;
     }
@@ -92,18 +91,14 @@ class qtype_combined_override_renderer extends \qtype_combined_renderer {
         $subqs = utils::get_reflection_property($qa->get_question()->combiner, 'subqs');
 
         // Modification starts.
-        /* Comment out core code.
-        foreach ($this->subqs as $subq) {
-        */
+        // Core code iterated over $this->subqs; replaced with $subqs obtained via reflection.
         foreach ($subqs as $subq) {
             // Modification ends.
             $embedcodes = $subq->question_text_embed_codes();
             $currentpos = 0;
             foreach ($embedcodes as $placeno => $embedcode) {
                 // Modification starts.
-                /* Comment out core code.
-                $renderedembeddedquestion = $subq->type->embedded_renderer()->subquestion($qa, $options, $subq, $placeno);
-                */
+                // Core code called $subq->type->embedded_renderer()->subquestion() directly; replaced with get_embedded_renderer().
                 $embeddedrenderer = $this->get_embedded_renderer($subq->type);
                 $renderedembedq = $embeddedrenderer->subquestion($qa, $options, $subq, $placeno);
                 // Modification ends.
@@ -116,8 +111,12 @@ class qtype_combined_override_renderer extends \qtype_combined_renderer {
                 }
                 $embedcodelen = strlen($embedcode);
                 $replacements[$pos] = ['length' => $embedcodelen, 'replacement' => $renderedembedq];
-                $questiontext = substr_replace($questiontext,
-                        str_repeat('X', $embedcodelen), $pos, $embedcodelen);
+                $questiontext = substr_replace(
+                    $questiontext,
+                    str_repeat('X', $embedcodelen),
+                    $pos,
+                    $embedcodelen
+                );
                 $currentpos = $pos + $embedcodelen;
             }
         }
@@ -127,8 +126,12 @@ class qtype_combined_override_renderer extends \qtype_combined_renderer {
         // replaced.
         krsort($replacements);
         foreach ($replacements as $startpos => $details) {
-            $questiontext = substr_replace($questiontext,
-                    $details['replacement'], $startpos, $details['length']);
+            $questiontext = substr_replace(
+                $questiontext,
+                $details['replacement'],
+                $startpos,
+                $details['length']
+            );
         }
 
         return $questiontext;
@@ -150,7 +153,6 @@ class qtype_combined_override_renderer extends \qtype_combined_renderer {
             return $questiontype->embedded_renderer();
         }
     }
-
 }
 
 /**
@@ -158,8 +160,7 @@ class qtype_combined_override_renderer extends \qtype_combined_renderer {
  *
  * @package quiz_answersheets\output\combined
  */
-class qtype_oumultiresponse_embedded_override_renderer extends \qtype_oumultiresponse_embedded_renderer {
-
+class qtype_oumultiresponse_embedded_override_renderer extends \qtype_oumultiresponse_embedded_renderer { // phpcs:ignore PSR1.Classes.ClassDeclaration.MultipleClasses
     /**
      * The code was copied from question/type/oumultiresponse/combinable/renderer.php, with modifications.
      *
@@ -169,8 +170,12 @@ class qtype_oumultiresponse_embedded_override_renderer extends \qtype_oumultires
      * @param $placeno
      * @return string
      */
-    public function subquestion(question_attempt $qa, question_display_options $options, qtype_combined_combinable_base $subq,
-            $placeno) {
+    public function subquestion(
+        question_attempt $qa,
+        question_display_options $options,
+        qtype_combined_combinable_base $subq,
+        $placeno
+    ) {
         $question = $subq->question;
         $commonattributes = ['type' => 'checkbox'];
 
@@ -182,29 +187,35 @@ class qtype_oumultiresponse_embedded_override_renderer extends \qtype_oumultires
         $feedbackimg = [];
         $classes = [];
         foreach ($question->get_order($qa) as $value => $ansid) {
-            $inputname = $qa->get_qt_field_name($subq->step_data_name('choice'.$value));
+            $inputname = $qa->get_qt_field_name($subq->step_data_name('choice' . $value));
             $ans = $question->answers[$ansid];
             $inputattributes = [];
             $inputattributes['name'] = $inputname;
             $inputattributes['value'] = 1;
             $inputattributes['id'] = $inputname;
             // Modification starts.
-            /* Comment out core code.
-            $isselected = $question->is_choice_selected($response, $value);
-            if ($isselected) {
-                $inputattributes['checked'] = 'checked';
-            }
-            */
-
+            // Core code only set checked when choice was selected; always set checked here to show all options.
             $inputattributes['checked'] = 'checked';
             $checkboxes[] = html_writer::empty_tag('input', $inputattributes + $commonattributes) .
-                    html_writer::tag('label',
-                            html_writer::span(
-                                    \qtype_combined\utils::number_in_style($value, $question->answernumbering),
-                                    'answernumber') .
-                            $question->make_html_inline($question->format_text(
-                                    $ans->answer, $ans->answerformat, $qa, 'question', 'answer', $ansid)),
-                            ['for' => $inputattributes['id']]);
+                html_writer::tag(
+                    'label',
+                    html_writer::nonempty_tag(
+                        'span',
+                        \qtype_combined\utils::number_in_style($value, $question->answernumbering),
+                        ['class' => 'answernumber']
+                    ) .
+                    $question->make_html_inline(
+                        $question->format_text(
+                            $ans->answer,
+                            $ans->answerformat,
+                            $qa,
+                            'question',
+                            'answer',
+                            $ansid
+                        )
+                    ),
+                    ['for' => $inputattributes['id']]
+                );
 
             $class = 'r' . ($value % 2);
             // Modification starts.
@@ -231,15 +242,17 @@ class qtype_oumultiresponse_embedded_override_renderer extends \qtype_oumultires
         }
 
         foreach ($checkboxes as $key => $checkbox) {
-            $cbhtml .= html_writer::tag($inputwraptag, $checkbox . ' ' . $feedbackimg[$key],
-                ['class' => $classes[$key]]) . "\n";
+            $cbhtml .= html_writer::tag(
+                $inputwraptag,
+                $checkbox . ' ' . $feedbackimg[$key],
+                ['class' => $classes[$key]]
+            ) . "\n";
         }
 
         $result = html_writer::tag($inputwraptag, $cbhtml, ['class' => 'answer']);
 
         return $result;
     }
-
 }
 
 /**
@@ -247,8 +260,7 @@ class qtype_oumultiresponse_embedded_override_renderer extends \qtype_oumultires
  *
  * @package quiz_answersheets\output\combined
  */
-class qtype_combined_gapselect_embedded_override_renderer extends \qtype_combined_gapselect_embedded_renderer {
-
+class qtype_combined_gapselect_embedded_override_renderer extends \qtype_combined_gapselect_embedded_renderer { // phpcs:ignore PSR1.Classes.ClassDeclaration.MultipleClasses
     /**
      * Render the sub question.
      *
@@ -258,8 +270,12 @@ class qtype_combined_gapselect_embedded_override_renderer extends \qtype_combine
      * @param $placeno
      * @return string
      */
-    public function subquestion(question_attempt $qa, question_display_options $options, qtype_combined_combinable_base $subq,
-            $placeno) {
+    public function subquestion(
+        question_attempt $qa,
+        question_display_options $options,
+        qtype_combined_combinable_base $subq,
+        $placeno
+    ) {
         if (utils::should_hide_inline_choice($this->page)) {
             return parent::subquestion($qa, $options, $subq, $placeno);
         }
@@ -276,5 +292,4 @@ class qtype_combined_gapselect_embedded_override_renderer extends \qtype_combine
 
         return $quizprintingrenderer->render_choices($selectoptions, true);
     }
-
 }

@@ -45,7 +45,6 @@ if (class_exists('\mod_quiz\local\reports\attempts_report_options_form')) {
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_settings_form extends \mod_quiz_attempts_report_form_parent_class_alias {
-
     /**
      * Add the custom fields to the form.
      *
@@ -56,34 +55,66 @@ class report_settings_form extends \mod_quiz_attempts_report_form_parent_class_a
 
         $userinfogroup = [];
         foreach (array_keys($field) as $name) {
-            $userinfogroup[] = $mform->createElement('advcheckbox', 'show' . $name, '',
-                report_display_options::user_info_visibility_settings_name($name));
+            $userinfogroup[] = $mform->createElement(
+                'advcheckbox',
+                'show' . $name,
+                '',
+                report_display_options::user_info_visibility_settings_name($name)
+            );
             $mform->setDefault('show' . $name, 1);
         }
-        $mform->addGroup($userinfogroup, 'userinfo', get_string('showuserinfo', 'quiz_answersheets'), [' '], false);
+        $mform->addGroup(
+            $userinfogroup,
+            'userinfo',
+            get_string('showuserinfo', 'quiz_answersheets'),
+            [' '],
+            false
+        );
 
         $instandmarkedcbs = [];
-        $instandmarkedcbs[] = $mform->createElement('advcheckbox', 'questioninstruction',
-            get_string('showquestioninstruction', 'quiz_answersheets'));
+        $instandmarkedcbs[] = $mform->createElement(
+            'advcheckbox',
+            'questioninstruction',
+            get_string('showquestioninstruction', 'quiz_answersheets')
+        );
         $mform->setDefault('questioninstruction', 1);
 
-        $instandmarkedcbs[] = $mform->createElement('advcheckbox', 'marks',
-            get_string('showmarkedoutoftext', 'quiz_answersheets'));
+        $instandmarkedcbs[] = $mform->createElement(
+            'advcheckbox',
+            'marks',
+            get_string('showmarkedoutoftext', 'quiz_answersheets')
+        );
         $mform->setDefault('marks', 1);
-        $mform->addGroup($instandmarkedcbs, 'instructionandmarkedcheckboxes', '', '',
-            false);
+        $mform->addGroup(
+            $instandmarkedcbs,
+            'instructionandmarkedcheckboxes',
+            '',
+            '',
+            false
+        );
 
         $feedbackoptions = [];
-        $feedbackoptions[] = $mform->createElement('html',
-            \html_writer::div(get_string('rightanswersheet', 'quiz_answersheets'), 'mr-2'));
-        $feedbackoptions[] = $mform->createElement('advcheckbox', 'showcombinefeedback',
-            get_string('showcombinefeedback', 'quiz_answersheets'));
+        $feedbackoptions[] = $mform->createElement(
+            'html',
+            \html_writer::div(get_string('rightanswersheet', 'quiz_answersheets'), 'mr-2')
+        );
+        $feedbackoptions[] = $mform->createElement(
+            'advcheckbox',
+            'showcombinefeedback',
+            get_string('showcombinefeedback', 'quiz_answersheets')
+        );
         $mform->setDefault('showcombinefeedback', 1);
-        $feedbackoptions[] = $mform->createElement('advcheckbox', 'showinlinefeedback',
-            get_string('showinlinefeedback', 'quiz_answersheets'));
+        $feedbackoptions[] = $mform->createElement(
+            'advcheckbox',
+            'showinlinefeedback',
+            get_string('showinlinefeedback', 'quiz_answersheets')
+        );
         $mform->setDefault('showinlinefeedback', 1);
-        $feedbackoptions[] = $mform->createElement('advcheckbox', 'showgeneralfeedback',
-            get_string('showgeneralfeedback', 'quiz_answersheets'));
+        $feedbackoptions[] = $mform->createElement(
+            'advcheckbox',
+            'showgeneralfeedback',
+            get_string('showgeneralfeedback', 'quiz_answersheets')
+        );
         $mform->setDefault('showgeneralfeedback', 1);
         $mform->addGroup($feedbackoptions, 'combineandinlinefeedbackcheckboxes', '', '', false);
     }

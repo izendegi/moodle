@@ -42,7 +42,6 @@ require_once($CFG->dirroot . '/mod/quiz/report/reportlib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_display_options extends attempts_report_options {
-
     /**@var int Last changed row id */
     public $lastchanged;
 
@@ -169,8 +168,11 @@ class report_display_options extends attempts_report_options {
     public function setup_from_user_preferences(): void {
         parent::setup_from_user_preferences();
         $this->parse_user_info_visibility(
-                get_user_preferences('quiz_answersheets_userinfovisibility',
-                    $this->combine_user_info_visibility()));
+            get_user_preferences(
+                'quiz_answersheets_userinfovisibility',
+                $this->combine_user_info_visibility()
+            )
+        );
     }
 
     #[\Override]
@@ -239,7 +241,7 @@ class report_display_options extends attempts_report_options {
         switch ($setting) {
             case 'examcode':
                 return get_string('examcode', 'quiz_answersheets');
-            case 'fullname';
+            case 'fullname':
                 return get_string('fullnameuser');
             default:
                 return \core_user\fields::get_display_name($setting);
