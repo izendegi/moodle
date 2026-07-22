@@ -33,8 +33,12 @@ $attemptid = required_param('attempt', PARAM_INT);
 $cmid = optional_param('cmid', null, PARAM_INT);
 
 $attemptobj = quiz_create_attempt_handling_errors($attemptid, $cmid);
-$reportoptions = new report_display_options('answersheets', $attemptobj->get_quiz(),
-        $attemptobj->get_cm(), $attemptobj->get_course());
+$reportoptions = new report_display_options(
+    'answersheets',
+    $attemptobj->get_quiz(),
+    $attemptobj->get_cm(),
+    $attemptobj->get_course()
+);
 $reportoptions->setup_from_params();
 
 // Check login.
@@ -45,17 +49,19 @@ if ($rightanswer) {
     require_capability('quiz/answersheets:viewrightanswers', context_module::instance($attemptobj->get_cmid()));
 }
 
-$url = new moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
-        [
-            'attempt' => $attemptid,
-            'rightanswer' => $rightanswer,
-            'userinfo' => $reportoptions->combine_user_info_visibility(),
-            'instruction' => $reportoptions->questioninstruction,
-            'marks' => $reportoptions->marks,
-            'showcombinefeedback' => $reportoptions->showcombinefeedback,
-            'showinlinefeedback' => $reportoptions->showinlinefeedback,
-            'showgeneralfeedback' => $reportoptions->showgeneralfeedback,
-        ]);
+$url = new moodle_url(
+    '/mod/quiz/report/answersheets/attemptsheet.php',
+    [
+        'attempt' => $attemptid,
+        'rightanswer' => $rightanswer,
+        'userinfo' => $reportoptions->combine_user_info_visibility(),
+        'instruction' => $reportoptions->questioninstruction,
+        'marks' => $reportoptions->marks,
+        'showcombinefeedback' => $reportoptions->showcombinefeedback,
+        'showinlinefeedback' => $reportoptions->showinlinefeedback,
+        'showgeneralfeedback' => $reportoptions->showgeneralfeedback,
+    ]
+);
 
 // Work out the page title.
 $isattemptfinished = $attemptobj->get_attempt()->state == quiz_attempt::FINISHED;
@@ -82,8 +88,14 @@ $isrightanswer = $rightanswer && $attemptobj->get_state() == quiz_attempt::IN_PR
 $context = context_module::instance($attemptobj->get_cmid());
 $event = $rightanswer && $attemptobj->get_state() == quiz_attempt::IN_PROGRESS ? utils::RIGHT_ANSWER_SHEET_VIEWED :
         utils::ATTEMPT_SHEET_VIEWED;
-utils::create_events($event, $attemptobj->get_attemptid(), $attemptobj->get_userid(), $attemptobj->get_courseid(), $context,
-        $attemptobj->get_quizid());
+utils::create_events(
+    $event,
+    $attemptobj->get_attemptid(),
+    $attemptobj->get_userid(),
+    $attemptobj->get_courseid(),
+    $context,
+    $attemptobj->get_quizid()
+);
 
 $PAGE->set_url($url);
 $PAGE->set_pagelayout('popup');

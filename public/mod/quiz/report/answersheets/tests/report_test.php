@@ -33,7 +33,6 @@ namespace quiz_answersheets;
  * @covers \quiz_answersheets\utils::get_question_instruction
  */
 final class report_test extends \advanced_testcase {
-
     /**
      * Test get_question_instruction function.
      *
