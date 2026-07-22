@@ -24,11 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025061000;
-$plugin->requires  = 2024042200;
+$plugin->version   = 2026070700;
+$plugin->requires  = 2025100600; // Requires Moodle 5.1.0.
 $plugin->cron      = 0;
 $plugin->component = 'quiz_answersheets';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = 'v1.6 for Moodle 4.4+';
+$plugin->release   = 'v1.7 for Moodle 5.2+';
+$plugin->supported = [501, 502];
 
 $plugin->outestssufficient = true;
