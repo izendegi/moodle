@@ -32,7 +32,6 @@ namespace quiz_answersheets\event;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class right_answer_viewed extends base_event {
-
     #[\Override]
     public static function get_name(): string {
         return get_string('event_right_answer_viewed', 'quiz_answersheets');
@@ -47,7 +46,9 @@ class right_answer_viewed extends base_event {
 
     #[\Override]
     public function get_url(): \moodle_url {
-        return new \moodle_url('/mod/quiz/report/answersheets/attemptsheet.php',
-                ['attempt' => $this->other['attemptid'], 'rightanswer' => 1]);
+        return new \moodle_url(
+            '/mod/quiz/report/answersheets/attemptsheet.php',
+            ['attempt' => $this->other['attemptid'], 'rightanswer' => 1]
+        );
     }
 }
