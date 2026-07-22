@@ -39,7 +39,6 @@ require_once($CFG->dirroot . '/question/type/gapselect/renderer.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_gapselect_override_renderer extends \qtype_gapselect_renderer {
-
     /**
      * Render the embedded element
      *
@@ -63,5 +62,4 @@ class qtype_gapselect_override_renderer extends \qtype_gapselect_renderer {
         }
         return $quizprintingrenderer->render_choices($selectoptions, true);
     }
-
 }

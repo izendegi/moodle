@@ -1,6 +1,13 @@
 # Change log for the Export quiz attempts report
 
 
+## Changes in 1.7
+
+* Added the ability to edit essay question attachment files after a quiz attempt has closed.
+* Fixed the page layout when submitting a response on behalf of another user.
+* CI updated to test against Moodle 5.1 and 5.2.
+
+
 ## Changes in 1.6
 
 * This version works with Moodle 4.5 and 5.0.
