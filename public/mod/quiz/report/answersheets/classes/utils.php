@@ -46,7 +46,6 @@ use user_picture;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class utils {
-
     /** @var string Attempt sheet created */
     const ATTEMPT_SHEET_CREATED = 'attempt_created';
     /** @var string Attempt sheet printed */
@@ -83,8 +82,11 @@ class utils {
      * @param report_display_options $reportoptions controls which user info is shown.
      * @return array List of summary information
      */
-    public static function prepare_summary_attempt_information(quiz_attempt $attemptobj,
-            bool $minimal, report_display_options $reportoptions): array {
+    public static function prepare_summary_attempt_information(
+        quiz_attempt $attemptobj,
+        bool $minimal,
+        report_display_options $reportoptions
+    ): array {
 
         global $DB;
 
@@ -131,8 +133,9 @@ class utils {
 
             if ($field === 'examcode') {
                 $value = \quiz_gradingstudents_ou_confirmation_code::get_confirmation_code(
-                        $reportoptions->cm, $student);
-
+                    $reportoptions->cm,
+                    $student
+                );
             } else {
                 $value = $student->$field;
             }
@@ -184,8 +187,10 @@ class utils {
                 $a->grade = html_writer::tag('b', quiz_format_grade($quiz, $grade));
                 $a->maxgrade = quiz_format_grade($quiz, $quiz->grade);
                 if ($quiz->grade != 100) {
-                    $a->percent = html_writer::tag('b', format_float(
-                            $attempt->sumgrades * 100 / $quiz->sumgrades, 0));
+                    $a->percent = html_writer::tag(
+                        'b',
+                        format_float($attempt->sumgrades * 100 / $quiz->sumgrades, 0)
+                    );
                     $formattedgrade = get_string('outofpercent', 'quiz', $a);
                 } else {
                     $formattedgrade = get_string('outof', 'quiz', $a);
@@ -246,8 +251,9 @@ class utils {
 
             if ($field === 'examcode') {
                 $data[] = \quiz_gradingstudents_ou_confirmation_code::get_confirmation_code(
-                        $cm, $attemptuser);
-
+                    $cm,
+                    $attemptuser
+                );
             } else if (!empty($attemptuser->$field)) {
                 $data[] = $attemptuser->$field;
             }
@@ -313,8 +319,13 @@ class utils {
      * @param int $quizid Quiz id
      * @return array Event data
      */
-    private static function prepare_event_data(int $attemptid, int $userid, int $courseid, context_module $context,
-            int $quizid): array {
+    public static function prepare_event_data(
+        int $attemptid,
+        int $userid,
+        int $courseid,
+        context_module $context,
+        int $quizid
+    ): array {
         $params = [
             'relateduserid' => $userid,
             'courseid' => $courseid,
@@ -338,8 +349,14 @@ class utils {
      * @param context_module $context Module context
      * @param int $quizid Quiz id
      */
-    public static function create_events(string $eventtype, int $attemptid, int $userid, int $courseid, context_module $context,
-            int $quizid): void {
+    public static function create_events(
+        string $eventtype,
+        int $attemptid,
+        int $userid,
+        int $courseid,
+        context_module $context,
+        int $quizid
+    ): void {
         $params = self::prepare_event_data($attemptid, $userid, $courseid, $context, $quizid);
         $classname = '\quiz_answersheets\event\\' . $eventtype;
         $event = $classname::create($params);
@@ -370,8 +387,11 @@ class utils {
      * @param string $sheettype Sheet type
      * @return string Header string
      */
-    public static function get_attempt_sheet_print_header(quiz_attempt $attemptobj, string $sheettype,
-            report_display_options $reportoptions): string {
+    public static function get_attempt_sheet_print_header(
+        quiz_attempt $attemptobj,
+        string $sheettype,
+        report_display_options $reportoptions
+    ): string {
         $generatedtime = time();
         $attemptuser = \core_user::get_user($attemptobj->get_userid());
 
@@ -394,17 +414,24 @@ class utils {
      * Set current page navigation
      *
      * @param string $pagetitle Page title
+     * @param array $extranode Extra node to add in navigation, with 'text' and 'url' keys
      */
-    public static function set_page_navigation(string $pagetitle): void {
+    public static function set_page_navigation(string $pagetitle, array $extranode = []): void {
         global $CFG, $PAGE;
         require_once($CFG->dirroot . '/mod/quiz/report/reportlib.php');
         $reportlist = quiz_report_list($PAGE->cm->context);
 
-        $PAGE->navbar->add(get_string('results', 'quiz'),
-                new moodle_url('/mod/quiz/report.php', ['id' => $PAGE->cm->id, 'mode' => reset($reportlist)]));
-        $PAGE->navbar->add(get_string('answersheets', 'quiz_answersheets'),
-                new moodle_url('/mod/quiz/report.php', ['id' => $PAGE->cm->id, 'mode' => 'answersheets']));
-
+        $PAGE->navbar->add(
+            get_string('results', 'quiz'),
+            new moodle_url('/mod/quiz/report.php', ['id' => $PAGE->cm->id, 'mode' => reset($reportlist)])
+        );
+        $PAGE->navbar->add(
+            get_string('answersheets', 'quiz_answersheets'),
+            new moodle_url('/mod/quiz/report.php', ['id' => $PAGE->cm->id, 'mode' => 'answersheets'])
+        );
+        if ($extranode) {
+            $PAGE->navbar->add($extranode['text'], $extranode['url']);
+        }
         $PAGE->navbar->add($pagetitle);
     }
 
@@ -471,5 +498,4 @@ class utils {
         return $page->pagetype != 'mod-quiz-report-answersheets-attemptsheet' || $rightanswer ||
                 $attempt->state == quiz_attempt::FINISHED;
     }
-
 }

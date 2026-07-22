@@ -32,7 +32,6 @@ require_once(__DIR__ . '/../../../../../../lib/behat/behat_base.php');
  * Step definitions related to quiz_answersheets.
  */
 class behat_quiz_answersheets extends behat_question_base {
-
     /**
      * Convert page names to URLs for steps like 'When I am on the "[page name]" page'.
      *
@@ -65,8 +64,10 @@ class behat_quiz_answersheets extends behat_question_base {
     protected function resolve_page_instance_url(string $type, string $identifier): moodle_url {
         switch ($type) {
             case 'Report':
-                return new moodle_url('/mod/quiz/report.php',
-                        ['id' => $this->get_cm_by_quiz_name($identifier)->id, 'mode' => 'answersheets']);
+                return new moodle_url(
+                    '/mod/quiz/report.php',
+                    ['id' => $this->get_cm_by_quiz_name($identifier)->id, 'mode' => 'answersheets']
+                );
 
             default:
                 throw new Exception('Unrecognised quiz_answersheets page type "' . $type . '."');
