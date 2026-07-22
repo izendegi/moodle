@@ -23,8 +23,9 @@ Feature: Submit student responses feature of the Answer sheets report
       | activity | name   | intro              | course | idnumber |
       | quiz     | Quiz 1 | Quiz 1 description | C1     | quiz1    |
     And the following "questions" exist:
-      | questioncategory | qtype     | name | questiontext   |
-      | Test questions   | truefalse | TF1  | First question |
+      | questioncategory | qtype     | name      | questiontext    | template         |
+      | Test questions   | truefalse | TF1       | First question  |                  |
+      | Test questions   | essay     | essay-001 | Second question | editorfilepicker |
     And quiz "Quiz 1" contains the following questions:
       | question | page |
       | TF1      | 1    |
@@ -50,6 +51,7 @@ Feature: Submit student responses feature of the Answer sheets report
     And "Student One" row "Submit student responses" column of "answersheets" table should contain "Submit responses..."
     And I click on "Submit responses..." "link" in the "Student One" "table_row"
     And I should see "First question"
+    And I should not see "Time limits"
     And I set the field "False" to "1"
     And I click on "Submit responses on behalf of Student One (student1) and finish attempt" "button"
     And I should see "Are you sure you want to submit?" in the ".modal-body" "css_element"
@@ -102,3 +104,27 @@ Feature: Submit student responses feature of the Answer sheets report
     And "Student One" row "Status" column of "answersheets" table should contain "Finished"
     And I click on "Review sheet" "link"
     And I should see "1.00/1.00" in the "Marks" "table_row"
+
+  @javascript @_file_upload
+  Scenario: Submit attachments for a closed quiz.
+    Given the following "activities" exist:
+      | activity | name   | intro              | course | idnumber | timeclose  |
+      | quiz     | Quiz 2 | Quiz 2 description | C1     | quiz2    | 1774744309 |
+    And quiz "Quiz 2" contains the following questions:
+      | question  | page |
+      | essay-001 | 1    |
+    When user "student1" has attempted "Quiz 2" with responses:
+      | slot | response      |
+      | 1    | Sample answer |
+    And I am on the "Quiz 2" "quiz_answersheets > Report" page logged in as "teacher"
+    And I follow "Review sheet"
+    And I follow "Staff only: Edit attachment"
+    And I upload "question/type/essay/tests/fixtures/1.png" file to "Attachments" filemanager
+    And I upload "question/type/essay/tests/fixtures/2.png" file to "Attachments" filemanager
+    And I press "Save response on behalf of Student One"
+    Then I should see "1.png"
+    And I should see "2.png"
+    And I am on the "Quiz 2 > student1 > Attempt 1" "mod_quiz > Attempt review" page logged in as "teacher"
+    And I should see "1.png"
+    And I should see "2.png"
+    And I should see "Commented: Edited and added the attachment"

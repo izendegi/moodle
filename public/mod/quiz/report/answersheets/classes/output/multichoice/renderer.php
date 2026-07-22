@@ -40,7 +40,6 @@ require_once($CFG->dirroot . '/question/type/multichoice/renderer.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_multichoice_override_renderer extends \qtype_multichoice_single_renderer {
-
     /**
      * The code was copied from question/type/multichoice/renderer.php, with modifications.
      *
@@ -86,9 +85,17 @@ class qtype_multichoice_override_renderer extends \qtype_multichoice_single_rend
                 ]);
             }
             $choicenumber = html_writer::span(
-                $this->number_in_style($value, $question->answernumbering), 'answernumber');
+                $this->number_in_style($value, $question->answernumbering),
+                'answernumber'
+            );
             $choicetext = $question->format_text(
-                $ans->answer, $ans->answerformat, $qa, 'question', 'answer', $ansid);
+                $ans->answer,
+                $ans->answerformat,
+                $qa,
+                'question',
+                'answer',
+                $ansid
+            );
             $choice = html_writer::div($choicetext, 'flex-fill ml-1');
 
             $radiobuttons[] = $hidden . html_writer::empty_tag('input', $inputattributes) .
@@ -101,17 +108,26 @@ class qtype_multichoice_override_renderer extends \qtype_multichoice_single_rend
             // oumultiresponse question type. It would be good to refactor to
             // avoid refering to it here.
             // Modification starts.
-            /* Comment out core code.
-            if ($options->feedback && empty($options->suppresschoicefeedback) &&
-                    $isselected && trim($ans->feedback)) {
-            */
-
-            if ($options->feedback && empty($options->suppresschoicefeedback) &&
-                    trim($ans->feedback)) {
+            // Core code required $isselected in addition to the conditions below; removed here to always show feedback.
+            if (
+                $options->feedback && empty($options->suppresschoicefeedback) &&
+                trim($ans->feedback)
+            ) {
                 // Modification ends.
-                $feedback[] = html_writer::tag('div',
-                    $question->make_html_inline($question->format_text($ans->feedback, $ans->feedbackformat,
-                        $qa, 'question', 'answerfeedback', $ansid)), ['class' => 'specificfeedback']);
+                $feedback[] = html_writer::tag(
+                    'div',
+                    $question->make_html_inline(
+                        $question->format_text(
+                            $ans->feedback,
+                            $ans->feedbackformat,
+                            $qa,
+                            'question',
+                            'answerfeedback',
+                            $ansid
+                        )
+                    ),
+                    ['class' => 'specificfeedback']
+                );
             } else {
                 $feedback[] = '';
             }
@@ -138,8 +154,11 @@ class qtype_multichoice_override_renderer extends \qtype_multichoice_single_rend
 
         $result .= html_writer::start_tag('div', ['class' => 'answer']);
         foreach ($radiobuttons as $key => $radio) {
-            $result .= html_writer::tag('div', $radio . ' ' . $feedbackimg[$key] . $feedback[$key],
-                ['class' => $classes[$key]]) . "\n";
+            $result .= html_writer::tag(
+                'div',
+                $radio . ' ' . $feedbackimg[$key] . $feedback[$key],
+                ['class' => $classes[$key]]
+            ) . "\n";
         }
         $result .= html_writer::end_tag('div'); // Answer.
 
@@ -148,11 +167,13 @@ class qtype_multichoice_override_renderer extends \qtype_multichoice_single_rend
         $result .= html_writer::end_tag('div'); // Ablock.
 
         if ($qa->get_state() == question_state::$invalid) {
-            $result .= html_writer::nonempty_tag('div',
-                    $question->get_validation_error($qa->get_last_qt_data()), ['class' => 'validationerror']);
+            $result .= html_writer::nonempty_tag(
+                'div',
+                $question->get_validation_error($qa->get_last_qt_data()),
+                ['class' => 'validationerror']
+            );
         }
 
         return $result;
     }
-
 }

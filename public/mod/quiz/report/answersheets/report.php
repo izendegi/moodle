@@ -35,7 +35,6 @@ use quiz_answersheets\report_table;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class quiz_answersheets_report extends attempts_report {
-
     /**
      * Display the report.
      *
@@ -52,7 +51,7 @@ class quiz_answersheets_report extends attempts_report {
 
         // Hack so we can get this in the form initialisation code.
         $quiz->cmobject = $cm;
-        list($currentgroup, $studentsjoins, $groupstudentsjoins, $allowedjoins) =
+        [$currentgroup, $studentsjoins, $groupstudentsjoins, $allowedjoins] =
                 $this->init('answersheets', '\quiz_answersheets\report_settings_form', $quiz, $cm, $course);
 
         if ($bulkinstructions || $bulkscript) {
@@ -74,10 +73,21 @@ class quiz_answersheets_report extends attempts_report {
 
         // Prepare for downloading, if applicable.
         $courseshortname = format_string($course->shortname, true, ['context' => context_course::instance($course->id)]);
-        $table = new report_table($quiz, $this->context, $this->qmsubselect,
-                $options, $groupstudentsjoins, $studentsjoins, $questions, $options->get_url());
-        $filename = quiz_report_download_filename(get_string('answersheetsfilename', 'quiz_answersheets'),
-                $courseshortname, $quiz->name);
+        $table = new report_table(
+            $quiz,
+            $this->context,
+            $this->qmsubselect,
+            $options,
+            $groupstudentsjoins,
+            $studentsjoins,
+            $questions,
+            $options->get_url()
+        );
+        $filename = quiz_report_download_filename(
+            get_string('answersheetsfilename', 'quiz_answersheets'),
+            $courseshortname,
+            $quiz->name
+        );
         $table->is_downloading($options->download, $filename, $courseshortname . ' ' . format_string($quiz->name, true));
         if ($bulkscript) {
             $table->download = 'html';
@@ -116,13 +126,19 @@ class quiz_answersheets_report extends attempts_report {
         // Start output.
         if (!$table->is_downloading()) {
             // Only print headers if not asked to download data.
-            $this->print_standard_header_and_messages($cm, $course, $quiz,
-                    $options, $currentgroup, $hasquestions, $hasstudents);
+            $this->print_standard_header_and_messages(
+                $cm,
+                $course,
+                $quiz,
+                $options,
+                $currentgroup,
+                $hasquestions,
+                $hasstudents
+            );
         }
 
         $hasstudents = $hasstudents && (!$currentgroup || $this->hasgroupstudents);
         if ($hasquestions && ($hasstudents || $options->attempts == self::ALL_WITH)) {
-
             $table->setup_sql_queries($allowedjoins);
 
             // Define table columns.
@@ -165,14 +181,17 @@ class quiz_answersheets_report extends attempts_report {
 
             $renderer = $PAGE->get_renderer('quiz_answersheets');
             if ($bulkinstructions) {
-                echo $renderer->bulk_download_instructions($options,
-                        $this->generate_zip_filename($quiz, $cm), $this->context);
-
+                echo $renderer->bulk_download_instructions(
+                    $options,
+                    $this->generate_zip_filename($quiz, $cm),
+                    $this->context
+                );
             } else if ($bulkscript) {
-                $this->generate_bulk_download_script($table,
-                        $this->generate_zip_filename($quiz, $cm),
-                        $options);
-
+                $this->generate_bulk_download_script(
+                    $table,
+                    $this->generate_zip_filename($quiz, $cm),
+                    $options
+                );
             } else {
                 if (!$table->is_downloading()) {
                     $this->form->display();
@@ -205,8 +224,12 @@ class quiz_answersheets_report extends attempts_report {
      * @param array $headers the column headers array to update.
      * @param report_display_options $options report display options.
      */
-    protected function add_user_columns_from_options(report_table $table,
-            array &$columns, array &$headers, report_display_options $options): void {
+    protected function add_user_columns_from_options(
+        report_table $table,
+        array &$columns,
+        array &$headers,
+        report_display_options $options
+    ): void {
         global $CFG;
 
         if (!$table->is_downloading() && $CFG->grade_report_showuserimage) {
@@ -306,8 +329,11 @@ class quiz_answersheets_report extends attempts_report {
      * @param report_table $table used to get the list of attempts.
      * @param string filename for the zip to generate. Also used in the suggested name for the script.
      */
-    protected function generate_bulk_download_script(report_table $table, string $zipfilename,
-            report_display_options $options): void {
+    protected function generate_bulk_download_script(
+        report_table $table,
+        string $zipfilename,
+        report_display_options $options
+    ): void {
         global $CFG;
 
         $qtyperesponsefiles = $this->get_qtype_response_files();
@@ -353,8 +379,10 @@ class quiz_answersheets_report extends attempts_report {
             }
 
             // Load the attempt.
-            $attemptobj = quiz_create_attempt_handling_errors($attempt->attempt,
-                    $this->context->instanceid);
+            $attemptobj = quiz_create_attempt_handling_errors(
+                $attempt->attempt,
+                $this->context->instanceid
+            );
 
             // Save any response files.
             foreach ($attemptobj->get_slots() as $slot) {

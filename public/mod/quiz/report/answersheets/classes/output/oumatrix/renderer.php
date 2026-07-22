@@ -40,7 +40,6 @@ require_once($CFG->dirroot . '/question/type/oumatrix/renderer.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_oumatrix_override_renderer extends \qtype_oumatrix_single_renderer {
-
     /**
      * The code was copied from question/type/oumatrix/renderer.php, with modifications.
      *
@@ -48,8 +47,10 @@ class qtype_oumatrix_override_renderer extends \qtype_oumatrix_single_renderer {
      * @param question_display_options $options
      * @return string
      */
-    public function formulation_and_controls(question_attempt $qa,
-            question_display_options $options) {
+    public function formulation_and_controls(
+        question_attempt $qa,
+        question_display_options $options
+    ) {
         $question = $qa->get_question();
         $result = '';
 
@@ -59,8 +60,11 @@ class qtype_oumatrix_override_renderer extends \qtype_oumatrix_single_renderer {
         $result .= $this->matrix_table($qa, $options);
 
         if ($qa->get_state() == question_state::$invalid) {
-            $result .= html_writer::nonempty_tag('div',
-                    $question->get_validation_error($qa->get_last_qt_data()), ['class' => 'validationerror']);
+            $result .= html_writer::nonempty_tag(
+                'div',
+                $question->get_validation_error($qa->get_last_qt_data()),
+                ['class' => 'validationerror']
+            );
         }
 
         return $result;
