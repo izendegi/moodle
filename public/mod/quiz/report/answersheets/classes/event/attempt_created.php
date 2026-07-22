@@ -32,7 +32,6 @@ namespace quiz_answersheets\event;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class attempt_created extends base_event {
-
     #[\Override]
     protected function init() {
         $this->data['crud'] = 'w';
