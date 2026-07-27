@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace availability_user;
+
 /**
  * Test for restriction by user
  *
@@ -22,25 +24,54 @@
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use availability_user\condition;
-
 /**
  * Testcase for availability_user
  */
 class availability_user_condition_testcase extends advanced_testcase {
+    /** @var $info */
+    protected $info;
+
+    /** @var $capabilitychecker */
+    protected $capabilitychecker;
+
+    /** @var $user1 */
+    protected $user1;
+
+    /** @var $user2 */
+    protected $user2;
+
+    /** @var $user3 */
+    protected $user3;
+
+    /** @var $user4 */
+    protected $user4;
+
+    /** @var $cond */
+    protected $cond;
+
+    /** @var $newcond */
+    protected $newcond;
+
+    /** @var $multiplecond */
+    protected $multiplecond;
+
+    /** @var $emptycond */
+    protected $emptycond;
+
     /**
      * Load necessary libs
      */
     public static function setUpBeforeClass(): void {
         global $CFG;
         require_once($CFG->dirroot . '/availability/tests/fixtures/mock_info.php');
+        parent::setUpBeforeClass();
     }
 
     /**
      * Prepare testing
      */
     public function setUp(): void {
-        global $DB, $CFG;
+        parent::setUp();
         $this->setAdminUser();
         $this->info = new \core_availability\mock_info();
         $this->capabilitychecker = new \core_availability\capability_checker($this->info->get_context());
@@ -65,17 +96,21 @@ class availability_user_condition_testcase extends advanced_testcase {
             'email' => 'user4@example.com',
             'username' => 'user4', ]
         );
-        $oldstructure = new stdClass();
+        $oldstructure = new \stdClass();
         $oldstructure->userid = $this->user1->id;
         $this->cond = new condition($oldstructure);
 
-        $newstructure = new stdClass();
+        $newstructure = new \stdClass();
         $newstructure->userids = [$this->user1->id];
         $this->newcond = new condition($newstructure);
 
-        $multiplestructure = new stdClass();
+        $multiplestructure = new \stdClass();
         $multiplestructure->userids = [$this->user1->id, $this->user2->id, $this->user3->id];
         $this->multiplecond = new condition($multiplestructure);
+
+        $emptystructure = new stdClass();
+        $emptystructure->userids = [];
+        $this->emptycond = new condition($emptystructure);
     }
 
     /**
@@ -270,5 +305,29 @@ class availability_user_condition_testcase extends advanced_testcase {
         $this->assertFalse(in_array($this->user2->id, $filtereduserids));
         $this->assertFalse(in_array($this->user3->id, $filtereduserids));
         $this->assertTrue(in_array($this->user4->id, $filtereduserids));
+    }
+
+    /**
+     * Check availability logic when no users are selected.
+     *
+     * @return void
+     */
+    public function test_empty_user_list_availability() {
+        global $USER;
+        $this->setUser($this->user1);
+        $this->assertFalse($this->emptycond->is_available(false, $this->info, true, $USER->id));
+        $this->assertTrue($this->emptycond->is_available(true, $this->info, true, $USER->id));
+    }
+
+    /**
+     * Ensure full description does not fail when no users are selected.
+     *
+     * @return void
+     */
+    public function test_empty_user_list_full_description() {
+        $this->assertEquals(
+            get_string('requires_certain_user', 'availability_user'),
+            $this->emptycond->get_description(true, false, $this->info)
+        );
     }
 }
