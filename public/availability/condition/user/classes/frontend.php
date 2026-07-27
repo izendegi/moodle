@@ -67,6 +67,6 @@ class frontend extends \core_availability\frontend {
      */
     protected function allow_add($course, ?\cm_info $cm = null, ?\section_info $section = null) {
         // Adding is only allowed if there are enrolled users in the course.
-        return(get_enrolled_users(\context_course::instance($course->id)) > 0);
+        return(count(get_enrolled_users(\context_course::instance($course->id))) > 0);
     }
 }
