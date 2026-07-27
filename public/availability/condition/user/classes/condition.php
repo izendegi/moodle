@@ -29,9 +29,6 @@ use core_availability\capability_checker;
  * Condition to restrict access by user
  */
 class condition extends \core_availability\condition {
-    /** @var int ID of the required user */
-    protected int $userid;
-
     /** @var array $userids The user ids that the condition checks for */
     protected array $userids;
 
@@ -44,7 +41,7 @@ class condition extends \core_availability\condition {
     public function __construct($structure) {
         $this->userids = [];
         if (isset($structure->userids)) {
-            $this->userids = $structure->userids;
+            $this->userids = (array)$structure->userids;
         }
         // Ensure compatibility with old version.
         if (isset($structure->userid)) {
@@ -110,7 +107,7 @@ class condition extends \core_availability\condition {
      * @return string Information string (for admin) about all restrictions on this item
      */
     public function get_description($full, $not, \core_availability\info $info) {
-        if ($full) {
+        if ($full && count($this->userids) > 0) {
             if (count($this->userids) > 1) {
                 $usernames = [];
                 foreach ($this->userids as $userid) {
@@ -123,7 +120,7 @@ class condition extends \core_availability\condition {
                 }
                 return get_string('requires_' . ($not ? 'not_' : '') . 'users', 'availability_user', implode(', ', $usernames));
             } else {
-                $user = \core_user::get_user($this->userids[0]);
+                $user = \core_user::get_user(array_shift($this->userids));
                 if (!$user) {
                     $fullname = get_string('unknown_user', 'availability_user');
                 } else {
@@ -142,6 +139,6 @@ class condition extends \core_availability\condition {
      * @return string Id of requested user
      */
     protected function get_debug_string() {
-        return $this->userid;
+        return implode(',', $this->userids);
     }
 }
