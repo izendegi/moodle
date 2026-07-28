@@ -34,10 +34,17 @@ if ($themeutil->loginposition != null && $themeutil->loginposition == 'left') {
 
 $bodyattributes = $OUTPUT->body_attributes($extraclasses);
 
+// Left-panel instructions. Only set when the admin has defined custom instructions;
+// the template falls back to the default welcome content when this is empty/null.
+$leftinstructions = !empty($CFG->auth_instructions)
+    ? format_text($CFG->auth_instructions, FORMAT_MOODLE, ['context' => context_system::instance()])
+    : null;
+
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => \core\context\course::instance(SITEID), "escape" => false]),
     'output' => $OUTPUT,
-    'bodyattributes' => $bodyattributes
+    'bodyattributes' => $bodyattributes,
+    'leftinstructions' => $leftinstructions,
 ];
 
 echo $OUTPUT->render_from_template('theme_moove/login', $templatecontext);
