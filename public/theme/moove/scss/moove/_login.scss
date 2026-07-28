@@ -2,10 +2,6 @@ body.pagelayout-login {
     #page {
         max-width: 100%;
         background: none;
-
-        .login-layout-left::after {
-            display: none;
-        }
     }
 
     .login-identityprovider-btn.facebook {
@@ -133,3 +129,38 @@ body.pagelayout-login {
         }
     }
 }
+
+.btn-login-sso {
+    margin-top: 1rem;
+    color: #fff !important;
+    background-color: rgb(0, 72, 81);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    margin-top: 2rem;
+}
+
+.btn-login-sso:hover {
+  background-color: #000000;
+}
+
+.login-sso-icon {
+    height: 2rem;
+    object-fit: contain;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.login-method-selection .btn img.login-sso-icon {
+    margin-right: 1rem !important;
+}
+
+.btn-login-manual {
+  color: #777777;
+}
+
+.btn-login-manual:hover {
+    color:rgb(0, 72, 81);
+    text-decoration: underline;
+}
+
+
