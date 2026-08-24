@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Ladder controller.
@@ -29,6 +29,7 @@ namespace block_xp\local\controller;
 
 use block_xp\di;
 use block_xp\local\division\division;
+use block_xp\local\division\empty_division;
 use block_xp\local\division\group_division;
 use block_xp\local\shortcode\handler;
 use block_xp\local\utils\text_utils;
@@ -43,7 +44,6 @@ use html_writer;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class ladder_controller extends page_controller {
-
     /** Page size flag. */
     const PAGE_SIZE_FLAG = 'ladder-pagesize';
 
@@ -54,6 +54,11 @@ class ladder_controller extends page_controller {
     /** @var string */
     protected $routename = 'ladder';
 
+    /**
+     * Set up page.
+     *
+     * @return void
+     */
     protected function page_setup() {
         global $PAGE;
         parent::page_setup();
@@ -87,8 +92,8 @@ class ladder_controller extends page_controller {
      */
     protected function get_division(): ?division {
         $groupid = $this->get_groupid();
-        if ($groupid || $groupid === 0) {
-            return new group_division($this->get_groupid());
+        if ($groupid !== false) {
+            return $groupid >= 0 ? new group_division($groupid) : new empty_division();
         }
         return null;
     }
@@ -128,10 +133,20 @@ class ladder_controller extends page_controller {
         return $table;
     }
 
+    /**
+     * Get page title.
+     *
+     * @return string
+     */
     protected function get_page_html_head_title() {
         return get_string('ladder', 'block_xp');
     }
 
+    /**
+     * Get page heading.
+     *
+     * @return string
+     */
     protected function get_page_heading() {
         return get_string('ladder', 'block_xp');
     }
@@ -166,7 +181,6 @@ class ladder_controller extends page_controller {
             if (!empty($pagesizepref)) {
                 $indicator->unset_user_flag($USER->id, self::PAGE_SIZE_FLAG);
             }
-
         } else if ($pagesize != $pagesizepref) {
             // It's not the default, and it's not our flag, save the flag.
             $indicator->set_user_flag($USER->id, self::PAGE_SIZE_FLAG, $pagesize);
@@ -175,6 +189,11 @@ class ladder_controller extends page_controller {
         return (int) $pagesize;
     }
 
+    /**
+     * Output page content.
+     *
+     * @return void
+     */
     protected function page_content() {
         global $PAGE;
         $output = $this->get_renderer();
@@ -242,7 +261,7 @@ class ladder_controller extends page_controller {
                 'data-modal-title' => get_string('embedleaderboard', 'block_xp'),
                 'href' => '#',
             ],
-            $config->get('enablepromoincourses') && !$hasaddon ? [
+            di::get('addon')->is_promo_allowed() && !$hasaddon ? [
                 'label' => get_string('export', 'block_xp'),
                 'href' => '#',
                 'disabled' => true,
@@ -250,5 +269,4 @@ class ladder_controller extends page_controller {
             ] : null,
         ]);
     }
-
 }
