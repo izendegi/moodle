@@ -87,7 +87,7 @@ export const getSetup = async() => {
         });
 
         // Define the font families and their corresponding text labels
-        const fontfamilies = fontList.map(font => ({ family: font, label: font }));
+        const fontfamilies = fontList.map(font => ({family: font, label: font}));
 
         /**
          * Handle the font family menu item action.
