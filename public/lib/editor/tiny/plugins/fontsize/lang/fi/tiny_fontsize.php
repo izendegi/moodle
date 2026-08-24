@@ -26,7 +26,17 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['button_fontsize'] = 'Kirjasinkoko';
+$string['fontsize:use'] = "Salli lisäosan käyttö";
+$string['fontsizes'] = "Kirjasinkoot";
+$string['fontsizes_desc'] = "Luettelo käytettävissä olevista kirjasinkoista rivinvaihdolla eroteltuna.";
+$string['fontsizeunit'] = "Kirjasinkoon yksikkö";
+$string['fontsizeunit_desc'] = "CSS-yksikkö, jota käytetään kuhunkin kirjasinkokoon.";
 $string['menuitem_fontsize'] = 'Kirjasinkoko';
 $string['pluginname'] = 'Kirjasinkoko-lisäosa';
 $string['privacy:metadata'] = 'Kirjasinkoko-lisäosa ei tallentaa henkilötietoja.';
-$string['fontsize:use'] = "Salli lisäosan käyttö";
+$string['settings'] = 'Kirjasinkoon asetukset';
+$string['unit_em'] = 'Em (em)';
+$string['unit_percent'] = 'Prosentti (%)';
+$string['unit_pt'] = 'Pisteet (pt)';
+$string['unit_px'] = 'Pikselit (px)';
+$string['unit_rem'] = 'Juuriem (rem)';
