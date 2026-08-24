@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * User state course store.
@@ -52,8 +52,11 @@ use block_xp\local\utils\user_utils;
  * @author     Frédéric Massart <fred@branchup.tech>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class course_user_state_store implements course_state_store, state_store_with_delete, state_store_with_reason {
-
+class course_user_state_store implements
+    course_state_store,
+    state_store_with_delete,
+    state_store_with_presence,
+    state_store_with_reason {
     /** @var moodle_database The database. */
     protected $db;
     /** @var int The course ID. */
@@ -152,6 +155,16 @@ class course_user_state_store implements course_state_store, state_store_with_de
         $params['userid'] = $id;
         $params['courseid'] = $this->courseid;
         return $this->db->get_record($this->table, $params);
+    }
+
+    /**
+     * Whether a state exists.
+     *
+     * @param int $id The object ID.
+     * @return bool
+     */
+    public function has($id) {
+        return (bool) $this->exists($id);
     }
 
     /**
@@ -362,5 +375,4 @@ class course_user_state_store implements course_state_store, state_store_with_de
         $this->set($id, $amount);
         $this->logger->log_reason($id, $amount, $reason);
     }
-
 }
