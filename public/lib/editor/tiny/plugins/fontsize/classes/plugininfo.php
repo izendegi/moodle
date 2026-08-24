@@ -25,6 +25,7 @@
 namespace tiny_fontsize;
 
 use context;
+use editor_tiny\editor;
 use editor_tiny\plugin;
 use editor_tiny\plugin_with_buttons;
 use editor_tiny\plugin_with_menuitems;
@@ -33,7 +34,16 @@ use editor_tiny\plugin_with_configuration;
 /**
  * Plugininfo class.
  */
-class plugininfo extends plugin implements plugin_with_configuration, plugin_with_buttons, plugin_with_menuitems {
+class plugininfo extends plugin implements plugin_with_buttons, plugin_with_configuration, plugin_with_menuitems {
+    /**
+     * Default font sizes, used whenever none have been configured.
+     */
+    private const DEFAULT_FONTSIZES = [10, 12, 14, 18];
+
+    /**
+     * Default font size unit, used whenever none has been configured.
+     */
+    private const DEFAULT_FONTSIZEUNIT = 'pt';
 
     /**
      * Get available buttons.
@@ -59,16 +69,30 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
 
     /**
      * Get plugin configuration.
-     * Currently not in use.
      *
+     * @param context $context
+     * @param array $options
+     * @param array $fpoptions
+     * @param editor|null $editor
      * @return array
      */
     public static function get_plugin_configuration_for_context(
         context $context,
         array $options,
         array $fpoptions,
-        ?\editor_tiny\editor $editor = null
+        ?editor $editor = null
     ): array {
-        return [];
+        $config = [];
+        $rawsizes = get_config('tiny_fontsize', 'fontsizes');
+        if ($rawsizes === false || trim($rawsizes) === '') {
+            // The setting default hasn't been written to config yet (e.g. plugin was
+            // updated but the site hasn't gone through an upgrade yet). Fall back to
+            // the same default used in settings.php so the picker still works.
+            $rawsizes = implode("\r\n", self::DEFAULT_FONTSIZES);
+        }
+        $sizes = preg_split('/\r\n|\r|\n/', $rawsizes);
+        $config['fontsizes'] = array_values(array_filter(array_map('intval', $sizes)));
+        $config['fontsizeunit'] = get_config('tiny_fontsize', 'fontsizeunit') ?: self::DEFAULT_FONTSIZEUNIT;
+        return $config;
     }
 }
