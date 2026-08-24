@@ -4,7 +4,44 @@ All notable changes to this project will be documented in this file.
 
 Note - All hash comments refer to the issue number. Eg. #169 refers to https://github.com/mdjnelson/moodle-mod_customcert/issues/169.
 
-## [5.2.3] - Unreleased
+## [5.2.6] - 2026-08-20
+
+### Security
+
+- The digitalsignature element no longer repopulates the signing password into the edit form when an administrator reopens the element, preventing the stored secret from appearing in rendered HTML (#879).
+- When the password field is left blank on edit, the previously stored signing password is preserved rather than overwritten with an empty value (#879).
+- Digital-signature signing passwords are now encrypted before being stored in element data, and existing plaintext passwords are encrypted during upgrade (#879).
+- Digital-signature signing passwords are normalised during backup restore: legacy plaintext passwords are encrypted, valid same-site ciphertext is preserved, and foreign-site ciphertext is cleared so the administrator can re-enter it (#879).
+- Digital-signature signing passwords are no longer included in template exports or imports (#879).
+- Hardened the digitalsignature password upgrade migration: a stored password consisting solely of `"0"` is now correctly detected and encrypted rather than treated as empty, and ciphertext that cannot be decrypted with the site's key (for example, because it was encrypted with a different site's key, or is corrupt) is now cleared instead of being encrypted again (#896). Note that encrypting the value in the current database does not remove any plaintext copies that may remain in historical backups, snapshots, replicas, or database dumps; administrators who previously stored digital signature private-key passwords in this plugin should consider rotating those passwords where feasible.
+- Fixed a CSRF vulnerability in `view.php` where the `downloadown` certificate self-issuance flow could be triggered without CSRF validation. The download action now requires a POST request, a valid sesskey, and the `mod/customcert:receiveissue` capability (#878).
+- Fixed CSRF vulnerability in `ajax.php` where the element-position update endpoint did not validate the Moodle session key, allowing a forged cross-site request to reposition certificate elements in a template managed by an authenticated user; the endpoint now calls `require_sesskey()` and the YUI client submits the session key with every save-positions request (#877).
+
+## [5.2.5] - 2026-08-10
+
+### Security
+
+- Added a missing capability check so that only users who can manage a certificate template can fetch element HTML or the admin edit-element form via `get_element_html()` and the `editelement` fragment callback (#871).
+- `view.php`'s report-download flow (`downloadissue`) now verifies the target user has actually been issued the certificate before generating a PDF for them, preventing a report-viewer from generating a certificate for an arbitrary user who was never issued one (#871).
+- Moved the login check in `my_certificates.php` above the certificate-issuance existence check, preventing an unauthenticated user from probing whether a given user has been issued a given certificate (#871).
+
+## [5.2.4] - 2026-08-02
+
+### Security
+
+- Fixed horizontal authorisation bypass in `load_template.php` that could allow a user to load a template they do not have access to (CVE-2026-30884 related).
+
+### Fixed
+
+- Do not bulk-issue certificates to students when only `emailteachers` or `emailothers` is enabled (#672).
+- Skip issuing and emailing certificates until a student's own completion conditions are met (#672).
+
+### Added
+
+- Applied digital signature without requiring an image (#725).
+- Clarified that the `includeinnotvisiblecourses` setting also applies to course categories (#783).
+
+## [5.2.3] - 2026-07-06
 
 ### Added
 
