@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Levels info writer.
@@ -48,7 +48,6 @@ use invalid_parameter_exception;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class levels_info_writer {
-
     /** @var config The admin config. */
     protected $config;
 
@@ -223,14 +222,16 @@ class levels_info_writer {
 
         // We can only deal with this type of world at the moment.
         $world = $world instanceof course_world ? $world : null;
-
         $finaldata = [];
-        if (!empty($metadata['name'])) {
-            $finaldata['name'] = core_text::substr($metadata['name'], 0, 40);
+
+        $name = clean_param($metadata['name'] ?? '', PARAM_NOTAGS);
+        if (!empty($name)) {
+            $finaldata['name'] = core_text::substr($name, 0, 40);
         }
 
-        if (!empty($metadata['description'])) {
-            $finaldata['desc'] = core_text::substr($metadata['description'], 0, 280);
+        $desc = clean_param($metadata['description'] ?? '', PARAM_NOTAGS);
+        if (!empty($desc)) {
+            $finaldata['desc'] = core_text::substr($desc, 0, 280);
         }
 
         return $finaldata;
@@ -381,5 +382,4 @@ class levels_info_writer {
 
         return $data;
     }
-
 }

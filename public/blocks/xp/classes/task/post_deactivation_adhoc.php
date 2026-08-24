@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 namespace block_xp\task;
 
@@ -30,7 +30,9 @@ use core\task\adhoc_task;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class post_deactivation_adhoc extends adhoc_task {
-
+    /**
+     * Execute task.
+     */
     public function execute() {
         if (defined('PHPUNIT_TEST')) {
             return;
@@ -63,11 +65,12 @@ class post_deactivation_adhoc extends adhoc_task {
             return;
         }
 
-        $contenthtml = markdown_to_html(get_string('adminnoticeaddondeactivatedmessage', 'block_xp', [
+        $contentmd = get_string('adminnoticeaddondeactivatedmessage', 'block_xp', [
             'blockxpversion' => $blockxp->release . ' (' . $blockxp->versiondb . ')',
             'localxpversion' => $localxp->release . ' (' . $localxp->versiondb . ')',
             'localxpversionexpected' => $addon->get_expected_release(),
-        ]));
+        ]) . "\n\n----\n\n" . get_string('adminnoticefooter', 'block_xp');
+        $contenthtml = markdown_to_html($contentmd);
         $contentplain = html_to_text($contenthtml);
         $userfrom = \core_user::get_noreply_user();
 
@@ -101,5 +104,4 @@ class post_deactivation_adhoc extends adhoc_task {
         $task->set_component('block_xp');
         \core\task\manager::queue_adhoc_task($task, true);
     }
-
 }
