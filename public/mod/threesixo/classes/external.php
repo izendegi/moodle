@@ -359,6 +359,8 @@ class external extends external_api {
 
         return [
             'items' => $items,
+            // Whether the items can no longer be modified because respondents have started providing feedback.
+            'locked' => api::has_responses($params['threesixtyid']),
             'warnings' => $warnings,
         ];
     }
@@ -396,6 +398,12 @@ class external extends external_api {
                             'typetext' => new external_value(PARAM_TEXT, 'The question type text value.'),
                         ]
                     )
+                ),
+                'locked' => new external_value(
+                    PARAM_BOOL,
+                    'Whether the items can no longer be modified because feedback has already been provided.',
+                    VALUE_DEFAULT,
+                    false
                 ),
                 'warnings' => new external_warnings(),
             ]
@@ -1008,9 +1016,10 @@ class external extends external_api {
         $result = api::save_responses($threesixtyid, $touserid, $responsesarray);
 
         if ($complete) {
+            // A submission can only be marked as complete when a response has been provided for every item.
             $items = api::get_items($threesixtyid);
             foreach ($items as $item) {
-                if ($responsesarray[$item->id] === null) {
+                if (($responsesarray[$item->id] ?? null) === null) {
                     $complete = false;
                     break;
                 }
