@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Reason factory.
@@ -43,7 +43,6 @@ use context;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class reason_factory implements reason_from_log_entry_factory {
-
     /** @var resolver The reason resolver. */
     protected $resolver;
     /** @var array Where keys are names. */
@@ -137,11 +136,11 @@ class reason_factory implements reason_from_log_entry_factory {
                 $ctx = context::instance_by_id($envid, IGNORE_MISSING);
                 return new \local_xp\local\reason\section_completion_reason($ctx ? (int) $ctx->instanceid : 0, $objectid);
             } else if ($classname === 'block_gearup\local\xp\achievement_unlocked_reason') {
-                return new \block_gearup\local\xp\achievement_unlocked_reason(0);
+                return new \block_gearup\local\xp\achievement_unlocked_reason($objectid);
             } else if ($classname === 'block_gearup\local\xp\challenge_completed_reason') {
-                return new \block_gearup\local\xp\challenge_completed_reason(0);
+                return new \block_gearup\local\xp\challenge_completed_reason($objectid);
             } else if ($classname === 'block_gearup\local\xp\quest_completed_reason') {
-                return new \block_gearup\local\xp\quest_completed_reason(0);
+                return new \block_gearup\local\xp\quest_completed_reason($objectid);
             }
         } catch (\Throwable $e) {
             unset($e);
@@ -161,5 +160,4 @@ class reason_factory implements reason_from_log_entry_factory {
         $this->isunknowncache[$name] = true;
         return new unknown_reason();
     }
-
 }
