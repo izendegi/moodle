@@ -25,6 +25,7 @@
 namespace tiny_fontfamily;
 
 use context;
+use editor_tiny\editor;
 use editor_tiny\plugin;
 use editor_tiny\plugin_with_buttons;
 use editor_tiny\plugin_with_menuitems;
@@ -33,7 +34,13 @@ use editor_tiny\plugin_with_configuration;
 /**
  * Plugininfo class.
  */
-class plugininfo extends plugin implements plugin_with_configuration, plugin_with_buttons, plugin_with_menuitems {
+class plugininfo extends plugin implements plugin_with_buttons, plugin_with_configuration, plugin_with_menuitems {
+    /**
+     * Default font families, used whenever none have been configured.
+     */
+    private const DEFAULT_FONTS = [
+        'Arial', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Times New Roman', 'Georgia', 'Garamond', 'Courier New', 'Brush Script MT',
+    ];
 
     /**
      * Get available buttons.
@@ -59,18 +66,24 @@ class plugininfo extends plugin implements plugin_with_configuration, plugin_wit
 
     /**
      * Get plugin configuration.
-     * Currently not in use.
      *
+     * @param context $context
+     * @param array $options
+     * @param array $fpoptions
+     * @param editor|null $editor
      * @return array
      */
     public static function get_plugin_configuration_for_context(
         context $context,
         array $options,
         array $fpoptions,
-        ?\editor_tiny\editor $editor = null
+        ?editor $editor = null
     ): array {
-        $config = [];
-        $config['fonts'] = explode("\r\n", get_config('tiny_fontfamily', 'fonts'));
-        return $config;
+        $rawfonts = get_config('tiny_fontfamily', 'fonts');
+        if ($rawfonts === false || trim($rawfonts) === '') {
+            $rawfonts = implode("\r\n", self::DEFAULT_FONTS);
+        }
+
+        return ['fonts' => preg_split('/\r\n|\r|\n/', $rawfonts)];
     }
 }
