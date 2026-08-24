@@ -21,6 +21,7 @@
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+import {getFontSizeList, getFontSizeUnit} from './options';
 import {getButtonImage} from 'editor_tiny/utils';
 import {get_string as getString} from 'core/str';
 import {
@@ -36,7 +37,7 @@ import {
  * @param {integer} fontsize Font size in integer.
  */
 const handleAction = (editor, fontsize) => {
-    editor.formatter.apply('fontsize', {value: fontsize + "pt"});
+    editor.formatter.apply('fontsize', {value: fontsize + getFontSizeUnit(editor)});
 };
 
 
@@ -60,6 +61,8 @@ export const getSetup = async() => {
     ]);
 
     return (editor) => {
+        const fontSizeList = getFontSizeList(editor);
+
         // Register the Moodle SVG as an icon suitable for use as a TinyMCE toolbar button.
         editor.ui.registry.addIcon(icon, buttonImage.html);
 
@@ -79,15 +82,8 @@ export const getSetup = async() => {
         });
 
         // Define the font sizes and their corresponding text labels
-        const fontSizes = [
-            {size: 8, label: '8 pt'},
-            {size: 10, label: '10 pt'},
-            {size: 12, label: '12 pt'},
-            {size: 14, label: '14 pt'},
-            {size: 18, label: '18 pt'},
-            {size: 24, label: '24 pt'},
-            {size: 36, label: '36 pt'},
-        ];
+        const unit = getFontSizeUnit(editor);
+        const fontSizes = fontSizeList.map((size) => ({size, label: `${size} ${unit}`}));
 
         /**
          * Handle the font size menu item action.
