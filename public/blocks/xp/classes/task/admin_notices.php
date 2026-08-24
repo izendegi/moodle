@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 namespace block_xp\task;
 
@@ -29,7 +29,6 @@ use block_xp\di;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class admin_notices extends \core\task\scheduled_task {
-
     /**
      * Get name.
      *
@@ -49,6 +48,12 @@ class admin_notices extends \core\task\scheduled_task {
             mtrace('Admin notices are disabled, disabling task...');
             static::set_enabled(false);
             return;
+        }
+
+        try {
+            di::get('update_checker')->check();
+        } catch (\Throwable $e) {
+            mtrace('Failed to check for updates: ' . $e->getMessage());
         }
 
         // No add-on, nothing to do so far.
@@ -90,11 +95,12 @@ class admin_notices extends \core\task\scheduled_task {
             return;
         }
 
-        $contenthtml = markdown_to_html(get_string('adminnoticeoutofsyncmessage', 'block_xp', [
+        $contentmd = get_string('adminnoticeoutofsyncmessage', 'block_xp', [
             'blockxpversion' => $blockxp->release . ' (' . $blockxp->versiondb . ')',
             'localxpversion' => $localxp->release . ' (' . $localxp->versiondb . ')',
             'localxpversionexpected' => $addon->get_expected_release(),
-        ]));
+        ]) . "\n\n----\n\n" . get_string('adminnoticefooter', 'block_xp');
+        $contenthtml = markdown_to_html($contentmd);
         $contentplain = html_to_text($contenthtml);
         $userfrom = \core_user::get_noreply_user();
 
@@ -150,5 +156,4 @@ class admin_notices extends \core\task\scheduled_task {
             return;
         }
     }
-
 }

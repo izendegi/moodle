@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Visuals form.
@@ -30,7 +30,6 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/formslib.php');
 
 use block_xp\di;
-use html_writer;
 use moodleform;
 
 /**
@@ -41,31 +40,33 @@ use moodleform;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class visuals extends moodleform {
-
     /**
      * The definition.
      */
     public function definition() {
-        $renderer = di::get('renderer');
-
         $mform = $this->_form;
         $mform->addElement('filemanager', 'badges', get_string('levelbadges', 'block_xp'), null, $this->_customdata['fmoptions']);
         $mform->addHelpButton('badges', 'levelbadges', 'block_xp');
 
-        if ($this->_customdata['showpromo'] ?? true) {
-            $addonrequired = $renderer->render_from_template('block_xp/addon-required', [
-                'promourl' => $this->_customdata['promourl'],
-            ]);
-            $mform->addElement('select',
-                'currencytheme',
-                get_string('currencysign', 'block_xp') . ' ' . $addonrequired,
+        if (di::get('addon')->is_promo_allowed()) {
+            $els = [];
+            $els[] = $mform->createElement(
+                'select',
+                'choices',
+                '',
                 ['' => get_string('currencysignxp', 'block_xp')],
                 ['disabled' => 'disabled']
             );
+            $els[] = $mform->createElement(staticfield::name(), 'addonrequired', '', function () {
+                $renderer = di::get('renderer');
+                return $renderer->render_from_template('block_xp/addon-required', [
+                    'promourl' => ($this->_customdata['promourl'] ?? new \moodle_url('#'))->out(false),
+                ]);
+            });
+            $mform->addElement('group', 'currencytheme', get_string('currencysign', 'block_xp'), $els);
             $mform->addHelpButton('currencytheme', 'currencysign', 'block_xp');
         }
 
         $this->add_action_buttons();
     }
-
 }
