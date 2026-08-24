@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Block XP config form.
@@ -34,7 +34,6 @@ require_once(__DIR__ . '/duration.php');
 use block_xp\local\config\course_world_config;
 use html_writer;
 use moodleform;
-use moodle_url;
 
 /**
  * Block XP config form class.
@@ -44,7 +43,6 @@ use moodle_url;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class config extends moodleform {
-
     /**
      * Form definition.
      *
@@ -71,7 +69,8 @@ class config extends moodleform {
         $mform->addElement('selectyesno', 'enableinfos', get_string('enableinfos', 'block_xp'));
         $mform->addHelpButton('enableinfos', 'enableinfos', 'block_xp');
 
-        $levelupnotifelements = [$mform->createElement('selectyesno',
+        $levelupnotifelements = [$mform->createElement(
+            'selectyesno',
             'enablelevelupnotif',
             get_string('enablelevelupnotif', 'block_xp')
         )];
@@ -106,11 +105,13 @@ class config extends moodleform {
 
         $mform->addElement('header', 'hdrladder', get_string('ladder', 'block_xp'));
 
-        $mform->addElement('html',
+        $mform->addElement(
+            'html',
             \html_writer::div(
                 $renderer->notification_without_close(
                     strip_tags(
-                        markdown_to_html(get_string('laddersettingsmovednotice',
+                        markdown_to_html(get_string(
+                            'laddersettingsmovednotice',
                             'block_xp',
                             ['url' => ($urlresolver->reverse('ladder', ['courseid' => $world->get_courseid()]))->out(false)]
                         )),
@@ -123,7 +124,8 @@ class config extends moodleform {
         );
 
         if ($addonolder) {
-            $mform->addElement('html',
+            $mform->addElement(
+                'html',
                 \html_writer::div(
                     $renderer->notification_without_close(
                         strip_tags(markdown_to_html(get_string('settingsoutdatedxppnotice', 'block_xp')), '<a>'),
@@ -140,12 +142,14 @@ class config extends moodleform {
 
         $mform->addElement('header', 'hdrcheating', get_string('cheatguard', 'block_xp'));
 
-        $mform->addElement('html',
+        $mform->addElement(
+            'html',
             \html_writer::div(
                 $renderer->notification_without_close(
                     strip_tags(
                         markdown_to_html(
-                            get_string('cheatguardsettingsmovednotice',
+                            get_string(
+                                'cheatguardsettingsmovednotice',
                                 'block_xp',
                                 ['url' => ($urlresolver->reverse('rules', ['courseid' => $world->get_courseid()]))->out(false)]
                             )
@@ -159,7 +163,8 @@ class config extends moodleform {
         );
 
         if ($addonolder) {
-            $mform->addElement('html',
+            $mform->addElement(
+                'html',
                 \html_writer::div(
                     $renderer->notification_without_close(
                         strip_tags(markdown_to_html(get_string('settingsoutdatedxppnotice', 'block_xp')), '<a>'),
@@ -322,27 +327,6 @@ class config extends moodleform {
         ]);
         $mform->addHelpButton('timebetweensameactions', 'timebetweensameactions', 'block_xp');
         $mform->disabledIf('timebetweensameactions', 'enablecheatguard', 'eq', 0);
-
-        if ($world && $world->get_config()->get('enablecheatguard') && $config->get('enablepromoincourses')) {
-            $worldconfig = $world->get_config();
-            $timeframe = max(0, $worldconfig->get('timebetweensameactions'), $worldconfig->get('timeformaxactions'));
-
-            $promourl = new moodle_url('https://www.levelup.plus');
-            if (!empty($this->_customdata['promourl'])) {
-                $promourl = $this->_customdata['promourl'];
-            }
-
-            if ($timeframe > HOURSECS * 6) {
-                $mform->addElement('static',
-                    '',
-                    '',
-                    $renderer->notification_without_close(
-                        get_string('promocheatguard', 'block_xp', ['url' => $promourl->out()]),
-                        'warning'
-                    )
-                );
-            }
-        }
     }
 
     /**
@@ -387,5 +371,4 @@ class config extends moodleform {
         $el->setMultiple(true);
         $mform->addHelpButton('laddercols', 'ladderadditionalcols', 'block_xp');
     }
-
 }

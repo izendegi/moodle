@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Default course world navigation factory.
@@ -43,7 +43,6 @@ use block_xp\local\routing\url_resolver;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class default_course_world_navigation_factory implements course_world_navigation_factory {
-
     /** @var config The admin config. */
     protected $adminconfig;
     /** @var url_resolver The URL resolver. */
@@ -93,7 +92,7 @@ class default_course_world_navigation_factory implements course_world_navigation
         $renderer = \block_xp\di::get('renderer');
         $accessperms = $world->get_access_permissions();
         $hasaddon = di::get('addon')->is_activated();
-        $showpromo = $this->adminconfig->get('enablepromoincourses');
+        $showpromo = di::get('addon')->is_promo_allowed();
         $config = $world->get_config();
         $canmanage = $accessperms->can_manage();
 
@@ -134,7 +133,6 @@ class default_course_world_navigation_factory implements course_world_navigation
         $canviewlogs = $accessperms instanceof access_logs_permissions && $accessperms->can_access_logs();
         $canviewreport = $accessperms instanceof access_report_permissions && $accessperms->can_access_report();
         if ($canviewreport || $canviewlogs) {
-
             // The link is always called report, but leads to the logs if we can't view the report.
             $mainurl = $urlresolver->reverse('report', ['courseid' => $courseid]);
             if (!$canviewreport) {
@@ -233,15 +231,7 @@ class default_course_world_navigation_factory implements course_world_navigation
                 'text' => get_string('navsettings', 'block_xp'),
             ];
 
-            // @codingStandardsIgnoreStart
-            //
-            // If you got here and you want to disable the promo page, there is no need
-            // to hack the code my friend. You can add the following line to your config.php:
-            //
-            //   $CFG->forced_plugin_settings = ['block_xp' => ['enablepromoincourses' => 0]];
-            //
-            // @codingStandardsIgnoreEnd
-            if ($showpromo || $hasaddon) {
+            if (\block_xp\local\controller\promo_controller::is_visible()) {
                 $star = $renderer->pix_icon('star', '', 'block_xp', ['class' => 'icon']);
                 if ($hasaddon) {
                     $star = '';
@@ -263,5 +253,4 @@ class default_course_world_navigation_factory implements course_world_navigation
 
         return $links;
     }
-
 }

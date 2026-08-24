@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Addon.
@@ -40,7 +40,6 @@ use block_xp\task\post_deactivation_adhoc;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class addon {
-
     /**
      * Get the expected release version.
      *
@@ -138,6 +137,15 @@ class addon {
     final public function is_present() {
         $localxp = static::get_plugin_info();
         return !empty($localxp);
+    }
+
+    /**
+     * Whether any promo is allowed.
+     *
+     * @return bool
+     */
+    public function is_promo_allowed(): bool {
+        return (bool) \block_xp\di::get('config')->get('enablepromoincourses');
     }
 
     /**
@@ -261,5 +269,4 @@ class addon {
         }
         return true;
     }
-
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * Leaderboard factory.
@@ -35,6 +35,7 @@ use block_xp\local\config\static_config;
 use block_xp\local\course_world;
 use block_xp\local\division\all_division;
 use block_xp\local\division\division;
+use block_xp\local\division\empty_division;
 use block_xp\local\division\group_division;
 use block_xp\local\leaderboard\anonymisable_leaderboard;
 use block_xp\local\leaderboard\course_user_leaderboard;
@@ -60,7 +61,6 @@ use moodle_database;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class world_leaderboard_factory implements leaderboard_factory {
-
     /** @var config The config to refer to. */
     protected $config;
     /** @var \moodle_database The database. */
@@ -203,7 +203,9 @@ class world_leaderboard_factory implements leaderboard_factory {
     protected function get_default_division(int $targetuserid): division {
         if ($this->world instanceof course_world) {
             $groupid = user_utils::get_primary_group_id($this->world->get_courseid(), $targetuserid);
-            if ($groupid) {
+            if ($groupid < 0) {
+                return new empty_division();
+            } else if ($groupid) {
                 return new group_division($groupid);
             }
         }
@@ -259,7 +261,8 @@ class world_leaderboard_factory implements leaderboard_factory {
         // Do we only display the neighbours?
         $config = $this->config;
         if ($config->get('neighbours')) {
-            $leaderboard = new neighboured_leaderboard($leaderboard,
+            $leaderboard = new neighboured_leaderboard(
+                $leaderboard,
                 $targetuserid,
                 $config->get('neighbours'),
                 $this->world->get_access_permissions()->can_manage($targetuserid)
@@ -268,5 +271,4 @@ class world_leaderboard_factory implements leaderboard_factory {
 
         return $leaderboard;
     }
-
 }

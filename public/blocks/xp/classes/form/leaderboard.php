@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
 //
-// https://levelup.plus
+// See <https://levelup.plus>.
 
 /**
  * File.
@@ -29,6 +29,7 @@ namespace block_xp\form;
 
 use block_xp\di;
 use block_xp\local\config\course_world_config;
+use block_xp\local\utils\form_utils;
 use core_form\dynamic_form;
 
 /**
@@ -45,12 +46,20 @@ class leaderboard extends dynamic_form {
     /** @var string */
     protected $routename = 'ladder';
 
+    /**
+     * Process the form submission.
+     *
+     * @return mixed
+     */
     public function process_dynamic_submission() {
         $config = $this->get_world()->get_config();
         $data = $this->get_data();
         $config->set_many((array) $data);
     }
 
+    /**
+     * Set form data.
+     */
     public function set_data_for_dynamic_submission(): void {
         $config = $this->get_world()->get_config();
         $this->set_data([
@@ -139,21 +148,13 @@ class leaderboard extends dynamic_form {
      */
     public function after_definition() {
         parent::after_definition();
-
-        $mform = $this->_form;
-        $configlocked = \block_xp\di::get('config_locked');
-        foreach ($configlocked->get_all() as $key => $islocked) {
-            if (!$islocked || !$mform->elementExists($key)) {
-                continue;
-            }
-            $mform->hardFreeze($key);
-        }
+        form_utils::freeze_config_locked_fields($this->_form);
     }
 
     /**
      * Get the data.
      *
-     * @return stdClass
+     * @return \stdClass
      */
     public function get_data() {
         $data = parent::get_data();
@@ -190,5 +191,4 @@ class leaderboard extends dynamic_form {
         }
         parent::set_data($data);
     }
-
 }
