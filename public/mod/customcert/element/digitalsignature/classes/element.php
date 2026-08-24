@@ -183,9 +183,6 @@ class element extends \customcertelement_image\element implements
             if (isset($payload['signaturename'])) {
                 $mform->setDefault('signaturename', (string)$payload['signaturename']);
             }
-            if (isset($payload['signaturepassword'])) {
-                $mform->setDefault('signaturepassword', (string)$payload['signaturepassword']);
-            }
             if (isset($payload['signaturelocation'])) {
                 $mform->setDefault('signaturelocation', (string)$payload['signaturelocation']);
             }
@@ -308,7 +305,7 @@ class element extends \customcertelement_image\element implements
 
         $arrtostore = [
             'signaturename' => $formdata->signaturename ?? '',
-            'signaturepassword' => $formdata->signaturepassword ?? '',
+            'signaturepassword' => $this->resolve_password((string)($formdata->signaturepassword ?? '')),
             'signaturelocation' => $formdata->signaturelocation ?? '',
             'signaturereason' => $formdata->signaturereason ?? '',
             'signaturecontactinfo' => $formdata->signaturecontactinfo ?? '',
@@ -362,17 +359,9 @@ class element extends \customcertelement_image\element implements
 
         $payload = $this->get_payload();
 
-        // If there is no file, we have nothing to display.
-        if (empty($payload['filename'])) {
-            return;
-        }
-
-        // If there is no signature file, we have nothing to display.
-        if (empty($payload['signaturefilename'])) {
-            return;
-        }
-
-        if ($file = $this->get_file()) {
+        // Render the visual image, if one is configured. This is optional and independent
+        // of whether the cryptographic signature below gets applied.
+        if (!empty($payload['filename']) && ($file = $this->get_file())) {
             $location = make_request_directory() . '/target';
             $file->copy_content_to($location);
 
@@ -384,6 +373,11 @@ class element extends \customcertelement_image\element implements
             }
         }
 
+        // If there is no signature file, there is nothing to cryptographically sign.
+        if (empty($payload['signaturefilename'])) {
+            return;
+        }
+
         if ($signaturefile = $this->get_signature_file()) {
             $location = make_request_directory() . '/target';
             $signaturefile->copy_content_to($location);
@@ -393,7 +387,10 @@ class element extends \customcertelement_image\element implements
                 'Reason' => (string)($payload['signaturereason'] ?? ''),
                 'ContactInfo' => (string)($payload['signaturecontactinfo'] ?? ''),
             ];
-            $pdf->setSignature('file://' . $location, '', (string)($payload['signaturepassword'] ?? ''), '', 2, $info);
+            // Decrypt the stored password before passing it to the PDF signing library.
+            $encryptedpassword = (string)($payload['signaturepassword'] ?? '');
+            $signaturepassword = $encryptedpassword !== '' ? \core\encryption::decrypt($encryptedpassword) : '';
+            $pdf->setSignature('file://' . $location, '', $signaturepassword, '', 2, $info);
             $pdf->setSignatureAppearance($this->get_posx(), $this->get_posy(), (int)$payload['width'], (int)$payload['height']);
         }
     }
@@ -446,6 +443,61 @@ class element extends \customcertelement_image\element implements
         $arrfiles = ['0' => get_string('nosignature', 'customcertelement_digitalsignature')] + $arrfiles;
 
         return $arrfiles;
+    }
+
+    /**
+     * Normalises a signaturepassword value recovered from a backup for safe storage.
+     *
+     * Three cases are handled:
+     *  - Empty/missing password: returned as-is (empty string).
+     *  - Recognisable Moodle ciphertext (starts with the Sodium method prefix) that decrypts
+     *    successfully on this site: preserved as-is (already encrypted with this site's key).
+     *  - Recognisable Moodle ciphertext that cannot be decrypted on this site (foreign-site
+     *    key): cleared to empty string so the administrator must re-enter it.
+     *  - Anything else (legacy plaintext, including plaintext containing a colon such as
+     *    "secret:1234"): encrypted with this site's key and returned.
+     *
+     * @param string $value The raw signaturepassword value from the backup.
+     * @return string The normalised value safe to store in customcert_elements.data.
+     */
+    public static function normalise_restore_password(string $value): string {
+        if ($value === '') {
+            return '';
+        }
+        // Detect Moodle ciphertext by its method prefix. A generic "<word>:" heuristic would
+        // misclassify legitimate plaintext passwords such as "secret:1234", so only the
+        // encryption method(s) this site's core encryption API actually supports are checked.
+        if (str_starts_with($value, \core\encryption::METHOD_SODIUM . ':')) {
+            // Looks like Moodle-encrypted data. Try to decrypt with this site's key.
+            try {
+                \core\encryption::decrypt($value);
+                // Decryption succeeded — preserve the existing ciphertext.
+                return $value;
+            } catch (\moodle_exception $e) {
+                // Cannot decrypt: foreign-site ciphertext. Clear it rather than
+                // double-encrypting the ciphertext as if it were plaintext.
+                return '';
+            }
+        }
+        // Legacy plaintext password — encrypt with this site's key.
+        return \core\encryption::encrypt($value);
+    }
+
+    /**
+     * Returns the password to store: the submitted value when non-empty, otherwise the
+     * previously stored password so that leaving the field blank on edit does not erase it.
+     *
+     * @param string $submitted The value submitted via the form password field.
+     * @return string
+     */
+    private function resolve_password(string $submitted): string {
+        if ($submitted !== '') {
+            // A new password was supplied — encrypt it before storing.
+            return \core\encryption::encrypt($submitted);
+        }
+        // No new password — keep whatever is already stored (already encrypted or empty).
+        $payload = $this->get_payload();
+        return (string)($payload['signaturepassword'] ?? '');
     }
 
     /**
