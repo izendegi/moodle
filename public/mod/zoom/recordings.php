@@ -41,13 +41,13 @@ $params = ['id' => $cm->id];
 $url = new moodle_url('/mod/zoom/recordings.php', $params);
 $PAGE->set_url($url);
 
-$strname = $zoom->name;
-$PAGE->set_title("$course->shortname: $strname");
-$PAGE->set_heading($course->fullname);
+$activityname = $zoom->name;
+$PAGE->set_title(format_string("$course->shortname: $activityname", true, ['context' => $context]));
+$PAGE->set_heading(format_string($course->fullname, true, ['context' => $context]));
 $PAGE->set_pagelayout('incourse');
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading($strname);
+echo $OUTPUT->heading(format_string($activityname, true, ['context' => $context]));
 
 $iszoommanager = has_capability('mod/zoom:addinstance', $context);
 

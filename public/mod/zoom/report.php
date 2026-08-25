@@ -38,15 +38,15 @@ require_capability('mod/zoom:addinstance', $context);
 
 $PAGE->set_url('/mod/zoom/report.php', ['id' => $cm->id]);
 
-$strname = $zoom->name;
+$activityname = $zoom->name;
 $strtitle = get_string('sessions', 'mod_zoom');
 $PAGE->navbar->add($strtitle);
-$PAGE->set_title("$course->shortname: $strname");
-$PAGE->set_heading($course->fullname);
+$PAGE->set_title(format_string("$course->shortname: $activityname", true, ['context' => $context]));
+$PAGE->set_heading(format_string($course->fullname, true, ['context' => $context]));
 $PAGE->set_pagelayout('incourse');
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading($strname);
+echo $OUTPUT->heading(format_string($activityname, true, ['context' => $context]));
 echo $OUTPUT->heading($strtitle, 4);
 
 $sessions = zoom_get_sessions_for_display($zoom->id);
@@ -65,7 +65,7 @@ if (!empty($sessions)) {
 
     foreach ($sessions as $uuid => $meet) {
         $row = [];
-        $row[] = $meet['topic'];
+        $row[] = format_string($meet['topic'], true, ['context' => $context]);
         $row[] = $meet['starttime'];
         $row[] = $meet['endtime'];
         $row[] = format_time($meet['duration']);
