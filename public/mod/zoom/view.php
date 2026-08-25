@@ -50,8 +50,8 @@ $event->trigger();
 // Print the page header.
 
 $PAGE->set_url('/mod/zoom/view.php', ['id' => $cm->id]);
-$PAGE->set_title(format_string($zoom->name));
-$PAGE->set_heading(format_string($course->fullname));
+$PAGE->set_title(format_string($zoom->name, true, ['context' => $context]));
+$PAGE->set_heading(format_string($course->fullname, true, ['context' => $context]));
 $PAGE->requires->js_call_amd("mod_zoom/toggle_text", 'init');
 
 // Get Zoom user ID of current Moodle user.
@@ -127,7 +127,7 @@ $strmeetinginviteshow = get_string('meeting_invite_show', 'mod_zoom');
 echo $OUTPUT->header();
 
 if ($CFG->branch < '400') {
-    echo $OUTPUT->heading(format_string($zoom->name), 2);
+    echo $OUTPUT->heading(format_string($zoom->name, true, ['context' => $context]), 2);
 }
 
 // Show notification if the meeting does not exist on Zoom.
@@ -362,7 +362,7 @@ if ($zoom->show_schedule) {
         $rowhost->id = 'zoom_schedule-host';
         $hostheader = new html_table_cell($strhost);
         $hostheader->header = true;
-        $rowhost->cells = [$hostheader, $hostdisplayname];
+        $rowhost->cells = [$hostheader, s($hostdisplayname)];
         $table->data[] = $rowhost;
     }
 
@@ -391,7 +391,7 @@ if ($zoom->show_schedule) {
                     $ah .= ' (' . get_string('externaluser', 'mod_zoom') . ')';
                 }
 
-                $alternativehostnonusersstring = implode(', ', $alternativehostnonusers);
+                $alternativehostnonusersstring = s(implode(', ', $alternativehostnonusers));
 
                 // Concatenate both strings.
                 // If we have existing Moodle users and non-Moodle users.
@@ -412,7 +412,7 @@ if ($zoom->show_schedule) {
 
                 // Otherwise we stick with the plain list of email addresses as we got it from Zoom directly.
             } else {
-                $rowshowalternativehosts->cells = [$alternativehostsheader, $zoom->alternative_hosts];
+                $rowshowalternativehosts->cells = [$alternativehostsheader, s($zoom->alternative_hosts)];
             }
 
             $table->data[] = $rowshowalternativehosts;
@@ -467,7 +467,7 @@ if ($zoom->show_security) {
         $rowpassword->id = 'zoom_security-password';
         $passwordheader = new html_table_cell($strpassword);
         $passwordheader->header = true;
-        $rowpassword->cells = [$passwordheader, $zoom->password];
+        $rowpassword->cells = [$passwordheader, s($zoom->password)];
         $table->data[] = $rowpassword;
     }
 
@@ -477,7 +477,7 @@ if ($zoom->show_security) {
         $rowjoinurl->id = 'zoom_security-joinurl';
         $joinurlheader = new html_table_cell($strjoinlink);
         $joinurlheader->header = true;
-        $rowjoinurl->cells = [$joinurlheader, html_writer::link($zoom->join_url, $zoom->join_url, ['target' => '_blank'])];
+        $rowjoinurl->cells = [$joinurlheader, html_writer::link($zoom->join_url, s($zoom->join_url), ['target' => '_blank'])];
         $table->data[] = $rowjoinurl;
     }
 
@@ -591,7 +591,7 @@ if ($zoom->show_media) {
         $meetinginvite = zoom_webservice()->get_meeting_invitation($zoom)->get_display_string($cm->id);
         // Show meeting invitation if there is any.
         if (!empty($meetinginvite)) {
-            $meetinginvitetext = str_replace("\r\n", '<br/>', $meetinginvite);
+            $meetinginvitetext = nl2br(s($meetinginvite));
             $showbutton = html_writer::tag(
                 'button',
                 $strmeetinginviteshow,
