@@ -43,11 +43,11 @@ $export = optional_param('export', null, PARAM_ALPHA);
 
 $PAGE->set_url('/mod/zoom/participants.php', ['id' => $cm->id, 'uuid' => $uuid, 'export' => $export]);
 
-$strname = $zoom->name;
+$activityname = $zoom->name;
 $strtitle = get_string('participants', 'mod_zoom');
 $PAGE->navbar->add($strtitle);
-$PAGE->set_title("$course->shortname: $strname");
-$PAGE->set_heading($course->fullname);
+$PAGE->set_title(format_string("$course->shortname: $activityname", true, ['context' => $context]));
+$PAGE->set_heading(format_string($course->fullname, true, ['context' => $context]));
 $PAGE->set_pagelayout('incourse');
 
 $maskparticipantdata = get_config('zoom', 'maskparticipantdata');
@@ -66,7 +66,7 @@ $participants = $sessions[$uuid]['participants'];
 // Display the headers/etc if we're not exporting, or if there is no data.
 if (empty($export) || empty($participants)) {
     echo $OUTPUT->header();
-    echo $OUTPUT->heading($strname);
+    echo $OUTPUT->heading(format_string($activityname, true, ['context' => $context]));
     echo $OUTPUT->heading($strtitle, 4);
 
     // Stop if there is no data.
@@ -116,12 +116,11 @@ foreach ($participants as $p) {
     }
 
     // ID number.
+    $idnumber = '';
     if (array_key_exists($p->userid, $moodleidtouids)) {
-        $row[] = $moodleidtouids[$p->userid];
+        $idnumber = $moodleidtouids[$p->userid];
     } else if (isset($moodleuser->idnumber)) {
-        $row[] = $moodleuser->idnumber;
-    } else {
-        $row[] = '';
+        $idnumber = $moodleuser->idnumber;
     }
 
     // Name/email.
@@ -135,12 +134,21 @@ foreach ($participants as $p) {
 
     // Put email in separate column if we are exporting to Excel.
     if (!empty($export)) {
-        $row[] = $name;
-        $row[] = $email;
-    } else if (!empty($email)) {
-        $row[] = html_writer::link("mailto:$email", $name);
+        $row = [
+            $idnumber,
+            $name,
+            $email,
+        ];
     } else {
-        $row[] = $name;
+        $safename = format_string($name, true, ['context' => $context]);
+        if (!empty($email)) {
+            $safename = html_writer::link("mailto:$email", $safename);
+        }
+
+        $row = [
+            s($idnumber),
+            $safename,
+        ];
     }
 
     // Join/leave times.

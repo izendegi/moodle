@@ -64,14 +64,16 @@ $ical = new iCalendar();
 $ical->add_property('method', 'PUBLISH');
 $ical->add_property('prodid', '-//Moodle Pty Ltd//NONSGML Moodle Version ' . $CFG->version . '//EN');
 
-// Get the meeting invite note to add to the description property.
-$meetinginvite = zoom_webservice()->get_meeting_invitation($zoom)->get_display_string($cm->id);
-
 // Compute and add description property to event.
 $convertedtext = html_to_text($zoom->intro);
 $descriptiontext = get_string('calendarjoinurl', 'mod_zoom', $CFG->wwwroot . '/mod/zoom/view.php?id=' . $cm->id);
 if (!empty($convertedtext)) {
     $descriptiontext .= get_string('calendardescriptionintro', 'mod_zoom', $convertedtext);
+}
+
+// Get the meeting invite note to add to the description property.
+if (has_any_capability(['mod/zoom:viewjoinurl', 'mod/zoom:viewdialin'], $context)) {
+    $meetinginvite = zoom_webservice()->get_meeting_invitation($zoom)->get_display_string($cm->id);
 }
 
 if (!empty($meetinginvite)) {

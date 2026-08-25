@@ -1,5 +1,14 @@
 ### Releases ###
 
+#### v5.5.1 ####
+
+- Bugfix: Remove legacy FEATURE_GROUPMEMBERSONLY #715 (thanks @michael-hughes-strath, @University-of-Strathclyde-LTE-Team)
+- Bugfix: Calendar events should respect group restrictions #717 (thanks @RafaelFormaggini, @jrchamp)
+- Bugfix: MDL Shield improvements #720, #722 (thanks @jrchamp)
+- Code quality: Settings cleanup and modernization #713 (@thanks jrchamp)
+- Documentation: Moodle Playground support #718 (thanks @erseco)
+- Marketplace: Add required LICENSE file
+
 #### v5.5.0 ####
 
 - Feature: Add generator for Behat tests #687 (thanks @armccoy)

@@ -67,41 +67,51 @@ class invitation {
             return null;
         }
 
-        // If regex patterns are disabled, return the raw zoom meeting invitation.
-        if (!get_config('zoom', 'invitationregexenabled')) {
-            return $this->invitation;
+        $context = context_module::instance($coursemoduleid);
+        $canviewjoinurl = has_capability('mod/zoom:viewjoinurl', $context, $userid);
+        $canviewdialin = has_capability('mod/zoom:viewdialin', $context, $userid);
+
+        // The only distinct information in the invitation are the join URL and dial-in information.
+        if (!$canviewjoinurl && !$canviewdialin) {
+            return null;
         }
 
         $displaystring = $this->invitation;
-        try {
-            // If setting enabled, strip the invite message.
-            if (get_config('zoom', 'invitationremoveinvite')) {
-                $displaystring = $this->remove_element($displaystring, 'invite');
-            }
 
-            // If setting enabled, strip the iCal link.
-            if (get_config('zoom', 'invitationremoveicallink')) {
-                $displaystring = $this->remove_element($displaystring, 'icallink');
-            }
+        $removeelements = [];
 
-            // Check user capabilities, and remove parts of the invitation they don't have permission to view.
-            if (!has_capability('mod/zoom:viewjoinurl', context_module::instance($coursemoduleid), $userid)) {
-                $displaystring = $this->remove_element($displaystring, 'joinurl');
-            }
+        // If setting enabled, strip the invite message.
+        if (get_config('zoom', 'invitationremoveinvite')) {
+            $removeelements[] = 'invite';
+        }
 
-            if (!has_capability('mod/zoom:viewdialin', context_module::instance($coursemoduleid), $userid)) {
-                $displaystring = $this->remove_element($displaystring, 'onetapmobile');
-                $displaystring = $this->remove_element($displaystring, 'dialin');
-                $displaystring = $this->remove_element($displaystring, 'sip');
-                $displaystring = $this->remove_element($displaystring, 'h323');
-            } else {
-                // Fix the formatting of the onetapmobile section if it exists.
-                $displaystring = $this->add_paragraph_break_above_element($displaystring, 'onetapmobile');
+        // If setting enabled, strip the iCal link.
+        if (get_config('zoom', 'invitationremoveicallink')) {
+            $removeelements[] = 'icallink';
+        }
+
+        // Check user capabilities, and remove parts of the invitation they don't have permission to view.
+        if (!$canviewjoinurl) {
+            $removeelements[] = 'joinurl';
+        }
+
+        if ($canviewdialin) {
+            // Fix the formatting of the onetapmobile section if it exists.
+            $displaystring = $this->add_paragraph_break_above_element($displaystring, 'onetapmobile');
+        } else {
+            $removeelements[] = 'onetapmobile';
+            $removeelements[] = 'dialin';
+            $removeelements[] = 'sip';
+            $removeelements[] = 'h323';
+        }
+
+        foreach ($removeelements as $element) {
+            try {
+                $displaystring = $this->remove_element($displaystring, $element);
+            } catch (moodle_exception $e) {
+                // If the regex parsing fails, log a debugging message and return the whole invitation.
+                debugging($e->getMessage(), DEBUG_DEVELOPER);
             }
-        } catch (moodle_exception $e) {
-            // If the regex parsing fails, log a debugging message and return the whole invitation.
-            debugging($e->getMessage(), DEBUG_DEVELOPER);
-            return $this->invitation;
         }
 
         $displaystring = trim($this->clean_paragraphs($displaystring));
@@ -134,10 +144,10 @@ class invitation {
         }
 
         $count = 0;
-        $invitation = @preg_replace($configregex[$element], "", $invitation, -1, $count);
+        $result = @preg_replace($configregex[$element], "", $invitation, -1, $count);
 
         // If invitation is null, an error occurred in preg_replace.
-        if ($invitation === null) {
+        if (empty($result) && $result !== '') {
             throw new moodle_exception(
                 'invitationmodificationfailed',
                 'mod_zoom',
@@ -158,7 +168,7 @@ class invitation {
             );
         }
 
-        return $invitation;
+        return $result;
     }
 
     /**
@@ -200,7 +210,7 @@ class invitation {
         // Get the position of the element in the full invitation string.
         $pos = $matches[0][1];
         // Inject a paragraph break above element. Use $this->clean_paragraphs() to fix uneven breaks between paragraphs.
-        return substr_replace($invitation, "\r\n\r\n", $pos, 0);
+        return substr_replace($invitation, "\n\n", $pos, 0);
     }
 
     /**
@@ -210,10 +220,13 @@ class invitation {
      * @return string
      */
     private function clean_paragraphs(string $invitation): string {
-        // Replace partial paragraph breaks with exactly two line breaks.
-        $invitation = preg_replace("/\r\n\n/m", "\r\n\r\n", $invitation);
-        // Replace breaks of more than two line breaks with exactly two.
-        $invitation = preg_replace("/\r\n\r\n[\r\n]+/m", "\r\n\r\n", $invitation);
+        // Replace Mac/Windows carriage returns with new lines.
+        $invitation = str_replace("\r\n", "\n", $invitation);
+        $invitation = str_replace("\r", "\n", $invitation);
+        // Trim space at the end of lines.
+        $invitation = preg_replace("/[ \t]+$/m", '', $invitation);
+        // Replace breaks of more than two new lines with exactly two.
+        $invitation = preg_replace("/\n\n\n+/m", "\n\n", $invitation);
         return $invitation;
     }
 
