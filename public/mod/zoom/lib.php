@@ -48,7 +48,6 @@ function zoom_supports($feature) {
         case FEATURE_COMPLETION_TRACKS_VIEWS:
         case FEATURE_GRADE_HAS_GRADE:
         case FEATURE_GROUPINGS:
-        case FEATURE_GROUPMEMBERSONLY:
         case FEATURE_MOD_INTRO:
         case FEATURE_SHOW_DESCRIPTION:
             return true;
@@ -1109,7 +1108,12 @@ function zoom_update_instance_breakout_rooms($zoomid, $breakoutrooms) {
 function zoom_delete_instance_breakout_rooms($zoomid) {
     global $DB;
 
-    $zoomcurrentbreakoutroomsids = $DB->get_fieldset_select('zoom_meeting_breakout_rooms', 'id', "zoomid = {$zoomid}");
+    $zoomcurrentbreakoutroomsids = $DB->get_fieldset_select(
+        'zoom_meeting_breakout_rooms',
+        'id',
+        'zoomid = ?',
+        [$zoomid]
+    );
 
     foreach ($zoomcurrentbreakoutroomsids as $id) {
         $DB->delete_records('zoom_breakout_participants', ['breakoutroomid' => $id]);
@@ -1365,4 +1369,35 @@ function zoom_cm_info_dynamic(cm_info $cm) {
  */
 function zoom_apply_filter_on_meeting_name($name, $options) {
     return substr(format_string($name, true, $options + ['escape' => false]), 0, 200);
+}
+
+/**
+ * Checks whether a given calendar event should be visible to the user.
+ *
+ * @param calendar_event $event The calendar event object.
+ * @param ?int $userid User ID.
+ * @return bool True if visible, false otherwise.
+ */
+function mod_zoom_core_calendar_is_event_visible(calendar_event $event, $userid = null) {
+    global $USER;
+
+    // Only check our events.
+    if (empty($event->instance) || $event->modulename !== 'zoom') {
+        return false;
+    }
+
+    try {
+        $modinfo = get_fast_modinfo($event->courseid, $userid ?? $USER->id);
+        $cm = $modinfo->instances['zoom'][$event->instance] ?? null;
+
+        if (empty($cm)) {
+            return false;
+        }
+
+        // Return the user's visibility for the module.
+        return $cm->uservisible;
+    } catch (\moodle_exception $e) {
+        // Hide the event if the activity module does not exist.
+        return false;
+    }
 }

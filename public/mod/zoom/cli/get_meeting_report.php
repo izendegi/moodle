@@ -46,7 +46,7 @@ if ($unrecognized) {
     cli_error(get_string('cliunknowoption', 'admin', $unrecognized));
 }
 
-if ($options['help'] || empty($options['start'] || empty($options['end']))) {
+if ($options['help'] || empty($options['start']) || empty($options['end'])) {
     $help = "CLI script to manually get the meeting report for a given start and end date.
 
 Options:

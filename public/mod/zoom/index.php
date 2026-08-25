@@ -60,8 +60,8 @@ $strjoin = get_string('join', 'mod_zoom');
 
 $PAGE->set_url('/mod/zoom/index.php', ['id' => $id]);
 $PAGE->navbar->add($strname);
-$PAGE->set_title("$course->shortname: $strname");
-$PAGE->set_heading($course->fullname);
+$PAGE->set_title(format_string("$course->shortname: $strname", true, ['context' => $context]));
+$PAGE->set_heading(format_string($course->fullname, true, ['context' => $context]));
 $PAGE->set_pagelayout('incourse');
 
 echo $OUTPUT->header();

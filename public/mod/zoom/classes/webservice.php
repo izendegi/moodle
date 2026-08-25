@@ -218,6 +218,11 @@ class webservice {
         // Create $curl, which implicitly uses the proxy settings from $CFG.
         $curl = new curl();
 
+        // Verify the peer certificate to mitigate MITM attacks.
+        $curl->setopt([
+            'CURLOPT_SSL_VERIFYPEER' => true,
+        ]);
+
         if (!empty($proxyhost)) {
             // Restore the stored global proxy settings from above.
             $CFG->proxyhost = $cfg->proxyhost;
@@ -906,9 +911,6 @@ class webservice {
      * @return \mod_zoom\invitation The meeting's invitation.
      */
     public function get_meeting_invitation($zoom) {
-        global $CFG;
-        require_once($CFG->dirroot . '/mod/zoom/classes/invitation.php');
-
         // Webinar does not have meeting invite info.
         if ($zoom->webinar) {
             return new invitation(null);
