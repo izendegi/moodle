@@ -25,10 +25,6 @@
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/moodlelib.php');
 
-// Force debugging errors.
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
-
 $courseid = required_param('courseid', PARAM_INT);
 $startdate = optional_param('start', date('Y-m-d', strtotime('-3 days')), PARAM_ALPHANUMEXT);
 $enddate = optional_param('end', date('Y-m-d'), PARAM_ALPHANUMEXT);
@@ -45,16 +41,8 @@ require_capability('mod/zoom:refreshsessions', $context);
 $PAGE->set_url('/mod/zoom/console/');
 
 echo html_writer::tag('h1', get_string('getmeetingreports', 'mod_zoom'));
-$output = null;
-$arguments = implode(
-    ' ',
-    [
-        '--start=' . escapeshellarg($startdate),
-        '--end=' . escapeshellarg($enddate),
-        '--courseid=' . escapeshellarg($courseid),
-    ]
-);
-exec("php $CFG->dirroot/mod/zoom/cli/get_meeting_report.php $arguments", $output);
 echo '<pre>';
-echo implode("\n", $output);
+$hostuuids = $DB->get_fieldset_select('zoom', 'DISTINCT host_id', 'course = ?', [$courseid]);
+$meetingtask = new \mod_zoom\task\get_meeting_reports();
+$meetingtask->execute($startdate, $enddate, $hostuuids);
 echo '</pre>';
