@@ -866,8 +866,11 @@ class get_meeting_reports extends scheduled_task {
         // Number of users need to be graded.
         $needgradenumber = count($data['needgrade']);
         // List of users need grading.
-        $needstring = get_string('grading_needgrade', 'mod_zoom');
-        $needgrade = (!empty($data['needgrade'])) ? $needstring . implode('<br>', $data['needgrade']) . "\n" : '';
+        $needgrade = '';
+        if (!empty($data['needgrade'])) {
+            $safeneedgrade = array_map('s', $data['needgrade']);
+            $needgrade = get_string('grading_needgrade', 'mod_zoom') . implode('<br>', $safeneedgrade) . "\n";
+        }
 
         $zoomid = $data['zoomid'];
         $itemid = $data['itemid'];
