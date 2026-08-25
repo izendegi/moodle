@@ -143,7 +143,7 @@ function zoom_fatal_error($errorcode, $module = '', $continuelink = '', $a = nul
         throw new moodle_exception($errorcode, $module, $continuelink, $a);
     }
 
-    $PAGE->set_heading($COURSE->fullname);
+    $PAGE->set_heading(format_string($COURSE->fullname));
     $output .= $OUTPUT->header();
 
     // Output message without messing with HTML content of error.
@@ -270,7 +270,7 @@ function zoom_get_sessions_for_display($zoomid) {
         $sessions[$uuid]['topic'] = $instance->topic;
         $sessions[$uuid]['duration'] = $instance->duration;
         $sessions[$uuid]['starttime'] = userdate($instance->start_time, $format);
-        $sessions[$uuid]['endtime'] = userdate($instance->start_time + $instance->duration * 60, $format);
+        $sessions[$uuid]['endtime'] = userdate($instance->start_time + $instance->duration, $format);
     }
 
     return $sessions;
@@ -504,7 +504,7 @@ function zoom_get_participants_report($detailsid) {
  */
 function zoom_create_default_passcode($meetingpasswordrequirement) {
     $length = max($meetingpasswordrequirement->length, 6);
-    $random = rand(0, pow(10, $length) - 1);
+    $random = random_int(0, (int) pow(10, $length) - 1);
     $passcode = str_pad(strval($random), $length, '0', STR_PAD_LEFT);
 
     // Get a random set of indexes to replace with non-numberic values.
@@ -513,14 +513,14 @@ function zoom_create_default_passcode($meetingpasswordrequirement) {
 
     if ($meetingpasswordrequirement->have_letter || $meetingpasswordrequirement->have_upper_and_lower_characters) {
         // Random letter from A-Z.
-        $passcode[$indexes[0]] = chr(rand(65, 90));
+        $passcode[$indexes[0]] = chr(random_int(65, 90));
         // Random letter from a-z.
-        $passcode[$indexes[1]] = chr(rand(97, 122));
+        $passcode[$indexes[1]] = chr(random_int(97, 122));
     }
 
     if ($meetingpasswordrequirement->have_special_character) {
         $specialchar = '@_*-';
-        $passcode[$indexes[2]] = substr(str_shuffle($specialchar), 0, 1);
+        $passcode[$indexes[2]] = $specialchar[random_int(0, strlen($specialchar) - 1)];
     }
 
     return $passcode;
