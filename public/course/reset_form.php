@@ -147,7 +147,11 @@ class course_reset_form extends moodleform {
             [
                 'data-action' => 'resetcourse',
                 'data-courseid' => $COURSE->id,
-                'data-coursename' => $COURSE->fullname,
+                'data-coursename' => format_string(
+                    $COURSE->fullname,
+                    true,
+                    ['context' => context_course::instance($COURSE->id)]
+                ),
             ],
             null,
             ['customclassoverride' => 'btn-danger'],
