@@ -113,3 +113,22 @@ Feature: Reset course
     And I should see "Student 1"
     And I am on the "Test assignment name" "assign activity" page
     And I should see "1" in the "Submitted" "table_row"
+
+  @javascript
+  Scenario: Course name is formatted in the reset course confirmation dialogue
+    Given the "multilang" filter is "on"
+    And the "multilang" filter applies to "content and headings"
+    And the following "users" exist:
+      | username | firstname | lastname | email                | lang |
+      | teacher2 | Teacher   | 2        | teacher2@example.com | en   |
+    And the following "courses" exist:
+      | fullname                                                                                              | shortname |
+      | <span lang="en" class="multilang">Course 2 (EN)</span><span lang="eu" class="multilang">2. ikastaroa (EU)</span> | C2        |
+    And the following "course enrolments" exist:
+      | user     | course | role           |
+      | teacher2 | C2     | editingteacher |
+    # The user browses in English, so only the English multilang span must be shown.
+    And I am on the "C2" "reset" page logged in as "teacher2"
+    When I click on "Reset course" "button"
+    Then I should see "Course 2 (EN)" in the "Reset course?" "dialogue"
+    And I should not see "2. ikastaroa (EU)" in the "Reset course?" "dialogue"
