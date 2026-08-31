@@ -25,7 +25,7 @@ defined('MOODLE_INTERNAL') || die();
 
 // Custom login page
 $string['loginmu'] = 'Mondragon Unibertsitatea SSO';
-$string['loginmoodle'] = 'Login clásico';
+$string['loginmoodle'] = 'Login usuarios manuales';
 $string['backtoselection'] = 'Volver a opciones de acceso';
 $string['loginlayout'] = 'Diseno de la página de login';
 $string['loginlayout_desc'] = 'Elige entre el login modificado o el login predeterminado de Moove.';
