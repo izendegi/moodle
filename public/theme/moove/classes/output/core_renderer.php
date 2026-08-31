@@ -228,7 +228,13 @@ class core_renderer extends \theme_boost\output\core_renderer {
         $context->sitename = format_string($SITE->fullname, true,
             ['context' => context_course::instance(SITEID), "escape" => false]);
 
-        if (!$CFG->auth_instructions) {
+        if (!empty($CFG->auth_instructions)) {
+            // The custom auth instructions are rendered in the left panel of the split login layout,
+            // so they must not be duplicated in the right-hand login form.
+            $context->instructions = null;
+            $context->hasinstructions = false;
+            $context->hasauthinstructions = false;
+        } else {
             $context->instructions = null;
             $context->hasinstructions = false;
         }
