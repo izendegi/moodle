@@ -25,7 +25,7 @@ defined('MOODLE_INTERNAL') || die();
 
 // Custom login page
 $string['loginmu'] = 'Mondragon Unibertsitatea SSO';
-$string['loginmoodle'] = 'Saio-hasiera klasikoa';
+$string['loginmoodle'] = 'Eskuzko erabiltzaileen saio-hasiera';
 $string['backtoselection'] = 'Itzuli saio-hasiera aukeretara';
 $string['loginlayout'] = 'Saio-hasiera orriaren diseinua';
 $string['loginlayout_desc'] = 'Aukeratu moldatutako saio-hasiera orria edo Moove-en lehenetsitakoa.';
