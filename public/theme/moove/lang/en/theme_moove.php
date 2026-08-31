@@ -280,6 +280,6 @@ $string['nolearning'] = 'You haven\'t started your learning yet';
 
 // Custom login page
 $string['loginmu'] = 'Mondragon Unibertsitatea SSO';
-$string['loginmoodle'] = 'Classic login';
+$string['loginmoodle'] = 'Manual user login';
 $string['backtoselection'] = 'Back to login options';
 $string['identityproviderschoosebutton'] = 'OAuth options';
