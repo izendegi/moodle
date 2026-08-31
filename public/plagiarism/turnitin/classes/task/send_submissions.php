@@ -55,7 +55,9 @@ class send_submissions extends \core\task\scheduled_task {
         }
 
         $pluginconfig = get_config('plagiarism_turnitin');
-        if ($pluginconfig->plagiarism_turnitin_enableadhocsubmissions) {
+        // Older installs may not have this config value set yet; treat it as disabled in that case.
+        $adhocsubmissionsenabled = !empty($pluginconfig->plagiarism_turnitin_enableadhocsubmissions);
+        if ($adhocsubmissionsenabled) {
             // Don't attempt to call Turnitin if a connection to Turnitin could not be established.
             if (!$plugin->test_turnitin_connection()) {
                 mtrace(get_string('ppeventsfailedconnection', 'plagiarism_turnitin'));
