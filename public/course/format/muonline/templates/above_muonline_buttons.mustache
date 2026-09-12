@@ -1,0 +1,30 @@
+{{#section_zero_show}}{{#section_zero.is_collapsible}}
+    <button class="sectionbutton buttonhidesec0 open float-end ms-1" data-section="0">
+        <span class="sec-zero-open-icon justify-content-center align-items-center h-100" title="{{#str}}closetopsection, format_muonline{{/str}}">
+            {{#pix}}close, format_muonline, {{#str}}closetopsection, format_muonline{{/str}}{{/pix}}
+        </span>
+        <span class="sec-zero-closed-icon justify-content-center align-items-center h-100" title="{{#str}}expandtopsection, format_muonline{{/str}}">
+            {{#pix}}sort, format_muonline, {{#str}}expand, format_muonline{{/str}}{{/pix}}
+        </span>
+
+    </button>
+{{/section_zero.is_collapsible}}{{/section_zero_show}}
+
+{{#hasabovemuonlinecontrols}}
+    <div class="btn-group align-top">
+        <button type="button" class="sectionbutton align-top" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="{{#str}}controls, format_muonline{{/str}}">
+            <span class="d-flex justify-content-center align-items-center h-100">
+                <i class="icon fa fa-ellipsis-h fa-fw m-0" aria-hidden="true"></i>
+            </span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-right">
+            {{#abovemuonlinecontrols}}
+                <a class="dropdown-item" href="{{{url}}}">
+                    <div class="custom-control custom-switch{{#checked}} checked{{/checked}}">
+                        <span class="custom-control-label">{{label}}</span>
+                    </div>
+                </a>
+            {{/abovemuonlinecontrols}}
+        </div>
+    </div>
+{{/hasabovemuonlinecontrols}}
