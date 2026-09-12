@@ -1,0 +1,8 @@
+.format-muonline .activity-information {
+    float: none;
+}
+.format-muonline .course-content ul#multi_section_muonline.muonline .tile {
+    /* Override the min width which Lambda theme has applied. */
+    /* Otherwise it artificially restricts number of muonline per row. */
+    min-width: unset;
+}

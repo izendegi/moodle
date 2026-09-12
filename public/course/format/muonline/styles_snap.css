@@ -1,0 +1,15 @@
+.format-muonline.theme-snap ul.muonline .tile h3,
+.format-muonline.theme-snap ul.muonline .subtile h4,
+.format-muonline.theme-snap ul.muonline .tile .tile-textinner.longtitle h3 {
+    font-size: 1em;
+}
+.format-muonline .course-content ul li.section.main.moveablesection {
+    visibility: visible;
+}
+.format-muonline ul.muonline li.section .format_muonline_section_content:not(.collapse) {
+    /*For snap theme*/
+    display: block;
+}
+.format-muonline.theme-snap .course-content {
+    max-width: inherit;
+}
