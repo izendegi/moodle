@@ -1,0 +1,36 @@
+.format-muonline li.tile .badge-info {
+    color: #fff;
+}
+.format-muonline .subtile .completioncheckbox .icon {
+    height: 19px;
+    margin-top: 3px;
+}
+.format-muonline .nosubmuonline .completioncheckbox .btn:hover,
+.format-muonline .nosubmuonline .completioncheckbox .btn:active {
+    /* stylelint-disable-next-line declaration-no-important */
+    background-color: inherit !important;
+}
+.format-muonline .embed_cm_modal .modal-header .btn-close {
+    color: #fff;
+}
+.format-muonline #page .course-content ul li.section.main {
+    background-color: #fff;
+    border: 0;
+}
+.format-muonline li.section .sectionname {
+    background-color: inherit;
+}
+.format-muonline .embed_cm_modal .modal-header .btn-close {
+    /* stylelint-disable-next-line declaration-no-important */
+    color: #fff !important;
+}
+.format-muonline li.activity.subtile .badge-info {
+    color: #fff;
+}
+body.format-muonline.path-course-view.format-muonline-tile-open #page-content aside.block {
+    /* Avoid empty white blocks showing on grey overlay at bottom of page*/
+    background-color: inherit;
+}
+.format-muonline .expand-collapse-all-btns .btn-secondary {
+    min-height: unset;
+}
