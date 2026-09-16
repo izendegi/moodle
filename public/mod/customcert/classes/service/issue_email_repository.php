@@ -61,7 +61,7 @@ final class issue_email_repository {
         global $DB;
 
         $userfields = helper::get_all_user_name_fields('u');
-        $sql = "SELECT u.id, u.username, $userfields, u.email, u.mailformat, ci.id as issueid, ci.emailed,
+        $sql = "SELECT u.id, u.username, $userfields, u.email, ci.id as issueid, ci.emailed,
                        ci.studentemailed
                   FROM {customcert_issues} ci
                   JOIN {user} u ON ci.userid = u.id
