@@ -1,14 +1,14 @@
 name: Auto-release via commit message
 
-on:
-  push:
-    branches: [ master ]
+on: [push]
 
 permissions:
   contents: write
 
 jobs:
   auto-release:
+    if: startsWith(github.event.head_commit.message, 'V ')
+
     runs-on:
       ubuntu-latest
 
@@ -71,7 +71,7 @@ jobs:
       ubuntu-latest
 
     env:
-      PLUGIN: local_slow_queries
+      PLUGIN: local_alternative_file_system
       CURL: curl -s
       ENDPOINT: https://moodle.org/webservice/rest/server.php
       TOKEN: ${{ secrets.MOODLE_ORG_TOKEN }}
@@ -85,7 +85,7 @@ jobs:
           fetch-depth: 1
           ref: ${{ env.TAGNAME }}
 
-      - name: Validate PLUGIN matches version.php (and tag matches release)
+      - name: Validate PLUGIN matches version.php
         run: |
           COMPONENT=$(php -r 'define("MOODLE_INTERNAL", true);define("MATURITY_STABLE", true); $plugin=new stdClass(); require "version.php"; echo $plugin->component ?? "";')
           RELEASE=$(php -r 'define("MOODLE_INTERNAL", true);define("MATURITY_STABLE", true); $plugin=new stdClass(); require "version.php"; echo $plugin->release ?? "";')
