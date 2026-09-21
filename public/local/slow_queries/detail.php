@@ -24,8 +24,7 @@
  */
 
 require_once(__DIR__ . "/../../config.php");
-require_once($CFG->libdir.'/adminlib.php');
-
+require_once("{$CFG->libdir}/adminlib.php");
 
 use local_slow_queries\repository\queries_repository;
 use local_slow_queries\service\backtrace_service;
@@ -35,7 +34,7 @@ use local_slow_queries\service\sql_params_service;
 use local_slow_queries\service\table_schema_service;
 use local_slow_queries\service\timeline_service;
 
-admin_externalpage_setup('localslowqueries', '', null, '', ['pagelayout' => 'report']);
+admin_externalpage_setup("localslowqueries", "", null, "", ["pagelayout" => "report"]);
 
 $id = required_param("id", PARAM_INT);
 
