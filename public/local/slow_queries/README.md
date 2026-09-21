@@ -1,4 +1,4 @@
-# local_slow_queries — Slow Queries Viewer for Moodle
+# local_slow_queries - Slow Queries Viewer for Moodle
 
 `local_slow_queries` is an admin-only plugin that turns your `mdl_log_queries` table into a practical UI to **find, triage and analyze slow SQL statements** executed by Moodle.
 
@@ -24,15 +24,15 @@ The plugin reads from:
 
 Fields used by the UI:
 
-- `id` — unique identifier
-- `qtype` — query type (stored by your logger)
-- `sqltext` — SQL statement text
-- `sqlparams` — parameters (string representation)
-- `error` — non-zero marks error
-- `info` — optional extra data
-- `backtrace` — string backtrace
-- `exectime` — decimal seconds
-- `timelogged` — unix timestamp
+- `id` - unique identifier
+- `qtype` - query type (stored by your logger)
+- `sqltext` - SQL statement text
+- `sqlparams` - parameters (string representation)
+- `error` - non-zero marks error
+- `info` - optional extra data
+- `backtrace` - string backtrace
+- `exectime` - decimal seconds
+- `timelogged` - unix timestamp
 
 Index suggestions in the `install.xml` are focused on viewer performance:
 - `timelogged`, `exectime`, `qtype`, `error`

@@ -1,0 +1,23 @@
+# (RFC §4.1). Authors update their listing with an ordinary commit; camp
+# ingests and hash-pins it at each tagged release. Listing for local_slow_queries.
+
+name: "Slow Queries"
+summary: "Identify slow queries and find opportunities to improve performance."
+description: |
+  Identify slow queries and find opportunities to improve performance.
+
+  local_slow_queries is an admin-only plugin that turns your mdl_log_queries table into a practical UI to find, triage and analyze slow SQL statements executed by Moodle.
+
+  Key capabilities:
+  - List & filter slow queries quickly (default exectime > 3s ).
+  - Open details with SQL + parameters and a ready-to-use ChatGPT prompt including table schemas.
+  - Use dashboards to see patterns: top slowest, recurrence, distribution, CRON vs WEB, by qtype, and errors.
+
+  Supported Moodle versions in the supplied plugin list: 3.9 - 5.0.
+
+labels:
+  - fully-free
+category: "reports"
+links:
+  docs: https://github.com/EduardoKrausME/moodle-local_slow_queries#readme
+  issues: https://github.com/EduardoKrausME/moodle-local_slow_queries/issues
