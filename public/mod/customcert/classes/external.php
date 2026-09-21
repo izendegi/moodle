@@ -25,6 +25,7 @@ namespace mod_customcert;
 
 use context_module;
 use context_system;
+use invalid_parameter_exception;
 use moodle_exception;
 use core_external\external_api;
 use core_external\external_value;
@@ -106,12 +107,32 @@ class external extends external_api {
         $elementrepo = new element_repository(element_factory::build_with_defaults());
         $element = $elementrepo->get_for_template_or_fail((int)$templateid, (int)$elementid);
 
+        // These fields identify the element and are managed by the server. They must never
+        // be overwritten by client-supplied values, otherwise the authorisation performed
+        // above (against $element) could be bypassed by mutating the record afterwards.
+        $protectedfields = [
+            'id' => true,
+            'pageid' => true,
+            'element' => true,
+            'sequence' => true,
+            'timecreated' => true,
+            'timemodified' => true,
+        ];
+
         // Build the updated record by merging submitted values onto the existing element.
         $record = clone $element;
         foreach ($values as $value) {
             $field = $value['name'];
+            if (isset($protectedfields[$field])) {
+                throw new invalid_parameter_exception('Field is not allowed to be updated: ' . $field);
+            }
             $record->$field = $value['value'];
         }
+
+        // Reassert the authorised identity, regardless of what was merged above.
+        $record->id = (int)$element->id;
+        $record->pageid = (int)$element->pageid;
+        $record->element = (string)$element->element;
 
         // Instantiate the element via the factory so element-specific normalisation is applied.
         $factory = element_factory::build_with_defaults();
@@ -124,6 +145,17 @@ class external extends external_api {
         // Create the final instance from the normalised record and persist.
         $instance = $factory->create_from_legacy_record($record);
         $layout = element_layout::from_record($record);
+
+        // Defence in depth: the instance about to be persisted must still match the
+        // authorised element's identity.
+        if (
+            $instance->get_id() !== (int)$element->id ||
+            $instance->get_pageid() !== (int)$element->pageid ||
+            $instance->get_type() !== (string)$element->element
+        ) {
+            throw new invalid_parameter_exception('Element identity mismatch');
+        }
+
         $elementrepo->save($instance, $layout);
 
         // For compatibility keep a simple truthy result.
@@ -307,7 +339,7 @@ class external extends external_api {
                 ),
                 'limit' => new external_value(
                     PARAM_INT,
-                    'Maximum number of results (default 100, max 500)',
+                    'Maximum number of results (default 100, max 500; max 20 when including PDFs)',
                     VALUE_DEFAULT,
                     100
                 ),
@@ -328,7 +360,7 @@ class external extends external_api {
      * @param ?int $userid User id. Returns items for this user.
      * @param ?int $customcertid Customcert id. Returns items for this customcert.
      * @param bool $includepdf Whether to include PDF contents
-     * @param int $limit Max results
+     * @param int $limit Maximum results (500 normally, 20 when including PDFs)
      * @param int $offset Offset for paging
      * @return array
      */
@@ -360,7 +392,10 @@ class external extends external_api {
         $userid = $params['userid'];
         $customcertid = $params['customcertid'];
         $includepdf = !empty($params['includepdf']);
-        $limit = max(1, min(500, $params['limit']));
+
+        // When including PDFs, we limit the number of issues to avoid resource exhaustion.
+        $maxlimit = $includepdf ? 20 : 500;
+        $limit = max(1, min($maxlimit, $params['limit']));
         $offset = max(0, $params['offset']);
 
         // Capability check.
