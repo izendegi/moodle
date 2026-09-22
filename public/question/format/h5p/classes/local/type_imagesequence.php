@@ -91,7 +91,10 @@ class type_imagesequence extends type_mc {
         if (empty($image->path)) {
             return '';
         }
-        $filepath = $this->tempdir . '/content/' . $image->path;
+        $filepath = $this->get_content_filepath($image->path);
+        if ($filepath === null) {
+            return '';
+        }
         if (empty($image->copyright)) {
             $metadata = $image->metadata;
         } else {
