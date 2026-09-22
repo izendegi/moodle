@@ -122,8 +122,9 @@ class type_dnd extends type_mc {
         global $USER;
 
         $metadata = null;
+        $filepath = null;
         if (!empty($question->settings->background)) {
-            $filepath = $this->tempdir . '/content/' . $question->settings->background->path;
+            $filepath = $this->get_content_filepath($question->settings->background->path ?? null);
             $height = $question->settings->size->height;
             $width = $question->settings->size->width;
             if (!empty($question->settings->metadata)) {
@@ -132,7 +133,7 @@ class type_dnd extends type_mc {
                 $metadata = $question->settings->copyright;
             }
         } else if (!empty($question->type->params->file)) {
-            $filepath = $this->tempdir . '/content/' . $question->type->params->file->path;
+            $filepath = $this->get_content_filepath($question->type->params->file->path ?? null);
             $height = $question->height * 20;
             $width = $question->width * 20;
             if (!empty($question->type->metadata)) {
@@ -141,6 +142,10 @@ class type_dnd extends type_mc {
                 $metadata = $question->type->copyright;
             }
         } else {
+            return '';
+        }
+
+        if ($filepath === null) {
             return '';
         }
 
