@@ -125,8 +125,9 @@ class type_hotspot extends type_mc {
         global $USER;
 
         $metadata = null;
+        $filepath = null;
         if (!empty($question->settings->background)) {
-            $filepath = $this->tempdir . '/content/' . $question->settings->background->path;
+            $filepath = $this->get_content_filepath($question->settings->background->path ?? null);
             $height = $question->settings->background->height;
             $width = $question->settings->background->width;
             if (!empty($question->settings->metadata)) {
@@ -135,6 +136,10 @@ class type_hotspot extends type_mc {
                 $metadata = $question->settings->copyright;
             }
         } else {
+            return '';
+        }
+
+        if ($filepath === null) {
             return '';
         }
 
