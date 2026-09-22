@@ -100,6 +100,38 @@ class type_mc extends \qformat_default {
     }
 
     /**
+     * Resolve a path taken from the (untrusted) content.json to a real file inside the extracted archive.
+     *
+     * The returned path is guaranteed to be located inside the temporary extraction directory, so that
+     * path traversal sequences in the uploaded H5P package cannot be used to read arbitrary server files.
+     *
+     * @param string|null $path The archive relative path as found in content.json.
+     * @return string|null The resolved absolute file path or null if it is invalid or outside the archive.
+     */
+    protected function get_content_filepath($path) {
+        if (empty($path) || !is_string($path)) {
+            return null;
+        }
+
+        $relative = clean_param($path, PARAM_PATH);
+        if ($relative === '') {
+            return null;
+        }
+
+        $tempdir = realpath($this->tempdir);
+        if ($tempdir === false) {
+            return null;
+        }
+
+        $filepath = realpath($tempdir . '/content/' . $relative);
+        if ($filepath === false || strpos($filepath, $tempdir . DIRECTORY_SEPARATOR) !== 0 || !is_file($filepath)) {
+            return null;
+        }
+
+        return $filepath;
+    }
+
+    /**
      * Parse any attached media and add to filearea
      *
      * @param object $media object in content
@@ -116,14 +148,18 @@ class type_mc extends \qformat_default {
             $this->itemid = file_get_unused_draft_itemid();
         }
         foreach ($media as $source) {
-            $filename = preg_replace('/.*\\//', '', $source->path);
-            $filepath = $this->tempdir . '/content/' . $source->path;
+            $filepath = $this->get_content_filepath($source->path ?? null);
+            if ($filepath === null) {
+                continue;
+            }
+            $relative = clean_param($source->path, PARAM_PATH);
+            $filename = preg_replace('/.*\\//', '', $relative);
             $filerecord = [
                 'contextid' => context_user::instance($USER->id)->id,
                 'component' => 'user',
                 'filearea'  => 'draft',
                 'itemid'    => $this->itemid,
-                'filepath'  => preg_replace('/[^\\/]*$/', '', '/' . $source->path),
+                'filepath'  => preg_replace('/[^\\/]*$/', '', '/' . $relative),
                 'filename'  => $filename,
             ];
             if (!empty($source->metadata)) {
@@ -155,10 +191,13 @@ class type_mc extends \qformat_default {
         if (empty($media) || empty($media->type->params->file)) {
             return '';
         }
+        $filepath = $this->get_content_filepath($media->type->params->file->path ?? null);
+        if ($filepath === null) {
+            return '';
+        }
         $fs = get_file_storage();
         $itemid = file_get_unused_draft_itemid();
-        $filename = preg_replace('/.*\\//', '', $media->type->params->file->path);
-        $filepath = $this->tempdir . '/content/' . $media->type->params->file->path;
+        $filename = preg_replace('/.*\\//', '', clean_param($media->type->params->file->path, PARAM_PATH));
         $filerecord = [
             'contextid' => context_user::instance($USER->id)->id,
             'component' => 'user',
