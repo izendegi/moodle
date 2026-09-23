@@ -26,6 +26,22 @@ require_once($CFG->dirroot . '/course/lib.php');
 class mucommerce extends base {
 
     /**
+     * Database tables that this entity uses
+     * Required since Moodle 5.2 (MDL-78118)
+     *
+     * @return string[]
+     */
+    protected function get_default_tables(): array {
+        return [
+            'paygw_mucommerce',
+            'user',
+            'course',
+            'enrol',
+            'course_completion',
+        ];
+    }
+
+    /**
      * Database tables that this entity uses and their default aliases
      *
      * @return array
@@ -76,6 +92,7 @@ class mucommerce extends base {
         $columns = [];
         $mucomalias = $this->get_table_alias('paygw_mucommerce');
         $join = $this->mucommercejoin();
+
         $columns[] = (new column(
             'mucom_orderid',
             new lang_string('orderid', 'paygw_mucommerce'),
@@ -109,47 +126,49 @@ class mucommerce extends base {
         return $columns;
     }
 
+    /**
+     * Returns list of all available filters
+     *
+     * @return filter[]
+     */
     protected function get_all_filters(): array {
         $filters = [];
         $mucomalias = $this->get_table_alias('paygw_mucommerce');
-        $join = $this->mucommercejoin();
-        // Filtro para 'is_paid'
+
+        // Filtro para 'is_paid' (CHAR(1))
         $filters[] = (new filter(
-            text::class,  // Mantener text::class porque is_paid es CHAR(1)
+            text::class,
             'is_paid',
             new lang_string('filterispaid', 'paygw_mucommerce'),
             $this->get_entity_name(), "{$mucomalias}.is_paid"
         ));
-        
+
         // Filtro para 'itemid'
         $filters[] = (new filter(
-            number::class, 
-            'itemid', 
-            new lang_string('filteritemid', 'paygw_mucommerce'), 
+            number::class,
+            'itemid',
+            new lang_string('filteritemid', 'paygw_mucommerce'),
             $this->get_entity_name(), "{$mucomalias}.itemid"
         ));
 
         return $filters;
-    }    
+    }
 
-/**
- * Define joins for the mucommerce table with user, course, and enrol tables
- *
- * @return string SQL JOIN statement
- */
-public function mucommercejoin(): string {
-    $mucomalias = $this->get_table_alias('paygw_mucommerce');
-    $useralias = $this->get_table_alias('user');
-    $coursealias = $this->get_table_alias('course');
-    $enrolalias = $this->get_table_alias('enrol');
+    /**
+     * Define joins for the mucommerce table with user, course, and enrol tables
+     *
+     * @return string SQL JOIN statement
+     */
+    public function mucommercejoin(): string {
+        $mucomalias = $this->get_table_alias('paygw_mucommerce');
+        $useralias = $this->get_table_alias('user');
+        $coursealias = $this->get_table_alias('course');
+        $enrolalias = $this->get_table_alias('enrol');
 
-    return "
-        JOIN {user} {$useralias} ON {$mucomalias}.userid = {$useralias}.id
-        JOIN {course} {$coursealias} ON {$mucomalias}.courseid = {$coursealias}.id
-        JOIN {enrol} {$enrolalias} ON {$mucomalias}.itemid = {$enrolalias}.id
-    ";
+        return "
+            JOIN {user} {$useralias} ON {$mucomalias}.userid = {$useralias}.id
+            JOIN {course} {$coursealias} ON {$mucomalias}.courseid = {$coursealias}.id
+            JOIN {enrol} {$enrolalias} ON {$mucomalias}.itemid = {$enrolalias}.id
+        ";
+    }
 }
-
-
-}
-
