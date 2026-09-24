@@ -431,9 +431,10 @@ class enrol_database_plugin extends enrol_plugin {
                          FROM {groups_members} mgm
                          JOIN {user} mu on (mu.id = mgm.userid)
                          JOIN {groups} mg on (mgm.groupid = mg.id)
-                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
+--                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
                         WHERE mu.deleted = 0
                           AND mu.id = :userid
+--                          AND (mg.idnumber IS NOT NULL AND mg.idnumber <> '')
                           AND mgm.component = 'enrol_database'
                           AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
                                                                           FROM $table ge2
