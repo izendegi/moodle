@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: checkout plugin
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: this-plugin
 
@@ -62,6 +62,9 @@ jobs:
         env:
           DB: ${{ matrix.database }}
           MOODLE_BRANCH: ${{ matrix.moodle-branch }}
+
+      - name: behat window size
+        run: moodle-plugin-ci add-config '$CFG->behat_increasetimeout = 3;'
 
       - name: phplint
         if: ${{ !cancelled() }}
