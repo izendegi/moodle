@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 Note - All hash comments refer to the issue number. Eg. #169 refers to https://github.com/mdjnelson/moodle-mod_customcert/issues/169.
 
+## [5.2.9] - 2026-10-01
+
+### Fixed
+
+- Preserve migrated element data and visual settings when editing or saving legacy third-party elements (#968).
+- Preserve structured JSON payloads for migrated third-party elements instead of treating them as legacy scalar data (#999).
+
 ## [5.2.8] - 2026-09-19
 
 ### Security
