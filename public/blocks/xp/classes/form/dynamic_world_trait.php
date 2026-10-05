@@ -19,7 +19,7 @@
 namespace block_xp\form;
 
 use block_xp\di;
-use block_xp\local\course_world;
+use block_xp\local\world;
 use context;
 use moodle_url;
 
@@ -32,13 +32,13 @@ use moodle_url;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 trait dynamic_world_trait {
-    /** @var course_world The world. */
+    /** @var world The world. */
     private $world;
 
     /**
      * Get the world.
      */
-    protected function get_world(): course_world {
+    protected function get_world(): world {
         if (!$this->world) {
             $worldfactory = di::get('context_world_factory');
             $contextid = $this->optional_param('contextid', 0, PARAM_INT);
@@ -75,7 +75,7 @@ trait dynamic_world_trait {
         if (!$this->routename) {
             throw new \coding_exception('routenamenotdefined');
         }
-        $urlresolver = di::get('url_resolver');
-        return $urlresolver->reverse($this->routename, ['courseid' => $this->world->get_courseid()]);
+        $navigator = di::get('world_navigator_factory')->get_navigator_for_world($this->get_world());
+        return $navigator->get_url($this->routename);
     }
 }

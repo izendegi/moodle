@@ -38,4 +38,18 @@ class text_utils {
     public static function markdown_light($text) {
         return strip_tags(markdown_to_html($text), '<a><em><strong>');
     }
+
+    /**
+     * Trim, or null if empty.
+     *
+     * @param string $text
+     * @return string|null
+     */
+    public static function trim_or_null(string $text): ?string {
+        $text = trim($text);
+        if ($text === '') {
+            return null;
+        }
+        return $text;
+    }
 }
