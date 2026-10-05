@@ -36,6 +36,7 @@ use block_xp\local\course_world;
  * @copyright  2017 Frédéric Massart
  * @author     Frédéric Massart <fred@branchup.tech>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @deprecated Since XP 21, use navigator instead.
  */
 interface course_world_navigation_factory {
     /**

@@ -33,6 +33,7 @@ use block_xp\local\config\config_stack;
 use block_xp\local\config\course_world_config;
 use block_xp\local\config\filtered_config;
 use block_xp\local\config\immutable_config;
+use block_xp\local\course_world;
 
 /**
  * Course world factory.
@@ -55,7 +56,7 @@ class default_course_world_factory implements course_world_factory {
     protected $worlds = [];
     /** @var levels_info_factory The levels info factory. */
     protected $levelsinfofactory;
-    /** @var context_collection_logger_factory The collection logger factory. */
+    /** @var context_collection_logger_factory|world_logger_factory The logger factory. */
     protected $collectionloggerfactory;
 
     /**
@@ -63,14 +64,14 @@ class default_course_world_factory implements course_world_factory {
      *
      * @param config $adminconfig The admin config.
      * @param moodle_database $db The DB.
-     * @param badge_url_resolver_course_world_factory $urlresolverfactory The badge URL resolver factory.
+     * @param ?badge_url_resolver_course_world_factory $urlresolverfactory The badge URL resolver factory.
      * @param config $adminconfiglocked The locked config.
      * @param levels_info_factory $levelsinfofactory The levels info factory.
      */
     public function __construct(
         config $adminconfig,
         moodle_database $db,
-        badge_url_resolver_course_world_factory $urlresolverfactory,
+        ?badge_url_resolver_course_world_factory $urlresolverfactory,
         config $adminconfiglocked,
         levels_info_factory $levelsinfofactory
     ) {
@@ -91,7 +92,7 @@ class default_course_world_factory implements course_world_factory {
      * Get the world.
      *
      * @param int $courseid Course ID.
-     * @return block_xp\local\course_world
+     * @return course_world
      */
     public function get_world($courseid) {
 
@@ -110,13 +111,14 @@ class default_course_world_factory implements course_world_factory {
                 $config,
                 $this->db,
                 $courseid,
-                $this->urlresolverfactory,
+                null,
                 $this->levelsinfofactory
             );
 
-            if ($this->collectionloggerfactory) {
-                $context = $courseid == SITEID ? \context_system::instance() : \context_course::instance($courseid);
-                $world->set_collection_logger($this->collectionloggerfactory->get_logger_from_context($context));
+            if ($this->collectionloggerfactory instanceof world_logger_factory) {
+                $world->set_collection_logger($this->collectionloggerfactory->get_logger_for_world($world));
+            } else if ($this->collectionloggerfactory instanceof context_collection_logger_factory) {
+                $world->set_collection_logger($this->collectionloggerfactory->get_logger_from_context($world->get_context()));
             }
 
             $this->worlds[$courseid] = $world;
@@ -128,8 +130,18 @@ class default_course_world_factory implements course_world_factory {
      * Set the collection logger factory.
      *
      * @param context_collection_logger_factory $factory The factory.
+     * @deprecated Since XP 21, use set_logger_factory instead.
      */
     public function set_context_collection_logger_factory(context_collection_logger_factory $factory) {
+        $this->collectionloggerfactory = $factory;
+    }
+
+    /**
+     * Set the logger factory.
+     *
+     * @param object $factory The factory.
+     */
+    public function set_logger_factory($factory) {
         $this->collectionloggerfactory = $factory;
     }
 }

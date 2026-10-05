@@ -683,5 +683,40 @@ function xmldb_block_xp_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2026041700, 'xp');
     }
 
+    if ($oldversion < 2026082301) {
+        // Delete old-style preferences used in user flags.
+        $DB->delete_records_select('user_preferences', $DB->sql_like('name', ':prefname'), [
+            'prefname' => $DB->sql_like_escape('block_xp-notice-block_intro_') . '%',
+        ]);
+
+        // Xp savepoint reached.
+        upgrade_block_savepoint(true, 2026082301, 'xp');
+    }
+
+    if ($oldversion < 2026082302) {
+        // Delete plugin config used in removed block setting migration.
+        $DB->delete_records_select('config_plugins', 'plugin = :plugin AND ' . $DB->sql_like('name', ':configname'), [
+            'plugin' => 'block_xp',
+            'configname' => $DB->sql_like_escape('block_configdata_migrated_') . '%',
+        ]);
+
+        // Xp savepoint reached.
+        upgrade_block_savepoint(true, 2026082302, 'xp');
+    }
+
+    if ($oldversion < 2026082312) {
+        // Define field sourceruleid to be added to block_xp_rule.
+        $table = new xmldb_table('block_xp_rule');
+        $field = new xmldb_field('sourceruleid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'childcontextid');
+
+        // Conditionally launch add field sourceruleid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Xp savepoint reached.
+        upgrade_block_savepoint(true, 2026082312, 'xp');
+    }
+
     return true;
 }

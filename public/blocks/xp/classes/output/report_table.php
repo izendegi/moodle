@@ -30,21 +30,28 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/tablelib.php');
 
 use action_menu_link;
-use context_course;
-use context_helper;
 use moodle_database;
 use moodle_url;
 use pix_icon;
 use renderer_base;
-use stdClass;
 use table_sql;
 use block_xp\di;
-use block_xp\local\course_world;
+use block_xp\local\world;
+use block_xp\local\navigation\navigator;
 use block_xp\local\permission\access_logs_permissions;
 use block_xp\local\routing\url_resolver;
-use block_xp\local\utils\user_utils;
-use block_xp\local\xp\course_user_state_store;
+use block_xp\local\sql\limit;
+use block_xp\local\userfilter\group_members;
+use block_xp\local\userfilter\nobody;
+use block_xp\local\utils\world_utils;
+use block_xp\local\xp\state;
+use block_xp\local\xp\state_store_query;
+use block_xp\local\xp\state_store_with_delete;
+use block_xp\local\xp\state_store_with_query;
+use block_xp\local\xp\state_with_presence;
 use block_xp\local\xp\state_with_subject;
+use block_xp\local\xp\state_with_user;
+use context_course;
 
 /**
  * Block XP report table class.
@@ -56,12 +63,14 @@ use block_xp\local\xp\state_with_subject;
 class report_table extends table_sql {
     /** @var moodle_database The DB. */
     protected $db;
-    /** @var \block_xp\local\course_world The world. */
+    /** @var \block_xp\local\world The world. */
     protected $world = null;
-    /** @var \block_xp\local\xp\course_user_state_store The store. */
+    /** @var state_store_with_query The store. */
     protected $store = null;
     /** @var access_logs_permissions|null The log access permissions. */
     protected $logaccessperms = null;
+    /** @var navigator The navigator. */
+    protected $navigator;
     /** @var renderer_base The renderer. */
     protected $renderer = null;
     /** @var url_resolver The URL resolver. */
@@ -75,16 +84,16 @@ class report_table extends table_sql {
      * Constructor.
      *
      * @param moodle_database $db The DB.
-     * @param course_world $world The world.
+     * @param world $world The world.
      * @param renderer_base $renderer The renderer.
-     * @param course_user_state_store $store The store.
+     * @param state_store_with_query $store The store.
      * @param int $groupid The group ID.
      */
     public function __construct(
         moodle_database $db,
-        course_world $world,
+        world $world,
         renderer_base $renderer,
-        course_user_state_store $store,
+        state_store_with_query $store,
         $groupid
     ) {
 
@@ -96,6 +105,7 @@ class report_table extends table_sql {
         $this->renderer = $renderer;
         $this->store = $store;
         $this->urlresolver = di::get('url_resolver');
+        $this->navigator = di::get('world_navigator_factory')->get_navigator_for_world($world);
 
         $accessperms = $this->world->get_access_permissions();
         if ($accessperms instanceof access_logs_permissions) {
@@ -120,60 +130,11 @@ class report_table extends table_sql {
         $this->sortable(true, 'lvl', SORT_DESC);
         $this->no_sorting('userpic');
         $this->no_sorting('progress');
+        $this->no_sorting('actions');
         $this->collapsible(false);
         $this->set_attribute('class', 'block_xp-report-table');
         $this->column_class('userpic', 'col-userpic');
         $this->column_class('actions', 'col-actions');
-    }
-
-    /**
-     * Initialise the SQL bits.
-     *
-     * @return void
-     */
-    protected function init_sql() {
-        $courseid = $this->world->get_courseid();
-        $context = context_course::instance($courseid);
-        $groupid = $this->groupid;
-
-        // Get all the users that are enrolled and can earn XP.
-        [$enrolledsql, $enrolledparams] = get_enrolled_sql($context, 'block/xp:earnxp', $groupid);
-
-        // Get the users which might not be enrolled or are revoked the permission, but still should
-        // be displayed in the report for the teachers' benefit. We need to filter out the users which
-        // are not a member of the group though.
-        $inxpsql = 'SELECT userid FROM {block_xp} WHERE courseid = :inxpcourseid';
-        $inxpparams = ['inxpcourseid' => $courseid];
-        if (!empty($groupid)) {
-            $inxpsql = 'SELECT b.userid
-                          FROM {block_xp} b
-                          JOIN {groups_members} gm
-                            ON b.userid = gm.userid
-                           AND gm.groupid = :inxpgroupid
-                         WHERE courseid = :inxpcourseid';
-            $inxpparams = ['inxpcourseid' => $courseid, 'inxpgroupid' => $groupid];
-        }
-
-        // User filter.
-        [$usersql, $userparams] = $this->generate_user_filter_sql();
-
-        // Define SQL.
-        $this->sql = new stdClass();
-        $this->sql->fields = user_utils::picture_fields('u') . ', u.idnumber, u.email, u.username, u.suspended, x.xp, ' .
-            context_helper::get_preload_record_columns_sql('ctx');
-        $this->sql->from = "{user} u
-                       JOIN {context} ctx
-                         ON ctx.instanceid = u.id
-                        AND ctx.contextlevel = :contextlevel
-                  LEFT JOIN {block_xp} x
-                         ON (x.userid = u.id AND x.courseid = :courseid)";
-        $this->sql->where = "u.deleted = 0
-                         AND u.id IN (($inxpsql) UNION ($enrolledsql))
-                         AND $usersql";
-        $this->sql->params = array_merge($enrolledparams, $inxpparams, $userparams, [
-            'courseid' => $courseid,
-            'contextlevel' => CONTEXT_USER,
-        ]);
     }
 
     /**
@@ -193,64 +154,6 @@ class report_table extends table_sql {
             $cols['actions'] = '';
         }
         return $cols;
-    }
-
-    /**
-     * Generate the user filter SQL.
-     *
-     * @return array
-     */
-    protected function generate_user_filter_sql() {
-        $filterset = $this->get_filterset();
-        if (!$filterset || !$filterset->has_filter('term')) {
-            return ['1=1', []];
-        }
-
-        $term = trim($filterset->get_filter('term')->current());
-        if (empty($term)) {
-            return ['1=1', []];
-        }
-
-        $wheres = [];
-        $params = [];
-
-        $nameoptions = [
-            ['firstname' => $term],
-            ['lastname' => $term],
-        ];
-        $nameparts = explode(' ', $term);
-        if (count($nameparts) > 1) {
-            for ($i = 0; $i < count($nameparts) - 1; $i++) {
-                $nameoptions[] = [
-                    'firstname' => implode(' ', array_slice($nameparts, 0, $i + 1)),
-                    'lastname' => implode(' ', array_slice($nameparts, $i + 1)),
-                ];
-            }
-        }
-        foreach ($nameoptions as $i => $option) {
-            $subparams = [];
-            $subsql = [];
-            if (!empty($option['firstname'])) {
-                $paramname = 'usertermfn' . $i;
-                $subsql[] = $this->db->sql_like("u.firstname", ':' . $paramname, false, false);
-                $subparams[$paramname] = $this->db->sql_like_escape($option['firstname']) . '%';
-            }
-            if (!empty($option['lastname'])) {
-                $paramname = 'usertermln' . $i;
-                $subsql[] = $this->db->sql_like("u.lastname", ':' . $paramname, false, false);
-                $subparams[$paramname] = $this->db->sql_like_escape($option['lastname']) . '%';
-            }
-            if (!empty($subsql)) {
-                $wheres[] = '(' . implode(' AND ', $subsql) . ')';
-                $params = array_merge($params, $subparams);
-            }
-        }
-
-        if (empty($wheres)) {
-            return ['1=1', []];
-        }
-
-        return ['((' . implode(') OR (', $wheres) . '))', $params];
     }
 
     /**
@@ -288,53 +191,34 @@ class report_table extends table_sql {
     }
 
     /**
-     * Override to add states.
-     *
-     * @return void
-     */
-    public function build_table() {
-        if (!$this->rawdata) {
-            return;
-        }
-
-        foreach ($this->rawdata as $row) {
-            $row->state = $this->make_state_from_record($row);
-            $row->lvl = $row->state->get_level()->get_level();
-
-            $formattedrow = $this->format_row($row);
-            $this->add_data_keyed(
-                $formattedrow,
-                $this->get_row_class($row)
-            );
-        }
-    }
-
-    /**
      * Get the actions for row.
      *
-     * @param stdClass $row Table row.
+     * @param state_with_user $state The state.
      * @return action_menu_link[] List of actions.
      */
-    protected function get_row_actions($row) {
+    protected function get_row_actions($state) {
         $actions = [];
+        $supportspointchanges = world_utils::supports_local_points_management($this->world);
 
-        $actions[] = new action_menu_link(
-            $this->baseurl,
-            new pix_icon('t/edit', get_string('edit', 'core')),
-            get_string('edit', 'core'),
-            false,
-            [
-                'data-xp-action' => 'open-form',
-                'data-form-class' => 'block_xp\form\user_xp',
-                'data-form-args__contextid' => $this->world->get_context()->id,
-                'data-form-args__userid' => $row->id,
-                'data-modal-title' => get_string('edita', 'core', fullname($row)),
-            ]
-        );
+        if ($supportspointchanges) {
+            $actions[] = new action_menu_link(
+                $this->baseurl,
+                new pix_icon('t/edit', get_string('edit', 'core')),
+                get_string('edit', 'core'),
+                false,
+                [
+                    'data-xp-action' => 'open-form',
+                    'data-form-class' => 'block_xp\form\user_xp',
+                    'data-form-args__contextid' => $this->world->get_context()->id,
+                    'data-form-args__userid' => $state->get_id(),
+                    'data-modal-title' => get_string('edita', 'core', fullname($state->get_user())),
+                ]
+            );
+        }
 
         if ($this->logaccessperms && $this->logaccessperms->can_access_logs()) {
-            $url = $this->urlresolver->reverse('log', ['courseid' => $this->world->get_courseid()]);
-            $url->param('userid', $row->id);
+            $url = $this->navigator->get_url('log');
+            $url->param('userid', $state->get_id());
             $actions[] = new action_menu_link(
                 $url,
                 new pix_icon('t/log', get_string('logs', 'core')),
@@ -342,8 +226,11 @@ class report_table extends table_sql {
             );
         }
 
-        if (isset($row->xp)) {
-            $url = new moodle_url($this->baseurl, ['action' => '', 'delete' => 1, 'userid' => $row->id]);
+        if (
+            $supportspointchanges && $this->store instanceof state_store_with_delete
+                && $state instanceof state_with_presence && $state->is_present()
+        ) {
+            $url = new moodle_url($this->baseurl, ['action' => '', 'delete' => 1, 'userid' => $state->get_id()]);
             $action = new action_menu_link(
                 $url,
                 new pix_icon('t/delete', get_string('delete', 'core')),
@@ -359,26 +246,27 @@ class report_table extends table_sql {
     /**
      * Formats the column actions.
      *
-     * @param stdClass $row Table row.
+     * @param state_with_user $state The state.
      * @return string Output produced.
      */
-    protected function col_actions($row) {
-        $actions = $this->get_row_actions($row);
+    protected function col_actions($state) {
+        $actions = $this->get_row_actions($state);
         if (empty($actions)) {
             return '';
         }
-        return $this->renderer->control_menu($this->get_row_actions($row));
+        return $this->renderer->control_menu($actions);
     }
 
     /**
      * Formats the column.
      *
-     * @param stdClass $row Table row.
+     * @param state_with_user $state The state.
      * @return string Output produced.
      */
-    public function col_fullname($row) {
-        $o = parent::col_fullname($row);
-        if ($row->suspended) {
+    public function col_fullname($state) {
+        $user = $state->get_user();
+        $o = parent::col_fullname($user);
+        if ($user->suspended) {
             $o .= ' (' . get_string('suspended', 'core') . ')';
         }
         return $o;
@@ -387,82 +275,72 @@ class report_table extends table_sql {
     /**
      * Formats the column level.
      *
-     * @param stdClass $row Table row.
+     * @param state $state The state.
      * @return string Output produced.
      */
-    protected function col_lvl($row) {
-        return isset($row->xp) ? $row->lvl : '-';
+    protected function col_lvl($state) {
+        if ($state instanceof state_with_presence && !$state->is_present()) {
+            return '-';
+        }
+        return $state->get_level()->get_level();
     }
 
     /**
      * Formats the column progress.
      *
-     * @param stdClass $row Table row.
+     * @param state $state The state.
      * @return string Output produced.
      */
-    protected function col_progress($row) {
-        return $this->renderer->progress_bar($row->state);
+    protected function col_progress($state) {
+        return $this->renderer->progress_bar($state);
     }
 
     /**
      * Formats the column XP.
      *
-     * @param stdClass $row Table row.
+     * @param state $state The state.
      * @return string Output produced.
      */
-    protected function col_xp($row) {
-        return isset($row->xp) ? $this->renderer->xp($row->xp) : '-';
+    protected function col_xp($state) {
+        if ($state instanceof state_with_presence && !$state->is_present()) {
+            return '-';
+        }
+        return $this->renderer->xp($state->get_xp());
     }
 
     /**
      * Formats the column userpic.
      *
-     * @param stdClass $row Table row.
+     * @param state $state The state.
      * @return string Output produced.
      */
-    protected function col_userpic($row) {
+    protected function col_userpic($state) {
         $picture = null;
         $link = null;
-        if ($row->state instanceof state_with_subject) {
-            $picture = $row->state->get_picture();
-            $link = $row->state->get_link();
+        if ($state instanceof state_with_subject) {
+            $picture = $state->get_picture();
+            $link = $state->get_link();
         }
         return $this->renderer->user_avatar($picture, $link);
     }
 
     /**
-     * Make state from record.
+     * Escape a string.
      *
-     * @param stdClass $row Table row.
-     * @return user_state
+     * @param ?string $value
+     * @param bool $preventdoubleencoding.
+     * @return string Safe for HTML.
      */
-    protected function make_state_from_record($row) {
-        return $this->store->make_state_from_record($row, 'id');
-    }
-
-    /**
-     * Construct the ORDER BY clause.
-     *
-     * We override this to ensure that XP set to null appears at the bottom, not the top.
-     *
-     * @param array $cols The columns.
-     * @param array $textsortcols The text columns.
-     * @return string
-     */
-    public static function construct_order_by($cols, $textsortcols = []) {
-        $newcols = [];
-
-        // We use a foreach to maintain the order in which the fields were defined.
-        foreach ($cols as $field => $sortorder) {
-            if ($field === 'xp' || $field === 'lvl') {
-                $field = 'COALESCE(xp, 0)';
+    protected function escape($value, bool $preventdoubleencoding = false) {
+        $value ??= '';
+        if (!$this->is_downloading() || $this->export_class_instance()->supports_html()) {
+            if ($preventdoubleencoding) {
+                $value = html_entity_decode($value, ENT_COMPAT);
             }
-            $newcols[$field] = $sortorder;
+            return s($value);
         }
-
-        return parent::construct_order_by($newcols, $textsortcols);
+        return $value;
     }
-
     /**
      * Get the columns to sort by.
      *
@@ -488,26 +366,45 @@ class report_table extends table_sql {
     }
 
     /**
-     * Get SQL sort.
+     * Make the query from the table filters and sorting preferences.
      *
-     * Must be overridden because otherwise it calls the parent 'construct_order_by()'.
-     *
-     * @return string
+     * @return state_store_query
      */
-    public function get_sql_sort() {
-        return static::construct_order_by($this->get_sort_columns(), []);
+    protected function make_query(): state_store_query {
+        $query = new state_store_query();
+        $filterset = $this->get_filterset();
+        if ($filterset && $filterset->has_filter('term')) {
+            $query->set_term($filterset->get_filter('term')->current());
+        }
+
+        if ($this->groupid < 0) {
+            $query->set_user_filter(new nobody());
+        } else if ($this->groupid > 0) {
+            $query->set_user_filter(new group_members($this->groupid));
+        }
+
+        foreach ($this->get_sort_columns() as $field => $direction) {
+            $field = $field === 'lvl' ? 'xp' : $field;
+            $query->add_order_by($field, $direction === SORT_ASC ? SORT_ASC : SORT_DESC);
+        }
+
+        return $query;
     }
 
     /**
-     * Out.
+     * Load states for the table.
      *
      * @param int $pagesize The page size.
-     * @param bool $initialbars Whether to use initial bars.
-     * @param string $downloadhelpbutton What is this?
+     * @param bool $useinitialsbar Whether to use initial bars (unused).
      */
-    public function out($pagesize, $initialbars, $downloadhelpbutton = '') {
-        $this->init_sql();
-        return parent::out($pagesize, $initialbars, $downloadhelpbutton);
+    public function query_db($pagesize, $useinitialsbar = true) {
+        $query = $this->make_query();
+        $limit = new limit(0);
+        if (!$this->is_downloading()) {
+            $this->pagesize($pagesize, $this->store->count($query));
+            $limit = new limit($this->get_page_size(), $this->get_page_start());
+        }
+        $this->rawdata = $this->store->list($query, $limit);
     }
 
     /**
@@ -516,7 +413,7 @@ class report_table extends table_sql {
      * @return void
      */
     public function print_nothing_to_display() {
-        $issite = di::get('config')->get('context') == CONTEXT_SYSTEM && $this->world->get_courseid() == SITEID;
+        $issite = $this->world->get_context()->contextlevel != CONTEXT_COURSE;
         $hasfilters = false;
         $showfilters = false;
 
