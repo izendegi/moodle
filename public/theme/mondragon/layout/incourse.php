@@ -14,12 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Layout of the pages inside a course: the SCORM player at full screen, Moove for everything else.
+ *
+ * @package    theme_mondragon
+ * @copyright  2026 3iPunt (contacte@tresipunt.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+use core\context\course;
+use core\navigation\output\primary;
 use theme_moove\util\settings;
 
 defined('MOODLE_INTERNAL') || die();
-global $CFG, $PAGE, $OUTPUT, $SITE;
 
-if ($PAGE->pagetype === 'mod-scorm-player' &&
+if (
+    $PAGE->pagetype === 'mod-scorm-player' &&
     $PAGE->pagelayout === 'incourse' &&
     $PAGE->cm->modname === 'scorm' &&
     (strpos($PAGE->url->get_path(), '/mod/scorm/player.php') !== false) &&
@@ -27,13 +37,13 @@ if ($PAGE->pagetype === 'mod-scorm-player' &&
 ) {
     $extraclasses = ['scorm-fullscreen'];
     $bodyattributes = $OUTPUT->body_attributes($extraclasses);
-    $primary = new core\navigation\output\primary($PAGE);
+    $primary = new primary($PAGE);
     $renderer = $PAGE->get_renderer('core');
     $primarymenu = $primary->export_for_template($renderer);
     $header = $PAGE->activityheader;
     $headercontent = $header->export_for_template($renderer);
     $templatecontext = [
-        'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
+        'sitename' => format_string($SITE->shortname, true, ['context' => course::instance(SITEID), "escape" => false]),
         'output' => $OUTPUT,
         'sidepreblocks' => '',
         'hasblocks' => false,
@@ -52,7 +62,7 @@ if ($PAGE->pagetype === 'mod-scorm-player' &&
         'overflow' => '',
         'headercontent' => $headercontent,
         'addblockbutton' => false,
-        'backcourseurl' => (new moodle_url('/course/view.php', ['id' => $PAGE->cm->course]))->out()
+        'backcourseurl' => (new moodle_url('/course/view.php', ['id' => $PAGE->cm->course]))->out(),
     ];
 
     $themesettings = new settings();
@@ -61,5 +71,6 @@ if ($PAGE->pagetype === 'mod-scorm-player' &&
 
     echo $OUTPUT->render_from_template('theme_mondragon/scormfullscreen', $templatecontext);
 } else {
-    include($CFG->dirroot . '/theme/moove/layout/course.php');
+    // Moove 5.1 has no incourse layout of its own: it inherits Boost's, which is drawers.php.
+    require($CFG->dirroot . '/theme/moove/layout/drawers.php');
 }

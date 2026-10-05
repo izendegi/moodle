@@ -14,14 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Theme callbacks.
+ *
+ * Every callback hands over to Moove with Moove's own config, so the settings of Moove (brand
+ * colour, logo, presets, raw SCSS…) keep driving this theme.
+ *
+ * @package    theme_mondragon
+ * @copyright  2026 3iPunt (contacte@tresipunt.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
+
 global $CFG;
 require_once($CFG->dirroot . '/theme/moove/lib.php');
 
 /**
- * @param $theme
+ * Returns the extra SCSS of Moove.
+ *
+ * @param theme_config $theme The theme config object.
  * @return string
- * @throws coding_exception
  */
 function theme_mondragon_get_extra_scss($theme): string {
     $mooveconfig = theme_config::load('moove');
@@ -29,24 +42,30 @@ function theme_mondragon_get_extra_scss($theme): string {
 }
 
 /**
- * @param $theme
+ * Returns the pre SCSS of Moove.
+ *
+ * @param theme_config $theme The theme config object.
  * @return string
- * @throws coding_exception
  */
 function theme_mondragon_get_pre_scss($theme): string {
     $mooveconfig = theme_config::load('moove');
     return theme_moove_get_pre_scss($mooveconfig);
 }
 
+/**
+ * Returns the precompiled CSS of Moove.
+ *
+ * @return string
+ */
 function theme_mondragon_get_precompiled_css(): string {
-    global $CFG;
     return theme_moove_get_precompiled_css();
 }
 
 /**
- * @param $theme
+ * Returns the main SCSS of Moove followed by the SCSS of this theme.
+ *
+ * @param theme_config $theme The theme config object.
  * @return string
- * @throws coding_exception
  */
 function theme_mondragon_get_main_scss_content($theme): string {
     global $CFG;
@@ -57,49 +76,17 @@ function theme_mondragon_get_main_scss_content($theme): string {
 }
 
 /**
- * @param $course
- * @param $cm
- * @param $context
- * @param $filearea
- * @param $args
- * @param $forcedownload
- * @param array $options
- * @return bool|void
- * @throws coding_exception
- * @throws moodle_exception
+ * Serves the files of the theme settings, which are the files of Moove.
+ *
+ * @param stdClass $course The course object.
+ * @param stdClass $cm The course module object.
+ * @param context $context The context.
+ * @param string $filearea The name of the file area.
+ * @param array $args Extra arguments (itemid, path).
+ * @param bool $forcedownload Whether or not force download.
+ * @param array $options Additional options affecting the file serving.
+ * @return bool
  */
-function theme_mondragon_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = array()) {
-    $theme = theme_config::load('moove');
-
-    if ($context->contextlevel === CONTEXT_SYSTEM &&
-        ($filearea === 'logo' || $filearea === 'loginbgimg' || $filearea == 'favicon')) {
-        $theme = theme_config::load('moove');
-        // By default, theme files must be cache-able by both browsers and proxies.
-        if (!array_key_exists('cacheability', $options)) {
-            $options['cacheability'] = 'public';
-        }
-        return $theme->setting_file_serve($filearea, $args, $forcedownload, $options);
-    }
-
-    if ($context->contextlevel === CONTEXT_SYSTEM && preg_match("/^sliderimage[1-9][0-9]?$/", $filearea) !== false) {
-        return $theme->setting_file_serve($filearea, $args, $forcedownload, $options);
-    }
-
-    if ($context->contextlevel === CONTEXT_SYSTEM && $filearea === 'marketing1icon') {
-        return $theme->setting_file_serve('marketing1icon', $args, $forcedownload, $options);
-    }
-
-    if ($context->contextlevel === CONTEXT_SYSTEM && $filearea === 'marketing2icon') {
-        return $theme->setting_file_serve('marketing2icon', $args, $forcedownload, $options);
-    }
-
-    if ($context->contextlevel === CONTEXT_SYSTEM && $filearea === 'marketing3icon') {
-        return $theme->setting_file_serve('marketing3icon', $args, $forcedownload, $options);
-    }
-
-    if ($context->contextlevel === CONTEXT_SYSTEM && $filearea === 'marketing4icon') {
-        return $theme->setting_file_serve('marketing4icon', $args, $forcedownload, $options);
-    }
-
-    send_file_not_found();
+function theme_mondragon_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
+    return theme_moove_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, $options);
 }

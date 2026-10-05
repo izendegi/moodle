@@ -84,7 +84,7 @@ a:hover,
 }
 .activity-add, .block-add {
 	color: $brand-primary;
-	background-color: lighten($brand-primary, 80%);
+	background-color: lighten($brand-primary, 58%);
 	border-color: $brand-primary;
 	&:hover {
 		background-color: lighten($brand-primary, 40%);
@@ -494,5 +494,14 @@ a#hidebankcmd {
 				}
 			}
 		}
+	}
+}
+
+/* format_flow on the full screen player ── .format-flow--scormnav, .format-flow--topofbody */
+#page-mod-scorm-player.scorm-fullscreen {
+	--flow-scormnav-height: 0px;
+	.format-flow--scormnav,
+	.format-flow--topofbody {
+		display: none;
 	}
 }
