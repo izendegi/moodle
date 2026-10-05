@@ -22,9 +22,13 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/adminlib.php');
 
 use block_xp\di;
+use block_xp\local\course_world;
 use html_writer;
 use block_xp\local\routing\url;
+use block_xp\local\routing\url_resolver;
 use block_xp\local\utils\text_utils;
+use block_xp\local\world;
+use context_system;
 use core\output\notification;
 use moodle_url;
 
@@ -40,7 +44,7 @@ class promo_controller extends route_controller {
     /** Seen flag. */
     const SEEN_FLAG = 'promo-page-seen';
     /** Page version. */
-    const VERSION = 20260818;
+    const VERSION = 20260929;
 
     /** @var string The normal route name. */
     protected $routename = 'promo';
@@ -93,9 +97,12 @@ class promo_controller extends route_controller {
      */
     protected function page_course_navigation() {
         $output = $this->get_renderer();
-        $items = di::get('course_world_navigation_factory')->get_course_navigation($this->world);
+        $navigator = di::get('world_navigator_factory')->get_navigator_for_world($this->world);
+        $items = $navigator->get_navigation();
         if (count($items) > 1) {
-            return $output->tab_navigation($items, $this->routename);
+            return $output->tab_navigation(array_map(static function ($item) {
+                return $item->as_array();
+            }, $items), $this->routename);
         }
         return '';
     }
@@ -108,7 +115,12 @@ class promo_controller extends route_controller {
     protected function post_login() {
         $this->urlresolver = \block_xp\di::get('url_resolver');
         if (!$this->is_admin_page()) {
-            $this->world = \block_xp\di::get('course_world_factory')->get_world($this->get_param('courseid'));
+            $courseid = $this->get_param('courseid');
+            if ($courseid == SITEID) {
+                $this->world = \block_xp\di::get('context_world_factory')->get_world_from_context(context_system::instance());
+            } else {
+                $this->world = \block_xp\di::get('course_world_factory')->get_world($courseid);
+            }
         }
     }
 
@@ -120,6 +132,25 @@ class promo_controller extends route_controller {
      */
     protected function permissions_checks() {
         if (!$this->is_admin_page()) {
+            if ($this->world instanceof course_world) {
+                $contextmode = di::get('config')->get('context');
+                $issiteid = $this->get_param('courseid') == SITEID;
+
+                if ($contextmode == CONTEXT_COURSE && $issiteid) {
+                    throw new \moodle_exception(
+                        'errorcontextcoursemismatchpercourse',
+                        'block_xp',
+                        (new moodle_url('/'))->out(false)
+                    );
+                } else if ($contextmode == CONTEXT_SYSTEM && !$issiteid) {
+                    $nexturl = $this->urlresolver->reverse($this->routename, ['courseid' => SITEID]);
+                    throw new \moodle_exception(
+                        'errorcontextcoursemismatchforwholesite',
+                        'block_xp',
+                        $nexturl->get_compatible_url()->out(false)
+                    );
+                }
+            }
             $this->world->get_access_permissions()->require_manage();
         }
     }
@@ -372,5 +403,14 @@ class promo_controller extends route_controller {
 
         $indicator = \block_xp\di::get('user_generic_indicator');
         $value = $indicator->set_user_flag($USER->id, self::SEEN_FLAG, self::VERSION);
+    }
+
+    /**
+     * Footer.
+     *
+     * @return void
+     */
+    final protected function footer() {
+        echo $this->get_renderer()->render_from_template('block_xp/xp-footer', []);
     }
 }

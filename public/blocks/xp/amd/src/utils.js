@@ -24,6 +24,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+import * as Ajax from 'core/ajax';
+
 /**
  * Copy to clipboard.
  *
@@ -117,4 +119,15 @@ function setAtDepth(obj, keys, value) {
     currentObj[lastKey] = value;
 
     return obj;
+}
+
+/**
+ * Ajax call shorthand.
+ *
+ * @param {String} method The method.
+ * @param {Object} args The arguments.
+ * @returns {Promise}
+ */
+export function ws(method, args) {
+    return Ajax.call([{methodname: method, args: args}])[0];
 }
