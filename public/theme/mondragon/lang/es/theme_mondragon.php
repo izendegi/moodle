@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Strings for component 'theme_mondragon', language 'es'.
+ *
+ * @package    theme_mondragon
+ * @copyright  2026 3iPunt (contacte@tresipunt.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
-$string['pluginname'] = 'Mondragon';
-$string['configtitle'] = 'Mondragon';
-$string['choosereadme'] = 'Mondragon es un tema hijo de Moove que aprovecha todas sus características, y añade algunas extra como el visor Scorm a pantalla completa.';
-$string['scormviewconfig'] = 'Configuración de la vista del reproductor Scorm';
+
 $string['activescormview'] = 'Activar visualización de Scorm a pantalla completa';
 $string['activescormview_desc'] = 'Si está activada, los Scorms pasarán a verse a pantalla completa, <b>siempre y cuando cumplan la siguiente configuración de Apariencia</b>:
 <ul>
@@ -31,3 +36,8 @@ También se recomienda tener la siguiente configuración aplicada, para el corre
     <li><b>Mostrar nombre de la actividad:</b> Desactivado (aunque esté habilitado, no se mostrará)</li>
 </ul>';
 $string['back_to_course'] = 'Volver';
+$string['choosereadme'] = 'Mondragon es un tema hijo de Moove que aprovecha todas sus características, y añade algunas extra como el visor Scorm a pantalla completa.';
+$string['configtitle'] = 'Mondragon';
+$string['pluginname'] = 'Mondragon';
+$string['privacy:metadata'] = 'El tema Mondragon no almacena ningún dato personal.';
+$string['scormviewconfig'] = 'Configuración de la vista del reproductor Scorm';
