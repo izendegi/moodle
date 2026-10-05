@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Strings for component 'theme_mondragon', language 'eu'.
+ *
+ * @package    theme_mondragon
+ * @copyright  2026 3iPunt (contacte@tresipunt.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
-$string['pluginname'] = 'Mondragon';
-$string['configtitle'] = 'Mondragon';
-$string['choosereadme'] = 'Mondragon Moove azalaren menpeko azala da, eta bere funtzionalitateei beste batzuk gehitzen dizkio, hala nola SCORM modulua pantaila osoan ikusteko aukera.';
-$string['scormviewconfig'] = 'SCORM erreproduzitzailearen ikuspegiaren konfigurazioa';
+
 $string['activescormview'] = 'Gaitu SCORMen pantaila osoko ikuspegia';
 $string['activescormview_desc'] = 'Gaituz gero, SCORMak pantaila osoan erakutsiko dira, <b>betiere hurrengo Itxura ezarpenak betetzen badituzte</b>:
 <ul>
@@ -31,3 +36,8 @@ Funtzionamendu egokia izateko kontu hartu ezazu ezarpen honek hurrengo bi ezarpe
     <li><b>Erakutsi jardueraren izena:</b> Desgaituta (gaituta egonda ere ez da erakutsiko)</li>
 </ul>';
 $string['back_to_course'] = 'Itzuli ikastarora';
+$string['choosereadme'] = 'Mondragon Moove azalaren menpeko azala da, eta bere funtzionalitateei beste batzuk gehitzen dizkio, hala nola SCORM modulua pantaila osoan ikusteko aukera.';
+$string['configtitle'] = 'Mondragon';
+$string['pluginname'] = 'Mondragon';
+$string['privacy:metadata'] = 'Mondragon gaiak ez du datu pertsonalik biltzen.';
+$string['scormviewconfig'] = 'SCORM erreproduzitzailearen ikuspegiaren konfigurazioa';
