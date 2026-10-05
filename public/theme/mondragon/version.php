@@ -14,13 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Version details.
+ *
+ * @package    theme_mondragon
+ * @copyright  2026 3iPunt (contacte@tresipunt.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'theme_mondragon';
-
-$plugin->version = 2024022600;
+$plugin->version = 2026100200;
+$plugin->release = '2.0.0';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->requires = 2023041800;
+$plugin->requires = 2025100600;
 $plugin->dependencies = [
-    'theme_moove' => 2023051000
+    'theme_moove' => 2025093001,
 ];
