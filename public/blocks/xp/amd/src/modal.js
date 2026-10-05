@@ -48,6 +48,19 @@ export async function createConfirmModal(config) {
 }
 
 /**
+ * Create an information modal.
+ *
+ * @param {Object} config
+ * @returns {Promise<Modal>}
+ */
+export async function createInfoModal(config) {
+    const modal = await Compat.createModal(config, ModalCancel);
+    modal.getRoot()[0].classList.add('block_xp');
+    modal.setButtonText('cancel', Str.get_string('closebuttontitle', 'core'));
+    return modal;
+}
+
+/**
  * Create a save/cancel modal.
  *
  * @param {Object} config

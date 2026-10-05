@@ -16,19 +16,11 @@
 //
 // See <https://levelup.plus>.
 
-/**
- * File storage badge URL resolver.
- *
- * @package    block_xp
- * @copyright  2017 Frédéric Massart
- * @author     Frédéric Massart <fred@branchup.tech>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace block_xp\local\xp;
 
 use context;
 use moodle_url;
+use stored_file;
 
 /**
  * File storage badge URL resolver.
@@ -60,7 +52,7 @@ class file_storage_badge_url_resolver implements badge_url_resolver {
      * @param context $context The context.
      * @param string $component The component.
      * @param string $filearea The file area.
-     * @param int $itemid The item ID, or null to search through the entire area.
+     * @param ?int $itemid The item ID, or null to search through the entire area.
      */
     public function __construct(context $context, $component, $filearea, $itemid = null) {
         $this->context = $context;
@@ -104,7 +96,14 @@ class file_storage_badge_url_resolver implements badge_url_resolver {
 
         $fs = get_file_storage();
         $files = [];
-        $allfiles = $fs->get_area_files($this->context->id, $this->component, $this->filearea, $this->itemid, 'filename', false);
+        $allfiles = $fs->get_area_files(
+            $this->context->id,
+            $this->component,
+            $this->filearea,
+            $this->itemid ?? false,
+            'filename',
+            false
+        );
 
         foreach ($allfiles as $file) {
             if (strpos($file->get_mimetype(), 'image/') !== 0) {

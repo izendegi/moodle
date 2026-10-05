@@ -40,7 +40,7 @@ use html_writer;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class route_controller implements controller {
-    /** @var \block_xp\local\request The request. */
+    /** @var \block_xp\local\routing\request The request. */
     protected $request;
     /** @var url The page URL, not relative to the router. */
     protected $pageurl;
@@ -245,16 +245,25 @@ abstract class route_controller implements controller {
     abstract protected function content();
 
     /**
+     * Footer.
+     *
+     * @return void
+     */
+    protected function footer() {
+    }
+
+    /**
      * Finalise the output.
      *
      * @return void
      */
     final protected function end() {
         global $PAGE;
+
+        $this->footer();
         echo html_writer::end_div();
 
         $PAGE->requires->js_call_amd('block_xp/modal-form', 'registerSimpleOpenFormActionObserver');
-
         echo $this->get_renderer()->footer();
     }
 
