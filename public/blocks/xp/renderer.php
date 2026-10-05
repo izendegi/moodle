@@ -202,7 +202,7 @@ class block_xp_renderer extends plugin_renderer_base {
         return html_writer::tag(
             'div',
             $this->heading($text, $options['level'], 'xp-m-0'),
-            ['class' => 'xp-mb-6 xp-mt-8 xp-border-0 xp-border-solid xp-border-t xp-border-gray-100 xp-pt-8']
+            ['class' => 'xp-mb-6 xp-mt-8 xp-border-0 xp-border-solid xp-border-t dark:xp-border-gray-800 xp-pt-8']
         );
     }
 
@@ -346,9 +346,9 @@ class block_xp_renderer extends plugin_renderer_base {
 
         $o .= html_writer::start_div('xp-grid xp-gap-2 xp-grid-cols-6 sm:xp-grid-cols-10');
         foreach ($levels as $level) {
-            $o .= html_writer::start_div('xp-relative xp-bg-gray-100 xp-rounded xp-p-1');
+            $o .= html_writer::start_div('xp-relative xp-bg-gray-100 dark:xp-bg-gray-800 xp-rounded xp-p-1');
             $o .= html_writer::div('' . $level->get_level(), 'xp-whitespace-nowrap xp-text-center xp-mb-1 xp-absolute'
-                . ' xp-top-0.5 xp-left-0.5 xp-text-2xs xp-text-gray-500');
+                . ' xp-top-0.5 xp-left-0.5 xp-text-2xs xp-text-gray-500 dark:xp-text-gray-400');
             $o .= $this->small_level_badge($level);
             $o .= html_writer::end_div();
         }
@@ -399,36 +399,18 @@ class block_xp_renderer extends plugin_renderer_base {
         if ($notice) {
             [$flag, $textfn] = $notice;
 
-            if ($CFG->branch >= 403) {
-                $this->page->requires->js_amd_inline("require(['core_user/repository'], function(UserRepo) {
-                    const flag = '$flag';
-                    const n = document.querySelector('.block-xp-rocks');
-                    if (!n) return;
-                    n.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        UserRepo.setUserPreference(flag, true);
-                        const notice = document.querySelector('.block-xp-notices');
-                        if (!notice) return;
-                        notice.style.display = 'none';
-                    });
-                });");
-            } else {
-                require_once($CFG->libdir . '/ajax/ajaxlib.php');
-                user_preference_allow_ajax_update($flag, PARAM_BOOL);
-
-                $this->page->requires->js_amd_inline("require([], function() {
-                    const flag = '$flag';
-                    const n = document.querySelector('.block-xp-rocks');
-                    if (!n) return;
-                    n.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        M.util.set_user_preference(flag, 1);
-                        const notice = document.querySelector('.block-xp-notices');
-                        if (!notice) return;
-                        notice.style.display = 'none';
-                    });
-                });");
-            }
+            $this->page->requires->js_amd_inline("require(['core_user/repository'], function(UserRepo) {
+                const flag = '$flag';
+                const n = document.querySelector('.block-xp-rocks');
+                if (!n) return;
+                n.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    UserRepo.setUserPreference(flag, true);
+                    const notice = document.querySelector('.block-xp-notices');
+                    if (!notice) return;
+                    notice.style.display = 'none';
+                });
+            });");
 
             $icon = new pix_icon('t/close', get_string('dismissnotice', 'block_xp'), 'block_xp');
             $actionicon = $this->action_icon(new moodle_url($this->page->url), $icon, null, ['class' => 'block-xp-rocks']);
@@ -458,14 +440,7 @@ class block_xp_renderer extends plugin_renderer_base {
      * @deprecated Since Level Up XP 3.12, use tab_navigation instead.
      */
     public function course_world_navigation(course_world $world, $page) {
-        debugging('The method course_world_navigation is deprecated, please use tab_navigation instead.', DEBUG_DEVELOPER);
-        $factory = \block_xp\di::get('course_world_navigation_factory');
-        $links = $factory->get_course_navigation($world);
-        // If there is only one page, then that is the page we are on.
-        if (count($links) <= 1) {
-            return '';
-        }
-        return $this->tab_navigation($links, $page);
+        return '';
     }
 
     /**
@@ -483,22 +458,22 @@ class block_xp_renderer extends plugin_renderer_base {
     /**
      * Get the context of the navbar widget.
      *
-     * @param course_world $world The world.
+     * @param world $world The world.
      * @param state $state The user's state.
      * @return array
      */
-    protected function get_navbar_widget_context(course_world $world, state $state) {
-        $urlresolver = \block_xp\di::get('url_resolver');
+    protected function get_navbar_widget_context(world $world, state $state) {
+        $navigator = di::get('world_navigator_factory')->get_navigator_for_world($world);
         $worldconfig = $world->get_config();
 
         $infopageurl = null;
         if ($worldconfig->get('enableinfos')) {
-            $infopageurl = $urlresolver->reverse('infos', ['courseid' => $world->get_courseid()]);
+            $infopageurl = $navigator->get_url('infos');
         }
 
         $leaderboardurl = null;
         if ($worldconfig->get('enableladder')) {
-            $leaderboardurl = $urlresolver->reverse('ladder', ['courseid' => $world->get_courseid()]);
+            $leaderboardurl = $navigator->get_url('ladder');
         }
 
         $validurls = array_filter([$infopageurl, $leaderboardurl]);
@@ -544,11 +519,11 @@ class block_xp_renderer extends plugin_renderer_base {
     /**
      * Navbar widget.
      *
-     * @param course_world $world The world.
+     * @param world $world The world.
      * @param state $state The user's state.
      * @return string
      */
-    public function navbar_widget(course_world $world, state $state) {
+    public function navbar_widget(world $world, state $state) {
         return $this->render_from_template('block_xp/navbar-widget', $this->get_navbar_widget_context($world, $state));
     }
 
@@ -894,43 +869,29 @@ class block_xp_renderer extends plugin_renderer_base {
     /**
      * Render a dismissable notice.
      *
-     * Yes, we cannot use CSS IDs in there because they are stripped out... turns out they
-     * are considered dangerous. Oh well, we use a class instead. Not pretty, but it works...
-     *
      * @param renderable $notice The notice.
      * @return string
      */
     public function render_dismissable_notice(renderable $notice) {
-        $id = html_writer::random_id();
-
-        // Tell the indicator that it should be expecing this notice.
-        $indicator = \block_xp\di::get('user_notice_indicator');
-        if ($indicator instanceof \block_xp\local\indicator\user_indicator_with_acceptance) {
-            $indicator->set_acceptable_user_flag($notice->name);
+        if (!$notice instanceof \block_xp\output\dismissable_notice) {
+            return '';
         }
 
-        $url = \block_xp\di::get('ajax_url_resolver')->reverse('notice/dismiss', ['name' => $notice->name]);
-        $this->page->requires->js_init_call(<<<EOT
-            Y.one('.$id .dismiss-action a').on('click', function(e) {
-                e.preventDefault();
-                Y.one('.$id').hide();
-                var url = '$url';
-                var cfg = {
-                    method: 'POST'
-                };
-                Y.io(url, cfg);
+        $id = html_writer::random_id();
+        $prefname = json_encode($notice->name);
+        $notification = new \core\output\notification($notice->message, $notice->type);
+        $notification->set_extra_classes([$id]);
+        $notification->set_announce(false);
+
+        $this->page->requires->js_amd_inline("
+            require(['jquery', 'core_user/repository'], function(jQuery, UserRepo) {
+                jQuery('.$id').one('close.bs.alert', function() {
+                    UserRepo.setUserPreference($prefname, '1');
+                });
             });
-EOT
-        );
+        ");
 
-        $icon = new pix_icon('t/close', get_string('dismissnotice', 'block_xp'), 'block_xp');
-        $actionicon = $this->action_icon('#', $icon, null);
-        $text = html_writer::div($actionicon, 'dismiss-action') . $notice->message;
-
-        return html_writer::div(
-            $this->notification_without_close($text, $notice->type),
-            'block_xp-dismissable-notice ' . $id
-        );
+        return $this->render($notification);
     }
 
     /**
@@ -1107,9 +1068,9 @@ EOT
         $o .= html_writer::start_div('block_xp-react', ['id' => $id]);
         $o .= html_writer::start_div('block_xp-react-loading');
         $o .= html_writer::start_div('xp-grid xp-grid-cols-2 xp-gap-4 xp-animate-pulse');
-        $o .= html_writeR::div('', 'xp-col-span-2 xp-bg-gray-100 xp-rounded xp-h-4');
-        $o .= html_writeR::div('', 'xp-bg-gray-100 xp-rounded xp-h-4');
-        $o .= html_writeR::div('', 'xp-bg-gray-100 xp-rounded xp-h-4');
+        $o .= html_writeR::div('', 'xp-col-span-2 xp-bg-gray-100 dark:xp-bg-gray-600 xp-rounded xp-h-4');
+        $o .= html_writeR::div('', 'xp-bg-gray-100 dark:xp-bg-gray-600 xp-rounded xp-h-4');
+        $o .= html_writeR::div('', 'xp-bg-gray-100 dark:xp-bg-gray-600 xp-rounded xp-h-4');
         $o .= html_writer::end_div();
         $o .= html_writer::end_div();
         $o .= html_writer::end_div();
@@ -1137,8 +1098,9 @@ EOT
         $worldprops = $props['world'] ?? null;
 
         if ($world) {
+            $navigator = di::get('world_navigator_factory')->get_navigator_for_world($world);
             $courseid = (int) ($world instanceof course_world ? $world->get_courseid() : $this->page->course->id);
-            $addonpromourl = $urlresolver->reverse('promo', ['courseid' => $courseid]);
+            $addonpromourl = $navigator->get_url('promo');
             $worldprops = [
                 'contextid' => (int) $world->get_context()->id,
                 'contextlevel' => (int) $world->get_context()->contextlevel,
@@ -1192,7 +1154,7 @@ EOT
     /**
      * Rules page loading check init.
      *
-     * @return html
+     * @return string HTML
      */
     public function rules_page_loading_check_init() {
         return $this->render_from_template('block_xp/rules-page-loading-error', []);
@@ -1201,7 +1163,7 @@ EOT
     /**
      * Rules page loading check success.
      *
-     * @return html
+     * @return string HTML
      */
     public function rules_page_loading_check_success() {
         return $this->render_from_template('block_xp/rules-page-loading-success', []);
@@ -1244,10 +1206,17 @@ EOT
                 $url = $firstchild['url'];
                 $link = array_merge($link, ['url' => $url]);
             }
-            return new tabobject($link['id'], $link['url'], $link['text'], clean_param($link['text'], PARAM_NOTAGS));
+            $text = $link['text'];
+            if (!empty($link['icon'])) {
+                $text = $this->render($link['icon']) . $text;
+            }
+            if (!empty($link['needsattention'])) {
+                $text .= $this->new_dot();
+            }
+            return new tabobject($link['id'], $link['url'], $text, clean_param($link['text'], PARAM_NOTAGS));
         }, array_filter($items, function ($item) {
-            // Remove the items that define children but do not have any.
-            return !isset($item['children']) || !empty($item['children']);
+            // Remove the items without a URL that define children but do not have any.
+            return !empty($item['url']) || !isset($item['children']) || !empty($item['children']);
         }));
         return html_writer::div($this->tabtree($tabs, $activenode), 'block_xp-page-nav');
     }
@@ -1345,7 +1314,7 @@ EOT
      * @param bool $bright Whether the highlight should be "bright".
      */
     public function xp_highlight($amount, $bright = true) {
-        $colourclass = $bright ? 'xp-bg-yellow-200' : 'xp-bg-gray-200';
+        $colourclass = $bright ? 'xp-bg-yellow-200 dark:xp-text-gray-900' : 'xp-bg-gray-200 dark:xp-bg-gray-600';
         return html_writer::tag(
             'span',
             html_writer::tag('span', $this->xp($amount), [

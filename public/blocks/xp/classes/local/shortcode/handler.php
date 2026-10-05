@@ -216,6 +216,8 @@ class handler {
             return;
         }
 
+        $navigator = di::get('world_navigator_factory')->get_navigator_for_world($world);
+
         // Override the config to disable the neighbours when the top argument is set.
         $configoverride = null;
         if (!empty($args['top'])) {
@@ -254,7 +256,7 @@ class handler {
 
         // Prepare the page.
         if (!$PAGE->has_set_url() && defined('WS_SERVER') && WS_SERVER) {
-            $PAGE->set_url(di::get('url_resolver')->reverse('ladder', ['courseid' => $world->get_courseid()]));
+            $PAGE->set_url($navigator->get_url('ladder'));
         }
 
         // Output the table.
@@ -274,13 +276,12 @@ class handler {
         ob_end_clean();
 
         // Output.
-        $urlresolver = di::get('url_resolver');
         $link = '';
         $withlink = empty($args['hidelink']);
         if ($withlink) {
             $link = \html_writer::div(
                 \html_writer::link(
-                    $urlresolver->reverse('ladder', ['courseid' => $world->get_courseid()]),
+                    $navigator->get_url('ladder'),
                     get_string('gotofullladder', 'block_xp')
                 ),
                 'xp-link-to-full-ladder'

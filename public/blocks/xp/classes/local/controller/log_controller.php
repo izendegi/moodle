@@ -45,6 +45,8 @@ use html_writer;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class log_controller extends page_controller {
+    /** @var bool Whether manage permissions are required. */
+    protected $requiremanage = false;
     /** @var string The nav name. */
     protected $navname = 'report';
     /** @var string The route name. */
@@ -54,8 +56,6 @@ class log_controller extends page_controller {
     /** @var bool Whether supports groups. */
     protected $supportsgroups = true;
 
-    /** @var bool Whether we're using an old XP+. */
-    protected $isusingoldxpp = false;
     /** @var int|null The user ID to filter the logs for. Use {@see self::get_user_id} to obtain. */
     protected $userid = null;
 
@@ -65,6 +65,8 @@ class log_controller extends page_controller {
      * @return void
      */
     protected function permissions_checks() {
+        parent::permissions_checks();
+
         $accessperms = $this->world->get_access_permissions();
         if (!($accessperms instanceof \block_xp\local\permission\access_logs_permissions)) {
             throw new \coding_exception('Access permissions object requires logs permissions.');
@@ -85,18 +87,6 @@ class log_controller extends page_controller {
     }
 
     /**
-     * Handle post-login.
-     *
-     * @return void
-     */
-    protected function post_login() {
-        parent::post_login();
-
-        $addon = di::get('addon');
-        $this->isusingoldxpp = $addon->is_older_than(2024090500);
-    }
-
-    /**
      * Get table.
      *
      * @return \block_xp\output\logs_table
@@ -104,12 +94,14 @@ class log_controller extends page_controller {
     protected function get_table() {
         $table = new \block_xp\output\logs_table(
             $this->world,
-            di::get('reason_from_log_entry_factory'),
+            null,
             $this->get_groupid(),
             $this->get_user_id()
         );
         $table->define_baseurl($this->pageurl);
         $table->set_filterset($this->get_filterset());
+        $logger = di::get('world_logger_factory')->get_logger_for_world($this->world);
+        $table->set_collection_logger($logger);
         return $table;
     }
 
@@ -206,8 +198,6 @@ class log_controller extends page_controller {
      * @return void
      */
     protected function page_content() {
-        global $PAGE;
-
         $userid = $this->get_user_id();
         $singleuser = (bool) $userid;
 
@@ -225,7 +215,7 @@ class log_controller extends page_controller {
 
         // Displaying the report.
         echo html_writer::start_div('xp-cancel-overflow');
-        echo $this->get_table()->out(50, !$singleuser && $this->isusingoldxpp);
+        echo $this->get_table()->out(50, false);
         echo html_writer::end_div();
     }
 
@@ -254,7 +244,7 @@ class log_controller extends page_controller {
      * @return void
      */
     protected function page_user_filter() {
-        if ($this->isusingoldxpp || $this->get_user_id()) {
+        if ($this->get_user_id()) {
             return null;
         }
 

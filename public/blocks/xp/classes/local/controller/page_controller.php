@@ -29,8 +29,11 @@ namespace block_xp\local\controller;
 
 use coding_exception;
 use block_xp\di;
+use block_xp\local\course_world;
+use block_xp\local\utils\text_utils;
 use core\output\notification;
 use html_writer;
+use moodle_url;
 
 /**
  * Page controller class.
@@ -55,15 +58,33 @@ abstract class page_controller extends course_route_controller {
     /** @var bool Whether the page is public. */
     protected $ispublic = false;
 
+    /** @var ?array The nav items. */
+    protected $navitems;
+
     /**
      * Permissions checks.
      *
      * @return void
      */
     protected function permissions_checks() {
-        $accessperms = $this->world->get_access_permissions();
+        if ($this->world instanceof course_world) {
+            $contextmode = di::get('config')->get('context');
+            $issiteid = $this->get_param('courseid') == SITEID;
+
+            if ($contextmode == CONTEXT_COURSE && $issiteid) {
+                throw new \moodle_exception('errorcontextcoursemismatchpercourse', 'block_xp', (new moodle_url('/'))->out(false));
+            } else if ($contextmode == CONTEXT_SYSTEM && !$issiteid) {
+                $nexturl = $this->urlresolver->reverse($this->get_route_name(), ['courseid' => SITEID]);
+                throw new \moodle_exception(
+                    'errorcontextcoursemismatchforwholesite',
+                    'block_xp',
+                    $nexturl->get_compatible_url()->out(false)
+                );
+            }
+        }
 
         // We only need one of, ordered in such a way that the most important check is done first.
+        $accessperms = $this->world->get_access_permissions();
         if ($this->requiremanage) {
             $accessperms->require_manage();
         } else if ($this->requireview) {
@@ -115,7 +136,12 @@ abstract class page_controller extends course_route_controller {
      * @return array
      */
     protected function get_navigation_items() {
-        return $this->navfactory->get_course_navigation($this->world);
+        if (!isset($this->navitems)) {
+            $this->navitems = array_map(static function ($item) {
+                return $item->as_array();
+            }, $this->navigator->get_navigation());
+        }
+        return $this->navitems;
     }
 
     /**
@@ -125,23 +151,22 @@ abstract class page_controller extends course_route_controller {
      */
     protected function get_sub_navigation_items() {
         $routename = $this->get_navigation_route_name();
-        $links = $this->navfactory->get_course_navigation($this->world);
+        $links = $this->get_navigation_items();
         foreach ($links as $link) {
             if ($link['id'] === $routename) {
-                $children = !empty($link['children']) ? $link['children'] : [];
-
-                // Remove potential duplicates.
-                $seen = [];
-                return array_values(array_filter($children, function ($child) use (&$seen) {
-                    if (in_array($child['id'], $seen)) {
-                        return false;
-                    }
-                    $seen[] = $child['id'];
-                    return true;
-                }));
+                return $link['children'] ?? [];
             }
         }
         return [];
+    }
+
+    /**
+     * The route name for the purpose of the sub navigation.
+     *
+     * @return string
+     */
+    protected function get_sub_navigation_route_name() {
+        return $this->get_route_name();
     }
 
     /**
@@ -181,34 +206,11 @@ abstract class page_controller extends course_route_controller {
 
         // Warn users if the addon was deactivated.
         if ($this->world->get_access_permissions()->can_manage() && di::get('addon')->is_deactivated()) {
-            echo $output->notification_without_close(strip_tags(markdown_to_html(
+            echo $output->notification_without_close(text_utils::markdown_light(
                 get_string('erroraddondeactivated', 'block_xp', [
                     'docsurl' => (new \moodle_url('https://docs.levelup.plus/xp/docs/addon-deactivated'))->out(false),
                 ])
-            ), '<a><em><strong>'), notification::NOTIFY_ERROR);
-        }
-
-        // Warn users that they are not where they should be.
-        if ($this->world->get_access_permissions()->can_manage()) {
-            $isforwholesite = di::get('config')->get('context') == CONTEXT_SYSTEM;
-            $requestedcourseid = $this->get_param('courseid');
-
-            if (!$isforwholesite && $requestedcourseid == SITEID) {
-                // In per-course, but requesting front page.
-                echo $output->notification_without_close(
-                    get_string('errorcontextcoursemismatchpercourse', 'block_xp'),
-                    notification::NOTIFY_WARNING
-                );
-            } else if ($isforwholesite && $requestedcourseid != SITEID) {
-                // In for whole site, but requesting individual course.
-                $nexturl = $this->urlresolver->reverse($this->get_route_name(), ['courseid' => $this->courseid]);
-                echo $output->notification_without_close(get_string(
-                    'errorcontextcoursemismatchforwholesite',
-                    'block_xp',
-                    ['nexturl' => $nexturl->out(false)]
-                ), notification::NOTIFY_WARNING);
-                return;
-            }
+            ), notification::NOTIFY_ERROR);
         }
 
         $config = $this->world->get_config();
@@ -253,7 +255,7 @@ abstract class page_controller extends course_route_controller {
     protected function page_sub_navigation() {
         $output = $this->get_renderer();
         echo html_writer::start_div('xp-w-full lg:xp-w-36 xp-max-w-full');
-        echo $output->sub_navigation($this->get_sub_navigation_items(), $this->get_route_name());
+        echo $output->sub_navigation($this->get_sub_navigation_items(), $this->get_sub_navigation_route_name());
         echo html_writer::end_div();
     }
 
@@ -264,7 +266,9 @@ abstract class page_controller extends course_route_controller {
      */
     protected function page_notices() {
         $output = $this->get_renderer();
-        echo $output->notices($this->world);
+        if ($this->world instanceof course_world) {
+            echo $output->notices($this->world);
+        }
     }
 
     /**
@@ -275,4 +279,20 @@ abstract class page_controller extends course_route_controller {
      * @return void
      */
     abstract protected function page_content();
+
+    /**
+     * Footer.
+     *
+     * @return void
+     */
+    final protected function footer() {
+        $world = $this->world;
+        $accessperms = $world->get_access_permissions();
+        $canmanageish = $accessperms->can_manage()
+            || ($accessperms instanceof \block_xp\local\permission\access_logs_permissions && $accessperms->can_access_logs())
+            || ($accessperms instanceof \block_xp\local\permission\access_report_permissions && $accessperms->can_access_report());
+        if ($canmanageish) {
+            echo $this->get_renderer()->render_from_template('block_xp/xp-footer', []);
+        }
+    }
 }
