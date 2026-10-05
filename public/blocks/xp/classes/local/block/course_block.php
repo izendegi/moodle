@@ -29,16 +29,16 @@ namespace block_xp\local\block;
 use action_link;
 use block_base;
 use block_xp\local\config\course_world_config;
+use block_xp\local\navigation\nav_item;
 use context;
 use context_system;
 use html_writer;
 use lang_string;
-use pix_icon;
 use stdClass;
 use block_xp\local\course_world;
-use block_xp\local\permission\access_report_permissions;
 use block_xp\local\sql\limit;
-use block_xp\local\utils\user_utils;
+use block_xp\local\utils\world_utils;
+use block_xp\local\world;
 use block_xp\local\xp\level_with_name;
 use block_xp\output\notice;
 use block_xp\output\dismissable_notice;
@@ -93,7 +93,7 @@ class course_block extends block_base {
     public function instance_create() {
         // Enable the capture of events for that course. Note that we are not expecting the permission
         // to 'addinstance' or 'myaddinstance' to be given to standard users!
-        $world = $this->get_world($this->page->course->id);
+        $world = $this->get_world_for_page();
         $world->get_config()->set('enabled', true);
 
         // Reset the block cache.
@@ -131,7 +131,7 @@ class course_block extends block_base {
         // or from the front page, or from the default dashboard. It's not ideal but
         // in that case we disable points gain.
         if ($shoulddisable) {
-            $world = $this->get_world($this->page->course->id);
+            $world = $this->get_world_for_page();
             $world->get_config()->set('enabled', false);
         }
 
@@ -157,10 +157,18 @@ class course_block extends block_base {
         $this->content->text = '';
         $this->content->footer = '';
 
-        $world = $this->get_world($this->page->course->id);
-        $canview = $world->get_access_permissions()->can_access();
+        $world = $this->get_world_for_page();
+
+        // Hide blocks on old pages when points are tracked per course.
+        if (
+            $world instanceof course_world && $world->get_courseid() == SITEID
+                && \block_xp\di::get('config')->get('context') == CONTEXT_COURSE
+        ) {
+            return $this->content;
+        }
 
         // Hide the block to non-logged in users, guests and those who cannot view the block.
+        $canview = $world->get_access_permissions()->can_access();
         if (!$USER->id || isguestuser() || !$canview) {
             return $this->content;
         }
@@ -176,7 +184,7 @@ class course_block extends block_base {
         // Also resets the flag. We could potentially do that from JS so that if the user does not
         // stay on the page long enough they'd be notified the next time they access the course page,
         // but that's probably an overkill for now.
-        $service = $world->get_level_up_notification_service();
+        $service = \block_xp\di::get('world_level_up_notification_service_factory')->get_for_world($world);
         if ($service->should_be_notified($USER->id)) {
             // Get the levels, and remove 0 when the user's level is already in the list.
             $levels = array_unique(array_map(function ($level) use ($state) {
@@ -189,7 +197,7 @@ class course_block extends block_base {
             $levelsinfo = $world->get_levels_info();
             foreach ($levels as $levelnum) {
                 // Remove invalid level number.
-                if ($levelnum <= 1 || $levelnum > $levelsinfo->get_count()) {
+                if ($levelnum <= 1 || $levelnum > $levelsinfo->get_count() || $levelnum > $state->get_level()->get_level()) {
                     $service->mark_as_notified($USER->id, $levelnum);
                     continue;
                 }
@@ -215,67 +223,36 @@ class course_block extends block_base {
      *
      * @param course_world $world The world.
      * @return action_link[]
+     * @deprecated Since XP 21, use get_block_navigation_for_world instead.
      */
     protected function get_block_navigation(course_world $world) {
-        $accessperms = $world->get_access_permissions();
-        $canedit = $accessperms->can_manage();
-        $canaccessreport = $accessperms instanceof access_report_permissions && $accessperms->can_access_report();
-        $courseid = $world->get_courseid();
-        $urlresolver = \block_xp\di::get('url_resolver');
-        $config = $world->get_config();
-        $actions = [];
+        return $this->get_block_navigation_for_world($world);
+    }
 
-        if ($config->get('enableinfos')) {
-            $actions[] = new action_link(
-                $urlresolver->reverse('infos', ['courseid' => $courseid]),
-                get_string('navinfos', 'block_xp'),
-                null,
-                null,
-                new pix_icon('i/info', '', 'block_xp')
-            );
-        }
-        if ($config->get('enableladder')) {
-            $actions[] = new action_link(
-                $urlresolver->reverse('ladder', ['courseid' => $courseid]),
-                get_string('navladder', 'block_xp'),
-                null,
-                null,
-                new pix_icon('i/ladder', '', 'block_xp')
-            );
-        }
-        if ($canaccessreport) {
-            $actions[] = new action_link(
-                $urlresolver->reverse('report', ['courseid' => $courseid]),
-                get_string('navreport', 'block_xp'),
-                null,
-                null,
-                new pix_icon('i/report', '', 'block_xp')
-            );
-        }
-        if ($canedit) {
-            $actions[] = new action_link(
-                $urlresolver->reverse('config', ['courseid' => $courseid]),
-                get_string('navsettings', 'block_xp'),
-                null,
-                null,
-                new pix_icon('i/settings', '', 'block_xp')
-            );
-        }
-
-        return $actions;
+    /**
+     * Get the world navigation.
+     *
+     * @param world $world The world.
+     * @return action_link[]
+     */
+    protected function get_block_navigation_for_world(world $world) {
+        $navigator = \block_xp\di::get('world_navigator_factory')->get_navigator_for_world($world);
+        return array_map(static function (nav_item $item) {
+            return $item->as_action_link();
+        }, $navigator->get_block_navigation());
     }
 
     /**
      * Get popup notification props.
      *
      * @param object $renderer The renderer.
-     * @param \block_xp\local\course_world $world The world.
+     * @param \block_xp\local\world $world The world.
      * @param \block_xp\local\xp\level $level The level.
      * @param \block_xp\local\xp\level $prevlevel The previous level.
      */
     protected function get_popup_notification_props($renderer, $world, $level, $prevlevel) {
         return [
-            'courseid' => $world->get_courseid(),
+            'contextid' => $world->get_context()->id,
             'levelnum' => $level->get_level(),
             'levelname' => $level instanceof level_with_name ? $level->get_name() : null,
             'levelbadge' => $renderer->level_badge($level),
@@ -286,17 +263,15 @@ class course_block extends block_base {
     /**
      * Get the widget.
      *
-     * @param \block_xp\local\course_world $world The world.
+     * @param \block_xp\local\world $world The world.
      * @param \block_xp\local\xp\state $state The user's state.
-     * @return \block_xp\local\output\xp_widget The widget.
+     * @return \block_xp\output\xp_widget The widget.
      */
     protected function get_widget($world, $state) {
         global $USER;
 
         $context = $world->get_context();
         $canedit = $world->get_access_permissions()->can_manage();
-        $indicator = \block_xp\di::get('user_notice_indicator');
-        $courseid = $world->get_courseid();
         $config = $world->get_config();
         $leaderboardfactory = \block_xp\di::get('leaderboard_factory_maker')->get_leaderboard_factory($world);
 
@@ -304,7 +279,7 @@ class course_block extends block_base {
         $activity = [];
         $forcerecentactivity = false;
         $recentactivity = $config->get('blockrecentactivity');
-        if ($recentactivity) {
+        if ($recentactivity && world_utils::supports_recent_activity($world) && $world instanceof course_world) {
             $repo = $world->get_user_recent_activity_repository();
             $activity = $repo->get_user_recent_activity($USER->id, $recentactivity);
 
@@ -313,20 +288,20 @@ class course_block extends block_base {
         }
 
         // Navigation.
-        $actions = $this->get_block_navigation($world);
+        $actions = $this->get_block_navigation_for_world($world);
 
         // Introduction.
         $introduction = format_string($config->get('blockdescription'), true, ['context' => $context]);
-        $introname = 'block_intro_' . $courseid;
+        $prefname = 'block_xp_block_intro_' . $context->id;
         if (empty($introduction)) {
             // The intro is empty, no need for further checks then...
             $introduction = null;
         } else if ($canedit) {
             // Always show the notification to teachers.
             $introduction = $introduction ? new notice($introduction, notice::INFO) : null;
-        } else if (!$indicator->user_has_flag($USER->id, $introname)) {
+        } else if (!get_user_preferences($prefname, false)) {
             // Allow students to dismiss the message.
-            $introduction = $introduction ? new dismissable_notice($introduction, $introname, notice::INFO) : null;
+            $introduction = $introduction ? new dismissable_notice($introduction, $prefname, notice::INFO) : null;
         } else {
             $introduction = null;
         }
@@ -387,9 +362,19 @@ class course_block extends block_base {
      *
      * @param int $courseid The course ID.
      * @return \block_xp\local\course_world The world.
+     * @deprecated Since XP 21, use self::get_world_from_context instead.
      */
     protected function get_world($courseid) {
         return \block_xp\di::get('course_world_factory')->get_world($courseid);
+    }
+
+    /**
+     * Get the world for the current page.
+     *
+     * @return \block_xp\local\world The world.
+     */
+    protected function get_world_for_page() {
+        return \block_xp\di::get('context_world_factory')->get_world_from_context($this->page->context);
     }
 
     /**
@@ -402,35 +387,6 @@ class course_block extends block_base {
      * @deprecated Since v20.0, we should no longer need to be migrating old data.
      */
     protected function migrate_config_data_if_needed($world) {
-        $migrateflag = 'block_configdata_migrated_' . $world->get_courseid();
-        if (!get_config('block_xp', $migrateflag)) {
-            $config = $world->get_config();
-
-            // An empty title previously defaulted to admin title, so do not change.
-            if (!empty($this->config->title)) {
-                $config->set('blocktitle', $this->config->title);
-            }
-            if (isset($this->config->description)) {
-                $config->set('blockdescription', $this->config->description);
-            }
-            if (isset($this->config->recentactivity)) {
-                $config->set('blockrecentactivity', (int) $this->config->recentactivity);
-            }
-
-            // Remove config and flag in an admin config. This is polluting the admin
-            // config a bit, but we can remove these values later when we remove this
-            // code, we cannot remove the flags before this code is as well. Note
-            // that we need the flag because there may be multiple instances of the
-            // block in different places and thus we could override the data. This
-            // method here may not convert the right block instances, but it will
-            // convert the first one displayed to a user. It is probably safe enough
-            // and does not require a complex upgrade path to identify block instances.
-            // Instances like the default dashboard are tricky ones to deal with.
-            set_config($migrateflag, time(), 'block_xp');
-
-            // Reset the title as the specialisation has already happened.
-            $this->title = format_string($config->get('blocktitle'), true, ['context' => $world->get_context()]);
-        }
     }
 
     /**
@@ -442,7 +398,7 @@ class course_block extends block_base {
      */
     public function specialization() {
         parent::specialization();
-        $world = $this->get_world($this->page->course->id);
+        $world = $this->get_world_for_page();
         $context = $world->get_context();
         $config = $world->get_config();
         $this->title = format_string($config->get('blocktitle'), true, ['context' => $context]);

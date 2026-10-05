@@ -16,19 +16,12 @@
 //
 // See <https://levelup.plus>.
 
-/**
- * Course route controller.
- *
- * @package    block_xp
- * @copyright  2017 Frédéric Massart
- * @author     Frédéric Massart <fred@branchup.tech>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace block_xp\local\controller;
 
+use block_xp\local\group\group_policy;
 use block_xp\local\utils\user_utils;
 use coding_exception;
+use context_system;
 use core\notification;
 
 /**
@@ -50,11 +43,19 @@ abstract class course_route_controller extends route_controller {
     protected $supportsgroups = false;
     /** @var \block_xp\local\course_world */
     protected $world;
-    /** @var \block_xp\local\factory\course_world_navigation_factory The navigation factory. */
-    protected $navfactory;
+    /** @var \block_xp\local\navigation\navigator The navigator. */
+    protected $navigator;
 
-    /** @var int The group ID. */
+    /** @var false|int The group ID. */
     private $groupid;
+    /** @var ?group_policy The group policy. */
+    private $grouppolicy;
+
+    /**
+     * @var \block_xp\local\factory\course_world_navigation_factory The navigation factory.
+     * @deprecated Since XP 21, use self::$navigator instead.
+     */
+    protected $navfactory;
 
     /**
      * Authentication.
@@ -62,8 +63,6 @@ abstract class course_route_controller extends route_controller {
      * @return void
      */
     protected function require_login() {
-        global $CFG;
-
         $courseid = intval($this->get_param('courseid'));
         if (!$courseid) {
             throw new coding_exception('Excepted a course ID parameter but got none.');
@@ -82,9 +81,16 @@ abstract class course_route_controller extends route_controller {
      */
     protected function post_login() {
         parent::post_login();
-        $this->world = \block_xp\di::get('course_world_factory')->get_world($this->courseid);
-        $this->courseid = $this->world->get_courseid();
+        if ($this->courseid == SITEID) {
+            $this->world = \block_xp\di::get('context_world_factory')->get_world_from_context(context_system::instance());
+            $this->courseid = SITEID;
+        } else {
+            $this->world = \block_xp\di::get('course_world_factory')->get_world($this->get_param('courseid'));
+            $this->courseid = $this->world->get_courseid();
+        }
+        $this->urlresolver = \block_xp\di::get('url_resolver');
         $this->navfactory = \block_xp\di::get('course_world_navigation_factory');
+        $this->navigator = \block_xp\di::get('world_navigator_factory')->get_navigator_for_world($this->world);
     }
 
     /**
@@ -93,7 +99,7 @@ abstract class course_route_controller extends route_controller {
      * @return void
      */
     protected function page_setup() {
-        global $CFG, $PAGE;
+        global $PAGE;
 
         // Note that the context was set by require_login().
         $PAGE->set_url($this->pageurl->get_compatible_url());
@@ -125,15 +131,28 @@ abstract class course_route_controller extends route_controller {
             throw new coding_exception('This page is not marked as supporting groups.');
         }
         if ($this->groupid === null) {
-            $course = $this->get_course();
-            $groupid = groups_get_course_group($course, true);
-            $aag = has_capability('moodle/site:accessallgroups', \context_course::instance($course->id));
-            if ($groupid === 0 && groups_get_course_groupmode($course) == SEPARATEGROUPS && !$aag) {
-                $groupid = user_utils::GROUP_ID_WHEN_NONE_RESOLVED;
+            $groupid = $this->get_group_policy()->get_current_group_id(true);
+            if ($groupid === 0) {
+                $groupid = $this->get_group_policy()->can_select_group($groupid) ? 0 : user_utils::GROUP_ID_WHEN_NONE_RESOLVED;
             }
             $this->groupid = $groupid;
         }
         return $this->groupid;
+    }
+
+    /**
+     * Get the group policy.
+     *
+     * @return group_policy
+     */
+    final protected function get_group_policy(): group_policy {
+        if (!$this->is_supporting_groups()) {
+            throw new coding_exception('This page is not marked as supporting groups.');
+        }
+        if (!$this->grouppolicy) {
+            $this->grouppolicy = group_policy::from_course_id($this->courseid);
+        }
+        return $this->grouppolicy;
     }
 
     /**
@@ -165,7 +184,7 @@ abstract class course_route_controller extends route_controller {
     /**
      * Get the course.
      *
-     * @return stdClass
+     * @return \stdClass
      */
     final protected function get_course() {
         if (!$this->course) {
@@ -192,7 +211,7 @@ abstract class course_route_controller extends route_controller {
                 notification::ERROR
             );
         } else {
-            echo groups_print_course_menu($this->get_course(), $this->pageurl->get_compatible_url());
+            echo $this->get_group_policy()->get_group_menu($this->pageurl->get_compatible_url());
         }
     }
 }

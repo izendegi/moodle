@@ -33,6 +33,8 @@ use core_user;
 use html_writer;
 use single_button;
 use block_xp\local\routing\url;
+use block_xp\local\utils\world_utils;
+use block_xp\local\xp\state_store_with_delete;
 use block_xp\output\report_table_filterset;
 use core_table\local\filter\filterset;
 use core_table\local\filter\string_filter;
@@ -46,6 +48,8 @@ use core_table\local\filter\string_filter;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_controller extends page_controller {
+    /** @var bool Whether manage permissions are required. */
+    protected $requiremanage = false;
     /** @var bool Requires a wide view. */
     protected $iswideview = true;
     /** @var bool The page supports groups. */
@@ -53,12 +57,9 @@ class report_controller extends page_controller {
     /** @var string The route name. */
     protected $routename = 'report';
 
-    /** @var bool Whether we're using an old XP+. */
-    protected $isusingoldxpp = false;
-
-    /** @var moodleform The form. */
+    /** @var \moodleform The form. */
     protected $form;
-    /** @var flexible_table The table. */
+    /** @var \flexible_table The table. */
     protected $table;
 
     /**
@@ -86,6 +87,8 @@ class report_controller extends page_controller {
      * @return void
      */
     protected function permissions_checks() {
+        parent::permissions_checks();
+
         $accessperms = $this->world->get_access_permissions();
         if (!($accessperms instanceof \block_xp\local\permission\access_report_permissions)) {
             throw new \coding_exception('Access permissions object requires report permissions.');
@@ -94,15 +97,12 @@ class report_controller extends page_controller {
     }
 
     /**
-     * Handle post-login.
+     * Whether the world supports changing points.
      *
-     * @return void
+     * @return bool
      */
-    protected function post_login() {
-        parent::post_login();
-
-        $addon = di::get('addon');
-        $this->isusingoldxpp = $addon->is_older_than(2024090500);
+    protected function supports_points_change(): bool {
+        return world_utils::supports_local_points_management($this->world);
     }
 
     /**
@@ -111,7 +111,7 @@ class report_controller extends page_controller {
      * @return void
      */
     protected function pre_content() {
-        if (!$this->world->get_access_permissions()->can_manage()) {
+        if (!$this->world->get_access_permissions()->can_manage() || !$this->supports_points_change()) {
             return;
         }
 
@@ -153,7 +153,10 @@ class report_controller extends page_controller {
      * @return void
      */
     protected function perform_user_deletion(int $userid): void {
-        $this->world->get_store()->delete($userid);
+        $store = $this->world->get_store();
+        if ($store instanceof state_store_with_delete) {
+            $store->delete($userid);
+        }
     }
 
     /**
@@ -247,7 +250,7 @@ class report_controller extends page_controller {
                     'addonrequired' => true,
                 ] : null,
                 [], // Divider.
-                $strreset ? [
+                $this->supports_points_change() && $strreset ? [
                     'label' => $strreset,
                     'danger' => true,
                     'href' => $reseturl,
@@ -299,11 +302,12 @@ class report_controller extends page_controller {
         global $PAGE;
 
         $canmanage = $this->world->get_access_permissions()->can_manage();
+        $supportspointchanges = $this->supports_points_change();
         $output = $this->get_renderer();
         $groupid = $this->get_groupid();
 
         // Confirming reset data.
-        if ($canmanage && $this->get_param('resetdata')) {
+        if ($canmanage && $supportspointchanges && $this->get_param('resetdata')) {
             echo $this->get_renderer()->confirm_reset(
                 empty($groupid) ? get_string('resetcoursedata', 'block_xp') : get_string('resetgroupdata', 'block_xp'),
                 empty($groupid) ? get_string('reallyresetdata', 'block_xp') : get_string('reallyresetgroupdata', 'block_xp'),
@@ -315,7 +319,7 @@ class report_controller extends page_controller {
         }
 
         // Confirming delete data.
-        if ($canmanage && $this->get_param('delete')) {
+        if ($canmanage && $supportspointchanges && $this->get_param('delete')) {
             $user = core_user::get_user($this->get_param('userid'));
             echo $this->get_renderer()->confirm_step(
                 $user ? fullname($user) : get_string('delete', 'core'),
@@ -338,7 +342,7 @@ class report_controller extends page_controller {
 
         // Displaying the report.
         echo html_writer::start_div('xp-cancel-overflow'); // Else dropdown menu is cropped on some versions.
-        echo $this->get_table()->out(20, $this->isusingoldxpp);
+        echo $this->get_table()->out(20, false);
         echo html_writer::end_div();
 
         // Output the bottom actions.
@@ -356,10 +360,6 @@ class report_controller extends page_controller {
      * @return void
      */
     protected function page_user_filter() {
-        if ($this->isusingoldxpp) {
-            return null;
-        }
-
         $formfields = [];
         foreach ($this->pageurl->params() as $name => $value) {
             if ($name === 'term') {

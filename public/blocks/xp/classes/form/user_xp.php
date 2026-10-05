@@ -16,18 +16,11 @@
 //
 // See <https://levelup.plus>.
 
-/**
- * Block XP user edit form.
- *
- * @package    block_xp
- * @copyright  2014 Frédéric Massart
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace block_xp\form;
 
 use block_xp\local\permission\access_report_permissions;
 use block_xp\local\utils\user_utils;
+use block_xp\local\utils\world_utils;
 use core_form\dynamic_form;
 use required_capability_exception;
 
@@ -68,8 +61,13 @@ class user_xp extends dynamic_form {
      * @return void
      */
     protected function check_access_for_dynamic_submission(): void {
-        $perms = $this->get_world()->get_access_permissions();
+        $world = $this->get_world();
+        $perms = $world->get_access_permissions();
         $perms->require_manage();
+
+        if (!world_utils::supports_local_points_management($world)) {
+            throw new \moodle_exception('errorfeaturenotenabled', 'block_xp');
+        }
 
         // Editing points is only available through the report, so we also require the report permissions.
         if (!$perms instanceof access_report_permissions) {

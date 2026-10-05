@@ -30,6 +30,7 @@ namespace block_xp\local\controller;
 use block_xp\di;
 use block_xp\local\routing\url;
 use block_xp\local\serializer\url_serializer;
+use block_xp\local\xp\levels_info_writer;
 
 /**
  * Levels controller class.
@@ -66,7 +67,7 @@ class levels_controller extends page_controller {
         // Reset levels to defaults.
         if ($this->get_param('reset') && confirm_sesskey()) {
             if ($this->get_param('confirm')) {
-                $this->world->get_config()->set('levelsdata', '');
+                di::get('levels_info_writer')->reset_world($this->world);
                 $this->redirect(new url($this->pageurl));
             }
         }
@@ -99,22 +100,25 @@ class levels_controller extends page_controller {
         global $USER;
 
         $world = $this->world;
-        $courseid = $world->get_courseid();
 
         $urlserializer = new url_serializer();
-        $badgeurlresolver = di::get('badge_url_resolver_course_world_factory')->get_url_resolver($world);
-        $defaultbadges = array_reduce(range(1, 20), function ($carry, $level) use ($badgeurlresolver, $urlserializer) {
-            $url = $badgeurlresolver->get_url_for_level($level);
-            $carry[$level] = $urlserializer->serialize($url);
-            return $carry;
-        }, []);
+        $badgeurlresolver = di::get('badge_url_resolver_world_factory')->get_url_resolver_for_world($world);
+        $defaultbadges = array_reduce(
+            range(1, levels_info_writer::MAX_LEVEL),
+            function ($carry, $level) use ($badgeurlresolver, $urlserializer) {
+                $url = $badgeurlresolver->get_url_for_level($level);
+                $carry[$level] = $urlserializer->serialize($url);
+                return $carry;
+            },
+            []
+        );
 
         $levelsinfo = di::get('levels_info_factory')->get_world_levels_info($this->world);
         $serializer = di::get('serializer_factory')->get_levels_info_serializer();
         return [
             'block_xp/ui-levels-lazy',
             [
-                'courseId' => $courseid,
+                'contextId' => $world->get_context()->id,
                 'levelsInfo' => $serializer->serialize($levelsinfo),
                 'resetToDefaultsUrl' => $this->get_reset_url()->out(false),
                 'defaultBadgeUrls' => $defaultbadges,
