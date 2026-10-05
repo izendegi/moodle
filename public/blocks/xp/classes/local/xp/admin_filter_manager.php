@@ -30,6 +30,7 @@ namespace block_xp\local\xp;
 use moodle_database;
 use block_xp\di;
 use block_xp\local\config\course_world_config;
+use block_xp\local\course_world;
 use coding_exception;
 
 /**
@@ -215,15 +216,19 @@ class admin_filter_manager {
         }
         $courseworldfactory = di::get('course_world_factory');
 
-        // This is dangerously hardcoded, byt let's use this for now to detect all instances to work on.
-        $sql = 'courseid > 0 AND defaultfilters != :defaultfilters';
+        // This is dangerously hardcoded, but let's use this for now to detect all instances to work on.
+        $sql = 'courseid > 0 AND courseid != :siteid AND defaultfilters != :defaultfilters';
         $courseids = $this->db->get_fieldset_select('block_xp_config', 'courseid', $sql, [
+            'siteid' => SITEID,
             'defaultfilters' => course_world_config::DEFAULT_FILTERS_MISSING,
         ]);
 
         // This is slow, but that's sort of the cleanest way.
         foreach ($courseids as $courseid) {
             $world = $courseworldfactory->get_world($courseid);
+            if (!$world instanceof course_world) {
+                continue;
+            }
             $world->reset_filters_to_defaults();
         }
     }

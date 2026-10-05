@@ -30,7 +30,7 @@ use moodle_database;
  * @author     Frédéric Massart <fred@branchup.tech>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class world_rule_manager {
+class world_rule_manager implements rule_manager {
     /** @var admin_rule_manager The admin rule manager. */
     protected $adminrulemanager;
     /** @var moodle_database The database. */
@@ -85,6 +85,7 @@ class world_rule_manager {
         $storecontext = $this->world->get_context();
         $this->db->delete_records('block_xp_rule', ['id' => $ruleid, 'contextid' => $storecontext->id]);
         $this->rulesinctxcache = [];
+        $this->detach();
     }
 
     /**
@@ -179,6 +180,18 @@ class world_rule_manager {
     }
 
     /**
+     * Whether all rules are matching the defaults.
+     *
+     * @return bool
+     */
+    protected function is_matching_defaults(): bool {
+        $storecontext = $this->world->get_context();
+        $adminrecords = $this->adminrulemanager->get_records_for_world();
+        $worldrecords = $this->fetch_records_in_context($storecontext, null);
+        return $this->are_records_matching($worldrecords, $adminrecords);
+    }
+
+    /**
      * Reset to the defaults.
      *
      * @return void
@@ -197,19 +210,33 @@ class world_rule_manager {
     public function seed_for_editing(): void {
         if ($this->is_detached()) {
             return;
-        }
-
-        $storecontext = $this->world->get_context();
-        $adminrecords = $this->adminrulemanager->get_records_for_world();
-        $worldrecords = $this->fetch_records_in_context($storecontext, null);
-
-        if ($this->are_records_matching($worldrecords, $adminrecords)) {
+        } else if ($this->is_matching_defaults()) {
             return;
         }
 
         $this->delete_all_rules();
-        $this->insert_rule_records($adminrecords);
+        $this->insert_rule_records($this->adminrulemanager->get_records_for_world());
         $this->rulesinctxcache = [];
+    }
+
+    /**
+     * Update a rule.
+     *
+     * @param int $ruleid
+     * @param \stdClass $data
+     */
+    public function update_rule(int $ruleid, \stdClass $data): void {
+        $record = $this->fetch_record($ruleid);
+        if (!$record) {
+            return;
+        }
+
+        $this->process_rule_update($record, $data);
+        $this->rulesinctxcache = [];
+
+        if (!$this->is_detached() && !$this->is_matching_defaults()) {
+            $this->detach();
+        }
     }
 
     /**
@@ -237,11 +264,19 @@ class world_rule_manager {
         usort($worldrecords, $sorter);
         usort($adminrecords, $sorter);
 
+        // Missing or stale source IDs must trigger reseeding.
+        foreach ($worldrecords as $i => $record) {
+            if (($record->sourceruleid ?? null) != $adminrecords[$i]->id) {
+                return false;
+            }
+        }
+
         $normaliser = function ($record) {
             $record = (array) $record; // Make sure we don't change the original.
             unset($record['id']);
             unset($record['contextid']);
             unset($record['childcontextid']);
+            unset($record['sourceruleid']);
             return $record;
         };
         $worldrecords = array_map($normaliser, $worldrecords);
@@ -341,7 +376,7 @@ class world_rule_manager {
     /**
      * Insert rule records.
      *
-     * @param \stdClass[] $records The admin rule records to copy.
+     * @param \stdClass[] $rulerecords The admin rule records to copy.
      */
     protected function insert_rule_records(array $rulerecords): void {
         foreach ($rulerecords as $record) {
@@ -358,6 +393,7 @@ class world_rule_manager {
     protected function insert_record(\stdClass $record): int {
         $storecontext = $this->world->get_context();
         $record = (object) (array) $record;
+        $record->sourceruleid = $record->id; // Track the admin rule ID.
         unset($record->id);
         unset($record->contextid);
         unset($record->childcontextid);
@@ -387,5 +423,19 @@ class world_rule_manager {
             return $childcontext->id;
         }
         return 0;
+    }
+
+    /**
+     * Process a rule update.
+     *
+     * @param \stdClass $rulerecord
+     * @param \stdClass $data
+     */
+    protected function process_rule_update(\stdClass $rulerecord, \stdClass $data): void {
+        $rule = (object) (array) $rulerecord;
+        if (isset($data->points)) {
+            $rule->points = $data->points;
+        }
+        $this->db->update_record('block_xp_rule', $rule);
     }
 }

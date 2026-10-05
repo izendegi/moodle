@@ -28,8 +28,10 @@
 namespace block_xp\local\utils;
 
 use block_xp\di;
+use block_xp\local\group\group_policy;
 use block_xp\local\xp\state_store_with_presence;
 use context_course;
+use core_text;
 use stdClass;
 
 /**
@@ -92,6 +94,108 @@ class user_utils {
     }
 
     /**
+     * Get SQL to filter users by a search term.
+     *
+     * @param string $term The term.
+     * @param array $allowedidentityfields The identity fields that are allowed to be used.
+     * @param string $tablealias The user table alias.
+     * @return array SQL where fragment and parameters.
+     */
+    public static function get_filter_user_by_term_sql(string $term, array $allowedidentityfields = [], string $tablealias = 'u') {
+        global $DB;
+
+        $term = trim($term);
+        if (empty($term)) {
+            return ['1=1', []];
+        }
+
+        static $paramn = 0;
+        $makeparam = static function (string $prefix) use (&$paramn) {
+            return $prefix . $paramn++;
+        };
+
+        $parts = ['1=0'];
+        $params = [];
+
+        $tableprefix = $tablealias ? $tablealias . '.' : '';
+        $termlength = core_text::strlen($term);
+        $isemail = (bool) preg_match('#^[^\s@]+@[^\s@]+$#', $term);
+        $hasspace = (bool) preg_match('/\s/', $term);
+
+        // Filter by name.
+        if (!$isemail) {
+            $nameoptions = [
+                ['firstname' => $term],
+                ['lastname' => $term],
+            ];
+            $nameparts = preg_split('/\s+/', $term);
+            if (count($nameparts) > 1) {
+                for ($i = 0; $i < count($nameparts) - 1; $i++) {
+                    $nameoptions[] = [
+                        'firstname' => implode(' ', array_slice($nameparts, 0, $i + 1)),
+                        'lastname' => implode(' ', array_slice($nameparts, $i + 1)),
+                    ];
+                    $nameoptions[] = [
+                        'firstname' => implode(' ', array_slice($nameparts, $i + 1)),
+                        'lastname' => implode(' ', array_slice($nameparts, 0, $i + 1)),
+                    ];
+                }
+            }
+            foreach ($nameoptions as $option) {
+                $subparams = [];
+                $subsql = [];
+                if (!empty($option['firstname'])) {
+                    $paramname = $makeparam('usertermfn');
+                    $subsql[] = $DB->sql_like("{$tableprefix}firstname", ':' . $paramname, false, false);
+                    $subparams[$paramname] = $DB->sql_like_escape($option['firstname']) . '%';
+                }
+                if (!empty($option['lastname'])) {
+                    $paramname = $makeparam('usertermln');
+                    $subsql[] = $DB->sql_like("{$tableprefix}lastname", ':' . $paramname, false, false);
+                    $subparams[$paramname] = $DB->sql_like_escape($option['lastname']) . '%';
+                }
+                if (!empty($subsql)) {
+                    $parts[] = '(' . implode(' AND ', $subsql) . ')';
+                    $params = array_merge($params, $subparams);
+                }
+            }
+        }
+
+        // Filter email.
+        if (in_array('email', $allowedidentityfields, true) && $isemail) {
+            $paramname = $makeparam('usertermemail');
+            $parts[] = "{$tableprefix}email = :$paramname";
+            $params[$paramname] = $term;
+        }
+
+        // Filter ID number.
+        if (in_array('idnumber', $allowedidentityfields, true)) {
+            $paramname = $makeparam('usertermidnumber');
+            if ($termlength > 2) {
+                $parts[] = $DB->sql_like("{$tableprefix}idnumber", ':' . $paramname, false, false);
+                $params[$paramname] = $DB->sql_like_escape($term) . '%';
+            } else {
+                $parts[] = "{$tableprefix}idnumber = :$paramname";
+                $params[$paramname] = $term;
+            }
+        }
+
+        // Filter username.
+        if (in_array('username', $allowedidentityfields, true) && !$hasspace) {
+            $paramname = $makeparam('usertermusername');
+            if ($termlength > 2) {
+                $parts[] = $DB->sql_like("{$tableprefix}username", ':' . $paramname, false, false);
+                $params[$paramname] = $DB->sql_like_escape($term) . '%';
+            } else {
+                $parts[] = "{$tableprefix}username = :$paramname";
+                $params[$paramname] = $term;
+            }
+        }
+
+        return ['((' . implode(') OR (', $parts) . '))', $params];
+    }
+
+    /**
      * Get a user's primary group ID.
      *
      * This is useful when attempting to determine the primary group of a user
@@ -102,6 +206,13 @@ class user_utils {
      * @return int Negative value means none found.
      */
     public static function get_primary_group_id($courseid, $userid) {
+        global $USER;
+
+        if ($USER->id != $userid) {
+            // The function groups_get_all_groups has reliance on the current user.
+            debugging('Mismatch between target and current user may yield incorrect results.', DEBUG_DEVELOPER);
+        }
+
         $course = get_fast_modinfo($courseid)->get_course();
         $groupmode = groups_get_course_groupmode($course);
         $context = context_course::instance($courseid);
@@ -149,15 +260,33 @@ class user_utils {
     }
 
     /**
+     * Get visible identity fields in the supplied context.
+     *
+     * @param \context $context The context.
+     * @return array Field names.
+     */
+    public static function get_visible_identity_fields(\context $context): array {
+        return array_values(array_intersect(\core_user\fields::get_identity_fields($context, false), [
+            'username',
+            'idnumber',
+            'email',
+        ]));
+    }
+
+    /**
      * Whether a user is a valid target.
      *
-     * This does not validate the world permissions of the acting user.
+     * This does not validate the world permissions of the acting user. But we only expect
+     * managers and users to with staff-like access to "target" users.
+     *
+     * The result may be unexpected when using non-existant user IDs.
      *
      * @param \context $context The context.
      * @param int $targetuserid The target user ID.
+     * @param int|null $actinguserid The acting user ID.
      * @return bool
      */
-    public static function is_valid_target(\context $context, $targetuserid) {
+    public static function is_valid_target(\context $context, $targetuserid, ?int $actinguserid = null) {
         if (!$targetuserid) {
             return false;
         } else if (!\core_user::is_real_user($targetuserid)) {
@@ -166,7 +295,8 @@ class user_utils {
             return false;
         }
 
-        // Test whether the user can earn points, or already has a state entry.
+        // Test whether the user can earn points, or already has a state entry. A manager that can create rules can
+        // have users surface by giving them points. And if they cannot but have a state, they are surfaced.
         if (!self::can_earn_points($context, $targetuserid)) {
             $world = di::get('context_world_factory')->get_world_from_context($context);
             $store = $world->get_store();
@@ -176,13 +306,9 @@ class user_utils {
             }
         }
 
-        $coursecontext = $context->get_course_context(false);
-        if (!$coursecontext || $coursecontext->instanceid == SITEID) {
-            return true;
-        }
-
-        $course = get_fast_modinfo($coursecontext->instanceid)->get_course();
-        return groups_user_groups_visible($course, $targetuserid);
+        // Validate that the users can be seen through the group policy.
+        $grouppolicy = group_policy::from_context($context);
+        return $grouppolicy->can_see_user($targetuserid, $actinguserid);
     }
 
     /**

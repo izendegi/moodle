@@ -28,7 +28,7 @@
 namespace block_xp\form;
 
 use block_xp\di;
-use block_xp\local\utils\text_utils;
+use block_xp\local\utils\world_utils;
 use core_form\dynamic_form;
 
 defined('MOODLE_INTERNAL') || die();
@@ -49,6 +49,20 @@ class cheatguard extends dynamic_form {
 
     /** @var string */
     protected $routename = 'rules';
+
+    /**
+     * Check access.
+     *
+     * @return void
+     */
+    protected function check_access_for_dynamic_submission(): void {
+        $world = $this->get_world();
+        $world->get_access_permissions()->require_manage();
+
+        if (!world_utils::supports_local_points_management($world)) {
+            throw new \moodle_exception('errorfeaturenotenabled', 'block_xp');
+        }
+    }
 
     /**
      * Process the form submission.
@@ -78,11 +92,6 @@ class cheatguard extends dynamic_form {
      * @return void
      */
     public function definition() {
-        $world = $this->get_world();
-        $renderer = \block_xp\di::get('renderer');
-        $config = \block_xp\di::get('config');
-        $urlresolver = \block_xp\di::get('url_resolver');
-
         $mform = $this->_form;
         $mform->addElement('hidden', 'contextid', $this->get_world()->get_context()->id);
         $mform->setType('contextid', PARAM_INT);
@@ -108,7 +117,7 @@ class cheatguard extends dynamic_form {
     /**
      * Get the data.
      *
-     * @return stdClass
+     * @return \stdClass
      */
     public function get_data() {
         $data = parent::get_data();
