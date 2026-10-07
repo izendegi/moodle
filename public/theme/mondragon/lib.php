@@ -49,7 +49,9 @@ function theme_mondragon_get_extra_scss($theme): string {
  */
 function theme_mondragon_get_pre_scss($theme): string {
     $mooveconfig = theme_config::load('moove');
-    return theme_moove_get_pre_scss($mooveconfig);
+    $scss = theme_moove_get_pre_scss($mooveconfig);
+    // Moove only sets $brand-primary; without this Bootstrap keeps Boost's blue $primary.
+    return $scss . "\n\$primary: \$brand-primary;\n";
 }
 
 /**
