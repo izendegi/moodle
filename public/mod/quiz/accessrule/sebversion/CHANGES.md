@@ -1,5 +1,10 @@
 # Changelog
 
+### 1.1.0 (2026-10-06)
+
+- allow some time for the SEB to finish its initialization before flagging a version as invalid
+- assure compatibility with Moodle 5.3
+
 ### 1.0.2 (2026-04-30)
 
 - assure compatibility with Moodle 5.2
