@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 Note - All hash comments refer to the issue number. Eg. #169 refers to https://github.com/mdjnelson/moodle-mod_customcert/issues/169.
 
+## [5.2.10] - 2026-10-06
+
+### Security
+
+- Fixed an authorisation bypass in mobile certificate issuance that could allow certificates to be issued without satisfying activity access restrictions ([GHSA-8qc7-g467-47v9](https://github.com/mdjnelson/moodle-mod_customcert/security/advisories/GHSA-8qc7-g467-47v9)).
+- Fixed validation of certificate element settings to prevent disclosure of sensitive user data, cross-course grades, and files through crafted save-element requests ([GHSA-q482-gjmc-jw88](https://github.com/mdjnelson/moodle-mod_customcert/security/advisories/GHSA-q482-gjmc-jw88)).
+
 ## [5.2.9] - 2026-10-01
 
 ### Fixed

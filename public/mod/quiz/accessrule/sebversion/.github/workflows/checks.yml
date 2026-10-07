@@ -15,16 +15,16 @@ jobs:
 
     services:
       mariadb:
-        image: mariadb:10
+        image: mariadb:11
         env:
           MYSQL_USER: 'root'
-          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+          MYSQL_ALLOW_EMPTY_PASSWORD: '1'
           MYSQL_CHARACTER_SET_SERVER: "utf8mb4"
           MYSQL_COLLATION_SERVER: "utf8mb4_unicode_ci"
 
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 3
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval 10s --health-timeout 5s --health-retries 10
 
     strategy:
       fail-fast: false
@@ -57,7 +57,7 @@ jobs:
           moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
         env:
           DB: mariadb
-          MOODLE_BRANCH: ${{ matrix.php == '8.2' && 'MOODLE_501_STABLE' || 'main' }}
+          MOODLE_BRANCH: ${{ matrix.php == '8.2' && 'MOODLE_501_STABLE' || 'main'}}
 
       - name: PHP Lint
         if: ${{ !cancelled() }}

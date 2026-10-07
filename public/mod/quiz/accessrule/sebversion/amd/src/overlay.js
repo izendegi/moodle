@@ -31,8 +31,20 @@ import * as String from 'core/str';
 const DEFAULT_MESSAGES = {
     'update': 'Please update your Safe Exam Browser in order to attempt this quiz. You need at least version ',
     'invalid': 'The version of your Safe Exam Browser could not be determined. '
-        + 'Please download the most recent official version and try again',
+        + 'Wait a few seconds and try to reload the page. If this does not solve the problem,'
+        + 'please install the most recent official version and try again',
 };
+
+/**
+ * Delay (in milliseconds) between subsequent tries to fetch the global SEB object.
+ */
+const DELAY = 1000;
+
+/**
+ * Maximum number of retries to fetch the global SEB object, in addition to the
+ * initial try.
+ */
+const MAX_RETRIES = 5;
 
 /**
  * Setup the environment, check the version and react accordingly.
@@ -51,10 +63,23 @@ export const init = async(minVersionWin, minVersionMac, behat) => {
     // object in order to simulate the fact that there is no SEB at all.
     if (behat) {
         const simulatedVersion = localStorage.getItem('quizaccess_sebversion_versionString');
+        const delay = localStorage.getItem('quizaccess_sebversion_delay');
+        const simulatedSEBObject = {'version': simulatedVersion};
+
         if (simulatedVersion !== 'no SEB') {
-            window.SafeExamBrowser = {
-                'version': simulatedVersion,
-            };
+            // The behat test might simulate a delay before making the SEB object available, something
+            // that happens in certain versions of SEB. So we either create the object right away or
+            // wait for the requested number of seconds.
+            if (delay !== null) {
+                setTimeout(
+                    () => {
+                        window.SafeExamBrowser = simulatedSEBObject;
+                    },
+                    delay * 1000
+                );
+            } else {
+                window.SafeExamBrowser = simulatedSEBObject;
+            }
         }
 
         // If we are in a Behat test, we will also run "unit tests" for the version checker.
@@ -62,7 +87,8 @@ export const init = async(minVersionWin, minVersionMac, behat) => {
     }
 
     // Fetch the version string from the SafeExamBrowser object, as described above.
-    const versionString = window.SafeExamBrowser?.version ?? '';
+    const SEB = await fetchSEBObject();
+    const versionString = SEB?.version ?? '';
 
     // By default, we assume that the overlay will be needed.
     let overlayNeeded = true;
@@ -84,13 +110,37 @@ export const init = async(minVersionWin, minVersionMac, behat) => {
     } else if (versionString.includes('Windows')) {
         overlayNeeded = !checkWinVersion(versionString, minVersionWin);
         targetVersion = minVersionWin;
-    } else {
-        overlayNeeded = true;
     }
 
     if (overlayNeeded) {
         await addOverlay(targetVersion);
     }
+};
+
+/**
+ * Try to fetch the custom global object defined by Safe Exam Browser. In some cases, the browser's Javascript
+ * API might not be available immediately, so we retry multiple times before ultimately returning the 'undefined'
+ * state of the object.
+ *
+ * @returns Object|undefined
+ */
+const fetchSEBObject = async() => {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        // If the SafeExamBrowser object is ready, return it.
+        if (window.SafeExamBrowser !== undefined) {
+            return window.SafeExamBrowser;
+        }
+
+        // After the first half of tries, let's increase the delay a bit.
+        const factor = attempt > MAX_RETRIES / 2 ? 3 : 1;
+
+        // Wait for DELAY (times factor) milliseconds.
+        await new Promise(resolve => setTimeout(resolve, factor * DELAY));
+    }
+
+    // If we are still here, SEB's Javascript API is not ready. We give it one last try and simply
+    // return what we get, i. e. either the SEB object or undefined.
+    return window.SafeExamBrowser;
 };
 
 /**
