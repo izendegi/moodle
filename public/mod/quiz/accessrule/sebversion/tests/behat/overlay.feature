@@ -39,14 +39,15 @@ Feature: Test the modal overlay
   Scenario: Test with simulated non-standard SEB
     Given I simulate Safe Exam Browser version "foobar" for the sebversion quizaccess plugin
     When I press "Attempt quiz"
-    Then I should see "The version of your Safe Exam Browser could not be determined. Please download the most recent official version and try again."
+    Then I should see "The version of your Safe Exam Browser could not be determined. Wait a few seconds and try to reload the page. If this does not solve the problem, please install the most recent official version and try again."
     And the focused element is "" "quizaccess_sebversion > modal overlay"
     And I should not be able to click on "iframe[class^='tox-edit-area']" because of the sebversion quizaccess overlay
 
   Scenario: Test simulating there is no SEB
     Given I simulate Safe Exam Browser version "no SEB" for the sebversion quizaccess plugin
     When I press "Attempt quiz"
-    Then I should see "The version of your Safe Exam Browser could not be determined. Please download the most recent official version and try again."
+    And I wait "15" seconds
+    Then I should see "The version of your Safe Exam Browser could not be determined. Wait a few seconds and try to reload the page. If this does not solve the problem, please install the most recent official version and try again."
     And the focused element is "" "quizaccess_sebversion > modal overlay"
     And I should not be able to click on "iframe[class^='tox-edit-area']" because of the sebversion quizaccess overlay
 
