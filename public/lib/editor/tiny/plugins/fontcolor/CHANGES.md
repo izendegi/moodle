@@ -2,6 +2,14 @@
 
 ## Changes
 
+### v1.5
+
+- Add support for Moodle 5.3.
+- Adapt most of the findings from the MDLShield diagnostics.
+- Remove the github ci to release a new version of the plugin in the now obsolete
+  Moodle plugin directory.
+- Aditional changes that were adapted from suggestions from another customer audit.
+
 ### V1.4
 
 - New setting `usefortable` that uses the defined text and background colors for the
