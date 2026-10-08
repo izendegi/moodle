@@ -28,9 +28,6 @@
  * @copyright   2023 Stephan Robotta <stephan.robotta@bfh.ch>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-// ESLint directives.
-
 import * as pf from './polyfill';
 import {
   getBackcolorMap,
@@ -42,7 +39,6 @@ import {
   getForecolorClasses
 } from './options';
 import {forecolor, backcolor} from './common';
-import {isHexString, isNullable} from "./polyfill";
 
 let global$4 = localStorage;
 
@@ -62,8 +58,8 @@ const Label = () => {
     labels = txt;
   };
   const get = (name, ...args) => {
-    let val = !isNullable(labels[name]) ? labels[name] : name;
-    if (!isNullable(args)) {
+    let val = !pf.isNullable(labels[name]) ? labels[name] : name;
+    if (!pf.isNullable(args)) {
       for (let x = 0; x < args.length; x++) {
         val = val.replace('{' + x + '}', args[x]);
       }
@@ -327,12 +323,12 @@ const colorPickerDialog = editor => (callback, value) => {
         const m = ['R', 'G', 'B'];
         const r = parseInt(i.value);
         if (!i.value.match(/^\d{1,3}$/) || r < 0 || r > 255) {
-          err.innerHTML = labels.get('colorPickerErrRgbCode', m[x] + ' = ' + i.value);
+          err.textContent = labels.get('colorPickerErrRgbCode', m[x] + ' = ' + i.value);
           i.focus();
           isValid = false;
         }
-      } else if (!isHexString('#' + i.value)) {
-        err.innerHTML = labels.get('colorPickerErrHexCode', hex);
+      } else if (!pf.isHexString('#' + i.value)) {
+        err.textContent = labels.get('colorPickerErrHexCode', hex);
         i.focus();
         isValid = false;
       }
