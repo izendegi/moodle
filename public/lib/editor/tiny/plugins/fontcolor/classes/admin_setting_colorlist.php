@@ -56,7 +56,7 @@ class admin_setting_colorlist extends admin_setting {
      * @throws \coding_exception
      */
     public function output_html($data, $query = '') {
-        global $OUTPUT;
+        global $OUTPUT, $PAGE;
 
         // The original object is destroyed, so we don't have information about the error. However, if
         // we identify the value being sent from the current post, then just fetch the original data again
@@ -85,7 +85,6 @@ class admin_setting_colorlist extends admin_setting {
             'name' => $this->get_full_name(),
             'value' => static::PLACEHOLDER_ORIG_VALUE,
             'forceltr' => $this->get_force_ltr(),
-            'plugindir' => plugininfo::get_base_dir(),
             'readonly' => $this->is_readonly(),
             'colors' => [],
         ];
@@ -108,6 +107,8 @@ class admin_setting_colorlist extends admin_setting {
             $i++;
             $context->colors[] = $row;
         }
+        $PAGE->requires->js(new \moodle_url('/lib/editor/tiny/plugins/fontcolor/js/jscolor/jscolor.min.js'));
+        $PAGE->requires->js_call_amd('tiny_fontcolor/color-settings', 'init', [$this->get_full_name()]);
         $html = $OUTPUT->render_from_template('tiny_fontcolor/settings_config_color', $context);
 
         return format_admin_setting($this, $this->visiblename, $html, $this->description, true, '', $default, $query);
@@ -139,9 +140,12 @@ class admin_setting_colorlist extends admin_setting {
             $values = [];
             foreach ($_REQUEST as $key => $val) {
                 if (strpos($key, $this->name . '_name_') !== false) {
-                    $names[$key] = trim($val);
+                    $names[$key] = clean_param($val, PARAM_RAW_TRIMMED);
                 } else if (strpos($key, $this->name . '_value_') !== false) {
-                    $values[$key] = trim($val);
+                    $values[$key] = preg_replace('/[^0-9a-fA-F]/', '', clean_param($val, PARAM_RAW_TRIMMED));
+                    if (!empty($values[$key])) {
+                        $values2[$key] = '#' . substr($values[$key], 0, 8);
+                    }
                 }
             }
             foreach (\array_keys($names) as $i) {
@@ -165,8 +169,9 @@ class admin_setting_colorlist extends admin_setting {
     protected function use_css_classnames(): bool {
 
         $name = substr($this->get_full_name(), 0, strrpos($this->get_full_name(), '_')) . '_usecssclassnames';
-        if (isset($_REQUEST) && isset($_REQUEST[$name])) {
-            return (bool)$_REQUEST[$name];
+        $value = optional_param($name, null, PARAM_BOOL);
+        if ($value !== null) {
+            return (bool)$value;
         }
         return (bool)$this->config_read('usecssclassnames');
     }
@@ -243,7 +248,7 @@ class admin_setting_colorlist extends admin_setting {
         // Write the settings as a json encoded string into the apporpiate settings key.
         $res = ($this->config_write($this->name, $data->to_json()) ? '' : get_string('errorsetting', 'admin'));
         if (!empty($res)) {
-            $res;
+            return $res;
         }
         // In case there are css classes used, we need to write the class list with the colors into
         // the themes scss setting as well.

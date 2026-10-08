@@ -30,6 +30,7 @@ use editor_tiny\plugin;
 use editor_tiny\plugin_with_buttons;
 use editor_tiny\plugin_with_configuration;
 use editor_tiny\plugin_with_menuitems;
+use moodle_url;
 
 /**
  * BFH Font colour plugin.
@@ -74,16 +75,6 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_conf
      */
     public static function validatecolorcode(string $code): bool {
         return (bool)preg_match('/^#?[0-9a-f]{6}([0-9a-f]{2})?$/i', $code);
-    }
-
-    /**
-     * Return base directory of the plugin.
-     * @return string
-     */
-    public static function get_base_dir(): string {
-        global $CFG;
-        $dir = str_replace($CFG->dirroot, '', realpath(__DIR__));
-        return substr($dir, 0, strrpos($dir, DIRECTORY_SEPARATOR));
     }
 
     /**
