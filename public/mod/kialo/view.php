@@ -43,6 +43,9 @@ $id = optional_param('id', 0, PARAM_INT);
 // Activity instance id.
 $k = optional_param('k', 0, PARAM_INT);
 
+// Whether to launch Kialo directly. Only relevant for activities displayed in a new window.
+$launch = optional_param('launch', 0, PARAM_BOOL);
+
 if ($id) {
     $cm = get_coursemodule_from_id('kialo', $id, 0, false, MUST_EXIST);
     $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
@@ -64,6 +67,25 @@ if (isguestuser() || is_guest($context)) {
 $groupinfo = kialo_view::get_current_group_info($cm, $course);
 
 $embedded = $moduleinstance->display === MOD_KIALO_DISPLAY_IN_EMBED;
+
+// Activities displayed in a new window are opened via JS on the course page, which adds the launch param.
+// Other entry points (e.g. course index or course navigation) link here directly, so instead of navigating
+// the current window to Kialo, we show a Moodle page with a button that opens Kialo in a new window.
+if (!$embedded && !$launch) {
+    $PAGE->set_url('/mod/kialo/view.php', ['id' => $cm->id]);
+    $PAGE->set_title($moduleinstance->name);
+    $PAGE->set_pagelayout('incourse');
+
+    echo $OUTPUT->header();
+    echo html_writer::tag('p', get_string('opens_in_new_window', 'mod_kialo'));
+    echo html_writer::link(
+        new moodle_url('/mod/kialo/view.php', ['id' => $cm->id, 'launch' => 1]),
+        get_string('open_in_new_window', 'mod_kialo'),
+        ['class' => 'btn btn-primary', 'target' => '_blank'],
+    );
+    echo $OUTPUT->footer();
+    exit;
+}
 
 try {
     $message = lti_flow::init_resource_link(
@@ -100,7 +122,7 @@ try {
              allowfullscreen="true">
       </iframe>';
 
-        // This resize script was taken directly from moodle's own mod/lti/view.php.
+        // This resize script is based on moodle's own mod/lti/view.php.
         // It ensures that our Iframe has as much height as it can get.
         $resizescript = <<<JS
         <script type="text/javascript">
@@ -110,13 +132,38 @@ try {
                 var frame = Y.one("#kialocontentframe");
                 var padding = 15;
                 var lastHeight;
-                var resize = function(e) {
-                    var viewportHeight = doc.get("winHeight");
-                    if (lastHeight !== Math.min(doc.get("docHeight"), viewportHeight)) {
-                        frame.setStyle("height", viewportHeight - frame.getY() - padding + "px");
-                        lastHeight = Math.min(doc.get("docHeight"), viewportHeight);
+
+                // Since Moodle 5.3, activity pages can have a sticky footer (e.g. linear course navigation).
+                // It is fixed to the bottom of the viewport and overlays the page, so we leave room for it.
+                var stickyFooter = null;
+                var stickyFooterEnabled = false;
+                var getStickyFooterHeight = function() {
+                    return stickyFooter && stickyFooterEnabled ? stickyFooter.offsetHeight : 0;
+                };
+
+                var resize = function() {
+                    var height = doc.get("winHeight") - frame.getY() - getStickyFooterHeight() - padding;
+                    if (lastHeight !== height) {
+                        frame.setStyle("height", height + "px");
+                        lastHeight = height;
                     }
                 };
+
+                // The sticky footer is rendered after this script, so we look for it once the DOM is ready.
+                Y.on("domready", function() {
+                    stickyFooter = document.querySelector(".stickyfooter");
+                    if (stickyFooter) {
+                        stickyFooterEnabled = !stickyFooter.dataset.disable;
+                        document.addEventListener("core/stickyfooter_state_changed", function(e) {
+                            stickyFooterEnabled = e.detail.enabled;
+                            resize();
+                        });
+                        if (window.ResizeObserver) {
+                            new ResizeObserver(resize).observe(stickyFooter);
+                        }
+                    }
+                    resize();
+                });
 
                 resize();
                 Y.on("windowresize", resize);
