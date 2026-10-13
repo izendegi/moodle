@@ -115,8 +115,12 @@ if ($course->format == 'weeks' && $journal->days) {
     $timefinish = $timestart + (3600 * 24 * (int) $journal->days);
 } else {
     $timestart = $timenow - 1;
-    $timefinish = $timenow + 1;
-    $journal->days = 0;
+    if (empty($journal->days)) {
+        $timefinish = $timenow + 1;
+        $journal->days = 0;
+    } else {
+        $timefinish = $timenow + (3600 * 24 * (int) $journal->days);
+    }
 }
 
 // Display journal entry form or message.
@@ -177,7 +181,7 @@ if ($timenow > $timestart) {
     }
 
     // Feedback.
-    if (!(empty($entry->entrycomment) || (!empty($entry->rating) && !$entry->rating))) {
+    if (!empty($entry->entrycomment) || (!empty($entry->rating) && $entry->rating != -1)) {
         $grades = make_grades_menu($journal->grade);
         echo $OUTPUT->heading(get_string('feedback'));
         journal_print_feedback($course, $entry, $grades);

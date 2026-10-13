@@ -132,11 +132,14 @@ class heartbeat_report extends \mod_quiz\local\reports\attempts_report {
         // Printing the standard header. We'll set $hasquestions and $hasstudents to true here,
         // because we do not need a specific notification when there are no questions or no students.
         // The default message "Nothing to display" will be enough.
+        // If the new print_action_bar() method (5.3+) is available, we pass null as the options parameter,
+        // in order to suppress the user search bar and initials filter. Prior to 5.3, the $options are
+        // still needed.
         $this->print_standard_header_and_messages(
             $this->cm,
             $this->course,
             $this->quiz,
-            $this->options,
+            method_exists($this, 'print_action_bar') ? null : $this->options,
             $this->currentgroup,
             true,
             true,

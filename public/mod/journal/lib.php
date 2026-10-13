@@ -162,8 +162,6 @@ function journal_supports($feature) {
             return true;
         case FEATURE_GROUPINGS:
             return true;
-        case FEATURE_GROUPMEMBERSONLY:
-            return true;
         case FEATURE_COMPLETION_TRACKS_VIEWS:
             return true;
         case FEATURE_COMPLETION_HAS_RULES:
@@ -1253,6 +1251,11 @@ function journal_pluginfile($course, $cm, $context, $filearea, $args, $forcedown
 
     // Students can only see their own entry.
     if (!$canmanage && $USER->id !== $entry->userid) {
+        return false;
+    }
+
+    // Graders can only see entries of users in groups they have access to.
+    if ($canmanage && $USER->id != $entry->userid && !groups_user_groups_visible($course, $entry->userid, $cm)) {
         return false;
     }
 

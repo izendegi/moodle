@@ -26,6 +26,7 @@
 
 namespace filter_filtercodes;
 
+#[\PHPUnit\Framework\Attributes\CoversClass(\filter_filtercodes\text_filter::class)]
 /**
  * Unit tests for FilterCodes content tags.
  *
@@ -57,7 +58,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test getstring tag with default component.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_getstring_default_component(): void {
@@ -74,7 +74,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test getstring tag with specified component.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_getstring_with_component(): void {
@@ -91,7 +90,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test FontAwesome icon tags.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_fontawesome_icons(): void {
@@ -117,7 +115,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test glyphicon tags.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_glyphicon(): void {
@@ -139,7 +136,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test note tag (should not display).
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_note_tag(): void {
@@ -163,7 +159,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test help tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_help_tag(): void {
@@ -185,7 +180,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test info tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_info_tag(): void {
@@ -207,7 +201,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test alert tag with different styles.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_alert_tags(): void {
@@ -229,7 +222,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test alert tag without style (should default).
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_alert_default(): void {
@@ -246,7 +238,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test highlight tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_highlight_tag(): void {
@@ -265,7 +256,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test marktext tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_marktext_tag(): void {
@@ -287,7 +277,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test markborder tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_markborder_tag(): void {
@@ -309,7 +298,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test label tag with different types.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_label_tags(): void {
@@ -326,7 +314,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test label tag without type (should default to info).
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_label_default(): void {
@@ -343,7 +330,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test button tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_button_tag(): void {
@@ -368,9 +354,357 @@ final class content_test extends \advanced_testcase {
     }
 
     /**
+     * Test that a quote in a button URL cannot introduce an unwanted attribute.
+     *
+     * @return void
+     */
+    public function test_button_tag_url_cannot_inject_attributes(): void {
+        $before = '{button #" onmouseover="alert(1)}x{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringNotContainsString(
+            'onmouseover=',
+            $filtered,
+            sprintf("Should not contain an event handler\nActual: '%s'", $filtered)
+        );
+        $this->assertStringContainsString(
+            'href="#"',
+            $filtered,
+            sprintf("Should still link\nActual: '%s'", $filtered)
+        );
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('button_unsafe_scheme_provider')]
+    /**
+     * Test that button URLs using a scheme which can run script are dropped.
+     *
+     * @dataProvider button_unsafe_scheme_provider
+     * @param string $url URL to place in the tag.
+     * @return void
+     */
+    public function test_button_tag_rejects_unsafe_scheme(string $url): void {
+        $before = '{button ' . $url . '}x{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringNotContainsString(
+            'href=',
+            $filtered,
+            sprintf("Should not produce a link for '%s'\nActual: '%s'", $url, $filtered)
+        );
+    }
+
+    /**
+     * Data provider of URL schemes which must never reach the href attribute.
+     *
+     * @return array
+     */
+    public static function button_unsafe_scheme_provider(): array {
+        return [
+            'javascript' => ['javascript:alert(1)'],
+            'mixed case' => ['JaVaScRiPt:alert(1)'],
+            'encoded tab' => ['java&#9;script:alert(1)'],
+            'leading space' => ['  javascript:alert(1)'],
+            'vbscript' => ['vbscript:msgbox(1)'],
+            'data html' => ['data:text/html;base64,PHN2Zz4='],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('button_safe_url_provider')]
+    /**
+     * Test that button URLs which are merely unusual continue to work.
+     *
+     * @dataProvider button_safe_url_provider
+     * @param string $url URL to place in the tag.
+     * @param string $expected Expected href value.
+     * @return void
+     */
+    public function test_button_tag_allows_safe_url(string $url, string $expected): void {
+        $before = '{button ' . $url . '}x{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringContainsString(
+            'href="' . $expected . '"',
+            $filtered,
+            sprintf("Should link to '%s'\nActual: '%s'", $expected, $filtered)
+        );
+    }
+
+    /**
+     * Data provider of URLs which must continue to produce a link.
+     *
+     * @return array
+     */
+    public static function button_safe_url_provider(): array {
+        return [
+            'absolute' => ['https://example.com/a', 'https://example.com/a'],
+            'root relative' => ['/local/page.php', '/local/page.php'],
+            'relative' => ['page.php?a=1', 'page.php?a=1'],
+            'anchor' => ['#top', '#top'],
+            'protocol relative' => ['//cdn.example.com/x', '//cdn.example.com/x'],
+            'mailto' => ['mailto:someone@example.com', 'mailto:someone@example.com'],
+            'tel' => ['tel:+15551234567', 'tel:+15551234567'],
+            'scheme name in query' => [
+                'https://example.com/s?q=javascript:void',
+                'https://example.com/s?q=javascript:void',
+            ],
+        ];
+    }
+
+    /**
+     * Test that a scheme which is not in the Allowed URL schemes setting is dropped by default.
+     *
+     * ftp is a perfectly safe scheme but is not part of the default allow list, so the button must
+     * not link to it unless an administrator adds it.
+     *
+     * @return void
+     */
+    public function test_button_tag_rejects_scheme_not_in_allowed_list(): void {
+        $before = '{button ftp://files.example.com/x}x{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringNotContainsString(
+            'href=',
+            $filtered,
+            sprintf("ftp is not in the default allow list and should not link\nActual: '%s'", $filtered)
+        );
+    }
+
+    /**
+     * Test that a scheme added to the Allowed URL schemes setting is honoured.
+     *
+     * @return void
+     */
+    public function test_button_tag_allows_configured_extra_scheme(): void {
+        set_config('allowedurlschemes', "http\nhttps\nmailto\ntel\nsms\nftp", 'filter_filtercodes');
+
+        $before = '{button ftp://files.example.com/x}x{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringContainsString(
+            'href="ftp://files.example.com/x"',
+            $filtered,
+            sprintf("ftp should link once added to the allow list\nActual: '%s'", $filtered)
+        );
+    }
+
+    /**
+     * Test that clearing the Allowed URL schemes setting disallows every scheme, leaving only
+     * relative links working. Clearing the setting must fail closed, never allow everything.
+     *
+     * @return void
+     */
+    public function test_button_tag_allowedurlschemes_empty_allows_only_relative(): void {
+        set_config('allowedurlschemes', '', 'filter_filtercodes');
+
+        // With no schemes allowed, even a normally safe scheme such as mailto is dropped.
+        $mailto = format_text('{button mailto:a@example.com}x{/button}', FORMAT_HTML, [
+            'context' => \context_system::instance(),
+        ]);
+        $this->assertStringNotContainsString(
+            'href=',
+            $mailto,
+            sprintf("An empty setting must not allow any scheme\nActual: '%s'", $mailto)
+        );
+
+        // A relative link has no scheme and therefore still works.
+        $relative = format_text('{button /local/page.php}x{/button}', FORMAT_HTML, [
+            'context' => \context_system::instance(),
+        ]);
+        $this->assertStringContainsString(
+            'href="/local/page.php"',
+            $relative,
+            sprintf("Relative links have no scheme and should still work\nActual: '%s'", $relative)
+        );
+    }
+
+    /**
+     * Test that an Allowed URL schemes setting which has never been saved uses the default list.
+     *
+     * A site upgraded through the web interface has no value for a new setting until the
+     * administrator saves the new settings page. Existing buttons must keep working until then.
+     *
+     * @return void
+     */
+    public function test_button_tag_allowedurlschemes_unset_uses_default(): void {
+        unset_config('allowedurlschemes', 'filter_filtercodes');
+
+        $https = format_text('{button https://example.com/a}x{/button}', FORMAT_HTML, [
+            'context' => \context_system::instance(),
+        ]);
+        $this->assertStringContainsString(
+            'href="https://example.com/a"',
+            $https,
+            sprintf("An unsaved setting should allow the default schemes\nActual: '%s'", $https)
+        );
+
+        $ftp = format_text('{button ftp://files.example.com/x}x{/button}', FORMAT_HTML, [
+            'context' => \context_system::instance(),
+        ]);
+        $this->assertStringNotContainsString(
+            'href=',
+            $ftp,
+            sprintf("An unsaved setting should only allow the default schemes\nActual: '%s'", $ftp)
+        );
+    }
+
+    /**
+     * Test that the Allowed URL schemes setting tolerates capitals, trailing colons and commas.
+     *
+     * @return void
+     */
+    public function test_button_tag_allowedurlschemes_lenient_format(): void {
+        set_config('allowedurlschemes', "HTTPS:\r\nmailto:, Tel", 'filter_filtercodes');
+
+        foreach (['https://example.com/a', 'mailto:a@example.com', 'tel:+15551234567'] as $url) {
+            $filtered = format_text('{button ' . $url . '}x{/button}', FORMAT_HTML, [
+                'context' => \context_system::instance(),
+            ]);
+            $this->assertStringContainsString(
+                'href="' . $url . '"',
+                $filtered,
+                sprintf("%s should be allowed\nActual: '%s'", $url, $filtered)
+            );
+        }
+    }
+
+    /**
+     * Test that the default of the Allowed URL schemes setting matches the default used by the filter
+     * when the setting has not been saved.
+     *
+     * @return void
+     */
+    public function test_allowedurlschemes_default_matches_filter(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/adminlib.php');
+
+        $this->setAdminUser();
+        $page = admin_get_root(true, true)->locate('filtersettingfiltercodes');
+        $this->assertNotNull($page, 'The FilterCodes settings page should exist');
+        // Moodle keys a page's settings by plugin name followed directly by the setting name.
+        $key = 'filter_filtercodesallowedurlschemes';
+        $this->assertTrue(isset($page->settings->$key), 'The Allowed URL schemes setting should exist');
+        $this->assertSame(
+            \filter_filtercodes\text_filter::DEFAULT_URL_SCHEMES,
+            $page->settings->$key->get_defaultsetting(),
+            'settings/general.php and text_filter::DEFAULT_URL_SCHEMES must have the same default'
+        );
+    }
+
+    /**
+     * Test that an ampersand in a button URL is not double encoded.
+     *
+     * @return void
+     */
+    public function test_button_tag_ampersand_not_double_encoded(): void {
+        $before = '{button /course/view.php?id=1&amp;x=2}ok{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringContainsString(
+            'href="/course/view.php?id=1&amp;x=2"',
+            $filtered,
+            sprintf("Ampersand should be encoded exactly once\nActual: '%s'", $filtered)
+        );
+        $this->assertStringNotContainsString(
+            '&amp;amp;',
+            $filtered,
+            sprintf("Ampersand should not be double encoded\nActual: '%s'", $filtered)
+        );
+    }
+
+    /**
+     * Test that the documented way of opening a button in a new tab still works.
+     *
+     * @return void
+     */
+    public function test_button_tag_target_attribute(): void {
+        $before = '{button https://example.com" target="_blank}Example{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringContainsString(
+            'target="_blank"',
+            $filtered,
+            sprintf("Should open in a new tab\nActual: '%s'", $filtered)
+        );
+        $this->assertStringContainsString(
+            'rel="noopener noreferrer"',
+            $filtered,
+            sprintf("Should protect the opener\nActual: '%s'", $filtered)
+        );
+        $this->assertStringContainsString(
+            'href="https://example.com"',
+            $filtered,
+            sprintf("Should keep the URL\nActual: '%s'", $filtered)
+        );
+    }
+
+    /**
+     * Test which additional button attributes are kept and which are discarded.
+     *
+     * @return void
+     */
+    public function test_button_tag_attribute_allowlist(): void {
+        $before = '{button /x" title="Hello" class="btn btn-danger}Go{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringContainsString(
+            'title="Hello"',
+            $filtered,
+            sprintf("Should keep the title\nActual: '%s'", $filtered)
+        );
+        $this->assertStringContainsString(
+            'class="btn btn-danger"',
+            $filtered,
+            sprintf("Should keep the author class\nActual: '%s'", $filtered)
+        );
+        $this->assertStringNotContainsString(
+            'btn-primary',
+            $filtered,
+            sprintf("Author class should replace the default\nActual: '%s'", $filtered)
+        );
+
+        $before = '{button /x" style="width:99vw" formaction="//evil.example}Go{/button}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        $this->assertStringNotContainsString(
+            'style=',
+            $filtered,
+            sprintf("Should discard style\nActual: '%s'", $filtered)
+        );
+        $this->assertStringNotContainsString(
+            'formaction=',
+            $filtered,
+            sprintf("Should discard formaction\nActual: '%s'", $filtered)
+        );
+    }
+
+    /**
+     * Test that a button can open a Bootstrap modal, but cannot use other Bootstrap toggles.
+     *
+     * @return void
+     */
+    public function test_button_tag_bootstrap_modal_toggle(): void {
+        foreach (['data-bs-toggle', 'data-toggle'] as $attribute) {
+            $before = '{button #mymodal" ' . $attribute . '="modal}Open{/button}';
+            $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+            $this->assertStringContainsString(
+                'href="#mymodal" ' . $attribute . '="modal"',
+                $filtered,
+                sprintf("%s=\"modal\" should be kept\nActual: '%s'", $attribute, $filtered)
+            );
+
+            $before = '{button #x" ' . $attribute . '="popover}Open{/button}';
+            $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+            $this->assertStringNotContainsString(
+                $attribute . '=',
+                $filtered,
+                sprintf("%s should only allow modal\nActual: '%s'", $attribute, $filtered)
+            );
+        }
+    }
+
+    /**
      * Test editingtoggle tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_editingtoggle(): void {
@@ -385,7 +719,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test lang tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_lang_tag(): void {
@@ -399,7 +732,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test recaptcha tag when logged in (should be blank).
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_recaptcha_when_logged_in(): void {
@@ -418,7 +750,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test formsesskey tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_formsesskey(): void {
@@ -449,7 +780,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test urlencode tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_urlencode_tag(): void {
@@ -468,7 +798,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test rawurlencode tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_rawurlencode_tag(): void {
@@ -487,7 +816,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test keyboard tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_keyboard_tag(): void {
@@ -506,7 +834,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test qrcode tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_qrcode_tag(): void {
@@ -524,10 +851,46 @@ final class content_test extends \advanced_testcase {
         );
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('qrcode_injection_provider')]
+    /**
+     * Test that QR code content cannot add attributes to the generated image.
+     *
+     * @dataProvider qrcode_injection_provider
+     * @param string $content Content to place between the tags.
+     * @return void
+     */
+    public function test_qrcode_tag_cannot_inject_attributes(string $content): void {
+        $before = '{qrcode}' . $content . '{/qrcode}';
+        $filtered = format_text($before, FORMAT_HTML, ['context' => \context_system::instance()]);
+
+        // An escaped value reads onerror=&quot;, so a literal quote here means the attribute broke out.
+        $this->assertStringNotContainsString(
+            'onerror="',
+            $filtered,
+            sprintf("Should not produce an event handler\nActual: '%s'", $filtered)
+        );
+        $this->assertStringContainsString(
+            'alt="',
+            $filtered,
+            sprintf("Should still have alternative text\nActual: '%s'", $filtered)
+        );
+    }
+
+    /**
+     * Data provider of QR code content which must not escape the alt attribute.
+     *
+     * @return array
+     */
+    public static function qrcode_injection_provider(): array {
+        return [
+            'plain quote' => ['x" onerror="alert(1)" a="'],
+            'encoded quote' => ['x&quot; onerror=&quot;alert(1)'],
+        ];
+    }
+
     /**
      * Test showmore tag.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_showmore_tag(): void {
@@ -546,7 +909,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test multiple content tags in one string.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_multiple_content_tags(): void {
@@ -578,7 +940,6 @@ final class content_test extends \advanced_testcase {
     /**
      * Test global custom tags (if configured).
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_global_tag(): void {

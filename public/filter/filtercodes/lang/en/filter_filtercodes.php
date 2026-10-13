@@ -25,6 +25,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['allowedurlschemes'] = 'Allowed URL schemes';
+$string['allowedurlschemes_desc'] = 'List of URL schemes (protocols) that FilterCodes will allow in the links it generates, such as the {button} tag. Enter one scheme per line, without the colon, for example <code>https</code> or <code>mailto</code>. Relative links, which have no scheme, are always allowed. If you leave this list empty, no URL schemes are allowed and only relative links will work.<br><br><strong>Warning:</strong> Adding <code>javascript</code>, or any other scheme that can run code, lets anyone who can edit content create links that run scripts in the browser of whoever clicks them. This is a security risk. Only add such schemes if you completely trust everyone who can create or edit filtered content on your site.';
+$string['allowhiddencoursetags'] = 'Describe hidden courses';
+$string['allowhiddencoursetags_desc'] = 'If enabled, tags which accept a course ID, such as {coursename id}, {coursesummary id}, {coursestartdate id} and {courseenddate id}, will also describe courses which are hidden from students. Enable this if you promote a hidden course from within another course, for example a follow-up course which only becomes available once an earlier one is complete. If disabled, hidden courses are only described for users who are allowed to see them.';
 $string['brief'] = 'Brief';
 $string['categorycardshowpic'] = 'Show {categorycards} background';
 $string['categorycardshowpic_desc'] = 'If enabled, will display a background colour/pattern for {categorycards} tag similar to the course images when no image was specified.';
@@ -217,7 +221,7 @@ $string['narrowpage_desc'] = 'Enable this option to optimize display of informat
 $string['nocompletedcourses'] = 'None of the courses in which you are enrolled have been marked as completed.';
 $string['notavailable'] = 'Not available';
 $string['pagebuilder'] = 'Page builder';
-$string['pagebuilderlink'] = 'https://www.layoutit.com/build';
+$string['pagebuilderlink'] = 'https://build.layoutit.com/';
 $string['photoeditor'] = 'Photo editor';
 $string['photoeditorlink'] = 'https://pixlr.com/editor/';
 $string['pluginname'] = 'Filter Codes';
@@ -233,8 +237,6 @@ $string['scrape_show_missing'] = 'Display message when scrape content is unavail
 $string['scrape_show_missing_desc'] = 'When enabled, displays a message: {$a} Where the scraped content would have appeared if the request fails or returns no matching element. When disabled (default), the broken scrape renders nothing so page layout is preserved.';
 $string['scrapeheading'] = 'Scrape tag settings';
 $string['scrapeheadingdesc'] = 'Configure how the {scrape} tag fetches, restricts, caches and displays remote HTML content.';
-$string['screenrec'] = 'Screen recorder';
-$string['screenreclink'] = 'https://screenapp.io/#/recording';
 $string['showhiddenprofilefields'] = 'Show hidden profile fields';
 $string['showhiddenprofilefields_desc'] = 'Enable the {profile_field_...} tag to process all profile fields including ones hidden from the user.';
 $string['sizeb'] = 'B';
