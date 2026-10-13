@@ -47,6 +47,23 @@ class manager {
     private stdClass $instance;
 
     /**
+     * Resolve the moodle_database instance.
+     *
+     * Moodle 4.5+ ships a DI container at \core\di. On older Moodles we
+     * fall back to the global $DB so the plugin keeps working down to
+     * Moodle 4.0 (its declared minimum).
+     *
+     * @return \moodle_database
+     */
+    private static function db(): \moodle_database {
+        if (class_exists('\\core\\di')) {
+            return \core\di::get(\moodle_database::class);
+        }
+        global $DB;
+        return $DB;
+    }
+
+    /**
      * Class constructor.
      *
      * @param cm_info $cm course module info object
@@ -59,7 +76,7 @@ class manager {
         $this->cm = $cm;
         $this->instance = $instance;
         $this->context = context_module::instance($cm->id);
-        $this->db = \core\di::get(\moodle_database::class);
+        $this->db = self::db();
         $this->course = $cm->get_course();
     }
 
@@ -85,7 +102,7 @@ class manager {
     public static function create_from_coursemodule($cm): self {
         // Ensure that $this->cm is a cm_info object.
         $cm = cm_info::create($cm);
-        $db = \core\di::get(\moodle_database::class);
+        $db = self::db();
         $instance = $db->get_record(self::MODULE, ['id' => $cm->instance], '*', MUST_EXIST);
         return new self($cm, $instance);
     }
@@ -123,9 +140,11 @@ class manager {
      * @return bool true if the user has answered, false otherwise
      */
     public function has_answered(): bool {
-        global $USER;
-        $answer = \journal_get_completion_state($this->course, $this->cm, $USER->id, true);
-        return $answer;
+        global $DB, $USER;
+        return $DB->record_exists('journal_entries', [
+            'journal' => $this->instance->id,
+            'userid' => $USER->id,
+        ]);
     }
 
     /**

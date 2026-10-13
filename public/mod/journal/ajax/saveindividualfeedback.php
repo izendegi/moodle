@@ -24,6 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$result = [
+    'status' => '',
+    'content' => '',
+];
+
 $sesskey = required_param('sesskey', PARAM_ALPHANUM);
 $cmid = required_param('cmid', PARAM_INT);
 $userid = required_param('userid', PARAM_INT);
@@ -64,11 +69,17 @@ if (!$entry = $DB->get_record('journal_entries', ['journal' => $journal->id, 'id
     throw new \moodle_exception(get_string('incorrectjournalentry', 'journal'));
 }
 
-confirm_sesskey($sesskey);
+if (!groups_user_groups_visible($course, $entry->userid, $cm)) {
+    throw new \moodle_exception('nopermissions', 'error', '', get_string('savefeedback', 'journal'));
+}
+
+if (!confirm_sesskey($sesskey)) {
+    throw new \moodle_exception('invalidsesskey');
+}
 
 // Only update entries where feedback has actually changed.
 $ratingchanged = false;
-if ($grade !== null && $grade !== (int) $entry->rating) {
+if ($grade !== (int) $entry->rating) {
     $ratingchanged = true;
 }
 

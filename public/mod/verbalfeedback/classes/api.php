@@ -392,11 +392,19 @@ class api {
     public static function save_responses($instanceid, $submissionid, $touser, $responses) {
         global $USER;
         $submissionrepo = new submission_repository();
-        $fromuser = $USER->id;
+        $fromuser = (int)$USER->id;
 
         $inprogress = false;
 
         $submission = $submissionrepo->get_by_id($submissionid);
+        if (
+            $submission === null ||
+            $submission->instanceid !== $instanceid ||
+            $submission->fromuserid !== $fromuser ||
+            $submission->touserid !== $touser
+        ) {
+            throw new moodle_exception('invalididprovided', 'mod_verbalfeedback');
+        }
         foreach ($responses as $resp) {
             $response = new response();
             foreach ($submission->get_responses() as $savedresponse) {

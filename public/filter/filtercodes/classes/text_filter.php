@@ -48,6 +48,12 @@ if (class_exists('\core_filters\text_filter')) {
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class text_filter extends \filtercodes_base_text_filter {
+    /**
+     * Default value of the Allowed URL schemes setting, one scheme per line. It must match the
+     * default in settings/general.php, which is checked by a unit test.
+     */
+    const DEFAULT_URL_SCHEMES = "http\nhttps\nmailto\ntel\nsms";
+
     /** @var array $archetyperoles Object array of Moodle archetypes. */
     private static $archetyperoles = null;
     /** @var array $customroles array of Roles key is shortname and value is the id */
@@ -513,6 +519,39 @@ class text_filter extends \filtercodes_base_text_filter {
     }
 
     /**
+     * Fetch a course by id, if the current user is allowed to see information about it.
+     *
+     * Tags which take a course id can refer to any course on the site. Unless the site allows it,
+     * a course which is not visible is only returned to users who are permitted to see hidden
+     * courses. Sites which deliberately advertise hidden courses, such as a follow-up course
+     * promoted from within an earlier one, can allow this with the allowhiddencoursetags setting.
+     *
+     * @param int $courseid Id of the course to retrieve.
+     * @return object|null The course record, or null if it does not exist or must not be shown.
+     */
+    private function getviewablecourse($courseid) {
+        global $DB;
+
+        $course = $DB->get_record('course', ['id' => $courseid]);
+        if (empty($course)) {
+            return null;
+        }
+
+        if (get_config('filter_filtercodes', 'allowhiddencoursetags')) {
+            return $course;
+        }
+
+        if (
+            empty($course->visible)
+            && !has_capability('moodle/course:viewhiddencourses', \context_course::instance($course->id))
+        ) {
+            return null;
+        }
+
+        return $course;
+    }
+
+    /**
      * Render course cards for list of course ids. Not visible for hidden courses or if it has expired.
      *
      * @param array $rcourseids Array of course ids.
@@ -748,6 +787,198 @@ class text_filter extends \filtercodes_base_text_filter {
     }
 
     /**
+     * Whether the HTML in the code attribute of the {scrape} tag may be added to the page without cleaning.
+     *
+     * The code attribute is URL encoded, so Moodle cleans it as plain text and it only becomes markup
+     * when the tag is processed. It therefore gets the same treatment as the text it is in: it is
+     * only left uncleaned where Moodle left that text uncleaned, such as Page content, activity
+     * descriptions and Text blocks, where the author could add the same markup directly.
+     *
+     * Moodle cleans site policy documents, but only people allowed to manage policies can edit them,
+     * so the code attribute is also left uncleaned on the pages of the Policies tool which show them.
+     * When an administrator sets $CFG->forceclean, it is always cleaned.
+     *
+     * @param array $options Filter options passed by Moodle.
+     * @return bool True if the code attribute may be added without cleaning.
+     */
+    private function isscrapecodetrusted(array $options) {
+        global $CFG;
+
+        if (!empty($CFG->forceclean)) {
+            return false;
+        }
+        if (!empty($options['noclean'])) {
+            return true;
+        }
+        return $this->ispolicydocumentpage();
+    }
+
+    /**
+     * Whether the current page is a page of the Policies tool (tool_policy) which shows policy documents.
+     *
+     * These are the page where users accept the site policies, and the pages which view one policy or
+     * all policies. Policies shown in a popup or in the Moodle app are loaded through web services and
+     * are not on these pages.
+     *
+     * @return bool True if the current page shows site policy documents.
+     */
+    private function ispolicydocumentpage() {
+        global $PAGE;
+
+        if (empty($PAGE) || !$PAGE->has_set_url()) {
+            return false;
+        }
+        $path = $PAGE->url->get_path();
+        foreach (['index.php', 'view.php', 'viewall.php'] as $script) {
+            $policypage = '/admin/tool/policy/' . $script;
+            if (substr($path, -strlen($policypage)) === $policypage) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Build the address part of a custom menu item which opens in a popup window where possible.
+     *
+     * Before Moodle 5.3, custom menu items are rendered by Mustache templates which insert the
+     * address unescaped, so closing the address early adds target and onclick attributes to the
+     * link. From Moodle 5.3, the primary navigation is rendered by React, which only takes the
+     * address and escapes it, so those attributes would become part of a broken address. In that
+     * case the item is a plain link which opens in the same window.
+     *
+     * @param string $url Address of the page to open. May contain FilterCodes tags.
+     * @return string The custom menu item address, optionally followed by popup attributes.
+     */
+    private function popupmenuurl($url) {
+        if (method_exists('\core\navigation\output\primary', 'export_react_props')) {
+            return $url;
+        }
+        return $url . '" target="popup" onclick="window.open(\'' . $url . '\',\'popup\',\'width=1340,height=700\');'
+            . ' return false;';
+    }
+
+    /**
+     * Filter a URL destined for the href attribute of a generated link.
+     *
+     * Only schemes which the administrator has allowed are permitted. The list of allowed schemes is
+     * configured in the "Allowed URL schemes" plugin setting (see allowedurlschemes()). Relative
+     * references have no scheme and are always allowed.
+     *
+     * The comparison is made on the scheme, not on the URL as a whole, so that an ordinary URL which
+     * happens to contain a scheme name in its query string is not rejected.
+     *
+     * @param string $url URL to filter.
+     * @return string The URL, or an empty string if it uses a scheme which is not permitted.
+     */
+    private function buttonurl($url) {
+        $allowedschemes = $this->allowedurlschemes();
+
+        // Browsers ignore control characters and spaces when parsing the scheme, so remove them
+        // before testing. Without this, "java&#9;script:" would not be recognised as a scheme.
+        $test = preg_replace('/[\x00-\x20\x7f]/', '', $url);
+
+        // No leading scheme means a relative reference such as /page.php, page.php, #anchor,
+        // ?id=1 or //example.com/page. Those are always allowed.
+        if (!preg_match('/^([a-z][a-z0-9+.-]*):/i', $test, $matches)) {
+            return $url;
+        }
+
+        return in_array(strtolower($matches[1]), $allowedschemes, true) ? $url : '';
+    }
+
+    /**
+     * Get the list of URL schemes which FilterCodes will allow in links it generates, such as the
+     * {button} tag.
+     *
+     * The list is configured by the administrator in the "Allowed URL schemes" setting, one scheme
+     * per line. Until that setting has been saved, for example on a site upgraded through the web
+     * interface before the new settings page is completed, the default list is used. Entries are
+     * lowercased and any trailing colon is ignored, so both "mailto" and "mailto:" are accepted. If
+     * the administrator empties the setting, no schemes are allowed and only relative links continue
+     * to work.
+     *
+     * Administrators may add javascript, or any other script-capable scheme, to the setting. Doing so
+     * is a security risk, which is why it is not part of the default.
+     *
+     * @return array Lowercased list of allowed scheme names, without the trailing colon.
+     */
+    private function allowedurlschemes() {
+        $configured = get_config('filter_filtercodes', 'allowedurlschemes');
+        if ($configured === false) {
+            $configured = self::DEFAULT_URL_SCHEMES;
+        }
+
+        // Accept one scheme per line, but also tolerate commas and other whitespace as separators.
+        // Each entry is lowercased and a trailing colon, if the author included one, is removed.
+        $schemes = preg_split('/[\s,]+/', strtolower($configured), -1, PREG_SPLIT_NO_EMPTY);
+        $schemes = array_map(function ($scheme) {
+            return rtrim($scheme, ':');
+        }, $schemes);
+
+        return array_values(array_filter($schemes, 'strlen'));
+    }
+
+    /**
+     * Build the additional HTML attributes of a generated button link.
+     *
+     * The {button} tag has always allowed extra attributes to be added by closing the href attribute
+     * early, as in {button URL" target="_blank}. That form remains supported, but only for a fixed
+     * list of attributes which cannot execute script. Every value is escaped.
+     *
+     * @param string $tail The part of the tag which followed the first double quote.
+     * @return string Generated attributes, each preceded by a space, or an empty string.
+     */
+    private function buttonattributes($tail) {
+        $allowed = ['target', 'rel', 'title', 'id', 'class', 'aria-label', 'download', 'data-bs-toggle', 'data-toggle'];
+
+        // Attribute values may be double quoted, single quoted or unquoted. The closing quote is
+        // optional because the legacy syntax borrows the closing quote of the href attribute.
+        $re = '/([a-z][a-z0-9-]*)(?:\s*=\s*(?:"([^"]*)"?|\'([^\']*)\'?|([^\s"\'>]*)))?/i';
+        if (!preg_match_all($re, $tail, $matches, PREG_SET_ORDER)) {
+            return '';
+        }
+
+        $attributes = [];
+        foreach ($matches as $match) {
+            $name = strtolower($match[1]);
+            if (!in_array($name, $allowed, true) || isset($attributes[$name])) {
+                continue;
+            }
+            // The value is whichever of the three quoting styles matched.
+            $value = '';
+            for ($i = 2; $i <= 4; $i++) {
+                if (isset($match[$i]) && $match[$i] !== '') {
+                    $value = $match[$i];
+                    break;
+                }
+            }
+            // A frame name, not a URL or script, but keep it to something a browser will accept.
+            if ($name === 'target' && !preg_match('/^[a-z_][a-z0-9_.-]*$/i', $value)) {
+                continue;
+            }
+            // Bootstrap toggles (data-bs-toggle in Bootstrap 5, data-toggle in Bootstrap 4) are only
+            // allowed to open a modal, whose target is the link's #id address.
+            if (($name === 'data-bs-toggle' || $name === 'data-toggle') && $value !== 'modal') {
+                continue;
+            }
+            $attributes[$name] = $value;
+        }
+
+        // Opening a link in a new tab without this leaves the new document able to reach back
+        // through window.opener. Only a new browsing context is affected.
+        if (isset($attributes['target']) && $attributes['target'] === '_blank' && !isset($attributes['rel'])) {
+            $attributes['rel'] = 'noopener noreferrer';
+        }
+
+        $html = '';
+        foreach ($attributes as $name => $value) {
+            $html .= ' ' . $name . '="' . s($value) . '"';
+        }
+        return $html;
+    }
+
+    /**
      * Course completion progress percentage.
      *
      * @return int completion progress percentage
@@ -851,9 +1082,9 @@ class text_filter extends \filtercodes_base_text_filter {
                         . '?id={courseid}' . PHP_EOL;
                     $menu .= '-{getstring}course{/getstring}: {getstring}reset{/getstring}|/course/reset.php?id={courseid}'
                         . PHP_EOL;
-                    $menu .= '-Course: Layoutit|https://www.layoutit.com/build" target="popup" ' .
-                        'onclick="window.open(\'https://www.layoutit.com/build\',\'popup\',\'width=1340,height=700\');' .
-                        ' return false;|Bootstrap Page Builder' . PHP_EOL;
+                    $menu .= '-Course: Layoutit|'
+                        . $this->popupmenuurl('{getstring:filter_filtercodes}pagebuilderlink{/getstring}')
+                        . '|Bootstrap Page Builder' . PHP_EOL;
                     $menu .= '{/ifincourse}' . PHP_EOL;
                     $menu .= '-###' . PHP_EOL;
                 }
@@ -962,7 +1193,7 @@ class text_filter extends \filtercodes_base_text_filter {
                     $menu .= '-{getstring:admin}purgecachespage{/getstring}|/admin/purgecaches.php' . PHP_EOL;
                     $menu .= '-###' . PHP_EOL;
                     if (file_exists($CFG->dirroot . '/local/adminer/version.php')) {
-                        $menu .= '-{getstring:local_adminer}pluginname{/getstring}|/local/adminer' . PHP_EOL;
+                        $menu .= '-{getstring:local_adminer}pluginname{/getstring}|/local/adminer/lib/run_adminer.php' . PHP_EOL;
                     }
                     if (file_exists($CFG->dirroot . '/local/codechecker/version.php')) {
                         $menu .= '-{getstring:local_codechecker}pluginname{/getstring}|/local/codechecker' . PHP_EOL;
@@ -979,19 +1210,11 @@ class text_filter extends \filtercodes_base_text_filter {
                     $menu .= '-{getstring}phpinfo{/getstring}|/admin/phpinfo.php' . PHP_EOL;
                     $menu .= '-###' . PHP_EOL;
                     $menu .= '-{getstring:filter_filtercodes}pagebuilder{/getstring}|'
-                        . '{getstring:filter_filtercodes}pagebuilderlink{/getstring}"'
-                        . ' target="popup" onclick="window.open(\'{getstring:filter_filtercodes}pagebuilderlink{/getstring}\''
-                        . ',\'popup\',\'width=1340,height=700\'); return false;' . PHP_EOL;
+                        . $this->popupmenuurl('{getstring:filter_filtercodes}pagebuilderlink{/getstring}') . PHP_EOL;
                     $menu .= '-{getstring:filter_filtercodes}photoeditor{/getstring}|'
-                        . '{getstring:filter_filtercodes}photoeditorlink{/getstring}"'
-                        . ' target="popup" onclick="window.open(\'{getstring:filter_filtercodes}photoeditorlink{/getstring}\''
-                        . ',\'popup\',\'width=1340,height=700\'); return false;' . PHP_EOL;
-                    $menu .= '-{getstring:filter_filtercodes}screenrec{/getstring}|'
-                        . '{getstring:filter_filtercodes}screenreclink{/getstring}"'
-                        . ' target="popup" onclick="window.open(\'{getstring:filter_filtercodes}screenreclink{/getstring}\''
-                        . ',\'popup\',\'width=1340,height=700\'); return false;' . PHP_EOL;
+                        . $this->popupmenuurl('{getstring:filter_filtercodes}photoeditorlink{/getstring}') . PHP_EOL;
                     $menu .= '-###' . PHP_EOL;
-                    $menu .= '-Dev docs|https://moodle.org/development|Moodle.org ({getstring}english{/getstring})' . PHP_EOL;
+                    $menu .= '-Dev docs|https://moodledev.io/|Moodle.org ({getstring}english{/getstring})' . PHP_EOL;
                     $menu .= '-Dev forum|https://moodle.org/mod/forum/view.php?id=55|Moodle.org ({getstring}english{/getstring})' .
                             PHP_EOL;
                     $menu .= '-Tracker|https://moodle.atlassian.net/jira/|Moodle.org ({getstring}english{/getstring})' . PHP_EOL;
@@ -1000,7 +1223,6 @@ class text_filter extends \filtercodes_base_text_filter {
                         . '&levels=aaa|W3C ({getstring}english{/getstring})' . PHP_EOL;
                     $menu .= '-###' . PHP_EOL;
                     $menu .= '-DevTuts|https://www.youtube.com/watch?v=UY_pcs4HdDM|{getstring}english{/getstring}' . PHP_EOL;
-                    $menu .= '-Moodle Development School|https://moodledev.moodle.school/|{getstring}english{/getstring}' . PHP_EOL;
                     $menuurl = 'https://moodle.academy/course/index.php?categoryid=4';
                     $menu .= '-Moodle Dev Academy|' . $menuurl . '|{getstring}english{/getstring}' . PHP_EOL;
                 }
@@ -1174,19 +1396,21 @@ class text_filter extends \filtercodes_base_text_filter {
                     preg_match_all('/\{coursesummary ([0-9]+)\}/', $text, $matches);
                     // Eliminate course IDs.
                     $courseids = array_unique($matches[1]);
-                    $coursecontext = \context_course::instance($PAGE->course->id);
                     foreach ($courseids as $id) {
-                        $course = $DB->get_record('course', ['id' => $id]);
+                        $course = $this->getviewablecourse($id);
+                        $summary = '';
                         if (!empty($course)) {
-                            $course->summary == null ? '' : $course->summary;
-                            $replace['/\{coursesummary ' . $course->id . '\}/isuU'] = format_text(
-                                $course->summary,
+                            // The summary belongs to the course being described, not to the
+                            // course the reader happens to be in.
+                            $summary = format_text(
+                                (string) $course->summary,
                                 FORMAT_HTML,
-                                ['context' => $coursecontext]
+                                ['context' => \context_course::instance($course->id)]
                             );
                         }
+                        $replace['/\{coursesummary ' . $id . '\}/isuU'] = $summary;
                     }
-                    unset($matches, $course, $courseids, $id);
+                    unset($matches, $course, $courseids, $id, $summary);
                 }
             }
 
@@ -1220,16 +1444,18 @@ class text_filter extends \filtercodes_base_text_filter {
                     $courseids = array_unique($matches[1]);
                     $coursecontext = \context_system::instance();
                     foreach ($courseids as $id) {
-                        $course = $DB->get_record('course', ['id' => $id]);
+                        $course = $this->getviewablecourse($id);
+                        $fullname = '';
                         if (!empty($course)) {
-                            $replace['/\{coursename ' . $course->id . '\}/isuU'] = format_string(
+                            $fullname = format_string(
                                 $course->fullname,
                                 true,
                                 ['context' => $coursecontext]
                             );
                         }
+                        $replace['/\{coursename ' . $id . '\}/isuU'] = $fullname;
                     }
-                    unset($matches, $course, $courseids, $id);
+                    unset($matches, $course, $courseids, $id, $fullname);
                 }
             }
         }
@@ -1446,6 +1672,10 @@ class text_filter extends \filtercodes_base_text_filter {
             }
         }
 
+        // Tag: {dashboard_siteinfo}.
+        // Description: (ALPHA) Displays a dashboard card of site information (available disk space, number of courses,
+        // total number of users and users currently online in the last 5 minutes). Only visible to administrators.
+        // Parameters: None.
         if (stripos($text, '{dashboard_siteinfo}') !== false) {
             if (is_siteadmin() && !is_role_switched($PAGE->course->id)) { // If an administrator.
                 $appbytes = @disk_free_space('.');
@@ -2295,7 +2525,7 @@ class text_filter extends \filtercodes_base_text_filter {
                                 );
                             }
                         } else { // Course ID was specifed.
-                            $course = $DB->get_record('course', ['id' => $matches[2]]);
+                            $course = $this->getviewablecourse($matches[2]);
                             if (!empty($course)) {
                                 $startdate = $course->startdate;
                                 if (!empty($course->startdate)) {
@@ -2387,7 +2617,7 @@ class text_filter extends \filtercodes_base_text_filter {
                                 );
                             }
                         } else { // Course ID was specifed.
-                            $course = $DB->get_record('course', ['id' => $matches[2]]);
+                            $course = $this->getviewablecourse($matches[2]);
                             if (!empty($course)) {
                                 $enddate = $course->enddate;
                                 if (!empty($course->enddate)) {
@@ -2868,13 +3098,15 @@ class text_filter extends \filtercodes_base_text_filter {
 
         // Tag: {scrape url="" <optional parameters>}.
         // Description: Scrapes content from an external HTML page. Cannot scrape secure pages from sites that requires login.
-        // Optional parameters: You may use any combination of the following: tag="..." class="..." id="..." code="...".
+        // Optional parameters: You may use any combination of the following: tag="..." class="..." id="..." code="..."
+        // headinglevel="...".
         if (get_config('filter_filtercodes', 'enable_scrape') && stripos($text, '{scrape ') !== false) {
             $scraper = new scraper();
+            $cleancode = !$this->isscrapecodetrusted($options);
             // Replace {scrape} tag and its attributes with retrieved content.
             $newtext = preg_replace_callback(
                 '/\{scrape\s+(.*)\}/isuU',
-                function ($matches) use ($scraper) {
+                function ($matches) use ($scraper, $cleancode) {
                     // Parse the scrape tag's atributes.
                     $matches[0] = $matches[0] == null ? '' : strip_tags($matches[0]);
                     $attribs = substr($matches[0], 1, -1);
@@ -2884,12 +3116,13 @@ class text_filter extends \filtercodes_base_text_filter {
                     $class = isset($scrape['class']) ? $scrape['class'] : '';
                     $id = isset($scrape['id']) ? $scrape['id'] : '';
                     $code = isset($scrape['code']) ? $scrape['code'] : '';
+                    $headinglevel = isset($scrape['headinglevel']) ? $scrape['headinglevel'] : '';
                     // If nothing else, we must have a URL parameter.
                     if (empty($url)) {
                         return "SCRAPE error: Missing or invalid required URL parameter.";
                     }
                     // Replace {scrape} tag and its attributes with retrieved content.
-                    return $scraper->scrapehtml($url, $tag, $class, $id, $code);
+                    return $scraper->scrapehtml($url, $tag, $class, $id, $code, $cleancode, $headinglevel);
                 },
                 $text
             );
@@ -5518,8 +5751,10 @@ class text_filter extends \filtercodes_base_text_filter {
                 function ($matches) {
                     $text = html_to_text($matches[1]);
                     $src = $this->qrcode($text);
-                    $src = '<img src="' . $src . '" style="width:100%;max-width:480px;height:auto;" class="fc-qrcode" alt="'
-                        . $text . '">';
+                    // The encoded text is also used as the alternative text, where it has to be
+                    // escaped so that it cannot end the attribute and add markup of its own.
+                    $src = '<img src="' . s($src) . '" style="width:100%;max-width:480px;height:auto;"'
+                        . ' class="fc-qrcode" alt="' . s($text) . '">';
                     return $src;
                 },
                 $text
@@ -5539,11 +5774,30 @@ class text_filter extends \filtercodes_base_text_filter {
                 function ($matches) {
                     // Remove HTML tags created by filters like Activity Name Auto-Linking and Convert URLs Into Links.
                     $url = strip_tags($matches[1]);
-                    if (strpos($url, '&amp;') === 0) {
-                        $url = s($url);
+
+                    // Extra attributes may be supplied by closing the href attribute early, as in
+                    // {button URL" target="_blank}. Only safe attributes are kept.
+                    $attributes = '';
+                    $quotepos = strpos($url, '"');
+                    if ($quotepos !== false) {
+                        $attributes = $this->buttonattributes(substr($url, $quotepos + 1));
+                        $url = substr($url, 0, $quotepos);
                     }
-                    $label = $matches[2];
-                    return '<a href="' . $url . '" class="btn btn-primary">' . $label . '</a>';
+
+                    // Moodle turns a bare ampersand in text into &amp; when it cleans the content.
+                    // Decode before escaping again so query strings are not double encoded.
+                    $url = html_entity_decode($url, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5);
+                    $url = $this->buttonurl($url);
+
+                    // As before, a class supplied by the author replaces the default one.
+                    if (strpos($attributes, ' class="') === false) {
+                        $attributes .= ' class="btn btn-primary"';
+                    }
+                    $link = '<a';
+                    if ($url !== '') {
+                        $link .= ' href="' . s($url) . '"';
+                    }
+                    return $link . $attributes . '>' . $matches[2] . '</a>';
                 },
                 $text
             );
