@@ -16,44 +16,17 @@
 
 namespace mod_journal\external;
 
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->libdir . '/externallib.php');
-
 use coding_exception;
 use context_module;
 use dml_exception;
-use external_function_parameters;
-use external_value;
-use external_single_structure;
+use core_external\external_function_parameters;
+use core_external\external_value;
+use core_external\external_single_structure;
 use invalid_parameter_exception;
 use mod_journal\event\entry_created;
 use mod_journal\event\entry_updated;
 use required_capability_exception;
 use stdClass;
-
-global $CFG;
-
-// Dynamic Class Logic.
-// Ensures compatibility between Moodle 3.9 (global classes) and 4.0+ (core_external namespace).
-if (!class_exists('mod_journal\external\journal_external_api_base')) {
-    if (class_exists('core_external\external_api')) {
-        // Moodle 4.0 and higher.
-        class_alias('core_external\external_api', 'mod_journal\external\journal_external_api_base');
-
-        // Ensure global class aliases exist for the helper types used in this file.
-        if (!class_exists('external_function_parameters')) {
-            class_alias('core_external\external_function_parameters', 'external_function_parameters');
-        }
-        if (!class_exists('external_value')) {
-            class_alias('core_external\external_value', 'external_value');
-        }
-    } else {
-        // Moodle 3.9 - 3.11.
-        require_once($CFG->libdir . '/externallib.php');
-        class_alias('external_api', 'mod_journal\external\journal_external_api_base');
-    }
-}
 
 /**
  * External function to set a journal's text
@@ -138,14 +111,14 @@ class set_text extends journal_external_api_base {
         $newentry->userid = $USER->id;
         $newentry->journal = $journal->id;
 
-        if ($entry) {
-            $newentry->id = $entry->id;
-        } else {
+        $isnew = empty($entry);
+        if ($isnew) {
             // Create a record first to get an ID for file storage.
             $tempentry = clone $newentry;
             $tempentry->text = '';
             $newentry->id = $DB->insert_record('journal_entries', $tempentry);
-            $entry = $newentry;
+        } else {
+            $newentry->id = $entry->id;
         }
 
         // Handle File Drafts.
@@ -165,7 +138,7 @@ class set_text extends journal_external_api_base {
         $DB->update_record('journal_entries', $newentry);
 
         // Trigger events.
-        if ($entry && isset($entry->modified) && $entry->modified > 0) {
+        if (!$isnew) {
             $event = entry_updated::create([
                 'objectid' => $journal->id,
                 'context' => $context,

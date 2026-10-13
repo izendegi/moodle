@@ -1,7 +1,8 @@
 @quiz @quiz_heartbeat @javascript
-Feature: Correct handling of groups
+Feature: Correct handling of groups pre 5.3
 
   Background:
+    Given the site is running Moodle version 5.2 or lower
     Given the following "courses" exist:
       | fullname | shortname | category |
       | Course 1 | C1        | 0        |
