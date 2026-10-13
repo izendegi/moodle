@@ -47,6 +47,12 @@ use gradingform_rubric_ranges_controller;
  * @copyright  2022 Marcus Green
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later.
  */
+#[\PHPUnit\Framework\Attributes\CoversFunction('get_grading_definition')]
+#[\PHPUnit\Framework\Attributes\CoversFunction('user_fields')]
+#[\PHPUnit\Framework\Attributes\CoversClass(rubric::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(guide::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(btec::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(rubric_ranges::class)]
 final class locallib_test extends \advanced_testcase {
     // Use the generator helper.
     use \mod_assign_test_generator;
@@ -132,9 +138,6 @@ final class locallib_test extends \advanced_testcase {
      * Test get_grading_definition function with a rubric grading method
      * Created as a very basic test for the patch contributed to this
      * https://github.com/marcusgreen/moodle-report_advancedgrading/issues/15
-     *
-     * @covers ::get_grading_definition
-     *
      */
     public function test_get_grading_definition(): void {
         $this->resetAfterTest();
@@ -145,8 +148,6 @@ final class locallib_test extends \advanced_testcase {
     /**
      * check that values in settings configure
      * what userfields are displayed
-     *
-     * @covers ::user_fields
      *
      * @return void
      */
@@ -178,8 +179,6 @@ final class locallib_test extends \advanced_testcase {
     }
     /**
      * Check output of report for rubric grading method
-     *
-     * @covers ::rubric->get_data
      *
      * @return void
      */
@@ -224,8 +223,6 @@ final class locallib_test extends \advanced_testcase {
     /**
      * Check output of report for marking guide grading method
      *
-     * @covers ::guide->get_data
-     *
      * @return void
      */
     public function test_guide(): void {
@@ -263,9 +260,83 @@ final class locallib_test extends \advanced_testcase {
     }
 
     /**
-     * Check output of report for rubric grading method
+     * Check the BTEC report respects anonymous (blind) marking.
      *
-     * @covers ::rubric_ranges->get_data
+     * The BTEC grading method had no fixture in the shared backup, and its
+     * get_data() previously did not call set_blindmarking(), so it leaked
+     * student identities. This restores a BTEC-graded assignment, enables
+     * blind marking, and confirms names are obscured then revealed.
+     *
+     * @return void
+     */
+    public function test_btec(): void {
+        $this->resetAfterTest();
+        global $DB, $USER, $CFG;
+
+        if (core_component::get_plugin_directory('gradingform', 'btec') === null) {
+            $this->markTestSkipped('BTEC grading plugin not installed');
+        }
+
+        // Restore the BTEC activity backup into a fresh course.
+        $course = $this->getDataGenerator()->create_course();
+        $foldername = 'backup-btec';
+        $fp = get_file_packer('application/vnd.moodle.backup');
+        $tempdir = make_backup_temp_directory($foldername);
+        $fp->extract_to_pathname(
+            $CFG->dirroot . '/grade/grading/form/btec/tests/fixtures/backup_btec_grading.mbz',
+            $tempdir
+        );
+        $controller = new \restore_controller(
+            $foldername,
+            $course->id,
+            \backup::INTERACTIVE_NO,
+            \backup::MODE_GENERAL,
+            $USER->id,
+            \backup::TARGET_EXISTING_ADDING
+        );
+        $controller->execute_precheck();
+        $controller->execute_plan();
+
+        $assignrecord = $DB->get_record('assign', ['course' => $course->id], '*', MUST_EXIST);
+        // Enable blind marking on the restored assignment before building the assign object.
+        $DB->set_field('assign', 'blindmarking', 1, ['id' => $assignrecord->id]);
+
+        $cm = get_coursemodule_from_instance('assign', $assignrecord->id, $course->id);
+        $data['headerstyle'] = 'style="background-color:#D2D2D2;"';
+        $data['reportname'] = get_string('btecreportname', 'report_advancedgrading');
+        $data['grademethod'] = 'btec';
+        $data['modid'] = $cm->id;
+        $data['courseid'] = $course->id;
+        $data = init($data);
+
+        $this->assertTrue($data['assign']->is_blind_marking());
+
+        $btec = new btec();
+        $data['dbrecords'] = $btec->get_data($data['assign'], $data['cm']);
+        $this->assertNotEmpty($data['dbrecords']);
+
+        // The set_blindmarking() helper obscures the name fields but keeps the real
+        // userid, so fetch the real account to compare against.
+        $record = reset($data['dbrecords']);
+        $realuser = $DB->get_record('user', ['id' => $record->userid], '*', MUST_EXIST);
+        $participant = get_string('participant', 'report_advancedgrading');
+
+        // Confirm blind marking obscures the real name with the anonymous id.
+        $this->assertStringStartsWith($participant, $record->username);
+        $this->assertStringStartsWith($participant, $record->firstname);
+        $this->assertStringStartsWith($participant, $record->lastname);
+        $this->assertStringNotContainsString($realuser->username, $record->username);
+
+        // Reveal identities and confirm the real name then shows in the report.
+        $data['assign']->reveal_identities();
+        $data['dbrecords'] = $btec->get_data($data['assign'], $data['cm']);
+        $record = reset($data['dbrecords']);
+        $this->assertStringNotContainsString($participant, $record->username);
+        $this->assertEquals($realuser->username, $record->username);
+    }
+
+    /**
+     * Check output of report for rubric grading method
      *
      * @return void
      */
