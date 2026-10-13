@@ -727,7 +727,7 @@ final class sync_test extends \advanced_testcase {
 
         $plugin->sync_courses($trace);
 
-        $this->assertEquals(3+1+count(self::$courses), $DB->count_records('course'));
+        $this->assertEquals(4+1+count(self::$courses), $DB->count_records('course'));
 
         $this->assertTrue($DB->record_exists('course', $course1));
         $course2['category'] = $defcat->id;
