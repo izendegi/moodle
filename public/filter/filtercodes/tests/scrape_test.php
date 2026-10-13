@@ -26,12 +26,15 @@
 
 namespace filter_filtercodes;
 
+#[\PHPUnit\Framework\Attributes\CoversClass(\filter_filtercodes\scraper::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\filter_filtercodes\text_filter::class)]
 /**
  * Unit tests for FilterCodes scrape tag.
  *
  * @copyright  2017-2026 TNG Consulting Inc. - www.tngconsulting.ca
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \filter_filtercodes\scraper
+ * @covers     \filter_filtercodes\text_filter
  */
 final class scrape_test extends \advanced_testcase {
     /** @var array|null Original forced plugin settings for FilterCodes. */
@@ -89,11 +92,12 @@ final class scrape_test extends \advanced_testcase {
      * Filter text through Moodle filters.
      *
      * @param string $text Text to filter.
+     * @param array $options Additional filter options, such as noclean.
      * @return string Filtered text.
      */
-    private function filtertext($text) {
+    private function filtertext($text, array $options = []) {
         $filter = new text_filter();
-        return $filter->filter($text, ['context' => \context_system::instance()]);
+        return $filter->filter($text, $options + ['context' => \context_system::instance()]);
     }
 
     /**
@@ -107,6 +111,22 @@ final class scrape_test extends \advanced_testcase {
         global $CFG;
 
         $CFG->forced_plugin_settings['filter_filtercodes'][$name] = $value;
+    }
+
+    /**
+     * Get a private method of the scraper so that it can be tested directly.
+     *
+     * @param string $name Method name.
+     * @return \ReflectionMethod
+     */
+    private function getscrapermethod($name) {
+        $method = new \ReflectionMethod(scraper::class, $name);
+        // Private methods are accessible through reflection from PHP 8.1. Calling setAccessible()
+        // there does nothing and is deprecated from PHP 8.5, so only call it on older versions.
+        if (PHP_VERSION_ID < 80100) {
+            $method->setAccessible(true);
+        }
+        return $method;
     }
 
     /**
@@ -127,7 +147,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test disabled scrape support leaves the tag unchanged.
      *
-     * @covers \filter_filtercodes\text_filter::filter
      * @return void
      */
     public function test_scrape_disabled_leaves_tag_unchanged(): void {
@@ -142,7 +161,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test non-HTTP schemes are rejected.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_rejects_non_http_scheme(): void {
@@ -155,7 +173,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test the file:// scheme is rejected (regression test for issue #361).
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_rejects_file_scheme(): void {
@@ -181,7 +198,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test root-relative URLs are resolved against wwwroot.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_supports_root_relative_url(): void {
@@ -197,7 +213,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test tag, class and id extraction.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_extracts_matching_node(): void {
@@ -213,7 +228,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test no matching node returns the missing content message (when enabled).
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_missing_node_returns_message(): void {
@@ -229,7 +243,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test scrape failure renders nothing when scrape_show_missing is disabled (default).
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_silent_failure_when_show_missing_disabled(): void {
@@ -247,7 +260,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test unsafe HTML in the scraped content is cleaned.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_cleans_external_content(): void {
@@ -263,22 +275,15 @@ final class scrape_test extends \advanced_testcase {
     }
 
     /**
-     * Test the code attribute is appended raw for backwards compatibility.
+     * Test that ordinary HTML in the code attribute, such as a wrapper with an id, is kept when cleaned.
      *
-     * Trust model: the code attribute is supplied by a course author (an editing role)
-     * and shares the same trust level as any other HTML the author types into Moodle.
-     * It is intentionally NOT cleaned, so existing courses that embed wrappers, scripts,
-     * or other markup via code="..." continue to render unchanged.
-     *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
-    public function test_scrape_code_attribute_is_raw_for_bc(): void {
+    public function test_scrape_code_attribute_keeps_ordinary_html(): void {
         $this->requirecurlmock();
 
         \curl::mock_response('<html><body><div>Body</div></body></html>');
 
-        // Safe HTML wrapper passed via code attribute should render verbatim.
         $filtered = $this->filtertext(
             '{scrape url="https://example.test/page" tag="div" code="%3Cdiv%20id%3D%22wrapper%22%3E%3C%2Fdiv%3E"}'
         );
@@ -288,9 +293,157 @@ final class scrape_test extends \advanced_testcase {
     }
 
     /**
+     * Test that a script in the code attribute is removed where Moodle cleaned the surrounding text.
+     *
+     * The code attribute is URL encoded, so Moodle's own cleaning does not see its markup. Without
+     * this, anyone who can post filtered text could add a script to the page.
+     *
+     * @return void
+     */
+    public function test_scrape_code_attribute_cleaned_with_text(): void {
+        $this->requirecurlmock();
+
+        \curl::mock_response('<html><body><div>Body</div></body></html>');
+
+        $filtered = $this->filtertext('{scrape url="https://example.test/page" tag="div" code="'
+            . rawurlencode('<p onclick="alert(1)">Extra</p><script>alert(2)</script>') . '"}');
+
+        $this->assertStringContainsString('Body', $filtered);
+        $this->assertStringContainsString('Extra', $filtered);
+        $this->assertStringNotContainsString('<script', $filtered);
+        $this->assertStringNotContainsString('onclick', $filtered);
+    }
+
+    /**
+     * Test that a script in the code attribute is kept where Moodle left the surrounding text uncleaned.
+     *
+     * Moodle does this for content such as Pages, activity descriptions and Text blocks, where the
+     * author could add a script directly.
+     *
+     * @return void
+     */
+    public function test_scrape_code_attribute_raw_with_uncleaned_text(): void {
+        $this->requirecurlmock();
+
+        \curl::mock_response('<html><body><div>Body</div></body></html>');
+
+        $filtered = $this->filtertext('{scrape url="https://example.test/page" tag="div" code="'
+            . rawurlencode('<script>alert(2)</script>') . '"}', ['noclean' => true]);
+
+        $this->assertStringContainsString('<script>alert(2)</script>', $filtered);
+    }
+
+    /**
+     * Test that the code attribute is always cleaned when the administrator forces cleaning.
+     *
+     * @return void
+     */
+    public function test_scrape_code_attribute_cleaned_with_forceclean(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->requirecurlmock();
+        $CFG->forceclean = true;
+
+        \curl::mock_response('<html><body><div>Body</div></body></html>');
+
+        $filtered = $this->filtertext('{scrape url="https://example.test/page" tag="div" code="'
+            . rawurlencode('<script>alert(2)</script>') . '"}', ['noclean' => true]);
+
+        $this->assertStringNotContainsString('<script', $filtered);
+    }
+
+    /**
+     * Test that the code attribute is kept in site policy documents shown by the Policies tool.
+     *
+     * Moodle cleans policy documents, but only people allowed to manage policies can edit them.
+     *
+     * @return void
+     */
+    public function test_scrape_code_attribute_raw_on_policy_pages(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+        $this->requirecurlmock();
+        $code = rawurlencode('<script>alert(2)</script>');
+
+        foreach (['index.php', 'view.php', 'viewall.php'] as $script) {
+            \curl::mock_response('<html><body><div>Body</div></body></html>');
+            $PAGE = new \moodle_page();
+            $PAGE->set_url(new \moodle_url('/admin/tool/policy/' . $script));
+            $filtered = $this->filtertext('{scrape url="https://example.test/' . $script . '" tag="div" code="' . $code . '"}');
+            $this->assertStringContainsString('<script>alert(2)</script>', $filtered, $script);
+        }
+
+        // Any other page is cleaned as usual.
+        \curl::mock_response('<html><body><div>Body</div></body></html>');
+        $PAGE = new \moodle_page();
+        $PAGE->set_url(new \moodle_url('/admin/tool/policy/acceptances.php'));
+        $filtered = $this->filtertext('{scrape url="https://example.test/other" tag="div" code="' . $code . '"}');
+        $this->assertStringNotContainsString('<script', $filtered);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('headinglevel_provider')]
+    /**
+     * Test changing the level of headings in the scraped content.
+     *
+     * @dataProvider headinglevel_provider
+     * @param string $headinglevel Value of the headinglevel attribute.
+     * @param string $expected Expected headings, in order.
+     * @return void
+     */
+    public function test_scrape_headinglevel(string $headinglevel, string $expected): void {
+        $this->requirecurlmock();
+
+        \curl::mock_response('<html><body><div id="terms"><h1 class="title">Terms</h1><p>Text</p>'
+            . '<h2>Part</h2><h3>Detail</h3></div></body></html>');
+
+        $filtered = $this->filtertext('{scrape url="https://example.test/' . md5($headinglevel)
+            . '" tag="div" id="terms" headinglevel="' . $headinglevel . '"}');
+
+        preg_match_all('/<(h[1-6])\b[^>]*>/', $filtered, $matches);
+        $this->assertSame($expected, implode(',', $matches[1]), $filtered);
+        // Attributes and content of a heading are kept.
+        $this->assertMatchesRegularExpression('/<h[1-6] class="title">Terms<\/h[1-6]>/', $filtered);
+        $this->assertStringContainsString('<p>Text</p>', $filtered);
+    }
+
+    /**
+     * Data provider for test_scrape_headinglevel.
+     *
+     * @return array
+     */
+    public static function headinglevel_provider(): array {
+        return [
+            'not set' => ['', 'h1,h2,h3'],
+            'lower by one' => ['+1', 'h2,h3,h4'],
+            'lower by four, kept at h6' => ['+4', 'h5,h6,h6'],
+            'raise by one, kept at h1' => ['-1', 'h1,h1,h2'],
+            'highest becomes h3' => ['3', 'h3,h4,h5'],
+            'highest already h1' => ['1', 'h1,h2,h3'],
+            'invalid value ignored' => ['h2', 'h1,h2,h3'],
+            'out of range ignored' => ['+6', 'h1,h2,h3'],
+        ];
+    }
+
+    /**
+     * Test that the scraped element itself is changed when it is a heading.
+     *
+     * @return void
+     */
+    public function test_scrape_headinglevel_on_heading_element(): void {
+        $this->requirecurlmock();
+
+        \curl::mock_response('<html><body><h1 class="top">Title</h1></body></html>');
+
+        $filtered = $this->filtertext('{scrape url="https://example.test/heading" tag="h1" headinglevel="+2"}');
+
+        $this->assertStringContainsString('<h3 class="top">Title</h3>', $filtered);
+    }
+
+    /**
      * Test host allowlist blocks non-matching hosts.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_allowed_hosts_blocks_other_hosts(): void {
@@ -304,7 +457,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test wildcard allowlist matches subdomains and rejects the apex.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_allowed_hosts_wildcard_semantics(): void {
@@ -336,7 +488,6 @@ final class scrape_test extends \advanced_testcase {
      * leak nodes the author did not intend to extract. After escaping, the literal
      * value matches no node and the failure path is taken.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_blocks_xpath_injection_via_class(): void {
@@ -359,7 +510,6 @@ final class scrape_test extends \advanced_testcase {
      *
      * Exercises the concat() branch of xpathliteral().
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_handles_class_with_mixed_quotes(): void {
@@ -379,7 +529,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test oversized responses are rejected.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_rejects_oversized_response(): void {
@@ -399,13 +548,11 @@ final class scrape_test extends \advanced_testcase {
      * helper does not populate the content_type field. A missing Content-Type header is
      * rejected because legitimate web servers should declare one.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_content_type_allowlist(): void {
         $scraper = new scraper();
-        $method = new \ReflectionMethod(scraper::class, 'isscrapecontenttypeallowed');
-        $method->setAccessible(true);
+        $method = $this->getscrapermethod('isscrapecontenttypeallowed');
 
         // Allowed types.
         $this->assertTrue($method->invoke($scraper, ['content_type' => 'text/html']));
@@ -428,7 +575,6 @@ final class scrape_test extends \advanced_testcase {
     /**
      * Test successful scrape output is cached for the configured TTL.
      *
-     * @covers \filter_filtercodes\scraper::scrapehtml
      * @return void
      */
     public function test_scrape_caches_successful_output(): void {
@@ -450,5 +596,102 @@ final class scrape_test extends \advanced_testcase {
 
         $this->setfiltercodesconfig('scrape_cachettl', 0);
         $this->filtertext($tag);
+    }
+    /**
+     * Test detection of whether an allowed hosts list has been configured.
+     *
+     * The scraper only takes over following redirects when a list is configured, so this
+     * decides whether each hop of a redirect chain is checked against the list.
+     *
+     * @return void
+     */
+    public function test_scrape_allowed_hosts_detection(): void {
+        $scraper = new scraper();
+        $method = $this->getscrapermethod('hasscrapeallowedhosts');
+
+        $this->setfiltercodesconfig('scrape_allowed_hosts', '');
+        $this->assertFalse($method->invoke($scraper), 'An empty setting is not an allowed hosts list.');
+
+        $this->setfiltercodesconfig('scrape_allowed_hosts', '  ' . PHP_EOL . '  ');
+        $this->assertFalse($method->invoke($scraper), 'Whitespace only is not an allowed hosts list.');
+
+        $this->setfiltercodesconfig('scrape_allowed_hosts', 'allowed.example');
+        $this->assertTrue($method->invoke($scraper), 'A configured host is an allowed hosts list.');
+
+        $this->setfiltercodesconfig('scrape_allowed_hosts', '');
+    }
+
+    /**
+     * Test that a redirect target is judged against the allowed hosts list.
+     *
+     * Each hop of a redirect chain is passed through this check, so a host which is not on
+     * the list cannot be reached by redirecting to it from a host which is.
+     *
+     * @return void
+     */
+    public function test_scrape_redirect_target_is_checked_against_allowed_hosts(): void {
+        $scraper = new scraper();
+        $method = $this->getscrapermethod('isscrapehostallowed');
+
+        $this->setfiltercodesconfig('scrape_allowed_hosts', 'allowed.example');
+
+        $this->assertTrue(
+            $method->invoke($scraper, 'https://allowed.example/page.html'),
+            'The allowed host should remain reachable.'
+        );
+        $this->assertFalse(
+            $method->invoke($scraper, 'https://elsewhere.example/page.html'),
+            'A redirect to another public host must be refused.'
+        );
+        $this->assertFalse(
+            $method->invoke($scraper, 'http://127.0.0.1/page.html'),
+            'A redirect to an internal address must be refused.'
+        );
+        $this->assertFalse(
+            $method->invoke($scraper, 'http://allowed.example.evil.test/page.html'),
+            'A host which merely starts with an allowed host must be refused.'
+        );
+
+        $this->setfiltercodesconfig('scrape_allowed_hosts', '');
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('www_counterpart_provider')]
+    /**
+     * Test that a redirect between a site's www and bare address is recognised as the same site.
+     *
+     * A redirect is followed if its target is on the allowed hosts list, or if it only adds or
+     * removes "www." from the host which redirected.
+     *
+     * @dataProvider www_counterpart_provider
+     * @param string $from URL which redirected.
+     * @param string $to URL it redirected to.
+     * @param bool $expected Whether the two are www counterparts.
+     * @return void
+     */
+    public function test_scrape_redirect_www_counterpart(string $from, string $to, bool $expected): void {
+        $scraper = new scraper();
+        $method = $this->getscrapermethod('iswwwcounterpart');
+
+        $this->assertSame($expected, $method->invoke($scraper, $from, $to));
+    }
+
+    /**
+     * Data provider for test_scrape_redirect_www_counterpart.
+     *
+     * @return array
+     */
+    public static function www_counterpart_provider(): array {
+        return [
+            'adds www' => ['https://example.com/a', 'https://www.example.com/a', true],
+            'removes www' => ['https://www.example.com/a', 'https://example.com/a', true],
+            'http to https with www' => ['http://example.com/a', 'https://www.example.com/a', true],
+            'ignores case' => ['https://Example.com/a', 'https://WWW.example.COM/a', true],
+            'same host' => ['https://example.com/a', 'https://example.com/b', false],
+            'other site with www' => ['https://example.com/a', 'https://www.elsewhere.example/a', false],
+            'other subdomain' => ['https://example.com/a', 'https://cdn.example.com/a', false],
+            'www without dot' => ['https://example.com/a', 'https://wwwexample.com/a', false],
+            'two www prefixes' => ['https://example.com/a', 'https://www.www.example.com/a', false],
+            'suffix match only' => ['https://evil.test/a', 'https://www.example.evil.test/a', false],
+        ];
     }
 }

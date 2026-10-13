@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 Note - All hash comments refer to the issue number. Eg. #169 refers to https://github.com/mdjnelson/moodle-mod_customcert/issues/169.
 
+## [5.2.11] - 2026-10-11
+
+### Fixed
+
+- Fixed missing certificates in site-wide downloads when certificates share a template name (#1019).
+- Fixed automatic certificate issuance being blocked by the certificate activity's own completion conditions (#1020).
+
 ## [5.2.10] - 2026-10-06
 
 ### Security
