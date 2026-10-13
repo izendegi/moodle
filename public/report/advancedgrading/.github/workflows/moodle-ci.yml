@@ -15,27 +15,22 @@ jobs:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
       mariadb:
-        image: mariadb:10
+        image: mariadb:11.4
         env:
-          MYSQL_USER: 'root'
-          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1'
           MYSQL_CHARACTER_SET_SERVER: "utf8mb4"
           MYSQL_COLLATION_SERVER: "utf8mb4_unicode_ci"
-
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 3
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval 10s --health-timeout 5s --health-retries 3
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - php: '8.3'
-            moodle-branch: 'main'
+            moodle-branch: 'MOODLE_503_STABLE'
             database: 'mariadb'
-          # - php: '8.3'
-          #   moodle-branch: 'main'
-          #   database: 'pgsql'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -99,7 +94,7 @@ jobs:
         run: moodle-plugin-ci savepoints
 
       - name: Grunt
-        if: ${{ matrix.moodle-branch == 'master' }}
+        if: ${{ matrix.moodle-branch == 'MOODLE_503_STABLE' }}
         run: moodle-plugin-ci grunt
 
       - name: PHPUnit tests
