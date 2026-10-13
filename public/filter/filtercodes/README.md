@@ -5,7 +5,7 @@ FilterCodes filter plugin for Moodle
 
 [![Moodle Plugin CI](https://github.com/michael-milette/moodle-filter_filtercodes/actions/workflows/moodle-ci.yml/badge.svg)](https://github.com/michael-milette/moodle-filter_filtercodes/actions/workflows/moodle-ci.yml)
 ![PHP](https://img.shields.io/badge/PHP-v7.3%20to%20v8.4-blue.svg)
-![Moodle](https://img.shields.io/badge/Moodle-v3.11%20to%20v5.2-orange.svg)
+![Moodle](https://img.shields.io/badge/Moodle-v3.11%20to%20v5.3-orange.svg)
 [![GitHub Issues](https://img.shields.io/github/issues/michael-milette/moodle-filter_filtercodes.svg)](https://github.com/michael-milette/moodle-filter_filtercodes/issues)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-green.svg)](#contributing)
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](#license)
@@ -64,6 +64,7 @@ FilterCodes filter plugin for Moodle
     - [Display message when scrape content is unavailable](#display-message-when-scrape-content-is-unavailable)
     - [Show contact picture](#show-contact-picture)
     - [Show contact's profile description](#show-contacts-profile-description)
+    - [Describe hidden courses](#describe-hidden-courses)
     - [Show hidden profile fields](#show-hidden-profile-fields)
     - [Contact link type](#contact-link-type)
     - [Show background](#show-background)
@@ -213,6 +214,7 @@ FilterCodes are meant to be entered as regular text in the Moodle WYSIWYG editor
 * {sitelogourl} : URL of the the site logo.
 * {now dateTimeFormat} : Display's the current date. For information on the optional dateTimeFormat format, see Supported dateTimeFormats Formats in the [FAQ](#faq) section of this documentation.
 * {coursecount} : Total number of courses on this Moodle site (not including Frontpage).
+* {coursesactive} : Total number of active, visible courses on this Moodle site (started, not ended, visibility set to Show).
 * {diskfreespace} : Display the amount of free disk space for the application folder. The infinite symbol will be displayed if greater than about 84,703.29 Yottabytes (YB), or if it fails to get the size from the operating system.
 * {diskfreespacedata} : Display the amount of free disk space for the moodledata folder. The infinite symbol will be displayed if greater than about 84,703.29 Yottabytes (YB), or if it fails to get the size from the operating system.
 * {wwwroot} : Root URL of the Moodle site.
@@ -236,7 +238,7 @@ FilterCodes are meant to be entered as regular text in the Moodle WYSIWYG editor
 * {mycoursescards[ categoryID(s)]} : Displays a series of cards for my enrolled courses. You may optionally specify one or more category IDs separated by a space. You can change the layout from vertical cards to horizontal cards or a table list using the **Course Cards Layout** setting in the FilterCodes settings. A message indicating that you are not logged-in will be displayed if you are not logged in. Course will be displayed if its visibility is set to Show AND (either has no end date OR a future end date). Courses not visible will be still visible to site admins or users with viewhiddencourses capability.
 * {courserequest} : Displays a Request a Course link.
 * {label type}{/label} : Display text over background colour. The Boost theme supports the following types: **info**, **important**, **secondary**, **success** and **warning**. Other themes may also support **primary**, **danger**, **light**, **dark** and more. Example: {label info}For your information{/label}. Actual foreground and background colours vary depending on the theme. If the type is not specified, it will default to **info**. If the type specified is not supported by your theme, it may default to secondary.
-* {button URL}Label{/button} : Create a clickable button link formatted like a primary button.
+* {button URL}Label{/button} : Create a clickable button link formatted like a primary button. Additional attributes can be added by closing the link's address early, as in {button URL" target="_blank}Label{/button}. Only **target**, **rel**, **title**, **id**, **class**, **aria-label**, **download**, and **data-bs-toggle="modal"** or **data-toggle="modal"** are supported; any other attribute is ignored. The address must use one of the schemes in the **Allowed URL schemes** setting, which by default excludes schemes that can run code, such as javascript:.
 * (ALPHA) {chart radial x caption text} : Create a radial (circle / doughnut) chart given it a value of x between 0 and 100 and an optional caption. If you do not want a caption, just specify a blank space instead of the Heading text.
 * (ALPHA) {chart pie x caption text} : Create a pie chart given a value of x between 0 and 100 and an optional title. If you do not want a caption, just specify a blank space instead of the caption text.
 * (ALPHA) {chart progressbar x caption text} : Create a horizontal progress bar chart giving it a value of x between 0 and 100 and an optional caption. If you do not want a caption, just specify a blank space instead of the caption text.
@@ -271,6 +273,7 @@ FilterCodes are meant to be entered as regular text in the Moodle WYSIWYG editor
 * {courseid} or %7Bcourseid%7D : Display a course's ID within a course and on the course enrolment page. Set to site ID (1) if outside a course.
 * {coursecontextid} or %7Bcoursecontextid%7D : Display a course's context ID.
 * {coursemoduleid} or %7Bcoursemoduleid%7D : Display a course's activity module ID (activity id) - for use in URLs. Only for use in course activity modules.
+* {courseunenrolurl} : Display the URL to self-unenrol from the current course. Blank if not enrolled, not logged in, on the site course or if self-unenrolment is not available.
 * {courseidnumber} : Display a course's ID number.
 * {sectionid} or %7Bsectionid%7D : Display the section ID (not to be confused with the section number).
 * {sectionname} : Display the section name in which the activity is located.
@@ -302,8 +305,9 @@ Also, see Courses section below.
 * {courserequestmenu0} : Request a course / Course request in a top level custom menu.
 * {courserequestmenu} : Request a course / Course request in submenu.
 * {menuadmin} : Useful dynamic menu for Moodle teachers, managers and administrators.
-* {menudev} : Useful dynamic menu for Moodle developers. Only visible when debugging is set to DEVELOPER mode.
+* {menudev} : Useful dynamic menu for Moodle developers. Only visible to site administrators, and not while they have switched to another role. It does not depend on the debugging level; to show it only in developer debugging mode, place it inside {ifdev}{/ifdev}.
 * {menuthemes} : Theme switcher. Only for administrators. Not available after POST. Allow Theme Changes on URL must be enabled. Will be visible even when Administrator is using the **Log In As** feature to log in as a different user.
+* {menulanguages} : Language switcher for custom menu. Only displayed if the site has more than one language installed. Not available after POST.
 * {menucoursemore} : Adds the content of the secondary menu to a menu called "More". Useful for themes with pre-4.x style navigation.
 * {menuwishlist} : Adds a Wishlist menu where you can bookmark courses you would like to take or just use it as a favourite course list. Tip: You can rename the Wishlist menu to Bookmarks, Favourites, etc. by customizing the **wishlist** language string in the language pack for FilterCodes.
 
@@ -331,7 +335,7 @@ Also, see Courses section below.
 * {highlight}{/highlight} : Highlight text like a highlighter in bright yellow. NOTE: Must only be used within a paragraph.
 * {marktext}{/marktext} : Highlight text using HTML5's mark tag. You can style this tag using CSS in your theme using a fc-marktext class.
 * {markborder}{/markborder} : Surrounds text with a red dashed border. You can style this tag using CSS in your theme using a fc-markborder class (border and padding with !important to override).
-* {scrape url="..." tag="..." class="..." id="..." code="..."} : Scrapes the content from another web page. Must be enabled in FilterCodes settings.
+* {scrape url="..." tag="..." class="..." id="..." code="..." headinglevel="..."} : Scrapes the content from another web page. Must be enabled in FilterCodes settings.
 * {getstring:component_name}stringidentifier{/getstring} or {getstring}stringidentifier{/getstring}: Display a Moodle language string in the current language. If no component name (plugin) is specified, will default to "moodle".
 * {fa/fas/fab/fa-solid/fa-brands fa-...} : Insert FontAwesome icon. Note: FontAwesome Font/CSS must be loaded as part of your theme. Supports FontAwesome 4.x and 6.0 included with Moodle. If you have the pro version installed, it the additional icons will be supported as well.
 * {glyphicon glyphicon-...} : Insert Glyphicons icon. Note: Glyphicons Font/CSS must be loaded as part of your theme.
@@ -601,16 +605,15 @@ This will display the enclosed content only if the user is logged in as an admin
     -###
     -Code checker|/local/codechecker
     -Moodle PHPdoc check|/local/moodlecheck
-    -Adminer|/local/adminer
+    -Adminer|/local/adminer/lib/run_adminer.php
     -{getstring}phpinfo{/getstring}|/admin/phpinfo.php
     -###
-    -Developer docs|https://moodle.org/development|Moodle.org
+    -Developer docs|https://moodledev.io/|Moodle.org
     -Developer forum|https://moodle.org/mod/forum/view.php?id=55|Moodle.org
     -Tracker|https://tracker.moodle.org/|Moodle.org
     -AMOS|https://lang.moodle.org/|Moodle.org
     -Moodle Academy for Developers|https://moodle.academy/course/index.php?categoryid=4
     -Development Tutorial|https://www.youtube.com/watch?v=UY_pcs4HdDM
-    -Moodle Development School|https://moodledev.moodle.school/
     {/ifdev}
 
 Notes:
@@ -840,7 +843,7 @@ IMPORTANT: You cannot use this feature to scrape content from any website that r
 
 As of version 0.4.7, you can use FilterCodes to scrape content from another web page. Your mileage may vary and depends a lot on your configuration, the website from which you are scraping content and more.
 
-{scrape url="..." tag="..." class="..." id="..." code="..."}
+{scrape url="..." tag="..." class="..." id="..." code="..." headinglevel="..."}
 
 Example:
 
@@ -858,13 +861,14 @@ Parameters:
 * tag = The HTML tag you want to capture.
 * class = Optional. Default is blank (class is irrelevant). Class attribute of the HTML tag you want to capture. Must be an exact match for everything between the quotation marks.
 * id = Optional. Default is blank (id is irrelevant). id tag of the HTML tag you want to capture.
-* code = Optional. Default is blank (no code). This is URL encoded HTML that you want to insert after the content. It will be URL-decoded and inserted as-is, on the same trust level as any other HTML the author types into Moodle. It can even be things like JavaScript for example. Be careful with this one. If not encoded, will result in an error.
+* code = Optional. Default is blank (no code). This is URL encoded HTML that you want to insert after the content. If not encoded, will result in an error. It gets the same treatment as the text the tag is in. Where Moodle does not clean that text, such as Page content, activity descriptions, labels, Text blocks, Books, Lessons and section summaries, the code is inserted as-is and can include JavaScript. It is also inserted as-is in site policy documents on the pages of Moodle's Policies tool, as only people allowed to manage policies can edit them. Everywhere else, such as forum posts, and when an administrator has set `$CFG->forceclean`, it is cleaned like other HTML: scripts, styles and event handlers such as onclick are removed, while ordinary HTML, including id attributes, is kept. Policies shown in a popup or in the Moodle app are cleaned too.
+* headinglevel = Optional. Default is blank (headings are not changed). Changes the level of the headings in the scraped content so they fit the page they are shown on. Use **+1** to **+5** to lower every heading by that many levels (with +1, h1 becomes h2, h2 becomes h3 and so on), or **-1** to **-5** to raise them. Use **1** to **6** to make the highest heading that level and move the others by the same amount, keeping their structure (with 3, h1 becomes h3 and h2 becomes h4). Headings stay between h1 and h6. Example: {scrape url="https://example.com/terms" tag="main" headinglevel="+1"}
 
 By default, scraped content that cannot be retrieved renders nothing (silent failure) so the surrounding page layout is preserved. Administrators who prefer the historical visible-error behaviour can enable the **Display message when scrape content is unavailable** setting; the displayed message can be customised through the Moodle Language editor.
 
 The same display behaviour applies if the matching tag, class and/or id cannot be found.
 
-Externally scraped content is cleaned before display. Scripts, unsafe attributes, forms, embedded styles and other unsafe HTML may be removed by Moodle for security reasons. Cleaning is applied only to the content fetched from the remote site; the optional `code` attribute is appended raw because it is supplied by the course author.
+Externally scraped content is cleaned before display. Scripts, unsafe attributes, forms, embedded styles and other unsafe HTML may be removed by Moodle for security reasons. The optional `code` attribute is cleaned in the same way unless Moodle leaves the surrounding text uncleaned, as described above.
 
 ## Back to section / Back to course button
 
@@ -912,6 +916,8 @@ Optional comma or newline separated list of hosts that {scrape} may request. Lea
 
 Wildcard entries match subdomains only. For example, `*.example.com` allows `www.example.com` and `assets.example.com` but does not allow the bare apex `example.com`. To allow both, list the apex on a separate line.
 
+When this list is in use, every host in a redirect chain is checked against it, not only the host you requested. An allowed host that redirects elsewhere will not be followed unless the destination is also on the list. The one exception is a site redirecting between its bare and www address, such as example.com to www.example.com or the reverse. That redirect is always followed, because it is the same site. A redirect from http to https on the same host is also followed.
+
 ### Display message when scrape content is unavailable
 
 When enabled, the localised "Content is missing" message is displayed where the scraped content would have appeared if the request fails or no matching element is found. When disabled (default), the broken scrape renders nothing so page layout is preserved. The default matches the behaviour expected by most modern embed-style features such as oEmbed and shortcodes.
@@ -923,6 +929,14 @@ Enable or disable the display of a contact's profile picture in {coursecontacts}
 ### Show contact's profile description
 
 If enabled, will display the contact's profile description in {coursecontacts} tags.
+
+### Describe hidden courses
+
+If enabled, tags that accept a course ID, such as {coursename id}, {coursesummary id}, {coursestartdate id} and {courseenddate id}, will also describe courses that are hidden from students. Enable this if you promote a hidden course from within another course, for example a follow-up course that only becomes available once an earlier one is complete.
+
+If disabled, these tags only describe a hidden course for users who are allowed to see hidden courses, and display nothing for everyone else. Courses that are visible are not affected by this setting.
+
+Sites upgrading from an earlier version of FilterCodes prior to v3.1.0 have this option enabled so that existing pages continue to work as before. New installations have it disabled.
 
 ### Show hidden profile fields
 
@@ -1130,6 +1144,10 @@ The last one will create a button called "Dashboard", using the Moodle language 
 
 The trick is to make sure that Moodle doesn't convert the URL to a link in the editor. If it does (probably blue, underlined), you will need to use the Unlink tool to turn it back into plain text. Once saved, it will appear as a button. Alternatively, disable the **Convert URLs into links and images** filter in Site Administration > Plugins > Filters > Manage Filters and then re-enter the {button} FilterCode.
 
+As shown in the second example, extra attributes can be added by closing the link's address early. The supported attributes are **target**, **rel**, **title**, **id**, **class**, **aria-label** and **download**. To open a Bootstrap modal, use **data-bs-toggle="modal"** (Moodle 5.0 and later) or **data-toggle="modal"** (Moodle 4.5 and earlier) with the modal's #id as the address, as in {button #mymodal" data-bs-toggle="modal}Open{/button}. No other value is accepted for these two attributes. Anything else is ignored, so a button cannot be used to add an event handler or a style to the page. Supplying your own **class** replaces the default button styling. When **target="_blank"** is used, rel="noopener noreferrer" is added for you.
+
+The address itself must use one of the URL schemes listed in the **Allowed URL schemes** plugin setting, or be relative like /my. Out of the box the allowed schemes are https:, http:, mailto:, tel: and sms:, so addresses using javascript: and similar script-capable schemes are ignored and the button is displayed without a link. An administrator can change the list of allowed schemes (one per line) in Site Administration > Plugins > Filters > Filter Codes. Adding javascript: or other script-capable schemes to that list is a security risk and is not recommended.
+
 ### How can I style the tag?
 
 Here is an example that reduces the image and places the information next to it. Just add this CSS to your site:
@@ -1220,6 +1238,7 @@ Create a Page on your Moodle site, preferably in a course, so that those tags wo
 * (ALPHA) Dashboard site information [{dashboard_siteinfo}]:
   {dashboard_siteinfo}
 * Total courses [{coursecount}]: {coursecount}
+* Total active courses [{coursesactive}]: {coursesactive}
 * Institution [{institution}]: {institution}
 * Department [{department}]: {department}
 * Course ID [{courseid}]: {courseid}
@@ -1229,6 +1248,7 @@ Create a Page on your Moodle site, preferably in a course, so that those tags wo
 * Course Module ID (encoded) [%7Bcoursemoduleid%7D]: %7Bcoursemoduleid%7D (Note: Only available in a course activity)
 * Course Module ID (not encoded) [{coursemoduleid}]: {coursemoduleid} (Note: Only available in a course activity)
 * Course ID number [{courseidnumber}]: {courseidnumber}
+* Course self-unenrolment URL [{courseunenrolurl}]: {courseunenrolurl}
 * Section ID [{sectionid}]: {sectionid}
 * Section ID (encoded) [%7Bsectionid%7D]: %7Bsectionid%7D
 * Section Name [{sectionname}]: {sectionname}
@@ -1253,6 +1273,7 @@ Create a Page on your Moodle site, preferably in a course, so that those tags wo
 * Moodle Admin custom menu items [{menuadmin}]: `<br><pre>`{menuadmin}`</pre>`
 * Moodle Dev custom menu items [{menudev}]: `<br><pre>`{menudev}`</pre>`
 * Moodle Admin theme switcher [{menuthemes}]: `<br><pre>`{menuthemes}`</pre>`
+* Language switcher menu [{menulanguages}]: `<br><pre>`{menulanguages}`</pre>`
 * Secondary menu for pre-4.x themes [{menucoursemore}]: `<br><pre>`{menucoursemore}`</pre>`
 * Wishlist menu [{menuwishlist}]: `<br><pre>`{menuwishlist}`</pre>`
 * Course's category ID (0 if not in a course or category list of course) [{categoryid}]: {categoryid}

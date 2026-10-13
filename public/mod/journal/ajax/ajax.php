@@ -36,8 +36,13 @@ $result = [
     'content' => '',
 ];
 
+$allowedactions = ['saveindividualfeedback'];
+
 try {
     $action = required_param('action', PARAM_ALPHA);
+    if (!in_array($action, $allowedactions, true)) {
+        throw new Exception('Invalid action');
+    }
     if ($action !== 'savecart') {
         session_write_close();
     }

@@ -27,6 +27,7 @@
 
 namespace filter_filtercodes;
 
+#[\PHPUnit\Framework\Attributes\CoversClass(\filter_filtercodes\text_filter::class)]
 /**
  * Test menu tags.
  *
@@ -54,7 +55,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test categoriesmenu tag (all categories).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_categoriesmenu(): void {
         // Create some categories.
@@ -79,7 +79,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test categories0menu tag (top-level categories only).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_categories0menu(): void {
         // Create top-level and nested categories.
@@ -101,7 +100,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test categoriesxmenu tag (subcategories of current category).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_categoriesxmenu(): void {
         global $PAGE;
@@ -145,7 +143,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test toggleeditingmenu tag.
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_toggleeditingmenu(): void {
         global $PAGE;
@@ -174,7 +171,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test mycoursesmenu tag.
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_mycoursesmenu(): void {
         global $USER;
@@ -204,7 +200,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test courserequestmenu0 tag (basic course request menu).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_courserequestmenu0(): void {
         global $CFG;
@@ -221,7 +216,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test courserequestmenu tag.
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_courserequestmenu(): void {
         global $CFG;
@@ -238,7 +232,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test menuadmin tag (admin menu items).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_menuadmin(): void {
         global $PAGE;
@@ -255,8 +248,69 @@ final class menu_test extends \advanced_testcase {
     }
 
     /**
+     * Assert that a custom menu item address opens in a popup where the primary navigation allows it.
+     *
+     * From Moodle 5.3 the primary navigation is rendered by React, which escapes the whole address,
+     * so the item must be a plain link. Before that, popup attributes are appended to the address.
+     *
+     * @param string $url Address the menu item should open.
+     * @param string $result Filtered custom menu text.
+     * @return void
+     */
+    private function assert_popup_menu_url(string $url, string $result): void {
+        if (method_exists('\core\navigation\output\primary', 'export_react_props')) {
+            // The address is followed by the optional title, the next line or the end of the text.
+            $this->assertMatchesRegularExpression(
+                '/\|' . preg_quote($url, '/') . '(\||\r?\n|$)/',
+                $result,
+                sprintf("%s should be a plain link\nActual: '%s'", $url, $result)
+            );
+            $this->assertStringNotContainsString(
+                'onclick',
+                $result,
+                sprintf("Menu addresses should not contain popup attributes\nActual: '%s'", $result)
+            );
+        } else {
+            $this->assertStringContainsString(
+                '|' . $url . '" target="popup" onclick="window.open(\'' . $url . '\',\'popup\',\'width=1340,height=700\');'
+                    . ' return false;',
+                $result,
+                sprintf("%s should open in a popup\nActual: '%s'", $url, $result)
+            );
+        }
+    }
+
+    /**
+     * Test that the Layoutit item of the menuadmin tag links to the current page builder.
+     */
+    public function test_menuadmin_course_links(): void {
+        global $PAGE;
+
+        $course = $this->getDataGenerator()->create_course();
+        $PAGE->set_course($course);
+        $PAGE->set_url('/course/view.php', ['id' => $course->id]);
+
+        // Already logged in as admin from setUp().
+        $result = format_text('{menuadmin}', FORMAT_HTML, [
+            'context' => \context_course::instance($course->id),
+            'filter' => true,
+        ]);
+
+        $this->assertStringContainsString(
+            'Course: Layoutit|https://build.layoutit.com/',
+            $result,
+            sprintf("Should link to the Layoutit page builder\nActual: '%s'", $result)
+        );
+        $this->assert_popup_menu_url('https://build.layoutit.com/', $result);
+        $this->assertStringNotContainsString(
+            'www.layoutit.com',
+            $result,
+            sprintf("Should no longer link to the old Layoutit address\nActual: '%s'", $result)
+        );
+    }
+
+    /**
      * Test menuadmin for non-admin user.
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_menuadmin_nonadmin(): void {
         // Create and switch to regular user.
@@ -271,7 +325,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test menudev tag (developer menu items).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_menudev(): void {
         global $CFG;
@@ -288,8 +341,41 @@ final class menu_test extends \advanced_testcase {
     }
 
     /**
+     * Test the links in the menudev tag and that it is only shown to site administrators.
+     */
+    public function test_menudev_links(): void {
+        $this->setAdminUser();
+        $result = format_text('{menudev}', FORMAT_HTML, ['filter' => true]);
+
+        foreach (['https://moodledev.io/', 'https://build.layoutit.com/', '/admin/phpinfo.php'] as $expected) {
+            $this->assertStringContainsString(
+                $expected,
+                $result,
+                sprintf("Developer menu should link to %s\nActual: '%s'", $expected, $result)
+            );
+        }
+        foreach (['moodle.org/development', 'moodledev.moodle.school', 'screenapp.io'] as $removed) {
+            $this->assertStringNotContainsString(
+                $removed,
+                $result,
+                sprintf("Developer menu should no longer link to %s\nActual: '%s'", $removed, $result)
+            );
+        }
+        $this->assert_popup_menu_url('https://build.layoutit.com/', $result);
+        $this->assert_popup_menu_url('https://pixlr.com/editor/', $result);
+
+        // Not a site administrator, so the tag is removed without any menu items.
+        $this->setUser($this->getDataGenerator()->create_user());
+        $result = format_text('{menudev}', FORMAT_HTML, ['filter' => true]);
+        $this->assertStringNotContainsString(
+            'phpinfo',
+            $result,
+            sprintf("Non-admin users should not receive developer menu items\nActual: '%s'", $result)
+        );
+    }
+
+    /**
      * Test menuthemes tag (themes menu).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_menuthemes(): void {
         global $CFG;
@@ -314,7 +400,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test menucoursemore tag (course additional menu items).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_menucoursemore(): void {
         $course = $this->getDataGenerator()->create_course(['fullname' => 'Course More Menu']);
@@ -329,7 +414,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test menuwishlist tag (wishlist menu - if applicable).
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_menuwishlist(): void {
         $text = '{menuwishlist}';
@@ -344,7 +428,6 @@ final class menu_test extends \advanced_testcase {
 
     /**
      * Test menu tags with logged out user.
-     * @covers \filter_filtercodes\text_filter::filter
      */
     public function test_menus_logged_out(): void {
         // Log out.
