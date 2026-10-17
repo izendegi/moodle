@@ -40,6 +40,7 @@ Feature: Provide a feedback to a participant
     Then the field "Strongly agree" in the "Treats co-workers with courtesy and respect" "fieldset" matches value "6"
     And the field "Agree" in the "Has a positive attitude" "fieldset" matches value "5"
 
+  @accessibility
   Scenario: Finalising a feedback with unanswered rating questions warns the respondent
     Given the following "activities" exist:
       | activity  | name          | intro            | course  | idnumber  | with_self_review | participantrolename | anonymous |
@@ -49,6 +50,7 @@ Feature: Provide a feedback to a participant
     And I click on "Strongly agree" "radio" in the "Treats co-workers with courtesy and respect" "fieldset"
     When I press "Submit"
     Then I should see "All rating questions must be answered" in the "Unanswered questions" "dialogue"
+    And the "Unanswered questions" "dialogue" should meet accessibility standards
     # The unanswered questions are listed by name, and the answered one is not.
     And I should see "Has a positive attitude." in the "Unanswered questions" "dialogue"
     And I should not see "Treats co-workers with courtesy and respect" in the "Unanswered questions" "dialogue"
@@ -69,3 +71,34 @@ Feature: Provide a feedback to a participant
     Then I should see "In progress" in the "Student 2" "table_row"
     And I click on "Provide feedback" "link" in the "Student 2" "table_row"
     And the field "Strongly agree" in the "Treats co-workers with courtesy and respect" "fieldset" matches value "6"
+
+  # The pointer stays where the link was clicked, so whatever sits under it renders in its hover state
+  # while axe measures. Reaching the questionnaire without a click would need a page resolver, which is
+  # plugin code rather than a core step, so the exposure is one element and is accepted knowingly.
+  @accessibility
+  Scenario: The questionnaire meets accessibility standards
+    Given the following "activities" exist:
+      | activity  | name          | intro            | course | idnumber | with_self_review | participantrolename | anonymous |
+      | threesixo | Team feedback | Test description | C1     | review1  | 0                | student             | 1         |
+    And I am on the "review1" activity page logged in as "student1"
+    When I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    Then the page should meet accessibility standards
+    And the "[data-region=questionnaire]" "css_element" should meet accessibility standards with "best-practice" extra tests
+
+  # The highlight is added by JavaScript after a failed finalise rather than rendered with the page, so
+  # it is the one state on the questionnaire that no other scenario leaves axe to look at. Its border
+  # colour is not asserted here: axe has no rule for the non-text contrast of a border, so that is
+  # covered by the measurements recorded in the commit that changed it.
+  @accessibility
+  Scenario: The questionnaire meets accessibility standards with unanswered rating questions highlighted
+    Given the following "activities" exist:
+      | activity  | name          | intro            | course | idnumber | with_self_review | participantrolename | anonymous |
+      | threesixo | Team feedback | Test description | C1     | review1  | 0                | student             | 1         |
+    And I am on the "review1" activity page logged in as "student1"
+    And I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    And I click on "Strongly agree" "radio" in the "Treats co-workers with courtesy and respect" "fieldset"
+    And I press "Submit"
+    When I click on "Review questions" "button" in the "Unanswered questions" "dialogue"
+    Then the "aria-invalid" attribute of "Has a positive attitude." "fieldset" should contain "true"
+    And the "aria-invalid" attribute of "Treats co-workers with courtesy and respect" "fieldset" should not be set
+    And the page should meet accessibility standards
