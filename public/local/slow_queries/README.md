@@ -106,3 +106,70 @@ This is critical because the plugin can reveal:
 - Check last 7 days volume
 - Compare max/avg trends weekly
 - Identify new callers (components) from backtrace changes
+
+
+## Optional MCP integration (ChatGPT)
+
+If [local_mcp](https://eduardokrausme.github.io/moodle-local_mcp/) is installed,
+its discovery mechanism loads `local_slow_queries\mcp\provider` from
+`classes/mcp/provider.php`. This integration is optional: it adds no extra
+server process, no database tables and no hard dependency in `version.php`.
+The plugin still depends on Moodle's existing `log_queries` logging table;
+MCP does not enable `logslow` itself.
+
+| Tool | MCP scope | Description |
+| --- | --- | --- |
+| `slowqueries_get_status` | READ | Check `logslow` configuration and recent query counts, error counts, mean and maximum execution time. |
+| `slowqueries_list_queries` | READ | List grouped SQL fingerprints, execution counts, average times, CRON status and caller, with search and pagination. |
+| `slowqueries_get_query` | READ | Inspect one logged execution, average time, comment and optionally SQL, parameters and backtrace. |
+| `slowqueries_analyse_query` | READ | Return existing heuristic index suggestions for a logged query, without running logged SQL. |
+| `slowqueries_get_occurrences` | READ | Retrieve recent occurrences of the exact logged SQL with timestamps, durations and error indicators. |
+| `slowqueries_save_comment` | WRITE | Confirm an investigation note for all records sharing identical SQL text. |
+
+### Permissions and sensitive information
+
+Every tool requires `moodle/site:config` in `context_system`, matching
+the native administration report. The MCP token must also grant READ or WRITE
+scope, as appropriate. **Slow query text, bind parameters and backtraces can
+contain passwords, tokens, personal data and private file paths.** For this
+reason, list results include SHA-256 SQL fingerprints rather than SQL text
+by default. `slowqueries_get_query` also omits raw SQL, bind parameters and
+full backtraces by default. An administrator must explicitly set
+`include_sql=true` and/or `include_sensitive=true` to retrieve them.
+Only use those options when genuinely needed, and handle the output as
+sensitive administrative information.
+
+READ tools do not alter Moodle data. They never execute captured SQL:
+`slowqueries_analyse_query` uses the existing read-only
+`index_suggestion_service::suggest()` heuristic, not an unrestricted SQL
+execution interface, EXPLAIN ANALYZE or DDL. Index proposals are **not**
+executed, and must be inspected and tested on a staging environment before
+any administrator chooses to apply them manually. MCP cannot create indexes,
+purge SQL logs, modify logging settings or run arbitrary SQL.
+
+Results are capped at 40 groups or occurrences per page, with configurable
+minimum execution duration and search text of up to 200 characters. The
+status and occurrence windows are bounded to 1–30 days; SQL previews
+are limited to 500 characters on search pages or 12,000 characters in
+details. Returned parameters and backtrace are also truncated.
+
+### Confirmed comment workflow
+
+1. Use `slowqueries_list_queries` to identify a SQL fingerprint and the
+   `sample_query_id`.
+2. Call `slowqueries_get_query` for that ID. Record the
+   `comment_state_hash` returned with its investigation comment.
+3. Call `slowqueries_save_comment` with `query_id`, `comment`, and
+   `expected_state_hash` from the prior read. Review the generated
+   preview and confirm the WRITE request via local_mcp.
+4. A Moodle lock serializes comment changes on identical SQL. The
+   server checks the state hash again on execution, rejects conflicts,
+   updates the shared comment and returns a new hash. Comments never
+   modify the logged SQL or its parameter values.
+
+The native comment form also uses this shared service: it requires a
+Moodle session key, escapes displayed comments, and refuses to overwrite a
+more recent edit. No `upgrade.php` change is required.
+
+After installing or updating the plugin, refresh the ChatGPT MCP
+connection so the new tools are discovered.

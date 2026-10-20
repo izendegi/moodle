@@ -89,7 +89,9 @@
     </div>
     <div class="card-body">
         <form method="post">
-            <textarea name="comments" style="height:130px;width:100%;">{{{comments}}}</textarea>
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            <input type="hidden" name="expected_state_hash" value="{{commentstatehash}}">
+            <textarea name="comments" style="height:130px;width:100%;">{{comments}}</textarea>
             <input type="submit" value="{{#str}}save{{/str}}">
         </form>
     </div>
