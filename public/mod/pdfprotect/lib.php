@@ -137,6 +137,10 @@ function pdfprotect_add_instance($pdfprotect, $mform = null) {
     $DB->set_field("course_modules", "instance", $pdfprotect->id, ["id" => $cmid]);
     pdfprotect_set_mainfile($pdfprotect);
 
+    // Create the expected-completion calendar event when a date is configured.
+    $completionexpected = !empty($pdfprotect->completionexpected) ? (int) $pdfprotect->completionexpected : null;
+    \core_completion\api::update_completion_date_event($cmid, "pdfprotect", $pdfprotect->id, $completionexpected);
+
     return $pdfprotect->id;
 }
 
@@ -152,6 +156,7 @@ function pdfprotect_add_instance($pdfprotect, $mform = null) {
  */
 function pdfprotect_update_instance($pdfprotect, $mform) {
     global $DB;
+
     $pdfprotect->timemodified = time();
     $pdfprotect->id = $pdfprotect->instance;
     $pdfprotect->revision++;
@@ -159,6 +164,15 @@ function pdfprotect_update_instance($pdfprotect, $mform) {
     $DB->update_record("pdfprotect", $pdfprotect);
 
     pdfprotect_set_mainfile($pdfprotect);
+
+    // Update the calendar event or remove it when the expected date is cleared.
+    $completionexpected = !empty($pdfprotect->completionexpected) ? (int) $pdfprotect->completionexpected : null;
+    \core_completion\api::update_completion_date_event(
+        $pdfprotect->coursemodule,
+        "pdfprotect",
+        $pdfprotect,
+        $completionexpected
+    );
 
     return true;
 }
@@ -183,6 +197,9 @@ function pdfprotect_delete_instance($id) {
     if (!$cm = get_coursemodule_from_instance('pdfprotect', $id)) {
         return false;
     }
+
+    // Delete the expected-completion event before removing the module instance.
+    \core_completion\api::update_completion_date_event($cm->id, "pdfprotect", $pdfprotect->id, null);
 
     // Delete any files associated with the pdfprotect.
     $context = context_module::instance($cm->id);
@@ -585,10 +602,53 @@ function pdfprotect_view($pdfprotect, $course, $cm, $context) {
     // Completion.
     $completion = new completion_info($course);
     $completion->set_module_viewed($cm);
+}
 
-    if ($completion->is_enabled($cm)) {
-        $completion->update_state($cm, COMPLETION_COMPLETE);
+/**
+ * Provide the action associated with a PDF Protect
+ * expected-completion event for the Timeline.
+ *
+ * @param calendar_event $event
+ * @param \core_calendar\action_factory $factory
+ * @param int $userid User ID for completion checks; 0 means current user.
+ * @return \core_calendar\local\event\entities\action_interface|null
+ */
+function mod_pdfprotect_core_calendar_provide_event_action(
+    calendar_event $event,
+    \core_calendar\action_factory $factory,
+    $userid = 0
+) {
+    global $USER;
+
+    if (empty($userid)) {
+        $userid = $USER->id;
     }
+
+    $modinfo = get_fast_modinfo($event->courseid, $userid);
+
+    if (empty($modinfo->instances["pdfprotect"][$event->instance])) {
+        return null;
+    }
+
+    $cm = $modinfo->instances["pdfprotect"][$event->instance];
+
+    if (!$cm->uservisible) {
+        return null;
+    }
+
+    $completion = new \completion_info($cm->get_course());
+    $completiondata = $completion->get_data($cm, false, $userid);
+
+    if ($completiondata->completionstate != COMPLETION_INCOMPLETE) {
+        return null;
+    }
+
+    return $factory->create_instance(
+        get_string("view"),
+        new \moodle_url("/mod/pdfprotect/view.php", ["id" => $cm->id]),
+        1,
+        true
+    );
 }
 
 /**
