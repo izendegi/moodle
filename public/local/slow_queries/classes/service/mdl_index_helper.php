@@ -63,6 +63,11 @@ class mdl_index_helper {
         $index = new xmldb_index(self::make_name($columns), XMLDB_INDEX_NOTUNIQUE, $columns);
 
         $dbman = $DB->get_manager();
+        // Some core plugin tables, such as logstore_standard_log, are installed later.
+        // Skip indexes on absent tables so a fresh Moodle installation can complete.
+        if (!$dbman->table_exists($table)) {
+            return;
+        }
         if (!$dbman->index_exists($table, $index)) {
             $dbman->add_index($table, $index);
             $notification = new notification(self::$message, notification::NOTIFY_INFO);

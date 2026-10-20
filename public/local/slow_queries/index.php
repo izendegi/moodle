@@ -33,6 +33,8 @@ use local_slow_queries\table\home_table;
 admin_externalpage_setup("localslowqueries", "", null, "", ["pagelayout" => "report"]);
 
 $PAGE->set_url(new moodle_url("/local/slow_queries/"));
+
+\local_slow_queries\mcp_banner::dismiss_if_requested($PAGE->url);
 $PAGE->set_title(get_string("index_title", "local_slow_queries"));
 $PAGE->set_heading(get_string("index_title", "local_slow_queries"));
 $PAGE->add_body_class("local-slow-queries");
@@ -40,6 +42,10 @@ $PAGE->add_body_class("local-slow-queries");
 $repo = new queries_repository();
 
 echo $OUTPUT->header();
+if (\local_slow_queries\mcp_banner::should_show()) {
+    echo \local_slow_queries\mcp_banner::render($OUTPUT, $PAGE->url);
+}
+
 
 // Filters.
 $search = optional_param("search", "", PARAM_RAW_TRIMMED);

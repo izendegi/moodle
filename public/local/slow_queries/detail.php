@@ -46,25 +46,14 @@ $PAGE->add_body_class("local-slow-queries");
 $repo = new queries_repository();
 $querie = $repo->get_by_id($id);
 
-$commenttext = optional_param("comments", false, PARAM_TEXT);
-if ($commenttext) {
-    $sql = "
-            SELECT *
-              FROM {local_slow_queries_comments}
-             WHERE sqltext = :sqltext";
-    $comments = $DB->get_record_sql($sql, ["sqltext" => $querie->sqltext]);
-    if ($comments) {
-        $comments->comments = $commenttext;
-        $comments->timemodified = time();
-        $DB->update_record("local_slow_queries_comments", $comments);
-    } else {
-        $comments = (object) [
-            "sqltext" => $querie->sqltext,
-            "comments" => $commenttext,
-            "timemodified" => time(),
-        ];
-        $DB->insert_record("local_slow_queries_comments", $comments);
-    }
+// Use the same bounded, concurrency-safe service as confirmed MCP writes.
+if (data_submitted()) {
+    require_sesskey();
+    $comment = required_param("comments", PARAM_TEXT);
+    $expectedhash = required_param("expected_state_hash", PARAM_ALPHANUM);
+    \local_slow_queries\mcp\comment_service::save(
+        (string)$querie->sqltext, $comment, $expectedhash
+    );
     redirect(new moodle_url("/local/slow_queries/detail.php", ["id" => $id]), get_string("changessaved"));
 }
 
@@ -94,6 +83,8 @@ $template = [
     "backurl" => (new moodle_url("/local/slow_queries/"))->out(false),
     "timelogged" => userdate($querie->timelogged),
     "comments" => $querie->comments,
+    "commentstatehash" => \local_slow_queries\mcp\comment_service::state_hash((string)$querie->sqltext),
+    "sesskey" => sesskey(),
     "exectime" => format_float($querie->exectime, 5),
     "iscron" => $iscron,
     "sqltext" => $querie->sqltext,
