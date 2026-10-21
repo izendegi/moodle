@@ -185,7 +185,9 @@ class header implements \core\output\renderable, \core\output\templatable {
             'hidetabsbar' => ($course->hidetabsbar == 1 && $format->show_editor()),
             'sectionclasses' => '',
             'courseindex' => $courseindex,
-            'cssstyles' => $tabscssstyles,
+            // A raw "<" would end the style element. The CSS escape keeps the character for content.
+            // ">" is valid CSS and is kept.
+            'cssstyles' => str_replace('<', '\\3C ', $tabscssstyles),
             'tabsectionbackground' => $tabsectionbackground,
             'subtabsectionbackground' => $subtabsectionbackground,
         ];
@@ -249,6 +251,7 @@ class header implements \core\output\renderable, \core\output\templatable {
         $sections = $modinfo->get_section_info_all();
         $numsections = count($sections);
         $enablecustomstyles = get_config('format_onetopic', 'enablecustomstyles');
+        $anchortotabstree = get_config('format_onetopic', 'anchortotabstree');
 
         // Init custom tabs.
         $localsection = 0;
@@ -406,8 +409,7 @@ class header implements \core\output\renderable, \core\output\templatable {
                             $onecss .= '} ';
                         }
 
-                        // Clean the CSS for html tags.
-                        $csstabstyles .= preg_replace('/<[^>]*>/', '', $onecss);
+                        $csstabstyles .= $onecss;
                     }
                 }
 
@@ -416,11 +418,7 @@ class header implements \core\output\renderable, \core\output\templatable {
                 }
             }
 
-            if ($localsection == 0) {
-                $url = new \core\url('/course/view.php', ['id' => $course->id, 'section' => 0]);
-            } else {
-                $url = course_get_url($course, $localsection);
-            }
+            $url = course_get_url($course, $localsection, ['anchortotabstree' => $anchortotabstree]);
 
             $specialclass = 'tab_position_' . $localsection . ' tab_level_' . $level;
             if ($course->marker == $localsection) {
