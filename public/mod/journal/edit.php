@@ -23,16 +23,17 @@
  **/
 
 require_once('../../config.php');
+require_once($CFG->dirroot . '/mod/journal/lib.php');
 require_once($CFG->dirroot . '/mod/journal/edit_form.php');
 
 $id = required_param('id', PARAM_INT);    // Course Module ID.
 
 if (!$cm = get_coursemodule_from_id('journal', $id)) {
-    throw new \moodle_exception(get_string('incorrectcmid', 'journal'));
+    throw new \moodle_exception('incorrectcmid', 'journal');
 }
 
 if (!$course = $DB->get_record('course', ['id' => $cm->course])) {
-    throw new \moodle_exception(get_string('incorrectcourseid', 'journal'));
+    throw new \moodle_exception('incorrectcourseid', 'journal');
 }
 
 $context = context_module::instance($cm->id);
@@ -42,7 +43,16 @@ require_login($course, false, $cm);
 require_capability('mod/journal:addentries', $context);
 
 if (!$journal = $DB->get_record('journal', ['id' => $cm->instance])) {
-    throw new \moodle_exception(get_string('incorrectjournalid', 'journal'));
+    throw new \moodle_exception('incorrectjournalid', 'journal');
+}
+
+if (!journal_is_open($journal, $course, $cm)) {
+    redirect(
+        new moodle_url('/mod/journal/view.php', ['id' => $cm->id]),
+        get_string('journalclosed', 'journal'),
+        null,
+        \core\output\notification::NOTIFY_WARNING
+    );
 }
 
 // Header.
@@ -51,10 +61,7 @@ $PAGE->navbar->add(get_string('edit'));
 $PAGE->set_title(format_string($journal->name));
 $PAGE->set_heading($course->fullname);
 
-// Moodle 4.0+ Activity Header support. Checked for 3.9 compatibility.
-if (method_exists($PAGE, 'set_activity_record')) {
-    $PAGE->set_activity_record($journal);
-}
+$PAGE->set_activity_record($journal);
 
 $data = new stdClass();
 
@@ -101,13 +108,13 @@ if ($form->is_cancelled()) {
     if ($entry) {
         $newentry->id = $entry->id;
         if (!$DB->update_record('journal_entries', $newentry)) {
-            throw new \moodle_exception(get_string('couldnotupdatejournal', 'journal'));
+            throw new \moodle_exception('couldnotupdatejournal', 'journal');
         }
     } else {
         $newentry->userid = $USER->id;
         $newentry->journal = $journal->id;
         if (!$newentry->id = $DB->insert_record('journal_entries', $newentry)) {
-            throw new \moodle_exception(get_string('countnotinsertjournalentry', 'journal'));
+            throw new \moodle_exception('countnotinsertjournalentry', 'journal');
         }
     }
 
@@ -159,9 +166,5 @@ if ($form->is_cancelled()) {
 echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($journal->name));
 
-if ($CFG->branch < 400) {
-    $intro = format_module_intro('journal', $journal, $cm->id);
-    echo $OUTPUT->box($intro);
-}
 $form->display();
 echo $OUTPUT->footer();
