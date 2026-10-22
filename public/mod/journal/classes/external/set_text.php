@@ -45,10 +45,11 @@ class set_text extends journal_external_api_base {
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters(
             [
-                'journalid' => new external_value(PARAM_INT, 'course module id of journal'),
+                'journalid' => new external_value(PARAM_INT, 'journal instance id, ignored if cmid is given'),
                 'text' => new external_value(PARAM_RAW, 'text to set'),
                 'format' => new external_value(PARAM_INT, 'format of text'),
                 'itemid' => new external_value(PARAM_INT, 'Draft item id for files', VALUE_DEFAULT, 0),
+                'cmid' => new external_value(PARAM_INT, 'course module id of journal', VALUE_DEFAULT, 0),
             ]
         );
     }
@@ -71,21 +72,32 @@ class set_text extends journal_external_api_base {
     /**
      * Sets the text for the element.
      *
-     * @param int $journalid Journal course module ID
+     * @param int $journalid Journal instance ID, ignored if $cmid is given
      * @param string $text Text parameter
      * @param int|string $format Format constant for the string
      * @param int $itemid Item id for draft area (files)
+     * @param int $cmid Journal course module ID, as taken by mod_journal_get_entry
      * @return array
      */
-    public static function execute(int $journalid, string $text, $format, int $itemid = 0) {
-        global $DB, $USER;
+    public static function execute(int $journalid, string $text, $format, int $itemid = 0, int $cmid = 0) {
+        global $CFG, $DB, $USER;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
 
         $params = self::validate_parameters(
             self::execute_parameters(),
-            ['journalid' => $journalid, 'text' => $text, 'format' => $format, 'itemid' => $itemid]
+            ['journalid' => $journalid, 'text' => $text, 'format' => $format, 'itemid' => $itemid, 'cmid' => $cmid]
         );
 
-        if (!$cm = get_coursemodule_from_instance('journal', $params['journalid'])) {
+        if (!in_array($params['format'], [FORMAT_MOODLE, FORMAT_HTML, FORMAT_PLAIN, FORMAT_MARKDOWN])) {
+            throw new invalid_parameter_exception('Invalid text format: ' . $params['format']);
+        }
+
+        if ($params['cmid']) {
+            $cm = get_coursemodule_from_id('journal', $params['cmid']);
+        } else {
+            $cm = get_coursemodule_from_instance('journal', $params['journalid']);
+        }
+        if (!$cm) {
             throw new invalid_parameter_exception(get_string('incorrectcmid', 'journal'));
         }
 
@@ -100,6 +112,10 @@ class set_text extends journal_external_api_base {
         $context = context_module::instance($cm->id);
         self::validate_context($context);
         require_capability('mod/journal:addentries', $context);
+
+        if (!journal_is_open($journal, $course, $cm)) {
+            throw new \moodle_exception('journalclosed', 'journal');
+        }
 
         $entry = $DB->get_record('journal_entries', ['userid' => $USER->id, 'journal' => $journal->id]);
 

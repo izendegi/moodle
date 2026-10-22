@@ -28,6 +28,10 @@ require_once('lib.php');
 $id = required_param('id', PARAM_INT);   // Course module.
 $sortby = optional_param('sortby', 'dateasc', PARAM_ALPHA);
 $selecteduser = optional_param('selecteduser', 0, PARAM_INT);
+$show = optional_param('show', 'all', PARAM_ALPHA);
+if ($show !== 'needsgrading') {
+    $show = 'all';
+}
 
 $validsortoptions = [
     'dateasc',
@@ -54,10 +58,7 @@ $PAGE->navbar->add(get_string('entries', 'journal'));
 $PAGE->set_title(get_string('modulenameplural', 'journal'));
 $PAGE->set_heading($course->fullname);
 
-// Moodle 4.0+ Activity Header support.
-if (method_exists($PAGE, 'set_activity_record')) {
-    $PAGE->set_activity_record($journal);
-}
+$PAGE->set_activity_record($journal);
 
 $PAGE->requires->js_call_amd('mod_journal/report', 'init');
 
@@ -144,6 +145,14 @@ if ($data = data_submitted()) {
         $ratingchanged = false;
 
         $studentrating = clean_param($vals['r'], PARAM_INT);
+        // A locked grade is sent back unchanged, even if it is no longer valid.
+        if ((string) $studentrating !== (string) $entry->rating && !journal_is_valid_grade($journal, (int) $studentrating)) {
+            echo $OUTPUT->notification(
+                get_string('failedupdate', 'journal', $entry->userid),
+                \core\output\notification::NOTIFY_ERROR
+            );
+            continue;
+        }
         // Ensure text is a string to satisfy PHP 8.1 strict typing.
         $rawtext = isset($vals['c']['text']) ? (string) $vals['c']['text'] : '';
         $studentcomment = clean_text($rawtext, FORMAT_HTML);
@@ -212,7 +221,15 @@ if ($data = data_submitted()) {
     $event->trigger();
 }
 
-if (!$users && !journal_get_users_done($journal, $currentgroup)) {
+$usersdone = journal_get_users_done($journal, $currentgroup);
+$needsgradingcount = 0;
+foreach ($usersdone ?: [] as $user) {
+    if (journal_entry_needs_grading($entrybyuser[$user->id] ?? null)) {
+        $needsgradingcount++;
+    }
+}
+
+if (!$users && !$usersdone) {
     echo $OUTPUT->notification(get_string('nousersyet', 'journal'), \core\output\notification::NOTIFY_INFO);
 } else {
     // Toolbar Area: Filter, Group, Sort.
@@ -225,6 +242,8 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'class' => 'd-flex align-items-center me-3', // Class me-3 for spacing (Bootstrap 5).
     ]);
     $filterform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $id]);
+    $filterform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sortby', 'value' => $sortby]);
+    $filterform .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'show', 'value' => $show]);
     $filterform .= html_writer::select(
         $useroptions,
         'selecteduser',
@@ -254,7 +273,7 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'lastnamedesc' => get_string('lastnamedesc', 'journal'),
     ];
     $select = new single_select(
-        new moodle_url($PAGE->url),
+        new moodle_url('/mod/journal/report.php', ['id' => $id, 'selecteduser' => $selecteduser, 'show' => $show]),
         'sortby',
         $options,
         $sortby,
@@ -262,6 +281,20 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
     );
     $select->set_label(get_string('sortby'), ['class' => 'me-1']);
     echo html_writer::div($OUTPUT->render($select), 'divwrapper sortbyselect');
+
+    // 4. Entries to show.
+    $select = new single_select(
+        new moodle_url('/mod/journal/report.php', ['id' => $id, 'selecteduser' => $selecteduser, 'sortby' => $sortby]),
+        'show',
+        [
+            'all' => get_string('all'),
+            'needsgrading' => get_string('needsgradingcount', 'journal', $needsgradingcount),
+        ],
+        $show,
+        null,
+    );
+    $select->set_label(get_string('show'), ['class' => 'me-1']);
+    echo html_writer::div($OUTPUT->render($select), 'divwrapper showselect');
 
     echo html_writer::end_div(); // End Toolbar.
 
@@ -273,12 +306,17 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'method' => 'post',
     ]);
 
-    if ($usersdone = journal_get_users_done($journal, $currentgroup)) {
+    if ($show === 'needsgrading' && !$needsgradingcount) {
+        echo $OUTPUT->notification(get_string('noentriesneedgrading', 'journal'), \core\output\notification::NOTIFY_INFO);
+    }
+
+    if ($usersdone) {
         mod_journal_sort_users($usersdone, $sortby, $entrybyuser);
         echo html_writer::tag('h3', get_string('userswhocompletedthejournal', 'journal'), ['class' => 'journalheader']);
         foreach ($usersdone as $user) {
             // Apply User Filter.
-            if ($selecteduser == 0 || $selecteduser == $user->id) {
+            $shown = $show === 'all' || journal_entry_needs_grading($entrybyuser[$user->id]);
+            if ($shown && ($selecteduser == 0 || $selecteduser == $user->id)) {
                 journal_print_user_entry($course, $user, $entrybyuser[$user->id], $teachers, $grades, $cm->id);
             }
             // Remove user from the "Not Completed" list if they are in the "Done" list.
@@ -288,7 +326,8 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         }
     }
 
-    if ($users) {
+    // Users without an entry have nothing to grade.
+    if ($users && $show === 'all') {
         mod_journal_sort_users($users, $sortby, $entrybyuser);
         echo html_writer::tag('h3', get_string('userswhodidnotcompletedthejournal', 'journal'), ['class' => 'journalheader']);
         foreach ($users as $user) {
@@ -323,6 +362,12 @@ if (!$users && !journal_get_users_done($journal, $currentgroup)) {
         'type' => 'hidden',
         'name' => 'selecteduser',
         'value' => $selecteduser,
+    ]);
+
+    echo html_writer::empty_tag('input', [
+        'type' => 'hidden',
+        'name' => 'show',
+        'value' => $show,
     ]);
 
     // Add the submit button inside a paragraph with class.
