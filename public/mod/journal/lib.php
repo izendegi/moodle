@@ -22,6 +22,12 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+/** Event type of the calendar event for the opening of a journal. */
+define('JOURNAL_EVENT_TYPE_OPEN', 'open');
+
+/** Event type of the calendar event for the closing of a journal. */
+define('JOURNAL_EVENT_TYPE_CLOSE', 'close');
+
 /**
  * Given an object containing all the necessary data,
  * (defined by the form in mod.html) this function
@@ -42,6 +48,7 @@ function journal_add_instance($journal) {
     $journal->id = $DB->insert_record('journal', $journal);
 
     journal_grade_item_update($journal);
+    journal_set_events($journal);
 
     $completiontimeexpected = !empty($journal->completionexpected) ? $journal->completionexpected : null;
     \core_completion\api::update_completion_date_event(
@@ -74,6 +81,7 @@ function journal_update_instance($journal) {
     $result = $DB->update_record('journal', $journal);
 
     journal_grade_item_update($journal);
+    journal_set_events($journal);
 
     journal_update_grades($journal, 0, false);
 
@@ -100,9 +108,6 @@ function journal_delete_instance($id) {
 
     $result = true;
 
-    $cm = get_coursemodule_from_instance('journal', $id);
-    \core_completion\api::update_completion_date_event($cm->id, 'journal', $id, null);
-
     if (!$journal = $DB->get_record('journal', ['id' => $id])) {
         return false;
     }
@@ -110,13 +115,16 @@ function journal_delete_instance($id) {
     // Delete grade item from Gradebook.
     journal_grade_item_delete($journal);
 
-    // Delete area files associated with module context.
-    if ($cm) {
+    // Delete the completion date event and the area files associated with module context.
+    if ($cm = get_coursemodule_from_instance('journal', $id)) {
+        \core_completion\api::update_completion_date_event($cm->id, 'journal', $id, null);
         $context = \context_module::instance($cm->id);
         $fs = get_file_storage();
         $fs->delete_area_files($context->id, 'mod_journal', 'feedback');
         $fs->delete_area_files($context->id, 'mod_journal', 'entry');
     }
+
+    $DB->delete_records('event', ['modulename' => 'journal', 'instance' => $journal->id]);
 
     if (!$DB->delete_records('journal_entries', ['journal' => $journal->id])) {
         $result = false;
@@ -270,12 +278,8 @@ function journal_print_recent_activity($course, $viewfullnames, $timestart) {
     }
 
     $dbparams = [$timestart, $course->id, 'journal'];
-    if (class_exists('\core_user\fields')) {
-        $userfieldsapi = \core_user\fields::for_userpic();
-        $namefields = $userfieldsapi->get_sql('u', false, '', 'userid', false)->selects;
-    } else {
-        $namefields = user_picture::fields('u', null, 'userid');
-    }
+    $userfieldsapi = \core_user\fields::for_userpic();
+    $namefields = $userfieldsapi->get_sql('u', false, '', 'userid', false)->selects;
     $sql = "SELECT je.id, je.modified, cm.id AS cmid, $namefields
          FROM {journal_entries} je
               JOIN {journal} j         ON j.id = je.journal
@@ -371,39 +375,6 @@ function journal_print_recent_activity($course, $viewfullnames, $timestart) {
 }
 
 /**
- * Returns the users with data in one journal
- * (users with records in journal_entries, students and teachers)
- * @param int $journalid Journal ID
- * @return array Array of user ids
- */
-function journal_get_participants($journalid) {
-    global $DB;
-
-    // Get students using explicit JOINs.
-    $sqlstudents = "SELECT DISTINCT u.id
-                    FROM {user} u
-                    JOIN {journal_entries} j ON u.id = j.userid
-                   WHERE j.journal = ?";
-    $students = $DB->get_records_sql($sqlstudents, [$journalid]);
-
-    // Get teachers using explicit JOINs.
-    $sqlteachers = "SELECT DISTINCT u.id
-                    FROM {user} u
-                    JOIN {journal_entries} j ON u.id = j.teacher
-                   WHERE j.journal = ?";
-    $teachers = $DB->get_records_sql($sqlteachers, [$journalid]);
-
-    // Add teachers to students.
-    if ($teachers) {
-        foreach ($teachers as $teacher) {
-            $students[$teacher->id] = $teacher;
-        }
-    }
-    // Return students array (it contains an array of unique users).
-    return $students;
-}
-
-/**
  * This function returns true if a scale is being used by one journal
  * @param int $journalid Journal ID
  * @param int $scaleid Scale ID
@@ -491,9 +462,26 @@ function journal_reset_userdata($data) {
             $fs->delete_area_files($context->id, 'mod_journal', 'entry');
         }
 
+        // Remove the grades of the deleted entries, unless the whole gradebook is reset anyway.
+        if (empty($data->reset_gradebook_grades)) {
+            journal_reset_gradebook($data->courseid);
+        }
+
         $status[] = [
             'component' => get_string('modulenameplural', 'journal'),
             'item' => get_string('removeentries', 'journal'),
+            'error' => false,
+        ];
+    }
+
+    // Updating dates - shift may be negative too.
+    if (!empty($data->timeshift)) {
+        // Any changes to the list of dates that needs to be rolled should be same during course restore and course reset.
+        shift_course_mod_dates('journal', ['timeopen', 'timeclose'], $data->timeshift, $data->courseid);
+        journal_refresh_events($data->courseid);
+        $status[] = [
+            'component' => get_string('modulenameplural', 'journal'),
+            'item' => get_string('date'),
             'error' => false,
         ];
     }
@@ -502,72 +490,21 @@ function journal_reset_userdata($data) {
 }
 
 /**
- * Print journal overview
+ * Removes all grades from the gradebook of the journals in a course.
  *
- * @param array $courses Courses array
- * @param array $htmlarray HTML array
- * @return void
+ * @param int $courseid Course ID
  */
-function journal_print_overview($courses, &$htmlarray) {
-    global $USER, $CFG, $DB;
+function journal_reset_gradebook($courseid) {
+    global $DB;
 
-    if (!get_config('journal', 'overview')) {
-        return;
-    }
-
-    if (empty($courses) || !is_array($courses) || count($courses) == 0) {
-        return;
-    }
-
-    if (!$journals = get_all_instances_in_courses('journal', $courses)) {
-        return;
-    }
-
-    $strjournal = get_string('modulename', 'journal');
-
-    $timenow = time();
+    $sql = 'SELECT j.*, cm.idnumber AS cmidnumber
+              FROM {journal} j
+              JOIN {course_modules} cm ON cm.instance = j.id
+              JOIN {modules} m ON m.id = cm.module
+             WHERE m.name = :modname AND j.course = :courseid';
+    $journals = $DB->get_records_sql($sql, ['modname' => 'journal', 'courseid' => $courseid]);
     foreach ($journals as $journal) {
-        if (empty($courses[$journal->course]->format)) {
-            $courses[$journal->course]->format = $DB->get_field('course', 'format', ['id' => $journal->course]);
-        }
-
-        if ($courses[$journal->course]->format == 'weeks' && $journal->days) {
-            $coursestartdate = $courses[$journal->course]->startdate;
-
-            // Fix for MBS-10135: Use get_fast_modinfo to get the correct section number.
-            // $journal->section often contains the Section DB ID, not the sequence number.
-            $modinfo = get_fast_modinfo($courses[$journal->course]);
-            $sectionnum = 0;
-
-            // Check if the CM exists in modinfo to avoid errors.
-            if (isset($modinfo->cms[$journal->coursemodule])) {
-                $sectionnum = $modinfo->cms[$journal->coursemodule]->sectionnum;
-            }
-
-            $journal->timestart = $coursestartdate + (($sectionnum - 1) * 604800);
-
-            if (!empty($journal->days)) {
-                $journal->timefinish = $journal->timestart + (3600 * 24 * (int) $journal->days);
-            } else {
-                $journal->timefinish = 9999999999;
-            }
-            $journalopen = ($journal->timestart < $timenow && $timenow < $journal->timefinish);
-        } else {
-            $journalopen = true;
-        }
-
-        if ($journalopen) {
-            $str = '<div class="journal overview"><div class="name">' .
-                $strjournal . ': <a ' . ($journal->visible ? '' : ' class="dimmed"') .
-                ' href="' . $CFG->wwwroot . '/mod/journal/view.php?id=' . $journal->coursemodule . '">' .
-                $journal->name . '</a></div></div>';
-
-            if (empty($htmlarray[$journal->course]['journal'])) {
-                $htmlarray[$journal->course]['journal'] = $str;
-            } else {
-                $htmlarray[$journal->course]['journal'] .= $str;
-            }
-        }
+        journal_grade_item_update($journal, 'reset');
     }
 }
 
@@ -593,7 +530,7 @@ function journal_get_user_grades($journal, $userid = 0) {
     if (!$journal) {
         return false;
     } else {
-        $sql = 'SELECT userid, modified as datesubmitted, format as feedbackformat,
+        $sql = 'SELECT userid, modified as datesubmitted,
                 rating as rawgrade, entrycomment as feedback, teacher as usermodifier, timemarked as dategraded
                 FROM {journal_entries}
                 WHERE journal = :jid ' . $userstr;
@@ -604,6 +541,8 @@ function journal_get_user_grades($journal, $userid = 0) {
         if ($grades) {
             foreach ($grades as $key => $grade) {
                 $grades[$key]->id = $grade->userid;
+                // Feedback is always saved from an HTML editor, whatever the format of the entry text.
+                $grades[$key]->feedbackformat = FORMAT_HTML;
                 if ($grade->rawgrade == -1) {
                     $grades[$key]->rawgrade = null;
                 }
@@ -789,10 +728,13 @@ function journal_get_users_done($journal, $currentgroup) {
  * Counts all the journal entries (optionally in a given group)
  * @param stdClass $journal Journal object
  * @param boolean|int|array $groupids Group id or array of ids. 0 or false = see all.
+ * @param bool $needsgrading Only count the entries that need grading
  * @return int Number of entries
  */
-function journal_count_entries($journal, $groupids = 0) {
+function journal_count_entries($journal, $groupids = 0, bool $needsgrading = false) {
     global $DB;
+
+    $needsgradingsql = $needsgrading ? ' AND (j.timemarked = 0 OR j.modified > j.timemarked)' : '';
 
     $cm = journal_get_coursemodule($journal->id);
     $context = \context_module::instance($cm->id);
@@ -811,12 +753,12 @@ function journal_count_entries($journal, $groupids = 0) {
         $sql = "SELECT DISTINCT u.id FROM {journal_entries} j
                 JOIN {groups_members} g ON g.userid = j.userid
                 JOIN {user} u ON u.id = g.userid
-                WHERE j.journal = ? AND g.groupid $sqlin[0]";
+                WHERE j.journal = ? AND g.groupid $sqlin[0]" . $needsgradingsql;
         $journals = $DB->get_records_sql($sql, array_merge($params, $sqlin[1]));
     } else if ($groupids === 0 || $groupids === false) { // Count all the entries from the whole course.
         $sql = 'SELECT DISTINCT u.id FROM {journal_entries} j
                 JOIN {user} u ON u.id = j.userid
-                WHERE j.journal = ?';
+                WHERE j.journal = ?' . $needsgradingsql;
         $journals = $DB->get_records_sql($sql, [$journal->id]);
     }
 
@@ -844,6 +786,16 @@ function journal_count_entries($journal, $groupids = 0) {
 }
 
 /**
+ * Returns whether an entry needs grading, because it was never graded or was edited since it was graded.
+ *
+ * @param stdClass|null $entry Journal entry, null if the user has not written one
+ * @return bool True if the entry needs grading
+ */
+function journal_entry_needs_grading($entry): bool {
+    return !empty($entry) && (empty($entry->timemarked) || $entry->modified > $entry->timemarked);
+}
+
+/**
  * Get list of graded unmailed users
  *
  * @param int $cutofftime Timestamp
@@ -859,23 +811,6 @@ function journal_get_unmailed_graded($cutofftime) {
             WHERE je.mailed = 0 AND je.timemarked < ? AND je.timemarked > 0
             AND (je.rating <> -1 OR (je.entrycomment IS NOT NULL AND trim(je.entrycomment) <> ?))';
     return $DB->get_records_sql($sql, [$cutofftime, '']);
-}
-
-/**
- * Log info
- *
- * @param stdClass $log Log object
- * @return stdClass|null Log object
- */
-function journal_log_info($log) {
-    global $DB;
-
-    $sql = 'SELECT j.*, u.firstname, u.lastname
-            FROM {journal} j
-            JOIN {journal_entries} je ON je.journal = j.id
-            JOIN {user} u ON u.id = je.userid
-            WHERE je.id = ?';
-    return $DB->get_record_sql($sql, [$log->info]);
 }
 
 /**
@@ -925,6 +860,13 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
     );
 
     $userfullname = html_writer::tag('strong', fullname($user));
+    if (journal_entry_needs_grading($entry)) {
+        // Bootstrap 4 and 5 badge classes, for Moodle 4.x and 5.x.
+        $userfullname .= ' ' . html_writer::span(
+            get_string('needsgrading', 'journal'),
+            'badge badge-warning bg-warning text-dark needsgrading'
+        );
+    }
     if ($entry) {
         $userfullname .= ' ' . html_writer::tag(
             'span',
@@ -1115,16 +1057,24 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
         );
 
         if ($feedbackdisabledstr != '') {
-            echo '<input type="hidden" name="c' . $entry->id . '" value="' . $feedbacktext . '"/>';
+            echo html_writer::empty_tag('input', [
+                'type' => 'hidden',
+                'name' => 'c' . $entry->id,
+                'value' => $feedbacktext,
+            ]);
         }
 
         // Feedback save button.
-        echo '<p class="feedbacksave">';
-        echo '<input type="button" data-cmid="' . $cmid . '" data-entryid="' . $entry->id . '"
-            data-userid="' . $user->id . '" data-itemid="' . $draftitemid . '" ';
-        echo 'value="' . get_string('savefeedback', 'journal') . '"
-            class="saveindividualfeedback btn btn-secondary mt-1 m-t-1"/>';
-        echo '</p>';
+        echo html_writer::tag('p', html_writer::empty_tag('input', [
+            'type' => 'button',
+            'data-cmid' => $cmid,
+            'data-entryid' => $entry->id,
+            'data-userid' => $user->id,
+            'data-fullname' => fullname($user),
+            'data-itemid' => $draftitemid,
+            'value' => get_string('savefeedback', 'journal'),
+            'class' => 'saveindividualfeedback btn btn-secondary mt-1 m-t-1',
+        ]), ['class' => 'feedbacksave']);
 
         $feedbackhtml = ob_get_clean();
 
@@ -1157,7 +1107,7 @@ function journal_print_feedback($course, $entry, $grades) {
     require_once($CFG->dirroot . '/lib/gradelib.php');
 
     if (!$teacher = $DB->get_record('user', ['id' => $entry->teacher])) {
-        throw new \moodle_exception(get_string('Weird journal error'));
+        throw new \moodle_exception('incorrectuserid', 'journal');
     }
 
     $module = $DB->get_record('modules', ['name' => 'journal']);
@@ -1250,7 +1200,7 @@ function journal_pluginfile($course, $cm, $context, $filearea, $args, $forcedown
     }
 
     // Students can only see their own entry.
-    if (!$canmanage && $USER->id !== $entry->userid) {
+    if (!$canmanage && $USER->id != $entry->userid) {
         return false;
     }
 
@@ -1267,6 +1217,9 @@ function journal_pluginfile($course, $cm, $context, $filearea, $args, $forcedown
     $relativepath = implode('/', $args);
     $fullpath = "/$context->id/mod_journal/$filearea/$entryid/$relativepath";
     $file = $fs->get_file_by_hash(sha1($fullpath));
+    if (!$file || $file->is_directory()) {
+        return false;
+    }
 
     // Finally send the file.
     send_stored_file($file, null, 0, $forcedownload, $options);
@@ -1347,6 +1300,10 @@ function mod_journal_core_calendar_provide_event_action(
         return null;
     }
 
+    if ($event->eventtype == JOURNAL_EVENT_TYPE_OPEN || $event->eventtype == JOURNAL_EVENT_TYPE_CLOSE) {
+        return journal_provide_open_close_event_action($cm, $factory, $userid);
+    }
+
     $completion = new \completion_info($cm->get_course());
 
     $completiondata = $completion->get_data($cm, false, $userid);
@@ -1360,6 +1317,45 @@ function mod_journal_core_calendar_provide_event_action(
         new \moodle_url('/mod/journal/view.php', ['id' => $cm->id]),
         1,
         true
+    );
+}
+
+/**
+ * Returns the action of the opening or closing event of a journal for a user who can add entries.
+ *
+ * @param cm_info $cm Course module of the journal
+ * @param \core_calendar\action_factory $factory The factory to create the action
+ * @param int $userid User ID
+ * @return \core_calendar\local\event\entities\action_interface|null The action, null if there is none
+ */
+function journal_provide_open_close_event_action(
+    cm_info $cm,
+    \core_calendar\action_factory $factory,
+    int $userid
+): ?\core_calendar\local\event\entities\action_interface {
+    global $DB;
+
+    if (has_capability('mod/journal:manageentries', $cm->context, $userid)) {
+        // Teachers are not participants who write entries.
+        return null;
+    }
+
+    $now = time();
+    if (!empty($cm->customdata['timeclose']) && $cm->customdata['timeclose'] <= $now) {
+        // The journal has closed so the user can no longer edit their entry.
+        return null;
+    }
+
+    if ($DB->record_exists('journal_entries', ['journal' => $cm->instance, 'userid' => $userid])) {
+        // There is no action left if the user has written an entry.
+        return null;
+    }
+
+    return $factory->create_instance(
+        get_string('startoredit', 'journal'),
+        new \moodle_url('/mod/journal/view.php', ['id' => $cm->id]),
+        1,
+        empty($cm->customdata['timeopen']) || $cm->customdata['timeopen'] <= $now
     );
 }
 
@@ -1412,7 +1408,8 @@ function journal_get_coursemodule_info($cm): ?cached_cm_info {
     global $DB;
 
     // Fetch necessary fields including intro/format for description display.
-    if (!$journal = $DB->get_record('journal', ['id' => $cm->instance], 'id, name, intro, introformat, completion_create_entry')) {
+    $fields = 'id, name, intro, introformat, timeopen, timeclose, completion_create_entry';
+    if (!$journal = $DB->get_record('journal', ['id' => $cm->instance], $fields)) {
         return null;
     }
 
@@ -1426,6 +1423,14 @@ function journal_get_coursemodule_info($cm): ?cached_cm_info {
 
     if ($cm->completion == COMPLETION_TRACKING_AUTOMATIC) {
         $result->customdata['customcompletionrules']['completion_create_entry'] = $journal->completion_create_entry;
+    }
+
+    // Populate the dates shown on the course page and in the activity header.
+    if ($journal->timeopen) {
+        $result->customdata['timeopen'] = $journal->timeopen;
+    }
+    if ($journal->timeclose) {
+        $result->customdata['timeclose'] = $journal->timeclose;
     }
 
     return $result;
@@ -1449,6 +1454,157 @@ function journal_get_printable_count($text) {
 
     $count = count_words($text);
     return get_string('numwords', 'moodle', $count);
+}
+
+/**
+ * Returns the period in which entries of the journal can be edited.
+ *
+ * Journals with an opening or closing time are open between these times. Otherwise, only journals in
+ * courses in weekly format with a number of days available have an editing period, starting with the
+ * week of their section. All other journals are always open.
+ *
+ * @param stdClass $journal Journal record
+ * @param stdClass $course Course record
+ * @param stdClass|cm_info $cm Course module of the journal
+ * @return int[]|null The start and end time of the editing period, each 0 if there is no limit,
+ *     or null if the journal is always open
+ */
+function journal_get_editing_period($journal, $course, $cm): ?array {
+    if (!empty($journal->timeopen) || !empty($journal->timeclose)) {
+        return [(int) ($journal->timeopen ?? 0), (int) ($journal->timeclose ?? 0)];
+    }
+
+    if ($course->format != 'weeks' || empty($journal->days)) {
+        return null;
+    }
+
+    $sectionnum = get_fast_modinfo($course)->get_section_info_by_id($cm->section)->section;
+    $timestart = $course->startdate + (($sectionnum - 1) * WEEKSECS);
+    return [$timestart, $timestart + ((int) $journal->days * DAYSECS)];
+}
+
+/**
+ * Returns whether entries of the journal can be edited at the given time.
+ *
+ * @param stdClass $journal Journal record
+ * @param stdClass $course Course record
+ * @param stdClass|cm_info $cm Course module of the journal
+ * @param int|null $timenow Time to check, defaults to now
+ * @return bool True if the journal is open for editing
+ */
+function journal_is_open($journal, $course, $cm, $timenow = null): bool {
+    $period = journal_get_editing_period($journal, $course, $cm);
+    if (!$period) {
+        return true;
+    }
+
+    $timenow = $timenow ?? time();
+    return $timenow >= $period[0] && (!$period[1] || $timenow < $period[1]);
+}
+
+/**
+ * Creates, updates or deletes the calendar events of the opening and closing of a journal.
+ *
+ * @param stdClass $journal Journal record, with the course module ID in coursemodule if known
+ */
+function journal_set_events($journal) {
+    global $CFG, $DB;
+    require_once($CFG->dirroot . '/calendar/lib.php');
+
+    if (!isset($journal->coursemodule)) {
+        $journal->coursemodule = get_coursemodule_from_instance('journal', $journal->id, $journal->course, false, MUST_EXIST)->id;
+    }
+
+    $events = [
+        JOURNAL_EVENT_TYPE_OPEN => ['time' => $journal->timeopen ?? 0, 'name' => 'calendaropen'],
+        JOURNAL_EVENT_TYPE_CLOSE => ['time' => $journal->timeclose ?? 0, 'name' => 'calendarclose'],
+    ];
+    foreach ($events as $eventtype => $settings) {
+        $eventid = $DB->get_field('event', 'id', [
+            'modulename' => 'journal',
+            'instance' => $journal->id,
+            'eventtype' => $eventtype,
+        ]);
+
+        if (empty($settings['time'])) {
+            // The event is no longer needed.
+            if ($eventid) {
+                calendar_event::load($eventid)->delete();
+            }
+            continue;
+        }
+
+        $event = (object) [
+            'name' => get_string($settings['name'], 'journal', $journal->name),
+            'description' => format_module_intro('journal', $journal, $journal->coursemodule, false),
+            'format' => FORMAT_HTML,
+            // The opening is only shown on the timeline if there is no closing time.
+            'type' => ($eventtype == JOURNAL_EVENT_TYPE_CLOSE || empty($journal->timeclose)) ?
+                CALENDAR_EVENT_TYPE_ACTION : CALENDAR_EVENT_TYPE_STANDARD,
+            'timestart' => $settings['time'],
+            'timesort' => $settings['time'],
+            'timeduration' => 0,
+            'visible' => instance_is_visible('journal', $journal),
+        ];
+
+        if ($eventid) {
+            calendar_event::load($eventid)->update($event, false);
+        } else {
+            $event->eventtype = $eventtype;
+            $event->courseid = $journal->course;
+            $event->groupid = 0;
+            $event->userid = 0;
+            $event->modulename = 'journal';
+            $event->instance = $journal->id;
+            calendar_event::create($event, false);
+        }
+    }
+}
+
+/**
+ * Updates the calendar events of journals.
+ *
+ * This is called by the refresh events scheduled task and when dates of journals are shifted.
+ *
+ * @param int $courseid Course ID, 0 for all courses
+ * @param int|stdClass|null $instance Journal ID or record, to only update the events of this journal
+ * @param stdClass|cm_info|null $cm Course module of the journal
+ * @return bool
+ */
+function journal_refresh_events($courseid = 0, $instance = null, $cm = null) {
+    global $DB;
+
+    if (isset($instance)) {
+        if (!is_object($instance)) {
+            $instance = $DB->get_record('journal', ['id' => $instance], '*', MUST_EXIST);
+        }
+        if (isset($cm)) {
+            $instance->coursemodule = $cm->id;
+        }
+        journal_set_events($instance);
+        return true;
+    }
+
+    $journals = $DB->get_records('journal', $courseid ? ['course' => $courseid] : []);
+    foreach ($journals as $journal) {
+        if (get_coursemodule_from_instance('journal', $journal->id, $journal->course)) {
+            journal_set_events($journal);
+        }
+    }
+    return true;
+}
+
+/**
+ * Returns whether a rating can be given to an entry of the journal.
+ *
+ * Valid ratings are -1 for no grade and the grades of the menu teachers pick them from.
+ *
+ * @param stdClass $journal Journal record
+ * @param int $rating Rating to check
+ * @return bool True if the rating is valid
+ */
+function journal_is_valid_grade($journal, int $rating): bool {
+    return $rating == -1 || array_key_exists($rating, make_grades_menu($journal->grade));
 }
 
 /**
