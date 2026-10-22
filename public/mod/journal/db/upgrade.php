@@ -149,5 +149,86 @@ function xmldb_journal_upgrade($oldversion = 0) {
         upgrade_mod_savepoint(true, 2025120700, 'journal');
     }
 
+    if ($oldversion < 2026102001) {
+        // Remove duplicate entries of a user in a journal, keeping the most recently modified one.
+        $fs = get_file_storage();
+        $duplicates = $DB->get_recordset_sql('SELECT journal, userid
+                                                FROM {journal_entries}
+                                            GROUP BY journal, userid
+                                              HAVING COUNT(1) > 1');
+        foreach ($duplicates as $duplicate) {
+            $entries = $DB->get_records(
+                'journal_entries',
+                ['journal' => $duplicate->journal, 'userid' => $duplicate->userid],
+                'modified DESC, id DESC',
+                'id'
+            );
+            array_shift($entries);
+            $cm = get_coursemodule_from_instance('journal', $duplicate->journal);
+            foreach ($entries as $entry) {
+                if ($cm) {
+                    $context = context_module::instance($cm->id);
+                    $fs->delete_area_files($context->id, 'mod_journal', 'entry', $entry->id);
+                    $fs->delete_area_files($context->id, 'mod_journal', 'feedback', $entry->id);
+                }
+                $DB->delete_records('journal_entries', ['id' => $entry->id]);
+            }
+        }
+        $duplicates->close();
+
+        // Define index journaluser (unique) to be added to journal_entries.
+        $table = new xmldb_table('journal_entries');
+        $index = new xmldb_index('journaluser', XMLDB_INDEX_UNIQUE, ['journal', 'userid']);
+
+        // Conditionally launch add index journaluser.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Journal savepoint reached.
+        upgrade_mod_savepoint(true, 2026102001, 'journal');
+    }
+
+    if ($oldversion < 2026102100) {
+        // Define index mailedtimemarked (not unique) to be added to journal_entries.
+        $table = new xmldb_table('journal_entries');
+        $index = new xmldb_index('mailedtimemarked', XMLDB_INDEX_NOTUNIQUE, ['mailed', 'timemarked']);
+
+        // Conditionally launch add index mailedtimemarked.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Journal savepoint reached.
+        upgrade_mod_savepoint(true, 2026102100, 'journal');
+    }
+
+    if ($oldversion < 2026102101) {
+        // The overview setting was only used by the My Moodle overview, which no longer exists.
+        unset_config('overview', 'journal');
+
+        // Journal savepoint reached.
+        upgrade_mod_savepoint(true, 2026102101, 'journal');
+    }
+
+    if ($oldversion < 2026102102) {
+        // Define fields timeopen and timeclose to be added to journal.
+        $table = new xmldb_table('journal');
+        $fields = [
+            new xmldb_field('timeopen', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'days'),
+            new xmldb_field('timeclose', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timeopen'),
+        ];
+
+        // Conditionally launch add fields timeopen and timeclose.
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+
+        // Journal savepoint reached.
+        upgrade_mod_savepoint(true, 2026102102, 'journal');
+    }
+
     return true;
 }
