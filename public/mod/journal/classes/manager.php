@@ -31,6 +31,15 @@ class manager {
     /** Module name. */
     public const MODULE = 'journal';
 
+    /** Teachers are not notified of saved entries. */
+    public const NOTIFY_NEVER = 0;
+
+    /** Teachers are notified every time an entry is saved. */
+    public const NOTIFY_ALWAYS = 1;
+
+    /** Teachers are notified when an entry is created, or changed after it was graded. */
+    public const NOTIFY_NEEDSGRADING = 2;
+
     /** @var context_module the current context. */
     private $context;
 
@@ -150,6 +159,8 @@ class manager {
     /**
      * Return the count of users who can submit entries to this journal module, that the current user can see.
      *
+     * Users who can manage the entries are not counted.
+     *
      * @param int[] $groupids the group identifiers to filter by, empty array means no filtering
      * @return int the number of answers that the user can see
      */
@@ -162,6 +173,8 @@ class manager {
 
         // Get all users with the capability to choose in this context.
         $users = get_users_by_capability($this->context, 'mod/journal:addentries', 'u.id');
+        // Teachers can add entries too, but are not expected to, as on the report page.
+        $users = array_diff_key($users, get_users_by_capability($this->context, 'mod/journal:manageentries', 'u.id'));
 
         if (empty($users)) {
             return 0;
@@ -229,5 +242,281 @@ class manager {
         }
 
         return journal_count_entries($this->instance, $groupids ?: 0, true);
+    }
+
+    /**
+     * Return the options of the editor of the entries.
+     *
+     * @return array
+     */
+    public function get_entry_editor_options(): array {
+        return [
+            'maxfiles' => EDITOR_UNLIMITED_FILES,
+            'context' => $this->context,
+            'subdirs' => false,
+            'enable_filemanagement' => true,
+        ];
+    }
+
+    /**
+     * Return the limits of the number of words of the entries, for students to read.
+     *
+     * @return string|null The limits, null if there are none
+     */
+    public function get_word_limit(): ?string {
+        $min = (int) ($this->instance->minwords ?? 0);
+        $max = (int) ($this->instance->maxwords ?? 0);
+        if ($min && $max) {
+            return get_string('wordlimitrange', 'journal', ['min' => $min, 'max' => $max]);
+        } else if ($min) {
+            return get_string('wordlimitmin', 'journal', $min);
+        } else if ($max) {
+            return get_string('wordlimitmax', 'journal', $max);
+        }
+        return null;
+    }
+
+    /**
+     * Return why an entry text cannot be saved because of its number of words.
+     *
+     * @param string $text The entry text
+     * @return string|null The error, null if the number of words is within the limits
+     */
+    public function get_word_count_error(string $text): ?string {
+        $error = $this->check_word_count($text);
+        return $error ? get_string($error[0], 'journal', $error[1]) : null;
+    }
+
+    /**
+     * Check the number of words of an entry text against the limits of the journal.
+     *
+     * @param string $text The entry text
+     * @return array|null The string identifier and parameter of the error, null if the number of words is within the limits
+     */
+    private function check_word_count(string $text): ?array {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        $min = (int) ($this->instance->minwords ?? 0);
+        $max = (int) ($this->instance->maxwords ?? 0);
+        if (!$min && !$max) {
+            return null;
+        }
+
+        $count = journal_count_words($text);
+        if ($min && $count < $min) {
+            return ['toofewwords', (object) ['count' => $count, 'limit' => $min]];
+        }
+        if ($max && $count > $max) {
+            return ['toomanywords', (object) ['count' => $count, 'limit' => $max]];
+        }
+        return null;
+    }
+
+    /**
+     * Save the entry of the current user, creating it if needed.
+     *
+     * Moves the files of the draft area into the entry, triggers the entry created or updated event
+     * and updates the completion state.
+     *
+     * @param string $text The entry text
+     * @param int $format The format of the text
+     * @param int $draftitemid The draft area of the files in the text, 0 for none
+     * @return stdClass The saved entry
+     * @throws \moodle_exception If the number of words of the text is outside the limits of the journal
+     */
+    public function save_entry(string $text, int $format, int $draftitemid = 0): stdClass {
+        global $CFG, $USER;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        if ($error = $this->check_word_count($text)) {
+            throw new \moodle_exception($error[0], 'journal', '', $error[1]);
+        }
+
+        $transaction = $this->db->start_delegated_transaction();
+
+        $entry = $this->db->get_record('journal_entries', ['journal' => $this->instance->id, 'userid' => $USER->id]);
+        $isnew = !$entry;
+        // Whether this save makes the entry need grading, because it is new or was graded since it was last changed.
+        $needsgrading = $isnew || !journal_entry_needs_grading($entry);
+        if ($isnew) {
+            // The entry needs an ID before the files of the draft area can be saved.
+            $entry = (object) [
+                'journal' => $this->instance->id,
+                'userid' => $USER->id,
+                'text' => '',
+                'format' => $format,
+                'modified' => time(),
+            ];
+            $entry->id = $this->db->insert_record('journal_entries', $entry);
+        }
+
+        if ($draftitemid) {
+            $text = file_save_draft_area_files(
+                $draftitemid,
+                $this->context->id,
+                'mod_journal',
+                'entry',
+                $entry->id,
+                $this->get_entry_editor_options(),
+                $text
+            );
+        }
+
+        $entry->text = $text;
+        $entry->format = $format;
+        $entry->modified = time();
+        $this->db->update_record('journal_entries', $entry);
+
+        $eventclass = $isnew ? event\entry_created::class : event\entry_updated::class;
+        $event = $eventclass::create([
+            'objectid' => $entry->id,
+            'relateduserid' => $entry->userid,
+            'context' => $this->context,
+            'other' => ['needsgrading' => $needsgrading],
+        ]);
+        $this->add_event_snapshots($event);
+        $event->trigger();
+
+        $transaction->allow_commit();
+
+        $completion = new \completion_info($this->course);
+        if ($completion->is_enabled($this->cm) && $this->instance->completion_create_entry) {
+            $completion->update_state($this->cm, COMPLETION_COMPLETE);
+        }
+
+        return $entry;
+    }
+
+    /**
+     * Save the grade and feedback of an entry, if they changed.
+     *
+     * Updates the gradebook and triggers the feedback updated event. The given entry is updated too.
+     *
+     * @param stdClass $entry An entry of this journal
+     * @param int $grade The grade, -1 for no grade
+     * @param string $feedback The feedback, in HTML
+     * @param int $draftitemid The draft area of the files in the feedback, 0 for none
+     * @return bool Whether the grade or the feedback changed
+     * @throws \invalid_parameter_exception If the grade is not in the grade menu of this journal
+     */
+    public function save_feedback(stdClass $entry, int $grade, string $feedback, int $draftitemid = 0): bool {
+        global $CFG, $USER;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        if ($entry->journal != $this->instance->id) {
+            throw new \coding_exception('The entry is not from this journal');
+        }
+
+        $grade = max($grade, -1);
+        $oldgrade = (int) ($entry->rating ?? -1);
+        // A locked grade is sent back unchanged, even if it is no longer valid.
+        if ($grade !== $oldgrade && !journal_is_valid_grade($this->instance, $grade)) {
+            throw new \invalid_parameter_exception('Invalid grade: ' . $grade);
+        }
+
+        $feedback = clean_text($feedback, FORMAT_HTML);
+        if ($draftitemid) {
+            $feedback = file_save_draft_area_files(
+                $draftitemid,
+                $this->context->id,
+                'mod_journal',
+                'feedback',
+                $entry->id,
+                [],
+                $feedback
+            );
+        }
+
+        if ($grade === $oldgrade && $feedback === (string) $entry->entrycomment) {
+            return false;
+        }
+
+        $entry->rating = $grade;
+        $entry->entrycomment = $feedback;
+        $entry->teacher = $USER->id;
+        $entry->timemarked = time();
+        $entry->mailed = 0;
+
+        $transaction = $this->db->start_delegated_transaction();
+
+        $this->db->update_record('journal_entries', (object) [
+            'id' => $entry->id,
+            'rating' => $entry->rating,
+            'entrycomment' => $entry->entrycomment,
+            'teacher' => $entry->teacher,
+            'timemarked' => $entry->timemarked,
+            'mailed' => $entry->mailed,
+        ]);
+
+        $journal = clone $this->instance;
+        $journal->cmidnumber = $this->cm->idnumber;
+        journal_update_grades($journal, $entry->userid);
+
+        $event = event\feedback_updated::create([
+            'objectid' => $entry->id,
+            'relateduserid' => $entry->userid,
+            'context' => $this->context,
+        ]);
+        $this->add_event_snapshots($event);
+        $event->trigger();
+
+        $transaction->allow_commit();
+
+        return true;
+    }
+
+    /**
+     * Delete an entry, with its files, feedback and grade.
+     *
+     * Triggers the entry deleted event and updates the completion state of the author of the entry.
+     *
+     * @param stdClass $entry An entry of this journal
+     */
+    public function delete_entry(stdClass $entry): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        if ($entry->journal != $this->instance->id) {
+            throw new \coding_exception('The entry is not from this journal');
+        }
+
+        $transaction = $this->db->start_delegated_transaction();
+
+        $fs = get_file_storage();
+        $fs->delete_area_files($this->context->id, 'mod_journal', 'entry', $entry->id);
+        $fs->delete_area_files($this->context->id, 'mod_journal', 'feedback', $entry->id);
+        $this->db->delete_records('journal_entries', ['id' => $entry->id]);
+
+        $journal = clone $this->instance;
+        $journal->cmidnumber = $this->cm->idnumber;
+        journal_update_grades($journal, $entry->userid);
+
+        $event = event\entry_deleted::create([
+            'objectid' => $entry->id,
+            'relateduserid' => $entry->userid,
+            'context' => $this->context,
+        ]);
+        $this->add_event_snapshots($event);
+        $event->add_record_snapshot('journal_entries', $entry);
+        $event->trigger();
+
+        $transaction->allow_commit();
+
+        $completion = new \completion_info($this->course);
+        if ($completion->is_enabled($this->cm) && $this->instance->completion_create_entry) {
+            $completion->update_state($this->cm, COMPLETION_INCOMPLETE, $entry->userid);
+        }
+    }
+
+    /**
+     * Add the records of the course, course module and journal to an event.
+     *
+     * @param \core\event\base $event
+     */
+    private function add_event_snapshots(\core\event\base $event): void {
+        $event->add_record_snapshot('course_modules', $this->cm->get_course_module_record());
+        $event->add_record_snapshot('course', $this->course);
+        $event->add_record_snapshot('journal', $this->instance);
     }
 }

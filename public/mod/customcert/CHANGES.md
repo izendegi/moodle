@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 Note - All hash comments refer to the issue number. Eg. #169 refers to https://github.com/mdjnelson/moodle-mod_customcert/issues/169.
 
+## [5.2.12] - 2026-10-25
+
+### Security
+
+- Fixed information disclosure of certificate issuance to users who are not permitted to view another user's certificates ([GHSA-xrf9-973c-472v](https://github.com/mdjnelson/moodle-mod_customcert/security/advisories/GHSA-xrf9-973c-472v)).
+
+### Fixed
+
+- Fixed incorrect issuer attribution for certificates issued via CLI (#757).
+- Fixed automatic certificate issuance for users not enrolled in a course (#773).
+- Fixed automatic certificate issuance bypassing activity restrictions for administrators and managers (#1039).
+
 ## [5.2.11] - 2026-10-11
 
 ### Fixed
