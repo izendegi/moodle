@@ -27,28 +27,54 @@ namespace mod_journal;
  */
 final class lib_test extends \advanced_testcase {
     /**
-     * Test reset function.
+     * Resetting the journals of a course removes their entries and files, and leaves the other courses alone.
      *
      * @covers ::journal_reset_userdata
      */
     public function test_reset(): void {
+        global $DB;
         $this->resetAfterTest();
 
         $generator = $this->getDataGenerator();
         $journalgenerator = $generator->get_plugin_generator('mod_journal');
+        $fs = get_file_storage();
 
-        // Create a course.
-        $course = $generator->create_course();
+        $files = [];
+        $journals = [];
+        foreach (['reset', 'kept'] as $name) {
+            $course = $generator->create_course();
+            $journal = $journalgenerator->create_instance(['course' => $course->id]);
+            $entryid = $journalgenerator->create_entry((object)['journal' => $journal->id]);
+            $context = \context_module::instance($journal->cmid);
+            foreach (['entry', 'feedback'] as $filearea) {
+                $files[$name][] = $fs->create_file_from_string([
+                    'contextid' => $context->id,
+                    'component' => 'mod_journal',
+                    'filearea' => $filearea,
+                    'itemid' => $entryid,
+                    'filepath' => '/',
+                    'filename' => 'file.txt',
+                ], 'Content');
+            }
+            $journals[$name] = $journal;
+        }
 
-        // Create a journal instance.
-        $journal = $journalgenerator->create_instance(['course' => $course->id]);
-
-        $entryrecord = (object)['journal' => $journal->id];
-        $entry = $journalgenerator->create_entry($entryrecord);
-
-        $status = journal_reset_userdata((object)['reset_journal' => true, 'courseid' => $course->id]);
+        $status = journal_reset_userdata((object)['reset_journal' => true, 'courseid' => $journals['reset']->course]);
         $this->assertCount(1, $status);
         $this->assertFalse($status[0]['error']);
+
+        $this->assertFalse($DB->record_exists('journal_entries', ['journal' => $journals['reset']->id]));
+        $this->assertTrue($DB->record_exists('journal_entries', ['journal' => $journals['kept']->id]));
+        foreach ($files['reset'] as $file) {
+            $this->assertFalse($fs->file_exists_by_hash($file->get_pathnamehash()));
+        }
+        foreach ($files['kept'] as $file) {
+            $this->assertTrue($fs->file_exists_by_hash($file->get_pathnamehash()));
+        }
+
+        // Without the option, nothing is removed.
+        $this->assertSame([], journal_reset_userdata((object)['courseid' => $journals['kept']->course]));
+        $this->assertTrue($DB->record_exists('journal_entries', ['journal' => $journals['kept']->id]));
     }
 
     /**
@@ -339,5 +365,170 @@ final class lib_test extends \advanced_testcase {
         $topicscm = get_coursemodule_from_instance('journal', $topicsjournal->id);
         $this->assertNull(journal_get_editing_period($topicsjournal, $topics, $topicscm));
         $this->assertTrue(journal_is_open($topicsjournal, $topics, $topicscm, $startdate - YEARSECS));
+    }
+
+    /**
+     * The individual save button is not shown for a grade overridden in the gradebook.
+     *
+     * @covers ::journal_print_user_entry
+     */
+    public function test_print_user_entry_hides_save_button_of_overridden_grade(): void {
+        $input = $this->render_overridden_feedback_input('<p>Good</p>');
+
+        $xpath = new \DOMXPath($input->ownerDocument);
+        $this->assertCount(0, $xpath->query('//input[contains(@class, "saveindividualfeedback")]'));
+    }
+
+    /**
+     * Entries have feedback to show if they have a grade, including 0, or a feedback text.
+     *
+     * @covers ::journal_entry_has_feedback
+     */
+    public function test_entry_has_feedback(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        $this->assertFalse(journal_entry_has_feedback(null));
+        $this->assertFalse(journal_entry_has_feedback((object) ['rating' => -1, 'entrycomment' => '']));
+        $this->assertFalse(journal_entry_has_feedback((object) ['rating' => null, 'entrycomment' => null]));
+        $this->assertTrue(journal_entry_has_feedback((object) ['rating' => '0', 'entrycomment' => '']));
+        $this->assertTrue(journal_entry_has_feedback((object) ['rating' => 5, 'entrycomment' => null]));
+        $this->assertTrue(journal_entry_has_feedback((object) ['rating' => -1, 'entrycomment' => '<p>Good</p>']));
+    }
+
+    /**
+     * Words are counted across paragraphs and line breaks, and Chinese and Japanese characters one by one.
+     *
+     * @covers ::journal_count_words
+     * @covers ::journal_get_printable_count
+     */
+    public function test_count_words(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        $this->assertSame(0, journal_count_words(''));
+        $this->assertSame(3, journal_count_words('<p>One</p><p>two<br>three</p>'));
+        $this->assertSame(2, journal_count_words('One <b>two</b>'));
+        $this->assertSame(4, journal_count_words('<p>日本語文</p>'));
+        $this->assertEquals('3 words', journal_get_printable_count('<p>One</p><p>two</p><p>three</p>'));
+        $this->assertEquals('4 characters', journal_get_printable_count('<p>日本語文</p>'));
+    }
+
+    /**
+     * The notify teachers setting keeps valid values, turns an unchecked setting off and other values on.
+     *
+     * @covers ::journal_clean_notify_teachers
+     */
+    public function test_clean_notify_teachers(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        $this->assertSame(manager::NOTIFY_NEVER, journal_clean_notify_teachers(null));
+        $this->assertSame(manager::NOTIFY_NEVER, journal_clean_notify_teachers('0'));
+        $this->assertSame(manager::NOTIFY_ALWAYS, journal_clean_notify_teachers('1'));
+        $this->assertSame(manager::NOTIFY_NEEDSGRADING, journal_clean_notify_teachers('2'));
+        $this->assertSame(manager::NOTIFY_ALWAYS, journal_clean_notify_teachers(7));
+    }
+
+    /**
+     * Texts are converted to plain text the same way whatever their format, and plain text converts to itself.
+     *
+     * @covers ::journal_get_plain_text
+     */
+    public function test_get_plain_text(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+        $this->resetAfterTest();
+        $context = \context_system::instance();
+
+        $this->assertSame(
+            "Hello world\n\nSecond & paragraph\nnext line",
+            journal_get_plain_text('<p>Hello <b>world</b></p><p>Second &amp; paragraph<br>next line</p>', FORMAT_HTML, $context)
+        );
+        $this->assertSame("Line one\nLine two", journal_get_plain_text("Line one\r\nLine two\n", FORMAT_MOODLE, $context));
+        $this->assertSame('', journal_get_plain_text(null, FORMAT_HTML, $context));
+
+        $plain = "A <b> & \"quoted\" text\nnext line";
+        $this->assertSame($plain, journal_get_plain_text($plain, FORMAT_PLAIN, $context));
+        // Plain text feedback is saved as HTML with line breaks.
+        $this->assertSame($plain, journal_get_plain_text(nl2br(s($plain)), FORMAT_HTML, $context));
+    }
+
+    /**
+     * Sorting by date puts the users without an entry last.
+     *
+     * @covers ::mod_journal_sort_users
+     */
+    public function test_sort_users(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+        $users = [];
+        foreach ([1 => 'Carl', 2 => 'Anna', 3 => 'Bert', 4 => 'Dora'] as $id => $firstname) {
+            $users[$id] = (object) ['id' => $id, 'firstname' => $firstname, 'lastname' => 'Doe'];
+        }
+        $entrybyuser = [
+            2 => (object) ['modified' => 200],
+            4 => (object) ['modified' => 100],
+        ];
+
+        // Users who compare equal are sorted by ID.
+        mod_journal_sort_users($users, 'dateasc', $entrybyuser);
+        $this->assertSame([4, 2, 1, 3], array_keys($users));
+
+        mod_journal_sort_users($users, 'datedesc', $entrybyuser);
+        $this->assertSame([2, 4, 1, 3], array_keys($users));
+
+        mod_journal_sort_users($users, 'firstnamedesc', $entrybyuser);
+        $this->assertSame([4, 1, 3, 2], array_keys($users));
+
+        $users = array_reverse($users, true);
+        mod_journal_sort_users($users, 'lastnameasc', $entrybyuser);
+        $this->assertSame([1, 2, 3, 4], array_keys($users));
+
+        $entrybyuser[1] = (object) ['modified' => 100];
+        $users = array_reverse($users, true);
+        mod_journal_sort_users($users, 'dateasc', $entrybyuser);
+        $this->assertSame([1, 4, 2, 3], array_keys($users));
+    }
+
+    /**
+     * Entries graded before the cut-off time are returned once, unless they have neither a grade nor feedback.
+     *
+     * @covers ::journal_get_unmailed_graded
+     */
+    public function test_get_unmailed_graded(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/journal/lib.php');
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $journalgenerator = $generator->get_plugin_generator('mod_journal');
+        $course = $generator->create_course();
+        $journal = $journalgenerator->create_instance(['course' => $course->id]);
+        $now = time();
+        $entries = [
+            'zero' => ['rating' => 0, 'entrycomment' => null],
+            'comment' => ['rating' => -1, 'entrycomment' => '<p>Good</p>'],
+            'blank' => ['rating' => -1, 'entrycomment' => '  '],
+            'nothing' => ['rating' => -1, 'entrycomment' => null],
+            'nullrating' => ['rating' => null, 'entrycomment' => ''],
+            'mailed' => ['rating' => 5, 'entrycomment' => null, 'mailed' => 1],
+            'recent' => ['rating' => 5, 'entrycomment' => null, 'timemarked' => $now],
+        ];
+        $ids = [];
+        foreach ($entries as $name => $entry) {
+            $ids[$name] = $journalgenerator->create_entry((object) ($entry + [
+                'journal' => $journal->id,
+                'userid' => $generator->create_user()->id,
+                'teacher' => get_admin()->id,
+                'timemarked' => $now - HOURSECS,
+            ]));
+        }
+
+        $this->assertEqualsCanonicalizing(
+            [$ids['zero'], $ids['comment']],
+            array_keys(journal_get_unmailed_graded($now - MINSECS))
+        );
     }
 }
