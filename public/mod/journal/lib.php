@@ -41,8 +41,11 @@ function journal_add_instance($journal) {
 
     $journal->timemodified = time();
 
+    $journal->notifyteachers = journal_clean_notify_teachers($journal->notifyteachers ?? null);
+    $journal->minwords = max(0, (int) ($journal->minwords ?? 0));
+    $journal->maxwords = max(0, (int) ($journal->maxwords ?? 0));
+    $journal->remindbefore = max(0, (int) ($journal->remindbefore ?? 0));
     // Checkbox handling: Use !empty to ensure 0 is saved as 0.
-    $journal->notifyteachers = !empty($journal->notifyteachers) ? 1 : 0;
     $journal->notifystudents = !empty($journal->notifystudents) ? 1 : 0;
 
     $journal->id = $DB->insert_record('journal', $journal);
@@ -74,8 +77,11 @@ function journal_update_instance($journal) {
     $journal->timemodified = time();
     $journal->id = $journal->instance;
 
+    $journal->notifyteachers = journal_clean_notify_teachers($journal->notifyteachers ?? null);
+    $journal->minwords = max(0, (int) ($journal->minwords ?? 0));
+    $journal->maxwords = max(0, (int) ($journal->maxwords ?? 0));
+    $journal->remindbefore = max(0, (int) ($journal->remindbefore ?? 0));
     // Checkbox handling: Use !empty to ensure 0 is saved as 0.
-    $journal->notifyteachers = !empty($journal->notifyteachers) ? 1 : 0;
     $journal->notifystudents = !empty($journal->notifystudents) ? 1 : 0;
 
     $result = $DB->update_record('journal', $journal);
@@ -244,7 +250,7 @@ function journal_user_complete($course, $user, $mod, $journal) {
         echo $OUTPUT->box_start();
 
         if ($entry->modified) {
-            echo '<p><font size="1">' . get_string('lastedited') . ': ' . userdate($entry->modified) . '</font></p>';
+            echo html_writer::tag('p', get_string('lastedited') . ': ' . userdate($entry->modified), ['class' => 'small']);
         }
         if ($entry->text) {
             echo journal_format_entry_text($entry, $course, $mod);
@@ -703,20 +709,14 @@ function journal_get_users_done($journal, $currentgroup) {
         return null;
     }
 
+    $context = \context_module::instance($cm->id);
+    $canadd = get_users_by_capability($context, 'mod/journal:addentries', 'u.id');
+    $entriesmanager = get_users_by_capability($context, 'mod/journal:manageentries', 'u.id');
+
     // Remove unenrolled participants and Teachers/Managers.
     foreach ($journals as $key => $user) {
-        $context = \context_module::instance($cm->id);
-
-        $canadd = has_capability('mod/journal:addentries', $context, $user);
-        $entriesmanager = has_capability('mod/journal:manageentries', $context, $user);
-
         // Exclude users who can manage entries (Teachers, Admins, Managers) from the completed list.
-        if ($entriesmanager) {
-            unset($journals[$key]);
-            continue;
-        }
-
-        if (!$canadd) {
+        if (isset($entriesmanager[$user->id]) || !isset($canadd[$user->id])) {
             unset($journals[$key]);
         }
     }
@@ -796,6 +796,82 @@ function journal_entry_needs_grading($entry): bool {
 }
 
 /**
+ * Returns the options of how long before the closing time of a journal students are reminded.
+ *
+ * @return string[] The option names, by time in seconds, 0 for no reminder
+ */
+function journal_get_remind_before_options(): array {
+    $options = [0 => get_string('never')];
+    foreach ([DAYSECS, 2 * DAYSECS, 3 * DAYSECS, WEEKSECS] as $time) {
+        $options[$time] = format_time($time);
+    }
+    return $options;
+}
+
+/**
+ * Returns the options of the notify teachers setting of a journal.
+ *
+ * @return string[] The option names, by manager::NOTIFY_ constant
+ */
+function journal_get_notify_teachers_options(): array {
+    return [
+        \mod_journal\manager::NOTIFY_NEVER => get_string('notifyteachersnever', 'journal'),
+        \mod_journal\manager::NOTIFY_NEEDSGRADING => get_string('notifyteachersneedsgrading', 'journal'),
+        \mod_journal\manager::NOTIFY_ALWAYS => get_string('notifyteachersalways', 'journal'),
+    ];
+}
+
+/**
+ * Returns a valid value for the notify teachers setting of a journal.
+ *
+ * @param mixed $value The submitted value, null or empty if the setting is off
+ * @return int One of the manager::NOTIFY_ constants
+ */
+function journal_clean_notify_teachers($value): int {
+    $value = (int) $value;
+    return array_key_exists($value, journal_get_notify_teachers_options()) ? $value : \mod_journal\manager::NOTIFY_ALWAYS;
+}
+
+/**
+ * Returns whether an entry has a grade or feedback to show to its author.
+ *
+ * @param stdClass|null $entry Journal entry, null if the user has not written one
+ * @return bool True if the entry has a grade, including a grade of 0, or a feedback
+ */
+function journal_entry_has_feedback($entry): bool {
+    return !empty($entry) && (!empty($entry->entrycomment) || (isset($entry->rating) && $entry->rating != -1));
+}
+
+/**
+ * Returns a text as plain text, as edited in the textareas of the mobile app.
+ *
+ * @param string|null $text The text
+ * @param int $format The format of the text
+ * @param context $context The context of the text
+ * @return string
+ */
+function journal_get_plain_text($text, $format, context $context): string {
+    $html = format_text((string) $text, $format, ['context' => $context, 'filter' => false, 'para' => false]);
+    // Keep the case of bold text, headings and table headers, which html_to_text writes in capitals.
+    $html = preg_replace(
+        ['~<(/?)(?:b|strong)\b[^>]*>~i', '~<(/?)h[1-6]\b[^>]*>~i', '~<(/?)th\b[^>]*>~i'],
+        ['<$1span>', '<$1p>', '<$1td>'],
+        $html
+    );
+    return journal_normalise_plain_text(html_to_text($html, 0, false));
+}
+
+/**
+ * Normalises the line breaks, spaces and surrounding whitespace of a plain text.
+ *
+ * @param string $text The plain text
+ * @return string
+ */
+function journal_normalise_plain_text(string $text): string {
+    return trim(str_replace(["\r\n", "\r", "\xc2\xa0"], ["\n", "\n", ' '], $text));
+}
+
+/**
  * Get list of graded unmailed users
  *
  * @param int $cutofftime Timestamp
@@ -809,8 +885,13 @@ function journal_get_unmailed_graded($cutofftime) {
             FROM {journal_entries} je
             JOIN {journal} j ON je.journal = j.id
             WHERE je.mailed = 0 AND je.timemarked < ? AND je.timemarked > 0
-            AND (je.rating <> -1 OR (je.entrycomment IS NOT NULL AND trim(je.entrycomment) <> ?))';
-    return $DB->get_records_sql($sql, [$cutofftime, '']);
+            AND (je.rating <> -1 OR je.entrycomment IS NOT NULL)';
+    $entries = $DB->get_records_sql($sql, [$cutofftime]);
+
+    // Text columns cannot be compared in SQL on all databases, so blank feedback is skipped here.
+    return array_filter($entries, function ($entry) {
+        return ($entry->rating !== null && $entry->rating != -1) || trim((string) $entry->entrycomment) !== '';
+    });
 }
 
 /**
@@ -856,7 +937,7 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
     $content .= html_writer::tag(
         'td',
         $OUTPUT->user_picture($user, ['courseid' => $course->id, 'alttext' => true]),
-        ['class' => 'userpix', 'style' => 'border-bottom: 1px solid #dedede;']
+        ['class' => 'userpix']
     );
 
     $userfullname = html_writer::tag('strong', fullname($user));
@@ -873,6 +954,13 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
             get_string('lastedited') . ': ' . userdate($entry->modified),
             ['class' => 'lastedit']
         );
+        if (has_capability('mod/journal:deleteentries', $context)) {
+            $userfullname .= ' ' . html_writer::link(
+                new moodle_url('/mod/journal/delete.php', ['id' => $cmid, 'entryid' => $entry->id]),
+                get_string('deleteentry', 'journal'),
+                ['class' => 'deleteentry text-danger']
+            );
+        }
     }
     $content .= html_writer::tag('td', $userfullname, ['class' => 'userfullname']);
     $content .= html_writer::end_tag('tr');
@@ -897,7 +985,7 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
         $content .= html_writer::tag(
             'td',
             empty($teacher) ? '' : $OUTPUT->user_picture($teacher, ['courseid' => $course->id, 'alttext' => true]),
-            ['class' => 'userpix', 'style' => 'border-top: 1px solid #dedede;']
+            ['class' => 'userpix feedbackrow']
         );
 
         $feedbacksection = get_string('grade', 'journal') . ': ';
@@ -969,7 +1057,7 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
         $feedbacksection .= $gradebookgradestr;
 
         // Finish the Grade Selector table row.
-        $content .= html_writer::tag('td', $feedbacksection, ['style' => 'border-top: 1px solid #dedede;']);
+        $content .= html_writer::tag('td', $feedbacksection, ['class' => 'feedbackrow']);
         $content .= html_writer::end_tag('tr');
 
         // Start capturing the feedback editor + button output.
@@ -1064,17 +1152,19 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades, $c
             ]);
         }
 
-        // Feedback save button.
-        echo html_writer::tag('p', html_writer::empty_tag('input', [
-            'type' => 'button',
-            'data-cmid' => $cmid,
-            'data-entryid' => $entry->id,
-            'data-userid' => $user->id,
-            'data-fullname' => fullname($user),
-            'data-itemid' => $draftitemid,
-            'value' => get_string('savefeedback', 'journal'),
-            'class' => 'saveindividualfeedback btn btn-secondary mt-1 m-t-1',
-        ]), ['class' => 'feedbacksave']);
+        // Feedback save button, unless the grade is locked or overridden in the gradebook.
+        if ($feedbackdisabledstr == '') {
+            echo html_writer::tag('p', html_writer::empty_tag('input', [
+                'type' => 'button',
+                'data-cmid' => $cmid,
+                'data-entryid' => $entry->id,
+                'data-userid' => $user->id,
+                'data-fullname' => fullname($user),
+                'data-itemid' => $draftitemid,
+                'value' => get_string('savefeedback', 'journal'),
+                'class' => 'saveindividualfeedback btn btn-secondary mt-1 m-t-1',
+            ]), ['class' => 'feedbacksave']);
+        }
 
         $feedbackhtml = ob_get_clean();
 
@@ -1106,9 +1196,8 @@ function journal_print_feedback($course, $entry, $grades) {
 
     require_once($CFG->dirroot . '/lib/gradelib.php');
 
-    if (!$teacher = $DB->get_record('user', ['id' => $entry->teacher])) {
-        throw new \moodle_exception('incorrectuserid', 'journal');
-    }
+    // The grader is unknown if they were not restored with the entry.
+    $teacher = $DB->get_record('user', ['id' => $entry->teacher]);
 
     $module = $DB->get_record('modules', ['name' => 'journal']);
     $cmid = $DB->get_field('course_modules', 'id', ['module' => $module->id, 'instance' => $entry->journal]);
@@ -1118,11 +1207,17 @@ function journal_print_feedback($course, $entry, $grades) {
 
     echo '<tr>';
     echo '<td class="left picture">';
-    echo $OUTPUT->user_picture($teacher, ['courseid' => $course->id, 'alttext' => true]);
+    if ($teacher) {
+        echo $OUTPUT->user_picture($teacher, ['courseid' => $course->id, 'alttext' => true]);
+    }
     echo '</td>';
     echo '<td class="entryheader">';
-    echo '<span class="author">' . fullname($teacher) . '</span>';
-    echo '&nbsp;&nbsp;<span class="time">' . userdate($entry->timemarked) . '</span>';
+    if ($teacher) {
+        echo '<span class="author">' . fullname($teacher) . '</span>&nbsp;&nbsp;';
+    }
+    if ($entry->timemarked) {
+        echo '<span class="time">' . userdate($entry->timemarked) . '</span>';
+    }
     echo '</td>';
     echo '</tr>';
 
@@ -1367,34 +1462,29 @@ function journal_provide_open_close_event_action(
  * @param array $entrybyuser The sorted array
  */
 function mod_journal_sort_users(array &$users, $sortby, array $entrybyuser) {
-    uasort($users, function ($a, $b) use ($sortby, $entrybyuser) {
+    $compare = function ($a, $b) use ($sortby, $entrybyuser) {
         switch ($sortby) {
             case 'firstnamedesc':
-                return $a->firstname < $b->firstname ? 1 :
-                    ($a->firstname > $b->firstname ? -1 : 0);
+                return $b->firstname <=> $a->firstname;
             case 'firstnameasc':
-                return $a->firstname < $b->firstname ? -1 :
-                    ($a->firstname > $b->firstname ? 1 : 0);
+                return $a->firstname <=> $b->firstname;
             case 'lastnamedesc':
-                return $a->lastname < $b->lastname ? 1 :
-                    ($a->lastname > $b->lastname ? -1 : 0);
+                return $b->lastname <=> $a->lastname;
             case 'lastnameasc':
-                return $a->lastname < $b->lastname ? -1 :
-                    ($a->lastname > $b->lastname ? 1 : 0);
-            case 'datedesc':
-                if (!isset($entrybyuser[$a->id]->modified) || !isset($entrybyuser[$b->id]->modified)) {
-                    return 1;
-                }
-                return $entrybyuser[$a->id]->modified < $entrybyuser[$b->id]->modified ? 1 :
-                    ($entrybyuser[$a->id]->modified > $entrybyuser[$b->id]->modified ? -1 : 0);
-            case 'dateasc':
-            default:
-                if (!isset($entrybyuser[$a->id]->modified) || !isset($entrybyuser[$b->id]->modified)) {
-                    return -1;
-                }
-                return $entrybyuser[$a->id]->modified < $entrybyuser[$b->id]->modified ? -1 :
-                    ($entrybyuser[$a->id]->modified > $entrybyuser[$b->id]->modified ? 1 : 0);
+                return $a->lastname <=> $b->lastname;
         }
+
+        // Users without an entry come last.
+        $amodified = $entrybyuser[$a->id]->modified ?? null;
+        $bmodified = $entrybyuser[$b->id]->modified ?? null;
+        if ($amodified === null || $bmodified === null) {
+            return ($amodified === null) <=> ($bmodified === null);
+        }
+        return $sortby === 'datedesc' ? $bmodified <=> $amodified : $amodified <=> $bmodified;
+    };
+    // Users who compare equal are sorted by ID, so that they keep their order from one page to the next.
+    uasort($users, function ($a, $b) use ($compare) {
+        return $compare($a, $b) ?: $a->id <=> $b->id;
     });
 }
 
@@ -1444,16 +1534,36 @@ function journal_get_coursemodule_info($cm): ?cached_cm_info {
  */
 function journal_get_printable_count($text) {
     $text = isset($text) ? (string) $text : '';
-    $text = strip_tags($text);
+    $count = journal_count_words($text);
 
-    // Check for CJK characters.
-    if (preg_match("/\p{Han}|\p{Hiragana}|\p{Katakana}/u", $text)) {
-        $count = mb_strlen($text, 'UTF-8');
+    if (journal_counts_characters($text)) {
         return get_string('numchars', 'journal', $count);
     }
-
-    $count = count_words($text);
     return get_string('numwords', 'moodle', $count);
+}
+
+/**
+ * Returns whether the characters of a text are counted instead of its words, as in Chinese and Japanese.
+ *
+ * @param string $text The text, in HTML
+ * @return bool
+ */
+function journal_counts_characters(string $text): bool {
+    return (bool) preg_match("/\p{Han}|\p{Hiragana}|\p{Katakana}/u", strip_tags($text));
+}
+
+/**
+ * Returns the number of words of a text, or of characters in Chinese and Japanese.
+ *
+ * @param string $text The text, in HTML
+ * @return int
+ */
+function journal_count_words(string $text): int {
+    if (journal_counts_characters($text)) {
+        return mb_strlen(strip_tags($text), 'UTF-8');
+    }
+    // Words in separate paragraphs are only told apart before removing the tags.
+    return count_words($text);
 }
 
 /**

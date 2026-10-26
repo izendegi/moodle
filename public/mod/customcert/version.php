@@ -18,16 +18,16 @@
  * Code fragment to define the version of the customcert module
  *
  * @package    mod_customcert
- * @copyright  2013 Mark Nelson <markn@moodle.com>
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
 
-$plugin->version   = 2026042016; // The current module version (Date: YYYYMMDDXX).
+$plugin->version   = 2026042017; // The current module version (Date: YYYYMMDDXX).
 $plugin->requires  = 2026042000; // Requires this Moodle version (5.2).
 $plugin->cron      = 0; // Period for cron to check this module (secs).
 $plugin->component = 'mod_customcert';
 
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = "5.2.11"; // User-friendly version number.
+$plugin->release   = "5.2.12"; // User-friendly version number.
