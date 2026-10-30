@@ -1,11 +1,11 @@
 moodle-tiny_fontcolor
 =====================
 
-![Release](https://img.shields.io/badge/Release-1.5-blue.svg)
+![Release](https://img.shields.io/badge/Release-1.6-blue.svg)
 [![Moodle Plugin CI](https://github.com/bfh/moodle-tiny_fontcolor/actions/workflows/moodle-plugin-ci.yml/badge.svg?branch=main)](https://github.com/bfh/moodle-tiny_fontcolor/actions/workflows/moodle-plugin-ci.yml)
 [![MDL Shield](https://img.shields.io/endpoint?url=https%3A%2F%2Fmdlshield.com%2Fapi%2Fbadge%2Ftiny_fontcolor)](https://mdlshield.com/plugins/tiny_fontcolor)
-[![PHP Support](https://img.shields.io/badge/php-8.1--8.4-blue)](https://github.com/bfh/moodle-tiny_fontcolor/action)
-[![Moodle Support](https://img.shields.io/badge/Moodle-4.5--5.2-orange)](https://github.com/bfh/moodle-tiny_fontcolor/actions)
+[![camp](https://camp-registry.org/badge/tiny_fontcolor.svg)](https://camp-registry.org/plugin/tiny_fontcolor.html)
+[![Moodle Support](https://img.shields.io/badge/Moodle-4.5--5.3-orange)](https://github.com/bfh/moodle-tiny_fontcolor/actions)
 [![License GPL-3.0](https://img.shields.io/github/license/bfh/moodle-tiny_fontcolor?color=lightgrey)](https://github.com/bfh/moodle-tiny_fontcolor/blob/main/LICENSE)
 [![GitHub contributors](https://img.shields.io/github/contributors/bfh/moodle-tiny_fontcolor)](https://github.com/bfh/moodle-tiny_fontcolor/graphs/contributors)
 
