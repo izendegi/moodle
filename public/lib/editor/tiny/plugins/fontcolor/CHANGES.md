@@ -2,6 +2,11 @@
 
 ## Changes
 
+### v1.6
+
+- Bump release to Publish the plugin on [CAMP - Community Archive of Moodle Plugins](https://camp-registry.org).
+- Fix [issue #29](https://github.com/bfh/moodle-tiny_fontcolor/issues/29) - restoring the map() function.
+
 ### v1.5
 
 - Add support for Moodle 5.3.
