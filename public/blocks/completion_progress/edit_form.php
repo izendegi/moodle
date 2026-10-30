@@ -121,6 +121,37 @@ class block_completion_progress_edit_form extends block_edit_form {
         $mform->setDefault('config_showpercentage', defaults::SHOWPERCENTAGE);
         $mform->addHelpButton('config_showpercentage', 'why_show_precentage', 'block_completion_progress');
 
+        // Optionally show users who can view the overview the bar of the course's only student.
+        $radios = [
+            $mform->createElement(
+                'radio',
+                'config_showsinglestudentbar',
+                '',
+                get_string('show'),
+                1
+            ),
+            $mform->createElement(
+                'radio',
+                'config_showsinglestudentbar',
+                '',
+                get_string('hide'),
+                0
+            ),
+        ];
+        $mform->addGroup(
+            $radios,
+            'showsinglestudentbargroup',
+            get_string('config_showsinglestudentbar', 'block_completion_progress'),
+            [' '],
+            false
+        );
+        $mform->setDefault(
+            'config_showsinglestudentbar',
+            helpers::site_default_bool_setting('showsinglestudentbar', defaults::SHOWSINGLESTUDENTBAR)
+        );
+        $mform->setType('config_showsinglestudentbar', PARAM_INT);
+        $mform->addHelpButton('showsinglestudentbargroup', 'config_showsinglestudentbar', 'block_completion_progress');
+
         // Allow the block to be visible to a single group or grouping.
         $groups = groups_get_all_groups($COURSE->id);
         $groupings = groups_get_all_groupings($COURSE->id);
