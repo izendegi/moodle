@@ -132,6 +132,30 @@ if ($ADMIN->fulltree) {
         )
     );
     $settings->add(
+        new admin_setting_configselect(
+            'block_completion_progress/showbarnonstudents',
+            get_string('showbarnonstudents', 'block_completion_progress'),
+            get_string('showbarnonstudents_desc', 'block_completion_progress'),
+            defaults::SHOWBARNONSTUDENTS,
+            [
+                1 => get_string('config_showbarnonstudents_show', 'block_completion_progress'),
+                0 => get_string('config_showbarnonstudents_hide', 'block_completion_progress'),
+            ]
+        )
+    );
+    $settings->add(
+        new admin_setting_configselect(
+            'block_completion_progress/showsinglestudentbar',
+            get_string('showsinglestudentbar', 'block_completion_progress'),
+            get_string('showsinglestudentbar_desc', 'block_completion_progress'),
+            defaults::SHOWSINGLESTUDENTBAR,
+            [
+                1 => get_string('config_showbarnonstudents_show', 'block_completion_progress'),
+                0 => get_string('config_showbarnonstudents_hide', 'block_completion_progress'),
+            ]
+        )
+    );
+    $settings->add(
         new admin_setting_configduration(
             'block_completion_progress/overviewcachetime',
             get_string('overviewcachetime', 'block_completion_progress'),

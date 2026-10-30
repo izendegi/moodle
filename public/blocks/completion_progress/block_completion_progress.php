@@ -296,9 +296,58 @@ class block_completion_progress extends block_base {
             return false;
         }
 
-        // Display progress bar.
+        // Display progress bars.
+        // - Users without a student-archetype role in the course only see their own bar
+        //   when the block is configured to show it to them.
+        // - Independently, if configured, users without a student role who can view the
+        //   overview also see the bar of the course's only student (if there is exactly one).
+        // When both bars are shown, each is labelled so they can be told apart.
         if (has_capability('block/completion_progress:showbar', $this->context)) {
-            $this->content->text .= $output->render($progress);
+            $coursecontext = context_course::instance($COURSE->id);
+            $isstudent = helpers::user_has_student_role($coursecontext, $USER->id);
+            $showown = $isstudent || helpers::show_bar_to_non_students($this->config);
+
+            $studentprogress = null;
+            if (
+                !$isstudent &&
+                helpers::show_single_student_bar($this->config) &&
+                has_capability('block/completion_progress:overview', $this->context) &&
+                ($student = helpers::get_single_student($coursecontext)) &&
+                $student->id != $USER->id
+            ) {
+                $studentprogress = (new completion_progress($COURSE))
+                    ->for_user($student)
+                    ->for_block_instance($this->instance);
+                if (!$studentprogress->has_visible_activities()) {
+                    $studentprogress = null;
+                }
+            }
+
+            if ($showown) {
+                if ($studentprogress) {
+                    $this->content->text .= html_writer::tag(
+                        'p',
+                        get_string('ownprogress', 'block_completion_progress'),
+                        ['class' => 'progressbarlabel ownprogress']
+                    );
+                }
+                $this->content->text .= $output->render($progress);
+            }
+
+            if ($studentprogress) {
+                $profileurl = new moodle_url('/user/view.php', ['id' => $student->id, 'course' => $COURSE->id]);
+                $studentname = fullname($student, has_capability('moodle/site:viewfullnames', $coursecontext));
+                $this->content->text .= html_writer::tag(
+                    'p',
+                    get_string(
+                        'singlestudentprogress',
+                        'block_completion_progress',
+                        html_writer::link($profileurl, s($studentname))
+                    ),
+                    ['class' => 'progressbarlabel singlestudentprogress']
+                );
+                $this->content->text .= $output->render($studentprogress);
+            }
         }
 
         // Allow teachers to access the overview page.

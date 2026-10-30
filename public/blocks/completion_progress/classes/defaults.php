@@ -80,6 +80,17 @@ abstract class defaults {
     const SHOWPERCENTAGE = 0;
 
     /**
+     * Default display of the progress bar on the course page to users without a student role.
+     */
+    const SHOWBARNONSTUDENTS = 1;
+
+    /**
+     * Default display, to users without a student role whose own bar is hidden,
+     * of the bar of the course's only student.
+     */
+    const SHOWSINGLESTUDENTBAR = 0;
+
+    /**
      * Default choice of activites included: activitycompletion or selectedactivities.
      */
     const ACTIVITIESINCLUDED = 'activitycompletion';

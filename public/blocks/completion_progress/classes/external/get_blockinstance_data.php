@@ -206,7 +206,22 @@ class get_blockinstance_data extends external_api {
             throw new \moodle_exception('completion_not_enabled_course', 'block_completion_progress');
         }
 
-        $progress->for_user($USER)->for_block_instance($blockinstance);
+        // Another user's bar (e.g. the course's only student, shown to teachers on the
+        // course page) may only be fetched by users able to view the overview.
+        if ($userid && $userid != $USER->id) {
+            if ($blockinstance->parentcontextid != $context->id) {
+                throw new \moodle_exception('invalidblockinstance', 'error', '', $instanceid);
+            }
+            require_capability('block/completion_progress:overview', \context_block::instance($blockinstance->id));
+            if (!is_enrolled($context, $userid)) {
+                throw new \moodle_exception('invaliduser');
+            }
+            $user = \core_user::get_user($userid, '*', MUST_EXIST);
+        } else {
+            $user = $USER;
+        }
+
+        $progress->for_user($user)->for_block_instance($blockinstance);
         if (!$progress->has_visible_activities()) {
             throw new \moodle_exception('no_activities_config_message', 'block_completion_progress');
         }
