@@ -28,9 +28,6 @@ namespace customcertelement_expiry;
 
 use mod_customcert\element as base_element;
 use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\element\preparable_form_interface;
 use mod_customcert\element_helper;
 use mod_customcert\service\certificate_repository;
@@ -40,6 +37,7 @@ use pdf;
 use restore_customcert_activity_task;
 use stdClass;
 use mod_customcert\element\restorable_element_interface;
+use mod_customcert\element\renderable_element_interface;
 
 /**
  * The customcert element expiry's core interaction API.
@@ -49,12 +47,10 @@ use mod_customcert\element\restorable_element_interface;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
     preparable_form_interface,
     renderable_element_interface,
-    restorable_element_interface,
-    validatable_element_interface
+    restorable_element_interface
 {
     /**
      * Date - Relative expiry date of 1 year
@@ -175,7 +171,6 @@ class element extends base_element implements
      * @param element_renderer|null $renderer the renderer service
      */
     public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return;
         }
@@ -185,7 +180,6 @@ class element extends base_element implements
         $dateitem = $payload['dateitem'] ?? '';
         $date = $this->expiry((int) $user->id, $preview);
 
-        // Ensure that a date has been set.
         if (!empty($date)) {
             $content = '';
             if ($dateformat == 'validfor') {
@@ -215,21 +209,16 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
      */
     public function render_html(?element_renderer $renderer = null): string {
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return '';
         }
 
-        // Read the information stored in the database.
         $payload = $this->get_payload();
         $dateformat = $payload['dateformat'] ?? '';
         $dateitem = $payload['dateitem'] ?? '';
@@ -267,10 +256,7 @@ class element extends base_element implements
 
 
     /**
-     * This function is responsible for handling the restoration process of the element.
-     *
-     * We will want to update the course module the date element is pointing to as it will
-     * have changed in the course restore.
+     * Remap a grade item date reference to its restored id, as ids change on restore.
      *
      * @param restore_customcert_activity_task $restore
      */
@@ -278,7 +264,6 @@ class element extends base_element implements
         global $DB;
 
         $data = $this->get_payload();
-        // Expiry element typically uses relative constants; keep legacy mapping logic if present.
         if (!empty($data['dateitem']) && strpos((string)$data['dateitem'], 'gradeitem:') === 0) {
             $oldid = str_replace('gradeitem:', '', (string)$data['dateitem']);
             $newid = $restore->get_mappingid('grade_item', (int)$oldid);
@@ -302,17 +287,6 @@ class element extends base_element implements
     }
 
     /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
-
-    /**
      * Get expiry date for user.
      *
      * @param int $userid User who has been awarded certificate.
@@ -332,7 +306,6 @@ class element extends base_element implements
             $starttime = time();
         } else if ($startfrom == 'coursecomplete') {
             $courseid = element_helper::get_courseid($this->id);
-            // Get the last completion date.
             $sql = "SELECT MAX(c.timecompleted) as timecompleted
                       FROM {course_completions} c
                      WHERE c.userid = :userid
@@ -343,11 +316,8 @@ class element extends base_element implements
                 }
             }
         } else { // Expiry date calculated from certificate award date.
-            // Get the page.
             $page = $DB->get_record('customcert_pages', ['id' => $this->get_pageid()], '*', MUST_EXIST);
-            // Get the customcert this page belongs to.
             $customcert = (new certificate_repository())->get_by_template_id_or_fail((int)$page->templateid);
-            // Now we can get the issue for this user.
             $issue = $DB->get_record(
                 'customcert_issues',
                 ['userid' => $userid, 'customcertid' => $customcert->id],

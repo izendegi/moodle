@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * Regression tests for expected-completion calendar events.
@@ -24,8 +24,6 @@
 
 namespace mod_pdfprotect;
 
-// phpcs:ignore moodle.Files.MoodleInternal.MoodleInternalGlobalState -- Moodle checks this guarded entry point.
-defined("MOODLE_INTERNAL") || die();
 
 /**
  * Verifies calendar events throughout the PDF Protect activity lifecycle.

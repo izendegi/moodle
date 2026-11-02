@@ -1,3 +1,12 @@
+### 1.0.4 ###
+
+* Coding style fixed. Credit goes to Luca Bösch.
+* Moodle 4.5 - 5.2 marked as supported.
+
+### 1.0.3 ###
+
+* No functional changes. Just tagging a new version to check camp workflow setup.
+
 ### 1.0.2 ###
 
 * Fixed unexpected token error on pages with textareas with special chars in

@@ -59,7 +59,7 @@ final class query_filter {
         $seconds = (float)($arguments["min_seconds"] ?? 3.0);
         $offset = (int)($arguments["offset"] ?? 0);
         $limit = (int)($arguments["limit"] ?? 20);
-        if (\core_text::strlen($search) > 200 || !is_finite($seconds) ||
+        if (strlen($search) > 200 || !is_finite($seconds) ||
                 $seconds < 0 || $seconds > 86400 || $offset < 0 ||
                 $offset > 100000 || $limit < 1 || $limit > self::MAX_LIMIT) {
             throw new moodle_exception("mcpinvalidfilter", "local_slow_queries");

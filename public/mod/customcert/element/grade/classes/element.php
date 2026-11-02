@@ -29,9 +29,6 @@ namespace customcertelement_grade;
 use grade_item;
 use mod_customcert\element\persistable_element_interface;
 use mod_customcert\element as base_element;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\element\preparable_form_interface;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
@@ -40,6 +37,7 @@ use pdf;
 use restore_customcert_activity_task;
 use stdClass;
 use mod_customcert\element\restorable_element_interface;
+use mod_customcert\element\renderable_element_interface;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -56,12 +54,10 @@ require_once($CFG->libdir . '/gradelib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
     preparable_form_interface,
     renderable_element_interface,
-    restorable_element_interface,
-    validatable_element_interface
+    restorable_element_interface
 {
     /** @var string Course grade identifier. */
     public const string GRADE_COURSE = '0';
@@ -75,7 +71,6 @@ class element extends base_element implements
     public function build_form(MoodleQuickForm $mform): void {
         global $COURSE;
 
-        // Get the grade items we can display.
         $gradeitems = [];
         $gradeitems[self::GRADE_COURSE] = get_string('coursegrade', 'customcertelement_grade');
         $gradeitems = $gradeitems + element_helper::get_grade_items($COURSE);
@@ -113,17 +108,6 @@ class element extends base_element implements
     }
 
 
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
-
 
     /**
      * Handles rendering the element on the pdf.
@@ -134,14 +118,12 @@ class element extends base_element implements
      * @param element_renderer|null $renderer the renderer service
      */
     public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return;
         }
 
         $courseid = element_helper::get_courseid($this->id);
 
-        // Read the information stored in the database.
         $payload = $this->get_payload();
         if (empty($payload) || !isset($payload['gradeitem'])) {
             return; // Nothing to render if not configured.
@@ -149,7 +131,6 @@ class element extends base_element implements
         $gradeitem = (string)$payload['gradeitem'];
         $gradeformat = isset($payload['gradeformat']) ? (int)$payload['gradeformat'] : GRADE_DISPLAY_TYPE_REAL;
 
-        // If we are previewing this certificate then just show a demonstration grade.
         if ($preview) {
             $courseitem = grade_item::fetch_course_item($courseid);
             $grade = grade_format_gradevalue(100.0, $courseitem, true, $gradeformat);
@@ -188,10 +169,7 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
@@ -199,12 +177,10 @@ class element extends base_element implements
     public function render_html(?element_renderer $renderer = null): string {
         global $COURSE;
 
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return '';
         }
 
-        // Read the information stored in the database.
         $payload = $this->get_payload();
         $gradeformat = isset($payload['gradeformat']) ? (int)$payload['gradeformat'] : GRADE_DISPLAY_TYPE_REAL;
 
@@ -226,7 +202,6 @@ class element extends base_element implements
      * @return void
      */
     public function prepare_form(MoodleQuickForm $mform): void {
-        // Set the item and format for this element from stored data.
         $payload = $this->get_payload();
         if (isset($payload['gradeitem'])) {
             $mform->getElement('gradeitem')->setValue((string)$payload['gradeitem']);
@@ -237,10 +212,7 @@ class element extends base_element implements
     }
 
     /**
-     * This function is responsible for handling the restoration process of the element.
-     *
-     * We will want to update the course module the grade element is pointing to as it will
-     * have changed in the course restore.
+     * Remap the course module or grade item this element points to, as ids change on restore.
      *
      * @param restore_customcert_activity_task $restore
      */

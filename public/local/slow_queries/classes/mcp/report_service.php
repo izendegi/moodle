@@ -121,13 +121,13 @@ final class report_service {
                 "executions" => (int)$row->cnt,
                 "avg_seconds" => (float)$row->avgtime,
                 "is_cron" => (bool)$row->iscron,
-                "origin" => \core_text::substr(
+                "origin" => substr(
                     (string)backtrace_service::get_origin_line($row->backtrace), 0, 250
                 ),
             ];
             if ($includesql) {
-                $group["sql_preview"] = \core_text::substr((string)$row->sqltext, 0, 500);
-                $group["sql_truncated"] = \core_text::strlen((string)$row->sqltext) > 500;
+                $group["sql_preview"] = substr((string)$row->sqltext, 0, 500);
+                $group["sql_truncated"] = strlen((string)$row->sqltext) > 500;
             }
             $groups[] = $group;
         }
@@ -175,22 +175,22 @@ final class report_service {
             "logged_at" => (int)$row->timelogged,
             "has_error" => !empty($row->error),
             "is_cron" => backtrace_service::is_cron((string)$row->backtrace),
-            "origin" => \core_text::substr(
+            "origin" => substr(
                 (string)backtrace_service::get_origin_line($row->backtrace), 0, 250
             ),
-            "comments" => \core_text::substr((string)($row->comments ?? ""), 0, 5000),
+            "comments" => substr((string)($row->comments ?? ""), 0, 5000),
             "raw_sql_included" => $includesql,
             "sensitive_fields_included" => $includesensitive,
         ];
         if ($includesql) {
-            $result["sql"] = \core_text::substr((string)$row->sqltext, 0, 12000);
-            $result["sql_truncated"] = \core_text::strlen((string)$row->sqltext) > 12000;
+            $result["sql"] = substr((string)$row->sqltext, 0, 12000);
+            $result["sql_truncated"] = strlen((string)$row->sqltext) > 12000;
         }
         if ($includesensitive) {
-            $result["sqlparams"] = \core_text::substr((string)$row->sqlparams, 0, 6000);
-            $result["backtrace"] = \core_text::substr((string)$row->backtrace, 0, 6000);
-            $result["sensitive_truncated"] = \core_text::strlen((string)$row->sqlparams) > 6000 ||
-                \core_text::strlen((string)$row->backtrace) > 6000;
+            $result["sqlparams"] = substr((string)$row->sqlparams, 0, 6000);
+            $result["backtrace"] = substr((string)$row->backtrace, 0, 6000);
+            $result["sensitive_truncated"] = strlen((string)$row->sqlparams) > 6000 ||
+                strlen((string)$row->backtrace) > 6000;
         }
         return $result;
     }
