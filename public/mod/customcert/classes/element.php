@@ -38,12 +38,10 @@ use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element\stylable_element_interface;
 use mod_customcert\event\element_created;
 use mod_customcert\event\element_updated;
-use mod_customcert\service\element_renderer;
 use mod_customcert\service\element_factory;
 use mod_customcert\service\element_repository;
 use mod_customcert\service\persistence_helper;
 use MoodleQuickForm;
-use pdf;
 use stdClass;
 
 /**
@@ -59,7 +57,6 @@ abstract class element implements
     form_element_interface,
     layout_element_interface,
     raw_data_element_interface,
-    renderable_element_interface,
     stylable_element_interface {
     /**
      * @var string The left alignment constant.
@@ -127,6 +124,53 @@ abstract class element implements
     private ?edit_element_form $editelementform = null;
 
     /**
+     * @var int Count of definition_after_data() deprecation notices emitted so far. Lets
+     *     legacy_element_adapter detect whether a legacy override's call to
+     *     parent::definition_after_data() already emitted the notice.
+     */
+    private int $definitionafterdatawarnings = 0;
+
+    /**
+     * Clone of the raw element record for historical (Moodle 4.5-era) plugins that read it directly.
+     *
+     * @var stdClass
+     * @deprecated since Moodle 5.2 - Use the typed getters instead.
+     */
+    protected $element;
+
+    /**
+     * Historical font name property.
+     *
+     * @var string|null
+     * @deprecated since Moodle 5.2 - Use get_font() instead.
+     */
+    protected $font;
+
+    /**
+     * Historical font size property.
+     *
+     * @var int|string|null
+     * @deprecated since Moodle 5.2 - Use get_fontsize() instead.
+     */
+    protected $fontsize;
+
+    /**
+     * Historical colour property.
+     *
+     * @var string|null
+     * @deprecated since Moodle 5.2 - Use get_colour() instead.
+     */
+    protected $colour;
+
+    /**
+     * Historical width property.
+     *
+     * @var int|string|null
+     * @deprecated since Moodle 5.2 - Use get_width() instead.
+     */
+    protected $width;
+
+    /**
      * Constructor.
      *
      * @param stdClass $element the element data
@@ -134,27 +178,60 @@ abstract class element implements
     public function __construct(stdClass $element) {
         $showposxy = get_config('customcert', 'showposxy');
 
-        // Normalise types defensively — DB/fixtures may provide strings for numeric fields.
-        // Helper: return null if unset or empty string, otherwise cast.
+        // DB rows and fixtures may supply numeric fields as strings; empty values stay null.
         $optional = static function ($value, callable $cast) {
             return (isset($value) && $value !== '') ? $cast($value) : null;
         };
 
-        // Required scalars.
         $this->id = isset($element->id) ? (int) $element->id : 0;
         $this->pageid = isset($element->pageid) ? (int) $element->pageid : 0;
         $this->name = isset($element->name) ? (string) $element->name : '';
 
-        // Mixed data payload.
         $this->data = $element->data ?? null;
-
-        // Optional fields (preserve NULL when unset or empty string).
         $this->posx = $optional($element->posx ?? null, 'intval');
         $this->posy = $optional($element->posy ?? null, 'intval');
         $this->refpoint = $optional($element->refpoint ?? null, 'intval');
 
         $this->showposxy = (bool) ($showposxy ?? false);
         $this->set_alignment($element->alignment ?? self::ALIGN_LEFT);
+
+        $this->initialise_legacy_state($element);
+    }
+
+    /**
+     * Initialise the historical protected state read by Moodle 4.5-era element plugins.
+     *
+     * Fills `$element`, `$font`, `$fontsize`, `$colour` and `$width` from the record, or from the
+     * JSON data column once those fields have been migrated into it.
+     *
+     * @param stdClass $element Raw element record
+     */
+    protected function initialise_legacy_state(stdClass $element): void {
+        $this->element = clone($element);
+
+        // Legacy code reading $this->element->data should see the same scalar as get_data().
+        if (isset($this->element->data) && is_string($this->element->data)) {
+            $this->element->data = $this->get_data();
+        }
+
+        $this->font = isset($element->font) && $element->font !== ''
+            ? (string) $element->font
+            : $this->get_font();
+        $this->fontsize = isset($element->fontsize) && $element->fontsize !== ''
+            ? $element->fontsize
+            : $this->get_fontsize();
+        $this->colour = isset($element->colour) && $element->colour !== ''
+            ? (string) $element->colour
+            : $this->get_colour();
+        $this->width = isset($element->width) && $element->width !== ''
+            ? $element->width
+            : $this->get_width();
+
+        foreach (['font', 'fontsize', 'colour', 'width'] as $property) {
+            if (!isset($this->element->$property)) {
+                $this->element->$property = $this->$property;
+            }
+        }
     }
 
     /**
@@ -178,7 +255,7 @@ abstract class element implements
     /**
      * Returns the name.
      *
-     * @return int
+     * @return string
      */
     public function get_name(): string {
         return $this->name;
@@ -187,8 +264,8 @@ abstract class element implements
     /**
      * Returns the data.
      *
-     * Elements without persistable_element_interface receive the unwrapped scalar when
-     * the stored data is a generic migration wrapper; persistable elements always
+     * Historical elements (neither persistable nor renderable) receive the unwrapped scalar when
+     * the stored data is a generic migration wrapper; persistable and native v2 elements always
      * receive the raw JSON.
      *
      * @return mixed
@@ -206,17 +283,12 @@ abstract class element implements
     }
 
     /**
-     * Returns the raw, untouched persistence representation of the element data.
+     * Return the unmodified element data intended for persistence.
      *
-     * Unlike {@see get_data()}, this method never unwraps a generic migration wrapper for
-     * legacy backwards-compatibility. It always returns exactly what is (or will be) stored
-     * in the `customcert_elements.data` database column, preserving any extra migrated
-     * fields (e.g. font, fontsize, colour, width, height, alphachannel) that a legacy
-     * scalar compatibility view would otherwise hide.
-     *
-     * This method is intended for use by the persistence layer (e.g. element_repository)
-     * only, and must not be used as a substitute for get_data() by element rendering or
-     * form-handling code.
+     * Unlike {@see get_data()}, this never unwraps a generic migration wrapper, so migrated
+     * fields (font, fontsize, colour, width, height, alphachannel) that the legacy scalar view
+     * hides are preserved. For the persistence layer (e.g. element_repository) only; rendering
+     * and form code should use get_data().
      *
      * @return mixed
      */
@@ -230,7 +302,8 @@ abstract class element implements
      * @return bool
      */
     private function should_unwrap_generic_migration_wrapper(): bool {
-        return !($this instanceof persistable_element_interface);
+        return !($this instanceof persistable_element_interface)
+            && !($this instanceof renderable_element_interface);
     }
 
     /**
@@ -245,13 +318,9 @@ abstract class element implements
     /**
      * Return true if the given JSON string is a generic migration scalar wrapper.
      *
-     * A generic migration wrapper is a JSON object that:
-     *  - Has a 'value' key.
-     *  - Has no keys other than 'value' and the known migration visual/layout metadata keys
-     *    (width, height, font, fontsize, colour, alphachannel).
-     *
-     * This is used by get_data() to provide backwards-compatibility for legacy third-party
-     * elements that call get_data() and expect the original scalar value.
+     * That is a JSON object with a 'value' key and no keys other than 'value' and
+     * MIGRATION_VISUAL_KEYS. get_data() uses it to give legacy third-party elements the
+     * original scalar value.
      *
      * @param string $data The raw JSON string from the data column.
      * @return bool
@@ -306,10 +375,7 @@ abstract class element implements
     }
 
     /**
-     * Return the decoded JSON payload stored in 'data' or an empty array when not valid JSON.
-     *
-     * This helper is intended for element implementations that store structured data
-     * in the JSON 'data' column. It never throws; invalid or non-JSON values produce [].
+     * Return the decoded JSON array, or [] for invalid or non-array JSON.
      *
      * @return array<string,mixed>
      */
@@ -373,7 +439,7 @@ abstract class element implements
     /**
      * Returns the refpoint.
      *
-     * @return int
+     * @return int|null
      */
     public function get_refpoint(): ?int {
         return $this->refpoint ?? null;
@@ -382,7 +448,7 @@ abstract class element implements
     /**
      * Returns the alignment.
      *
-     * @return string The current alignment value.
+     * @return string|null
      */
     public function get_alignment(): ?string {
         return $this->alignment ?? self::ALIGN_LEFT;
@@ -472,7 +538,6 @@ abstract class element implements
             . 'Use element_helper::render_common_form_elements() instead.',
             DEBUG_DEVELOPER
         );
-        // Render the common elements.
         element_helper::render_form_element_font($mform);
         element_helper::render_form_element_colour($mform);
         if ($this->showposxy) {
@@ -491,13 +556,12 @@ abstract class element implements
      * @deprecated since Moodle 5.2
      */
     public function definition_after_data($mform) {
+        $this->definitionafterdatawarnings++;
         debugging(
             'definition_after_data() is deprecated since Moodle 5.2. '
             . 'Implement mod_customcert\\element\\preparable_form_interface::prepare_form() instead.',
             DEBUG_DEVELOPER
         );
-        // Loop through the properties of the element and set the values
-        // of the corresponding form element, if it exists.
         $properties = [
             'name' => $this->name,
             'font' => $this->get_font(),
@@ -518,6 +582,15 @@ abstract class element implements
     }
 
     /**
+     * Count of definition_after_data() deprecation notices emitted so far on this instance.
+     *
+     * @return int
+     */
+    public function get_definition_after_data_warning_count(): int {
+        return $this->definitionafterdatawarnings;
+    }
+
+    /**
      * Performs validation on the element values.
      * Can be overridden if more functionality is needed.
      *
@@ -532,10 +605,8 @@ abstract class element implements
             . 'Implement mod_customcert\\element\\validatable_element_interface::validate() instead.',
             DEBUG_DEVELOPER
         );
-        // Array to return the errors.
         $errors = [];
 
-        // Common validation methods.
         $errors += element_helper::validate_form_element_colour($data);
         if ($this->showposxy) {
             $errors += element_helper::validate_form_element_position($data);
@@ -676,31 +747,6 @@ abstract class element implements
     public static function can_add(): bool {
         return true;
     }
-
-    /**
-     * Handles rendering the element on the pdf.
-     *
-     * Must be overridden.
-     *
-     * @param pdf $pdf the pdf object
-     * @param bool $preview true if it is a preview, false otherwise
-     * @param stdClass $user the user we are rendering this for
-     * @param element_renderer|null $renderer the renderer service
-     */
-    abstract public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void;
-
-    /**
-     * Render the element in html.
-     *
-     * Must be overridden.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
-     *
-     * @param element_renderer|null $renderer the renderer service
-     * @return string the html
-     */
-    abstract public function render_html(?element_renderer $renderer = null): string;
 
     /**
      * Handles deleting any data this element may have introduced.

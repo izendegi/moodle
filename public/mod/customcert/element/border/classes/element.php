@@ -28,10 +28,8 @@ namespace customcertelement_border;
 
 use mod_customcert\element as base_element;
 use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
 use MoodleQuickForm;
@@ -47,11 +45,9 @@ use TCPDF_COLORS;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
     preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
+    renderable_element_interface
 {
     /**
      * Build the configuration form for this element.
@@ -60,9 +56,7 @@ class element extends base_element implements
      * @return void
      */
     public function build_form(MoodleQuickForm $mform): void {
-        // We want to define the width of the border.
         element_helper::render_form_element_width($mform);
-        // The only other thing to define is the colour we want the border to be.
         element_helper::render_form_element_colour($mform);
     }
 
@@ -73,7 +67,6 @@ class element extends base_element implements
      * @return void
      */
     public function prepare_form(MoodleQuickForm $mform): void {
-        // Populate width from JSON via the getter.
         $width = $this->get_width();
         if ($width !== null) {
             $mform->getElement('width')->setValue($width);
@@ -98,10 +91,7 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
@@ -125,16 +115,5 @@ class element extends base_element implements
             'colour' => isset($formdata->colour) ? (string)$formdata->colour : '',
             'width' => (int)($formdata->width ?? 0),
         ];
-    }
-
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
     }
 }

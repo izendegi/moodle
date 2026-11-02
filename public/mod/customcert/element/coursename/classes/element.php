@@ -28,10 +28,8 @@ namespace customcertelement_coursename;
 
 use mod_customcert\element\persistable_element_interface;
 use mod_customcert\element as base_element;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
 use MoodleQuickForm;
@@ -46,11 +44,9 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
     preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
+    renderable_element_interface
 {
     /**
      * The course short name.
@@ -97,17 +93,6 @@ class element extends base_element implements
     }
 
     /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
-
-    /**
      * Normalise coursename element data.
      *
      * @param stdClass $formdata Form submission data
@@ -137,10 +122,7 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
@@ -159,9 +141,7 @@ class element extends base_element implements
         $course = get_course($courseid);
         $context = element_helper::get_context($this->get_id());
 
-        // The name field to display.
         $field = $this->get_selected_display_field() ?? self::COURSE_FULL_NAME;
-        // The name value to display.
         $value = $course->fullname;
         if ($field == self::COURSE_SHORT_NAME) {
             $value = $course->shortname;

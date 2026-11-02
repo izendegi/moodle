@@ -31,10 +31,8 @@ use core_collator;
 use core_user\fields;
 use mod_customcert\element\persistable_element_interface;
 use mod_customcert\element as base_element;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
 use MoodleQuickForm;
@@ -49,11 +47,9 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
     preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
+    renderable_element_interface
 {
     /**
      * Core user table fields that may be displayed.
@@ -72,7 +68,6 @@ class element extends base_element implements
     public function build_form(MoodleQuickForm $mform): void {
         global $PAGE;
 
-        // Get the user profile fields.
         $userfields = [];
         foreach (self::USER_FIELDS as $userfield) {
             $userfields[$userfield] = fields::get_display_name($userfield);
@@ -88,7 +83,6 @@ class element extends base_element implements
             }
             $customfields[$customfield->id] = $customfield->name;
         }
-        // Combine the two.
         $fields = $userfields + $customfields;
         core_collator::asort($fields);
 
@@ -147,10 +141,7 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
@@ -179,7 +170,6 @@ class element extends base_element implements
 
         $context = element_helper::get_context($this->get_id());
 
-        // The user field to display.
         $payload = $this->get_payload();
         $field = isset($payload['userfield']) ? $payload['userfield'] : '';
         // The value to display - we always want to show a value here so it can be repositioned.
@@ -190,7 +180,6 @@ class element extends base_element implements
         }
         if (is_number($field)) { // Must be a custom user profile field.
             if ($field = $DB->get_record('user_info_field', ['id' => $field])) {
-                // Found the field name, let's update the value to display.
                 $value = $field->name;
                 $file = $CFG->dirroot . '/user/profile/field/' . $field->datatype . '/field.class.php';
                 if (file_exists($file)) {
@@ -209,16 +198,5 @@ class element extends base_element implements
         }
 
         return format_string($value, true, ['context' => $context]);
-    }
-
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
     }
 }
