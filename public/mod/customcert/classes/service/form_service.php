@@ -75,8 +75,9 @@ final class form_service {
      * @param element_interface $element
      */
     public function prepare_after_data(MoodleQuickForm $mform, element_interface $element): void {
-        if ($element instanceof preparable_form_interface) {
-            $element->prepare_form($mform);
+        $target = ($element instanceof legacy_element_adapter) ? $element->get_inner() : $element;
+        if ($target instanceof preparable_form_interface) {
+            $target->prepare_form($mform);
         } else if ($element instanceof legacy_element_adapter) {
             // Legacy fallback: delegate to the wrapped legacy element's definition_after_data().
             $element->definition_after_data($mform);
@@ -91,7 +92,6 @@ final class form_service {
     public function normalise_submission(array &$data): void {
         global $COURSE, $SITE;
 
-        // Determine context for file operations.
         if (isset($COURSE) && isset($SITE) && $COURSE->id == $SITE->id) {
             $context = context_system::instance();
         } else if (isset($COURSE)) {
