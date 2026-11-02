@@ -1,3 +1,11 @@
+[![Moodle Plugin CI](https://github.com/bfh/moodle-editor_marklar/actions/workflows/moodle-ci.yml/badge.svg)](https://github.com/bfh/moodle-editor_marklar/actions/workflows/moodle-ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/bfh/moodle-editor_marklar)](https://github.com/bfh/moodle-editor_marklar/releases)
+[![camp](https://camp-registry.org/badge/editor_marklar.svg)](https://camp-registry.org/plugin/editor_marklar.html)
+[![PHP Support](https://img.shields.io/badge/php-8.1--8.4-blue)](https://github.com/bfh/moodle-editor_marklar/actions)
+[![Moodle Support](https://img.shields.io/badge/Moodle-4.5--5.3+-orange)](https://github.com/bfh/moodle-editor_marklar/actions)
+[![License GPL-3.0](https://img.shields.io/github/license/bfh/moodle-editor_marklar?color=lightgrey)](https://github.com/bfh/moodle-editor_marklar/blob/main/LICENSE)
+[![GitHub contributors](https://img.shields.io/github/contributors/bfh/moodle-editor_marklar)](https://github.com/bfh/moodle-editor_marklar/graphs/contributors)
+
 Marklar - markdown friendly editor for Moodle
 =============================================
 
@@ -39,4 +47,4 @@ are not bugs.
 Moodle compatibility
 --------------------
 
-Marklar editor supports Moodle versions 3.0 and higher.
+Marklar editor supports Moodle versions 4.5 and higher.

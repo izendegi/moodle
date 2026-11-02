@@ -27,7 +27,6 @@ namespace local_slow_queries\table;
 use local_slow_queries\service\backtrace_service;
 use coding_exception;
 use core\exception\moodle_exception;
-use core_text;
 use html_writer;
 use moodle_url;
 use stdClass;
@@ -84,8 +83,8 @@ class home_table extends table_sql {
         $sql = preg_replace("/\s+/", " ", $querie->sqltext);
         $sql = trim($sql);
 
-        $preview = core_text::substr($sql, 0, 220);
-        if (core_text::strlen($sql) > 220) {
+        $preview = substr($sql, 0, 220);
+        if (strlen($sql) > 220) {
             $preview .= "…";
         }
 

@@ -88,8 +88,8 @@ final class analyse_query extends read_base {
             $result[] = [
                 "table" => (string)($suggestion["table"] ?? ""),
                 "columns" => array_slice((array)($suggestion["columns"] ?? []), 0, 8),
-                "reason" => \core_text::substr((string)($suggestion["reason"] ?? ""), 0, 500),
-                "candidate_ddl_not_executed" => \core_text::substr(
+                "reason" => substr((string)($suggestion["reason"] ?? ""), 0, 500),
+                "candidate_ddl_not_executed" => substr(
                     (string)($suggestion["create"] ?? ""), 0, 500
                 ),
             ];

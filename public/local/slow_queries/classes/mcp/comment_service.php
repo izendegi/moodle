@@ -103,7 +103,7 @@ final class comment_service {
      * @return string
      */
     public static function validated_text(string $text): string {
-        if (\core_text::strlen($text) > self::MAX_COMMENT_CHARS) {
+        if (strlen($text) > self::MAX_COMMENT_CHARS) {
             throw new moodle_exception("mcpinvalidcomment", "local_slow_queries");
         }
         return clean_param($text, PARAM_TEXT);
@@ -145,7 +145,7 @@ final class comment_service {
             }
             return [
                 "comment_id" => $id,
-                "comment_length" => \core_text::strlen($text),
+                "comment_length" => strlen($text),
                 "state_hash" => self::state_hash($sqltext),
             ];
         } finally {

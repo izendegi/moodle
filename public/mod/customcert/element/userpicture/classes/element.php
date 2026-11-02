@@ -30,10 +30,8 @@ use context_user;
 use html_writer;
 use mod_customcert\element as base_element;
 use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
 use MoodleQuickForm;
@@ -49,11 +47,9 @@ use user_picture;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
     preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
+    renderable_element_interface
 {
     /**
      * Build the configuration form for this element.
@@ -110,7 +106,6 @@ class element extends base_element implements
     public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
         global $CFG;
 
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return;
         }
@@ -119,11 +114,9 @@ class element extends base_element implements
 
         $context = context_user::instance($user->id);
 
-        // Get files in the user icon area.
         $fs = get_file_storage();
         $files = $fs->get_area_files($context->id, 'user', 'icon', 0);
 
-        // Get the file we want to display.
         $file = null;
         foreach ($files as $filefound) {
             if (!$filefound->is_directory()) {
@@ -132,7 +125,6 @@ class element extends base_element implements
             }
         }
 
-        // Show image if we found one.
         if ($file) {
             $location = make_request_directory() . '/target';
             $file->copy_content_to($location);
@@ -144,10 +136,7 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
@@ -155,22 +144,19 @@ class element extends base_element implements
     public function render_html(?element_renderer $renderer = null): string {
         global $PAGE, $USER;
 
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return '';
         }
 
         $payload = $this->get_payload();
 
-        // Get the image.
         $userpicture = new user_picture($USER);
         $userpicture->size = 1;
         $url = $userpicture->get_url($PAGE)->out(false);
 
-        // The size of the images to use in the CSS style.
         $style = '';
         if ((int)($payload['width'] ?? 0) === 0 && (int)($payload['height'] ?? 0) === 0) {
-            // Put this in so code checker doesn't complain.
+            // Neither dimension is set, so no style is applied.
             $style .= '';
         } else if ((int)($payload['width'] ?? 0) === 0) { // Then the height must be set.
             $style .= 'width: ' . (int)$payload['height'] . 'mm; ';
@@ -190,16 +176,5 @@ class element extends base_element implements
         }
 
         return $content;
-    }
-
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
     }
 }

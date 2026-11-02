@@ -29,8 +29,6 @@ namespace customcertelement_code;
 use mod_customcert\element as base_element;
 use mod_customcert\element\persistable_element_interface;
 use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\service\certificate_issue_service;
 use mod_customcert\service\certificate_repository;
 use MoodleQuickForm;
@@ -47,10 +45,8 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
-    renderable_element_interface,
-    validatable_element_interface
+    renderable_element_interface
 {
     /**
      * Build the configuration form for this element.
@@ -75,11 +71,8 @@ class element extends base_element implements
         if ($preview) {
             $code = (certificate_issue_service::create())->generate_code();
         } else {
-            // Get the page.
             $page = $DB->get_record('customcert_pages', ['id' => $this->get_pageid()], '*', MUST_EXIST);
-            // Get the customcert this page belongs to.
             $customcert = (new certificate_repository())->get_by_template_id_or_fail((int)$page->templateid);
-            // Now we can get the issue for this user.
             $issue = $DB->get_record(
                 'customcert_issues',
                 ['userid' => $user->id, 'customcertid' => $customcert->id],
@@ -97,10 +90,7 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
@@ -128,16 +118,5 @@ class element extends base_element implements
             'colour' => (string)($formdata->colour ?? ''),
             'width' => (int)($formdata->width ?? 0),
         ];
-    }
-
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
     }
 }

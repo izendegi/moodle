@@ -31,10 +31,8 @@ use core_collator;
 use core_course\customfield\course_handler;
 use mod_customcert\element\persistable_element_interface;
 use mod_customcert\element as base_element;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
 use MoodleQuickForm;
@@ -49,11 +47,9 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class element extends base_element implements
-    form_element_interface,
     persistable_element_interface,
     preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
+    renderable_element_interface
 {
     /**
      * Build the configuration form for this element.
@@ -62,13 +58,11 @@ class element extends base_element implements
      * @return void
      */
     public function build_form(MoodleQuickForm $mform): void {
-        // Get the course fields.
         $coursefields = [
             'fullname' => get_string('fullnamecourse'),
             'shortname' => get_string('shortnamecourse'),
             'idnumber' => get_string('idnumbercourse'),
         ];
-        // Get the course custom fields.
         $handler = course_handler::create();
         $customfields = $handler->get_fields();
         $arrcustomfields = [];
@@ -76,7 +70,6 @@ class element extends base_element implements
             $arrcustomfields[$field->get('id')] = $field->get_formatted_name();
         }
 
-        // Combine the two.
         $fields = $coursefields + $arrcustomfields;
         core_collator::asort($fields);
 
@@ -125,10 +118,7 @@ class element extends base_element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      */
@@ -157,17 +147,6 @@ class element extends base_element implements
     }
 
     /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
-
-    /**
      * Helper function that returns the field value in a human-readable format.
      *
      * @param stdClass $course the course we are rendering this for
@@ -175,7 +154,6 @@ class element extends base_element implements
      * @return string
      */
     protected function get_course_field_value(stdClass $course, bool $preview): string {
-        // The user field to display.
         $payload = $this->get_payload();
         $field = isset($payload['coursefield']) ? $payload['coursefield'] : '';
         // The value to display - we always want to show a value here so it can be repositioned.

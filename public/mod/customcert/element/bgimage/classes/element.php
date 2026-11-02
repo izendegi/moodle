@@ -27,12 +27,7 @@ declare(strict_types=1);
 namespace customcertelement_bgimage;
 
 use html_writer;
-use mod_customcert\element\persistable_element_interface;
-use mod_customcert\element\renderable_element_interface;
-use mod_customcert\element\validatable_element_interface;
 use mod_customcert\service\element_renderer;
-use mod_customcert\element\form_element_interface;
-use mod_customcert\element\preparable_form_interface;
 use moodle_url;
 use MoodleQuickForm;
 use pdf;
@@ -45,13 +40,7 @@ use stdClass;
  * @copyright  2016 Mark Nelson <mdjnelson@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class element extends \customcertelement_image\element implements
-    form_element_interface,
-    persistable_element_interface,
-    preparable_form_interface,
-    renderable_element_interface,
-    validatable_element_interface
-{
+class element extends \customcertelement_image\element {
     /**
      * Background image covers the whole page; width/height fields are ignored and
      * always treated as auto-fit. Override getters to prevent stale values.
@@ -69,17 +58,6 @@ class element extends \customcertelement_image\element implements
         return 0;
     }
 
-
-    /**
-     * Validate submitted form data for this element.
-     * Core validations are handled by validation_service; no extra rules here.
-     *
-     * @param array $data
-     * @return array<string,string>
-     */
-    public function validate(array $data): array {
-        return [];
-    }
 
     /**
      * Build the configuration form for this element.
@@ -107,7 +85,6 @@ class element extends \customcertelement_image\element implements
     public function prepare_form(MoodleQuickForm $mform): void {
         global $COURSE, $SITE;
 
-        // If element has an image stored, select it in the dropdown.
         if (!empty($this->get_data())) {
             $payload = $this->get_payload();
             // Only attempt get_file() if required metadata is present.
@@ -146,10 +123,8 @@ class element extends \customcertelement_image\element implements
      * @return array JSON-serialisable payload
      */
     public function normalise_data(stdClass $formdata): array {
-        // Prepare data to store; form service will have populated file metadata when applicable.
         $arrtostore = [];
 
-        // If a file was selected in the dropdown, persist its metadata so we can resolve it later.
         if (!empty($formdata->fileid) && array_key_exists((int)$formdata->fileid, self::get_images())) {
             $fs = get_file_storage();
             if ($file = $fs->get_file_by_id($formdata->fileid)) {
@@ -184,14 +159,12 @@ class element extends \customcertelement_image\element implements
      * @param element_renderer|null $renderer the renderer service
      */
     public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return;
         }
 
         $payload = $this->get_payload();
 
-        // If there is no file, we have nothing to display.
         if (empty($payload['filename'])) {
             return;
         }
@@ -200,7 +173,6 @@ class element extends \customcertelement_image\element implements
             $location = make_request_directory() . '/target';
             $file->copy_content_to($location);
 
-            // Set the image to the size of the PDF page.
             $mimetype = $file->get_mimetype();
             if ($mimetype == 'image/svg+xml') {
                 $pdf->ImageSVG($location, 0, 0, $pdf->getPageWidth(), $pdf->getPageHeight());
@@ -211,10 +183,7 @@ class element extends \customcertelement_image\element implements
     }
 
     /**
-     * Render the element in html.
-     *
-     * This function is used to render the element when we are using the
-     * drag and drop interface to position it.
+     * Render the element in html for the drag and drop interface.
      *
      * @param element_renderer|null $renderer the renderer service
      * @return string the html
@@ -222,14 +191,12 @@ class element extends \customcertelement_image\element implements
     public function render_html(?element_renderer $renderer = null): string {
         global $DB;
 
-        // If there is no element data, we have nothing to display.
         if (empty($this->get_data())) {
             return '';
         }
 
         $imageinfo = json_decode($this->get_data());
 
-        // If there is no file, we have nothing to display.
         if (empty($imageinfo->filename)) {
             return '';
         }
@@ -243,10 +210,9 @@ class element extends \customcertelement_image\element implements
                 $file->get_filepath(),
                 $file->get_filename()
             );
-            // Get the page we are rendering this on.
             $page = $DB->get_record('customcert_pages', ['id' => $this->get_pageid()], '*', MUST_EXIST);
 
-            // Set the image to the size of the page.
+            // Stretch the image to the full page size.
             $style = 'width: ' . $page->width . 'mm; height: ' . $page->height . 'mm';
             return html_writer::tag('img', '', ['src' => $url, 'style' => $style]);
         }
