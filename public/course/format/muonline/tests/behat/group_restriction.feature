@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_group_restriction @javascript
-Feature: Teacher can restrict course modules to groups
+Feature: Teacher can restrict course modules to groups (muonline format)
 
   Background:
     Given the following "users" exist:

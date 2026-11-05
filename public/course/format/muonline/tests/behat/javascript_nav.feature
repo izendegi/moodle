@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_javascript_nav @javascript
-Feature: Interface can be enhabced with JS nav if allowed by site admin
+Feature: Interface can be enhabced with JS nav if allowed by site admin (muonline format)
   In order to improve navigation
   As a user
   I need to navigate the courses without errors

@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_completion_submuonline @javascript
-Feature: Progress indicators can be used to change progress status and changes are reflected in database
+Feature: Progress indicators can be used to change progress status and changes are reflected in database (muonline format)
 
   Background:
     Given the following "users" exist:

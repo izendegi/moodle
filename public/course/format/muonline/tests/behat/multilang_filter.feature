@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_multi_lang_filter @javascript
-Feature: Multi lang filter works on course headings and content
+Feature: Multi lang filter works on course headings and content (muonline format)
 
   Background:
     Given the following "users" exist:
