@@ -60,4 +60,91 @@ abstract class helpers {
             return false;
         }
     }
+
+    /**
+     * Resolve a yes/no block setting: instance value, else site default, else code default.
+     *
+     * @param \stdClass|null $config the block instance configuration.
+     * @param string $name the setting name (same for instance and site level).
+     * @param int $default the code default.
+     * @return boolean
+     */
+    protected static function resolve_bool_setting($config, $name, $default) {
+        if (isset($config->$name) && $config->$name !== '') {
+            return (bool)$config->$name;
+        }
+        $sitedefault = get_config('block_completion_progress', $name);
+        if ($sitedefault === false || $sitedefault === '') {
+            return (bool)$default;
+        }
+        return (bool)$sitedefault;
+    }
+
+    /**
+     * Site-level default for a yes/no block setting, for use as a form default.
+     *
+     * @param string $name the setting name.
+     * @param int $default the code default.
+     * @return int
+     */
+    public static function site_default_bool_setting($name, $default) {
+        $sitedefault = get_config('block_completion_progress', $name);
+        if ($sitedefault === false || $sitedefault === '') {
+            return (int)$default;
+        }
+        return (int)$sitedefault;
+    }
+
+    /**
+     * Whether a block instance should show users who can view the overview the bar
+     * of the course's only student (when there is exactly one).
+     *
+     * @param \stdClass|null $config the block instance configuration.
+     * @return boolean
+     */
+    public static function show_single_student_bar($config) {
+        return self::resolve_bool_setting($config, 'showsinglestudentbar', defaults::SHOWSINGLESTUDENTBAR);
+    }
+
+    /**
+     * Returns the only student of a course, if there is exactly one.
+     *
+     * A student is a user with an active enrolment and a student-archetype role
+     * assigned in the course context.
+     *
+     * @param \context_course $context the course context.
+     * @return \stdClass|null the user record, or null if there are zero or several students.
+     */
+    public static function get_single_student(\context_course $context) {
+        global $DB;
+        static $cache = [];
+
+        if (array_key_exists($context->id, $cache)) {
+            return $cache[$context->id];
+        }
+        $cache[$context->id] = null;
+
+        $studentroleids = array_keys(get_archetype_roles('student'));
+        if (empty($studentroleids)) {
+            return null;
+        }
+
+        $enroljoin = get_enrolled_with_capabilities_join($context, '', '', 0, true);
+        [$rolesql, $roleparams] = $DB->get_in_or_equal($studentroleids, SQL_PARAMS_NAMED, 'ssrole');
+        $sql = "SELECT DISTINCT u.id
+                  FROM {user} u
+                       {$enroljoin->joins}
+                  JOIN {role_assignments} ssra ON ssra.userid = u.id
+                       AND ssra.contextid = :sscontextid
+                       AND ssra.roleid {$rolesql}
+                 WHERE {$enroljoin->wheres}";
+        $params = array_merge($enroljoin->params, $roleparams, ['sscontextid' => $context->id]);
+
+        // Two records are enough to know there is more than one student.
+        $records = $DB->get_records_sql($sql, $params, 0, 2);
+        if (count($records) === 1) {
+            $cache[$context->id] = \core_user::get_user(array_key_first($records)) ?: null;
+        }
+        return $cache[$context->id];
+    }
 }
