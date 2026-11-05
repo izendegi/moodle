@@ -17,6 +17,19 @@
 /**
  * A scheduled task.
  *
+ * MGEP local patch (MDL-75160 - Support large number of INs in PostgreSQL).
+ * Base: Moodle 5.2 lib/classes/task/tag_cron_task.php
+ *
+ * Changes against upstream:
+ *  - compute_correlations(): the stale correlations were removed with a single
+ *    "id NOT IN (...)" query using one bound parameter per correlation, which fails on
+ *    PostgreSQL once there are more than 65535 correlations. The stale ids are now
+ *    computed in PHP and deleted in chunks of core_tag_tag::DELETE_CHUNK_SIZE.
+ *  - cleanup(): ids to delete are de-duplicated (an instance can be orphaned for
+ *    more than one reason). The previous local "LIMIT 60000" mitigation is removed:
+ *    it was not portable (MSSQL/Oracle), did not bound the total number of ids
+ *    (it applied per tag area) and is no longer needed because every IN is chunked.
+ *
  * @package    core
  * @copyright  2013 onwards Martin Dougiamas  http://dougiamas.com
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -138,9 +151,15 @@ class tag_cron_task extends scheduled_task {
             // There are no tag correlations.
             $DB->delete_records('tag_correlation');
         } else {
-            list($sql, $params) = $DB->get_in_or_equal($correlations,
-                    SQL_PARAMS_NAMED, 'param0000', false);
-            $DB->delete_records_select('tag_correlation', 'id '.$sql, $params);
+            // MDL-75160: do not build a single "id NOT IN (...)" with one bound parameter per
+            // correlation, PostgreSQL rejects queries with more than 65535 parameters.
+            // The tag_correlation table has at most one row per tag, so reading its ids is cheap.
+            // Work out the stale ids in PHP and delete them in chunks.
+            $existing = $DB->get_fieldset_select('tag_correlation', 'id', '');
+            $stale = array_keys(array_diff_key(array_flip($existing), array_flip($correlations)));
+            foreach (array_chunk($stale, core_tag_tag::DELETE_CHUNK_SIZE) as $stalechunk) {
+                $DB->delete_records_list('tag_correlation', 'id', $stalechunk);
+            }
         }
     }
 
@@ -157,15 +176,17 @@ class tag_cron_task extends scheduled_task {
     public function cleanup() {
         global $DB;
 
+        // Ids of the tag instances to delete, used as keys so that an instance orphaned
+        // for more than one reason is only processed once.
+        $tagarray = array();
+
         // Get ids to delete from instances where the tag has been deleted. This should never happen apparently.
         $sql = "SELECT ti.id
                   FROM {tag_instance} ti
              LEFT JOIN {tag} t ON t.id = ti.tagid
                  WHERE t.id IS null";
-        $tagids = $DB->get_records_sql($sql);
-        $tagarray = array();
-        foreach ($tagids as $tagid) {
-            $tagarray[] = $tagid->id;
+        foreach ($DB->get_fieldset_sql($sql) as $id) {
+            $tagarray[$id] = $id;
         }
 
         // Next get ids from instances that have an owner that has been deleted.
@@ -175,9 +196,8 @@ class tag_cron_task extends scheduled_task {
                    AND ti.itemtype = 'user'
                    AND ti.component = 'core'
                    AND u.deleted = 1";
-        $tagids = $DB->get_records_sql($sql);
-        foreach ($tagids as $tagid) {
-            $tagarray[] = $tagid->id;
+        foreach ($DB->get_fieldset_sql($sql) as $id) {
+            $tagarray[$id] = $id;
         }
 
         // Get the other itemtypes.
@@ -191,16 +211,15 @@ class tag_cron_task extends scheduled_task {
                  LEFT JOIN {' . $tagarea->itemtype . '} it ON it.id = ti.itemid
                      WHERE it.id IS null
                      AND ti.itemtype = ? AND ti.component = ?';
-            $tagids = $DB->get_records_sql($sql, array($tagarea->itemtype, $tagarea->component));
-            foreach ($tagids as $tagid) {
-                $tagarray[] = $tagid->id;
+            foreach ($DB->get_fieldset_sql($sql, array($tagarea->itemtype, $tagarea->component)) as $id) {
+                $tagarray[$id] = $id;
             }
         }
         $tagareas->close();
 
         // Get instances for each of the ids to be deleted.
         // Chunk the ids so we never exceed the database parameter limit (e.g. 65535 on PostgreSQL).
-        foreach (array_chunk($tagarray, core_tag_tag::DELETE_CHUNK_SIZE) as $tagchunk) {
+        foreach (array_chunk(array_values($tagarray), core_tag_tag::DELETE_CHUNK_SIZE) as $tagchunk) {
             [$sqlin, $params] = $DB->get_in_or_equal($tagchunk);
             $sql = "SELECT ti.*, COALESCE(t.name, 'deleted') AS name, COALESCE(t.rawname, 'deleted') AS rawname
                       FROM {tag_instance} ti
