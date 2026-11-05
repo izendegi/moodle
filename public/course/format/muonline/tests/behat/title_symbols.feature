@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_title_symbols @javascript
-Feature: When tile and activity titles are shown, symbols like "&" are displayed correctly
+Feature: When tile and activity titles are shown, symbols like "&" are displayed correctly (muonline format)
 
   Background:
     Given the following "users" exist:

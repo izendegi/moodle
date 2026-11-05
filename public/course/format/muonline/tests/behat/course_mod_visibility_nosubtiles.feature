@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_course_mod_visibility_nosubmuonline @javascript
-Feature: In a section for Teacher, hidden activities are dimmed
+Feature: In a section for Teacher, hidden activities are dimmed (muonline format)
 
   Background:
     Given the following "users" exist:
