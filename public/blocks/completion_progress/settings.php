@@ -132,6 +132,18 @@ if ($ADMIN->fulltree) {
         )
     );
     $settings->add(
+        new admin_setting_configselect(
+            'block_completion_progress/showsinglestudentbar',
+            get_string('showsinglestudentbar', 'block_completion_progress'),
+            get_string('showsinglestudentbar_desc', 'block_completion_progress'),
+            defaults::SHOWSINGLESTUDENTBAR,
+            [
+                1 => get_string('show'),
+                0 => get_string('hide'),
+            ]
+        )
+    );
+    $settings->add(
         new admin_setting_configduration(
             'block_completion_progress/overviewcachetime',
             get_string('overviewcachetime', 'block_completion_progress'),
