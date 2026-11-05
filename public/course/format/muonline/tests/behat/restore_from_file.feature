@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_restore_from_file
-Feature: Backup and restore of fixture mbz files including images
+Feature: Backup and restore of fixture mbz files including images (muonline format)
 
   Background:
     Given the following "courses" exist:

@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_mod_modal @format_muonline_pdf_modal_student  @javascript @_file_upload
-Feature: PDFs can be set to open in modal windows
+Feature: PDFs can be set to open in modal windows (muonline format)
   In order to improve UX
   As a student
   I need to be able to view these modals
