@@ -144,15 +144,17 @@ define(['jquery', 'core/ajax', 'core/log', 'core/templates', 'core/utils'],
         }
 
         /**
-         * Re-render the blocks which have a cell for the given cmid.
+         * Re-render the progress bars which have a cell for the given cmid.
+         * A block may contain several bars (e.g. the user's own and another user's),
+         * so each bar is re-rendered individually.
          * @param {String} cmid
          */
         function rerenderBlocksWithCmid(cmid) {
-            var blocks = $('.block.block_completion_progress:has(.progressBarCell[data-inforef$="-' + cmid + '"])');
-            blocks.each(function() {
-                let block = $(this);
-                let blockcontent = block.find('div.block_completion_progress');
-                let barcontainer = block.find('.barContainer');
+            var bars = $('.block.block_completion_progress div.block_completion_progress' +
+                ':has(.progressBarCell[data-inforef$="-' + cmid + '"])');
+            bars.each(function() {
+                let blockcontent = $(this);
+                let barcontainer = blockcontent.find('.barContainer');
                 let courseid = barcontainer.data('courseid');
                 let instanceid = barcontainer.data('instanceid');
                 let userid = barcontainer.data('userid');
