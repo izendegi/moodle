@@ -20,11 +20,13 @@ Feature: Language selector menu
     And the following "language pack" exists:
       | language | en_ar |
 
-  Scenario: Logged user is presented with a language selector which is placed within the user menu
+  Scenario: Logged user is presented with a language selector in the navbar and within the user menu
     Given I log in as "teacher1"
     And I am on site homepage
-    # The language selector menu is not present in the navbar when a user is logged in.
-    And language selector menu should not exist in the navbar
+    # The language selector menu is present in the navbar when a user is logged in.
+    And language selector menu should exist in the navbar
+    And "English ‎(en)‎" "link" should exist in the language selector menu
+    And "English (pirate) ‎(en_ar)‎" "link" should exist in the language selector menu
     # The language selector is present within the user menu.
     And "Language" "link" should exist in the user menu
     When I follow "Language" in the user menu
