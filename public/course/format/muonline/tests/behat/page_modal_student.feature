@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_mod_modal  @format_muonline_page_modal_student @javascript
-Feature: Student can open a page
+Feature: Student can open a page (muonline format)
 
   Background:
     Given the following "users" exist:

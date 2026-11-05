@@ -1,6 +1,6 @@
 @format @format_muonline @format_muonline_colours @javascript
 
-Feature: Check that tile colours are correct
+Feature: Check that tile colours are correct (muonline format)
 
   Background:
     Given the following "users" exist:

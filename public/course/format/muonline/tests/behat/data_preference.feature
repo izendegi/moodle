@@ -1,5 +1,5 @@
 @format @format_muonline @format_muonline_data_preference @javascript
-Feature: user can select whether or not data is stored in browser
+Feature: user can select whether or not data is stored in browser (muonline format)
   In order to maintain privacy
   As a user
   I need to set this once on log in and if press the button
