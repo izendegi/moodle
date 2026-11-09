@@ -132,10 +132,9 @@ define('ZOOM_REGISTRATION_OFF', 2);
  * @param mixed $a Extra words and phrases that might be required in the error string
  */
 function zoom_fatal_error($errorcode, $module = '', $continuelink = '', $a = null) {
-    global $CFG, $COURSE, $OUTPUT, $PAGE;
+    global $COURSE, $OUTPUT, $PAGE;
 
     $output = '';
-    $obbuffer = '';
 
     // Assumes that function is run before output is generated.
     if ($OUTPUT->has_started()) {
@@ -150,22 +149,6 @@ function zoom_fatal_error($errorcode, $module = '', $continuelink = '', $a = nul
     $message = '<p class="errormessage">' . get_string($errorcode, $module, $a) . '</p>';
 
     $output .= $OUTPUT->box($message, 'errorbox alert alert-danger', null, ['data-rel' => 'fatalerror']);
-
-    if ($CFG->debugdeveloper) {
-        if (!empty($debuginfo)) {
-            $debuginfo = s($debuginfo); // Removes all nasty JS.
-            $debuginfo = str_replace("\n", '<br />', $debuginfo); // Keep newlines.
-            $output .= $OUTPUT->notification('<strong>Debug info:</strong> ' . $debuginfo, 'notifytiny');
-        }
-
-        if (!empty($backtrace)) {
-            $output .= $OUTPUT->notification('<strong>Stack trace:</strong> ' . format_backtrace($backtrace), 'notifytiny');
-        }
-
-        if ($obbuffer !== '') {
-            $output .= $OUTPUT->notification('<strong>Output buffer:</strong> ' . s($obbuffer), 'notifytiny');
-        }
-    }
 
     if (!empty($continuelink)) {
         $output .= $OUTPUT->continue_button($continuelink);
@@ -1034,7 +1017,7 @@ function zoom_load_meeting($id, $context, $usestarturl = true) {
     // Check the grading method settings.
     if (!empty($zoom->grading_method)) {
         $gradingmethod = $zoom->grading_method;
-    } else if ($defaultgrading = get_config('gradingmethod', 'zoom')) {
+    } else if ($defaultgrading = get_config('zoom', 'gradingmethod')) {
         $gradingmethod = $defaultgrading;
     } else {
         $gradingmethod = 'entry';
@@ -1290,11 +1273,10 @@ function zoom_get_user_settings($identifier) {
  *
  * @param string $meetingid Zoom meeting ID.
  * @param bool $iswebinar If the session is a webinar.
- * @return stdClass Returns a Zoom object containing the registrants (if found).
+ * @return array Returns the registrants for the meeting or webinar (if found).
  */
 function zoom_get_meeting_registrants($meetingid, $iswebinar) {
-    $response = zoom_webservice()->get_meeting_registrants($meetingid, $iswebinar);
-    return $response;
+    return zoom_webservice()->get_meeting_registrants($meetingid, $iswebinar);
 }
 
 /**
@@ -1319,12 +1301,10 @@ function zoom_is_user_registered_for_meeting($useremail, $meetingid, $iswebinar)
  * @return string|false Returns the join url for the user (based on email address) for the specified meeting (if found).
  */
 function zoom_get_registrant_join_url($useremail, $meetingid, $iswebinar) {
-    $response = zoom_get_meeting_registrants($meetingid, $iswebinar);
-    if (isset($response->registrants)) {
-        foreach ($response->registrants as $registrant) {
-            if (strcasecmp($useremail, $registrant->email) == 0) {
-                return $registrant->join_url;
-            }
+    $registrants = zoom_get_meeting_registrants($meetingid, $iswebinar);
+    foreach ($registrants as $registrant) {
+        if (strcasecmp($useremail, $registrant->email) == 0) {
+            return $registrant->join_url;
         }
     }
 

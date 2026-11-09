@@ -536,7 +536,7 @@ class webservice {
     public function get_user_settings($userid) {
         // Classic: user:read:admin.
         // Granular: user:read:settings:admin.
-        return $this->make_call('users/' . $userid . '/settings');
+        return $this->make_call('users/' . rawurlencode($userid) . '/settings');
     }
 
     /**
@@ -548,7 +548,7 @@ class webservice {
     public function get_account_meeting_security_settings($userid) {
         // Classic: user:read:admin.
         // Granular: user:read:settings:admin.
-        $url = 'users/' . $userid . '/settings?option=meeting_security';
+        $url = 'users/' . rawurlencode($userid) . '/settings?option=meeting_security';
         try {
             $response = $this->make_call($url);
             $meetingsecurity = $response->meeting_security;
@@ -585,7 +585,7 @@ class webservice {
 
         // Classic: user:read:admin.
         // Granular: user:read:user:admin.
-        $url = 'users/' . $identifier;
+        $url = 'users/' . rawurlencode($identifier);
 
         try {
             $founduser = $this->make_call($url);
@@ -609,7 +609,7 @@ class webservice {
     public function get_schedule_for_users($identifier) {
         // Classic: user:read:admin.
         // Granular: user:read:list_schedulers:admin.
-        $url = "users/{$identifier}/schedulers";
+        $url = 'users/' . rawurlencode($identifier) . '/schedulers';
 
         $schedulerswithoutkey = [];
         $schedulers = [];
@@ -941,7 +941,7 @@ class webservice {
     public function get_user_report($userid, $from, $to) {
         // Classic: report:read:admin.
         // Granular: report:read:user:admin.
-        $url = 'report/users/' . $userid . '/meetings';
+        $url = 'report/users/' . rawurlencode($userid) . '/meetings';
         $data = ['from' => $from, 'to' => $to];
         return $this->make_paginated_call($url, $data, 'meetings');
     }
@@ -959,7 +959,7 @@ class webservice {
         // Granular: meeting:read:list_meetings:admin.
         // Classic: webinar:read:admin.
         // Granular: webinar:read:list_webinars:admin.
-        $url = 'users/' . $userid . ($webinar ? '/webinars' : '/meetings');
+        $url = 'users/' . rawurlencode($userid) . ($webinar ? '/webinars' : '/meetings');
         $instances = $this->make_paginated_call($url, [], ($webinar ? 'webinars' : 'meetings'));
         return $instances;
     }
@@ -1151,6 +1151,9 @@ class webservice {
             }
 
             $recordingcount = (int) $response->recording_count;
+            if (!isset($response->participant_audio_files)) {
+                throw new bad_request_exception('participant_audio_files: undefined', 400);
+            }
             $audiocount = count($response->participant_audio_files);
             if ($recordingcount !== $audiocount) {
                 // If there are no recording files and the recording count does not match, throw an exception.
@@ -1201,7 +1204,7 @@ class webservice {
         try {
             // Classic: recording:read:admin.
             // Granular: cloud_recording:read:list_user_recordings:admin.
-            $url = 'users/' . $userid . '/recordings';
+            $url = 'users/' . rawurlencode($userid) . '/recordings';
             $data = ['from' => $from, 'to' => $to];
             $response = $this->make_paginated_call($url, $data, 'meetings');
 
@@ -1384,7 +1387,7 @@ class webservice {
      *
      * @param string $id The meeting_id or webinar_id of the meeting or webinar to retrieve.
      * @param bool $webinar Whether the meeting or webinar whose information you want is a webinar.
-     * @return stdClass The meeting's or webinar's information.
+     * @return array The meeting's or webinar's registrants.
      */
     public function get_meeting_registrants($id, $webinar) {
         // Classic: meeting:read:admin.
@@ -1392,8 +1395,7 @@ class webservice {
         // Classic: webinar:read:admin.
         // Granular: webinar:read:list_registrants:admin.
         $url = ($webinar ? 'webinars/' : 'meetings/') . $id . '/registrants';
-        $response = $this->make_call($url);
-        return $response;
+        return $this->make_paginated_call($url, [], 'registrants');
     }
 
     /**
