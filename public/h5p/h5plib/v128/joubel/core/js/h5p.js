@@ -429,7 +429,7 @@ H5P.getHeadTags = function (contentId) {
     return tags;
   };
 
-  return '<base target="_parent">' +
+  return '<base target="_top">' +
          createStyleTags(H5PIntegration.core.styles) +
          createStyleTags(H5PIntegration.contents['cid-' + contentId].styles) +
          createScriptTags(H5PIntegration.core.scripts) +
