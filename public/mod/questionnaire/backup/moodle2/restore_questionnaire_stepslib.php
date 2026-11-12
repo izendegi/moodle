@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-use mod_questionnaire\feedback\section;
+use mod_questionnaire\local\feedback\section;
 
 /**
  * Define all the restore steps that will be used by the restore_questionnaire_activity_task.
@@ -43,7 +43,7 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
     protected $olddependencies = [];
 
     /**
-     * @var array $responsefileids Contains new questionnaire_response_file.id in key and old id in value.
+     * @var int[] $responsefileids The new questionnaire_response_file ids.
      */
     protected $responsefileids = [];
 
@@ -177,6 +177,16 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         $data->closedate = $this->apply_date_offset($data->closedate);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
 
+        // Convert renamed fields if necessary.
+        if (isset($data->resp_eligible)) {
+            $data->respeligible = $data->resp_eligible;
+            unset($data->resp_eligible);
+        }
+        if (isset($data->resp_view)) {
+            $data->respview = $data->resp_view;
+            unset($data->resp_view);
+        }
+
         // Insert the questionnaire record.
         $newitemid = $DB->insert_record('questionnaire', $data);
         // Immediately after inserting "activity" record, call this.
@@ -197,6 +207,28 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         // Check for a 'feedbacksections' value larger than 2, and limit it to 2. As of 3.5.1 this has a different meaning.
         if ($data->feedbacksections > 2) {
             $data->feedbacksections = 2;
+        }
+
+        // Convert renamed fields if necessary.
+        if (isset($data->thanks_page)) {
+            $data->thankspage = $data->thanks_page;
+            unset($data->thanks_page);
+        }
+        if (isset($data->thank_body)) {
+            $data->thankbody = $data->thank_body;
+            unset($data->thank_body);
+        }
+        if (isset($data->thank_head)) {
+            $data->thankhead = $data->thank_head;
+            unset($data->thank_head);
+        }
+        if (isset($data->chart_type)) {
+            $data->charttype = $data->chart_type;
+            unset($data->chart_type);
+        }
+
+        foreach (['infotrust', 'thankbodytrust', 'feedbacknotestrust'] as $trustfield) {
+            $data->$trustfield = $this->restored_trust($data, $trustfield);
         }
 
         // Insert the questionnaire_survey record.
@@ -224,6 +256,19 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
             // Question was deleted, so don't restore it.
             return;
         }
+
+        // Convert renamed fields if necessary.
+        if (isset($data->type_id)) {
+            $data->typeid = $data->type_id;
+            unset($data->type_id);
+        }
+        if (isset($data->result_id)) {
+            $data->resultid = $data->result_id;
+            unset($data->result_id);
+        }
+
+        $data->contenttrust = $this->restored_trust($data, 'contenttrust');
+
         // Insert the questionnaire_question record.
         $newitemid = $DB->insert_record('questionnaire_question', $data);
         $this->set_mapping('questionnaire_question', $oldid, $newitemid, true);
@@ -259,6 +304,8 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
             $data->scorecalculation = serialize($newscorecalculation);
         }
 
+        $data->sectionheadingtrust = $this->restored_trust($data, 'sectionheadingtrust');
+
         // Insert the questionnaire_fb_sections record.
         $newitemid = $DB->insert_record('questionnaire_fb_sections', $data);
         $this->set_mapping('questionnaire_fb_sections', $oldid, $newitemid, true);
@@ -275,9 +322,28 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         $oldid = $data->id;
         $data->sectionid = $this->get_new_parentid('questionnaire_fb_sections');
 
+        $data->feedbacktexttrust = $this->restored_trust($data, 'feedbacktexttrust');
+
         // Insert the questionnaire_feedback record.
         $newitemid = $DB->insert_record('questionnaire_feedback', $data);
         $this->set_mapping('questionnaire_feedback', $oldid, $newitemid, true);
+    }
+
+    /**
+     * The trust flag to restore for a staff-authored text field.
+     *
+     * Text stays trusted only if the restoring user is trusted. Backups made before trust flags existed have none;
+     * their text was always shown unfiltered, so it is trusted when the restoring user is.
+     *
+     * @param \stdClass $data The restored record.
+     * @param string $trustfield
+     * @return int
+     */
+    protected function restored_trust(\stdClass $data, string $trustfield): int {
+        if (!trusttext_trusted(\context::instance_by_id($this->task->get_contextid()))) {
+            return 0;
+        }
+        return isset($data->$trustfield) ? (int)$data->$trustfield : 1;
     }
 
     /**
@@ -289,8 +355,6 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
 
         $data = (object)$data;
 
-        require_once($CFG->dirroot . '/mod/questionnaire/locallib.php');
-
         // Some old systems had '' instead of NULL. Change it to NULL.
         if ($data->value === '') {
             $data->value = null;
@@ -299,14 +363,20 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         // Replace the = separator with :: separator in quest_choice content.
         // This fixes radio button options using old "value"="display" formats.
         if (($data->value == null || $data->value == 'NULL') && !preg_match("/^([0-9]{1,3}=.*|!other=.*)$/", $data->content)) {
-            $content = questionnaire_choice_values($data->content);
+            $content = \mod_questionnaire\local\question\question::parse_choice_content($data->content);
             if (strpos($content->text, '=')) {
                 $data->content = str_replace('=', '::', $content->text);
             }
         }
 
+        // Convert renamed fields if necessary.
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+
         $oldid = $data->id;
-        $data->question_id = $this->get_new_parentid('questionnaire_question');
+        $data->questionid = $this->get_new_parentid('questionnaire_question');
 
         // Insert the questionnaire_quest_choice record.
         $newitemid = $DB->insert_record('questionnaire_quest_choice', $data);
@@ -370,14 +440,29 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         global $DB;
 
         $data = (object)$data;
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
+
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+        if (isset($data->choice_id)) {
+            $data->choiceid = $data->choice_id;
+            unset($data->choice_id);
+        }
+
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
 
         // Insert the questionnaire_response_bool record.
         $DB->insert_record('questionnaire_response_bool', $data);
     }
 
-    /**
+    /**`
      * Process date responses.
      * @param array $data
      * @throws dml_exception
@@ -386,8 +471,19 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         global $DB;
 
         $data = (object)$data;
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
+
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
 
         // Insert the questionnaire_response_date record.
         $DB->insert_record('questionnaire_response_date', $data);
@@ -402,11 +498,23 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         global $DB;
 
         $data = (object)$data;
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
+
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
         // Insert the questionnaire_response_file record.
         $newid = $DB->insert_record('questionnaire_response_file', $data);
-        $this->responsefileids[$newid] = $data->id;
+        $this->set_mapping('questionnaire_response_file', $data->id, $newid, true);
+        $this->responsefileids[] = $newid;
     }
 
     /**
@@ -418,9 +526,24 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         global $DB;
 
         $data = (object)$data;
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
-        $data->choice_id = $this->get_mappingid('questionnaire_quest_choice', $data->choice_id);
+
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+        if (isset($data->choice_id)) {
+            $data->choiceid = $data->choice_id;
+            unset($data->choice_id);
+        }
+
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
+        $data->choiceid = $this->get_mappingid('questionnaire_quest_choice', $data->choiceid);
 
         // Insert the questionnaire_resp_multiple record.
         $DB->insert_record('questionnaire_resp_multiple', $data);
@@ -435,9 +558,24 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         global $DB;
 
         $data = (object)$data;
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
-        $data->choice_id = $this->get_mappingid('questionnaire_quest_choice', $data->choice_id);
+
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+        if (isset($data->choice_id)) {
+            $data->choiceid = $data->choice_id;
+            unset($data->choice_id);
+        }
+
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
+        $data->choiceid = $this->get_mappingid('questionnaire_quest_choice', $data->choiceid);
 
         // Insert the questionnaire_response_other record.
         $DB->insert_record('questionnaire_response_other', $data);
@@ -453,14 +591,28 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
 
         $data = (object)$data;
 
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+        if (isset($data->choice_id)) {
+            $data->choiceid = $data->choice_id;
+            unset($data->choice_id);
+        }
+
         // Older versions of questionnaire used 'rank' instead of 'rankvalue'. If 'rank' exists, change it to 'rankvalue'.
         if (isset($data->rank) && !isset($data->rankvalue)) {
             $data->rankvalue = $data->rank;
         }
 
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
-        $data->choice_id = $this->get_mappingid('questionnaire_quest_choice', $data->choice_id);
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
+        $data->choiceid = $this->get_mappingid('questionnaire_quest_choice', $data->choiceid);
 
         // Insert the questionnaire_response_rank record.
         $DB->insert_record('questionnaire_response_rank', $data);
@@ -475,9 +627,24 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         global $DB;
 
         $data = (object)$data;
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
-        $data->choice_id = $this->get_mappingid('questionnaire_quest_choice', $data->choice_id);
+
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+        if (isset($data->choice_id)) {
+            $data->choiceid = $data->choice_id;
+            unset($data->choice_id);
+        }
+
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
+        $data->choiceid = $this->get_mappingid('questionnaire_quest_choice', $data->choiceid);
 
         // Insert the questionnaire_resp_single record.
         $DB->insert_record('questionnaire_resp_single', $data);
@@ -491,68 +658,37 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         global $DB;
 
         $data = (object)$data;
-        $data->response_id = $this->get_new_parentid('questionnaire_response');
-        $data->question_id = $this->get_mappingid('questionnaire_question', $data->question_id);
+
+        // Convert renamed fields if necessary.
+        if (isset($data->response_id)) {
+            $data->responseid = $data->response_id;
+            unset($data->response_id);
+        }
+        if (isset($data->question_id)) {
+            $data->questionid = $data->question_id;
+            unset($data->question_id);
+        }
+
+        $data->responseid = $this->get_new_parentid('questionnaire_response');
+        $data->questionid = $this->get_mappingid('questionnaire_question', $data->questionid);
 
         // Insert the questionnaire_response_text record.
         $DB->insert_record('questionnaire_response_text', $data);
     }
 
     /**
-     * Handle related files for response file assignments and update the references between the
-     * records in the questionnaire_response_file and the files table.
+     * Point each restored questionnaire_response_file record at its restored file.
+     *
+     * The files themselves are restored, and their item ids mapped to the new record ids, by add_related_files().
      */
-    protected function handle_releated_files_for_response_file_assignments() {
-        global $DB;
-        // If there are no response file IDs mapped before, then there are no response files to handle.
-        if (empty($this->responsefileids)) {
-            return;
-        }
-        $newctx = restore_dbops::get_backup_ids_record($this->get_restoreid(), 'context', $this->task->get_old_contextid());
-        restore_dbops::send_files_to_pool(
-            $this->get_basepath(),
-            $this->get_restoreid(),
-            'mod_questionnaire',
-            'response_file',
-            $this->task->get_old_contextid(),
-            $this->task->get_userid()
-        );
-        // Lookup all file records that where just created for this context and component/filearea.
-        [$sql, $params] = $DB->get_in_or_equal(array_values($this->responsefileids), SQL_PARAMS_NAMED, 'id');
-        $params['component'] = 'mod_questionnaire';
-        $params['filearea'] = 'response_file';
-        $params['ctx'] = $newctx->newitemid;
-        $filerecords = $DB->get_records_select(
-            'files',
-            'contextid = :ctx AND component = :component AND filearea = :filearea AND itemid ' . $sql,
-            $params
-        );
-        $oldtonew = array_flip($this->responsefileids);
-        foreach ($filerecords as $filerecord) {
-            if (array_key_exists($filerecord->itemid, $oldtonew)) {
-                if ($filerecord->filename != '.') {
-                    // We have a real file, use that file.id to update the questionnaire_response_file.fileid.
-                    $DB->set_field(
-                        'questionnaire_response_file',
-                        'fileid',
-                        $filerecord->id,
-                        ['id' => $oldtonew[$filerecord->itemid]]
-                    );
-                }
-                // Update the itemid to the new response_file.id.
-                $filerecord->itemid = $oldtonew[$filerecord->itemid];
-                // Calculate new pathnamehash.
-                $filerecord->pathnamehash = \file_storage::get_pathname_hash(
-                    $filerecord->contextid,
-                    $filerecord->component,
-                    $filerecord->filearea,
-                    $filerecord->itemid,
-                    $filerecord->filepath,
-                    $filerecord->filename
-                );
-                // Adjust the files record with the new itemid and pathnamehash.
-                $DB->update_record('files', $filerecord);
-            }
+    protected function update_response_file_ids() {
+        $fs = get_file_storage();
+        $contextid = $this->task->get_contextid();
+        foreach ($this->responsefileids as $newid) {
+            $files = $fs->get_area_files($contextid, 'mod_questionnaire', 'response_file', $newid, 'id', false);
+            $rec = new \mod_questionnaire\local\db\response_file_record($newid);
+            $rec->set('fileid', empty($files) ? 0 : reset($files)->get_id());
+            $rec->update();
         }
     }
 
@@ -572,7 +708,7 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
             $newrec->surveyid = $this->get_new_parentid('questionnaire_survey');
             $newrec->dependquestionid = $this->get_mappingid('questionnaire_question', $olddependid);
             // Only change mapping for RADIO and DROP question types, not for YESNO question.
-            $dependqtype = $DB->get_field('questionnaire_question', 'type_id', ['id' => $newrec->dependquestionid]);
+            $dependqtype = $DB->get_field('questionnaire_question', 'typeid', ['id' => $newrec->dependquestionid]);
             if (($dependqtype !== false) && ($dependqtype != 1)) {
                 $newrec->dependchoiceid = $this->get_mappingid(
                     'questionnaire_quest_choice',
@@ -591,7 +727,7 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
             $data->dependquestionid = $this->get_mappingid('questionnaire_question', $data->dependquestionid);
 
             // Only change mapping for RADIO and DROP question types, not for YESNO question.
-            $dependqtype = $DB->get_field('questionnaire_question', 'type_id', ['id' => $data->dependquestionid]);
+            $dependqtype = $DB->get_field('questionnaire_question', 'typeid', ['id' => $data->dependquestionid]);
             if (($dependqtype !== false) && ($dependqtype != 1)) {
                 $data->dependchoiceid = $this->get_mappingid('questionnaire_quest_choice', $data->dependchoiceid);
             }
@@ -606,11 +742,12 @@ class restore_questionnaire_activity_structure_step extends restore_activity_str
         $this->add_related_files('mod_questionnaire', 'question', 'questionnaire_question');
         $this->add_related_files('mod_questionnaire', 'sectionheading', 'questionnaire_fb_sections');
         $this->add_related_files('mod_questionnaire', 'feedback', 'questionnaire_feedback');
-        $this->handle_releated_files_for_response_file_assignments();
+        $this->add_related_files('mod_questionnaire', 'response_file', 'questionnaire_response_file');
+        $this->update_response_file_ids();
 
         // Process any old rate question named degree choices after all questions and choices have been restored.
         if ($this->task->get_old_moduleversion() < 2018110103) {
-            \mod_questionnaire\question\rate::move_all_nameddegree_choices($this->get_new_parentid('questionnaire_survey'));
+            \mod_questionnaire\local\question\rate::move_all_nameddegree_choices($this->get_new_parentid('questionnaire_survey'));
         }
     }
 }
