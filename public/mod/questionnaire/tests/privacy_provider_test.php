@@ -61,7 +61,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $user = $DB->get_record('user', ['firstname' => 'Testy']);
         $questionnaires = $qdg->questionnaires();
         $questionnaire = current($questionnaires);
-        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id, 'questionnaire', $questionnaire->course);
+        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id(), 'questionnaire', $questionnaire->courseid());
 
         $contextlist = provider::get_contexts_for_userid($user->id);
         // Check that we only get back one context.
@@ -87,7 +87,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $user = $DB->get_record('user', ['firstname' => 'Testy']);
         $questionnaires = $qdg->questionnaires();
         $questionnaire = current($questionnaires);
-        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id, 'questionnaire', $questionnaire->course);
+        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id(), 'questionnaire', $questionnaire->courseid());
         $cmcontext = \context_module::instance($cm->id);
 
         $userlist = new \core_privacy\local\request\userlist($cmcontext, 'mod_questionnaire');
@@ -120,7 +120,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $user = $DB->get_record('user', ['firstname' => 'Testy']);
         $questionnaires = $qdg->questionnaires();
         $questionnaire = current($questionnaires);
-        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id, 'questionnaire', $questionnaire->course);
+        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id(), 'questionnaire', $questionnaire->courseid());
         $cmcontext = \context_module::instance($cm->id);
 
         $writer = \core_privacy\local\request\writer::with_context($cmcontext);
@@ -130,8 +130,8 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         provider::export_user_data($approvedlist);
         $data = $writer->get_data([]);
 
-        $this->assertStringContainsString($questionnaire->name, strip_tags($data->name));
-        $this->assertEquals($questionnaire->intro, strip_tags($data->intro));
+        $this->assertStringContainsString($questionnaire->name(), strip_tags($data->name));
+        $this->assertEquals($questionnaire->intro(), strip_tags($data->intro));
         $this->assertNotEmpty($data->responses[0]['questions']);
         $this->assertEquals('1. Text Box 1000', $data->responses[0]['questions'][1]->questionname);
         $this->assertEquals('Test answer', $data->responses[0]['questions'][1]->answers[0]);
@@ -157,7 +157,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $user = $DB->get_record('user', ['username' => 'username1']);
         $questionnaires = $qdg->questionnaires();
         $questionnaire = current($questionnaires);
-        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id, 'questionnaire', $questionnaire->course);
+        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id(), 'questionnaire', $questionnaire->courseid());
         $cmcontext = \context_module::instance($cm->id);
 
         // Get all accounts. There should be two.
@@ -183,7 +183,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $user = $DB->get_record('user', ['username' => 'username1']);
         $questionnaires = $qdg->questionnaires();
         $questionnaire = current($questionnaires);
-        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id, 'questionnaire', $questionnaire->course);
+        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id(), 'questionnaire', $questionnaire->courseid());
         $cmcontext = \context_module::instance($cm->id);
 
         // Get all accounts. There should be two.
@@ -215,7 +215,7 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $user3 = $DB->get_record('user', ['username' => 'username3']);
         $questionnaires = $qdg->questionnaires();
         $questionnaire = current($questionnaires);
-        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id, 'questionnaire', $questionnaire->course);
+        [$course, $cm] = get_course_and_cm_from_instance($questionnaire->id(), 'questionnaire', $questionnaire->courseid());
         $cmcontext = \context_module::instance($cm->id);
 
         $approveduserlist = new \core_privacy\local\request\approved_userlist($cmcontext, 'questionnaire', [$user->id, $user3->id]);
@@ -227,5 +227,169 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
 
         // Get all accounts. There should be one now.
         $this->assertCount(1, $DB->get_records('questionnaire_response', []));
+    }
+
+    /**
+     * The metadata declares uploaded answer files, notification messages and report emails.
+     *
+     * @covers \mod_questionnaire\privacy\provider::get_metadata
+     */
+    public function test_get_metadata_declares_files_messages_and_email(): void {
+        $collection = provider::get_metadata(new \core_privacy\local\metadata\collection('mod_questionnaire'));
+        $names = array_map(fn($item) => $item->get_name(), $collection->get_collection());
+
+        $this->assertContains('questionnaire_response_file', $names);
+        $this->assertContains('core_files', $names);
+        $this->assertContains('core_message', $names);
+        $this->assertContains('email', $names);
+
+        $email = array_values(array_filter($collection->get_collection(), fn($item) => $item->get_name() === 'email'))[0];
+        $this->assertEqualsCanonicalizing(['email', 'fullname', 'submitted', 'response'], array_keys($email->get_privacy_fields()));
+    }
+
+    /**
+     * Exporting a user's data includes the files they uploaded as answers.
+     *
+     * @covers \mod_questionnaire\privacy\provider::export_user_data
+     */
+    public function test_export_user_data_includes_uploaded_files(): void {
+        [$questionnaire, $user, $rid, $recordid] = $this->make_file_answer();
+        $context = $questionnaire->context();
+
+        $approvedlist = new \core_privacy\local\request\approved_contextlist($user, 'mod_questionnaire', [$context->id]);
+        provider::export_user_data($approvedlist);
+
+        $subcontext = [get_string('responses', 'questionnaire'), $rid];
+        $files = \core_privacy\local\request\writer::with_context($context)->get_files($subcontext);
+        $this->assertArrayHasKey('mine.pdf', $files);
+    }
+
+    /**
+     * Deleting a user's data removes the files they uploaded as answers.
+     *
+     * @covers \mod_questionnaire\privacy\provider::delete_data_for_user
+     */
+    public function test_delete_data_for_user_removes_uploaded_files(): void {
+        [$questionnaire, $user, $rid, $recordid] = $this->make_file_answer();
+        $context = $questionnaire->context();
+
+        $approvedlist = new \core_privacy\local\request\approved_contextlist($user, 'mod_questionnaire', [$context->id]);
+        provider::delete_data_for_user($approvedlist);
+
+        $this->assertTrue(get_file_storage()->is_area_empty($context->id, 'mod_questionnaire', 'response_file', $recordid));
+        $this->assertFalse(\mod_questionnaire\local\db\response_file_record::record_exists($recordid));
+    }
+
+    /**
+     * Create a questionnaire with a file question and a response in which a new user uploaded 'mine.pdf'.
+     *
+     * @return array [questionnaire, user, response id, response file record id]
+     */
+    private function make_file_answer(): array {
+        global $USER;
+        $questionnaire = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire')->create_test_questionnaire(
+            $this->getDataGenerator()->create_course(),
+            QUESFILE,
+            ['content' => 'Upload a file']
+        );
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+        $rid = \mod_questionnaire\local\response\response::create($questionnaire->id(), $user->id)->id();
+        $draftitemid = file_get_unused_draft_itemid();
+        get_file_storage()->create_file_from_string([
+            'contextid' => \context_user::instance($USER->id)->id,
+            'component' => 'user',
+            'filearea' => 'draft',
+            'itemid' => $draftitemid,
+            'filepath' => '/',
+            'filename' => 'mine.pdf',
+        ], 'mine');
+        $recordid = $question->insert_response((object)['rid' => $rid, 'q' . $question->id() => $draftitemid]);
+        $this->setAdminUser();
+        return [$questionnaire, $user, $rid, $recordid];
+    }
+
+    /**
+     * For the owner of a public survey, deleting all data in its context removes its own responses, including
+     * saved drafts, and leaves other courses' responses to the survey alone.
+     *
+     * @covers \mod_questionnaire\privacy\provider::delete_data_for_all_users_in_context
+     */
+    public function test_delete_data_for_all_users_in_context_public_survey_owner(): void {
+        global $DB;
+        $this->resetAfterTest();
+        [$owner, $other, $user] = $this->make_public_survey_responses();
+
+        provider::delete_data_for_all_users_in_context($owner->context());
+
+        $this->assertSame(0, $DB->count_records('questionnaire_response', ['questionnaireid' => $owner->id()]));
+        $this->assertSame(1, $DB->count_records('questionnaire_response', ['questionnaireid' => $other->id()]));
+    }
+
+    /**
+     * For the owner of a public survey, deleting one user's data removes their responses there, including saved
+     * drafts, and nothing in other courses or of other users.
+     *
+     * @covers \mod_questionnaire\privacy\provider::delete_data_for_user
+     */
+    public function test_delete_data_for_user_public_survey_owner(): void {
+        global $DB;
+        $this->resetAfterTest();
+        [$owner, $other, $user] = $this->make_public_survey_responses();
+        $classmate = $this->getDataGenerator()->create_and_enrol($owner->course(), 'student');
+        $this->commit_response($owner, $classmate->id);
+
+        provider::delete_data_for_user(
+            new \core_privacy\local\request\approved_contextlist($user, 'mod_questionnaire', [$owner->context()->id])
+        );
+
+        $this->assertSame(0, $DB->count_records('questionnaire_response', ['questionnaireid' => $owner->id(),
+            'userid' => $user->id]));
+        $this->assertSame(1, $DB->count_records('questionnaire_response', ['questionnaireid' => $owner->id()]));
+        $this->assertSame(1, $DB->count_records('questionnaire_response', ['questionnaireid' => $other->id()]));
+
+        provider::delete_data_for_users(
+            new \core_privacy\local\request\approved_userlist($owner->context(), 'mod_questionnaire', [$classmate->id])
+        );
+        $this->assertSame(0, $DB->count_records('questionnaire_response', ['questionnaireid' => $owner->id()]));
+        $this->assertSame(1, $DB->count_records('questionnaire_response', ['questionnaireid' => $other->id()]));
+    }
+
+    /**
+     * Make a public survey owned by one course and used by another, with one user's submitted response and saved
+     * draft in the owner and a submitted response in the other course.
+     *
+     * @return array [owning questionnaire, other questionnaire, user]
+     */
+    private function make_public_survey_responses(): array {
+        $this->setAdminUser();
+        $dg = $this->getDataGenerator();
+        $qdg = $dg->get_plugin_generator('mod_questionnaire');
+        $owner = $qdg->create_instance(['course' => $dg->create_course()->id]);
+        $qdg->create_content($owner, ['realm' => 'public']);
+        $other = $qdg->create_instance(['course' => $dg->create_course()->id, 'create' => 'public-' . $owner->surveyid()]);
+        $owner = questionnaire::from_instanceid($owner->id());
+        $other = questionnaire::from_instanceid($other->id());
+        $this->assertTrue($owner->survey_is_public_master());
+
+        $user = $dg->create_and_enrol($owner->course(), 'student');
+        $dg->enrol_user($user->id, $other->courseid(), 'student');
+        $this->commit_response($owner, $user->id);
+        \mod_questionnaire\local\response\response::create($owner->id(), $user->id);
+        $this->commit_response($other, $user->id);
+        return [$owner, $other, $user];
+    }
+
+    /**
+     * Create and submit an empty response.
+     *
+     * @param questionnaire $questionnaire
+     * @param int $userid
+     */
+    private function commit_response(questionnaire $questionnaire, int $userid): void {
+        $rid = \mod_questionnaire\local\response\response::create($questionnaire->id(), $userid)->id();
+        $questionnaire->responses()->response_commit($rid);
     }
 }

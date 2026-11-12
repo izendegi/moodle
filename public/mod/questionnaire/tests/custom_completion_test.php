@@ -35,7 +35,7 @@ defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->libdir . '/completionlib.php');
-require_once($CFG->dirroot . '/mod/questionnaire/classes/question/question.php');
+require_once($CFG->dirroot . '/mod/questionnaire/classes/local/question/question.php');
 
 /**
  * Class for unit testing mod_questionnaire/custom_completion.
@@ -94,8 +94,8 @@ final class custom_completion_test extends \advanced_testcase {
         $questionnaire = $generator->create_instance(['course' => $course->id, 'completion' => COMPLETION_TRACKING_AUTOMATIC,
             $rule => $available]);
 
-        $questiondata['type_id'] = 1;
-        $questiondata['surveyid'] = $questionnaire->sid;
+        $questiondata['typeid'] = 1;
+        $questiondata['surveyid'] = $questionnaire->surveyid();
         $questiondata['name'] = 'Q1';
         $questiondata['content'] = 'Test content';
         $question = $generator->create_question($questionnaire, $questiondata);
@@ -106,7 +106,7 @@ final class custom_completion_test extends \advanced_testcase {
         }
 
         $this->setUser($student);
-        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id());
         $cm = cm_info::create($cm);
 
         $customcompletion = new custom_completion($cm, (int)$student->id);
@@ -208,13 +208,12 @@ final class custom_completion_test extends \advanced_testcase {
         // Build a mock cm_info instance.
         $mockcminfo = $this->getMockBuilder(cm_info::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['__get'])
+            ->onlyMethods(['get_custom_data'])
             ->getMock();
 
         // Mock the return of magic getter for the customdata attribute.
         $mockcminfo->expects($this->any())
-            ->method('__get')
-            ->with('customdata')
+            ->method('get_custom_data')
             ->willReturn($customdataval);
 
         $customcompletion = new custom_completion($mockcminfo, 1);

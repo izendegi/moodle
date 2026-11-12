@@ -34,17 +34,17 @@ Feature: Review responses
     And I follow "Test questionnaire"
     Then I should see "View all responses"
     And I navigate to "View all responses" in current page administration
-    And I should see "View Default order"
+    And the field "Order Responses" matches value "View Default order"
     And I should see "Responses: 7 (Submissions: 6 | In progress: 1)"
     And I set the field "View" to "Full submissions"
     And I should see "Submissions: 6"
     And I set the field "View" to "Responses not submitted"
     And I should see "Responses: 1"
-    And I follow "Ascending order"
-    And I should see "Ascending order"
+    And I set the field "Order Responses" to "Ascending order"
+    And the field "Order Responses" matches value "Ascending order"
     And I should see "Responses: 7"
-    And I follow "Descending order"
-    And I should see "Descending order"
+    And I set the field "Order Responses" to "Descending order"
+    And the field "Order Responses" matches value "Descending order"
     And I should see "Responses: 7"
     And I follow "List of responses"
     Then I should see "Individual responses  : All responses"
@@ -69,7 +69,7 @@ Feature: Review responses
     And I follow "Admin User"
     Then I should see "1 / 6"
     And I follow "Summary"
-    And I should see "View Default order"
+    And the field "Order Responses" matches value "View Default order"
     And I should see "Responses: 6 (Submissions: 6 | In progress: 0)"
     And I follow "Delete ALL Responses"
     Then I should see "Are you sure you want to delete ALL the responses in this questionnaire?"
@@ -142,3 +142,51 @@ Feature: Review responses
     Given I follow "List of responses"
     When I follow "Admin User"
     Then ".qn-number" "css_element" should not exist
+
+  Scenario: Response deletion and download links without a session key are refused
+    Given the following "users" exist:
+      | username | firstname | lastname | email |
+      | teacher1 | Teacher | 1 | teacher1@example.com |
+    And the following "courses" exist:
+      | fullname | shortname | category |
+      | Course 1 | C1 | 0 |
+    And the following "course enrolments" exist:
+      | user | course | role |
+      | teacher1 | C1 | editingteacher |
+    And the following "activities" exist:
+      | activity | name | description | course | idnumber |
+      | questionnaire | Test questionnaire | Test questionnaire description | C1 | questionnaire0 |
+    And "Test questionnaire" has questions and responses
+    And I log in as "teacher1"
+    Then opening the "dvallresp" report action for questionnaire "Test questionnaire" without a session key is refused
+    And opening the "dvresp" report action for questionnaire "Test questionnaire" without a session key is refused
+    And opening the "dfs" report action for questionnaire "Test questionnaire" without a session key is refused
+    And I navigate to "View all responses" in current page administration
+    And I should see "Responses: 7 (Submissions: 6 | In progress: 1)"
+
+  Scenario: A question of another course's questionnaire cannot be permanently deleted
+    Given the following "users" exist:
+      | username | firstname | lastname | email |
+      | teacher1 | Teacher | 1 | teacher1@example.com |
+      | teacher2 | Teacher | 2 | teacher2@example.com |
+    And the following "courses" exist:
+      | fullname | shortname | category |
+      | Course 1 | C1 | 0 |
+      | Course 2 | C2 | 0 |
+    And the following "course enrolments" exist:
+      | user | course | role |
+      | teacher1 | C1 | editingteacher |
+      | teacher2 | C2 | editingteacher |
+    And the following "activities" exist:
+      | activity | name | description | course | idnumber |
+      | questionnaire | Test questionnaire | Test questionnaire description | C1 | questionnaire0 |
+      | questionnaire | Other questionnaire | Other questionnaire description | C2 | questionnaire1 |
+    And "Test questionnaire" has questions and responses
+    And I log in as "teacher2"
+    Then permanently deleting a question of questionnaire "Test questionnaire" from questionnaire "Other questionnaire" is refused
+    And I log out
+    And I log in as "teacher1"
+    And I am on "Course 1" course homepage
+    And I follow "Test questionnaire"
+    And I navigate to "View all responses" in current page administration
+    And I should see "Responses: 7 (Submissions: 6 | In progress: 1)"
