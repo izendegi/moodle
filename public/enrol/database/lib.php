@@ -382,7 +382,7 @@ class enrol_database_plugin extends enrol_plugin {
             // Adding users to their respective groups.
             foreach ($requestedgroups as $group) {
                 require_once($CFG->dirroot.'/group/lib.php');
-                
+
                 groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
             }
             unset($requestedgroups);
@@ -509,7 +509,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
-        
+
         $manual_enrol_check = $this->get_config('manualenrol_cleaning');
         $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
 
@@ -759,7 +759,7 @@ class enrol_database_plugin extends enrol_plugin {
                                                                            WHERE ra2.userid=ra.userid
                                                                              AND c2.id = e.courseid
                                                                              AND externalrole.id= :roleid
-                                                                             AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder) 
+                                                                             AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
                                                                          )
                                                     ";
                             $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
@@ -767,7 +767,7 @@ class enrol_database_plugin extends enrol_plugin {
                             if ($manual_enrol) {
                                 $enrol_plugin = enrol_get_plugin('manual');
                                 $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
-                        
+
                                 if ($manual_instance) {
                                     role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
                                     $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
@@ -777,7 +777,7 @@ class enrol_database_plugin extends enrol_plugin {
                                     $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.",1);
                                 }
                             }
-                        } 
+                        }
                     }
                     // If full mode is enabled, check if there is a manual enrolment for every user in the external db and remove the duplicated manual enrolment
                     if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'full') {
@@ -803,7 +803,7 @@ class enrol_database_plugin extends enrol_plugin {
                                                                        WHERE ra2.userid=ra.userid
                                                                          AND c2.id = e.courseid
                                                                          AND externalrole.id= :roleid
-                                                                         AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder) 
+                                                                         AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
                                                                         )
                                                     ";
                         $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
@@ -811,7 +811,7 @@ class enrol_database_plugin extends enrol_plugin {
                         if ($manual_enrol) {
                             $enrol_plugin = enrol_get_plugin('manual');
                             $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
-                    
+
                             if ($manual_instance) {
                                 role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
                                 $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
@@ -1280,7 +1280,7 @@ class enrol_database_plugin extends enrol_plugin {
         $courselow = strtolower($course);
         $descriptionlow = strtolower($description);
         $groupinglow = strtolower($grouping);
-        
+
         $extdbgroups = array();
         $dbgroups = array();
 
@@ -1314,9 +1314,9 @@ class enrol_database_plugin extends enrol_plugin {
 
         // Moodle db groups (existing groups).
         $dbsql = "SELECT c.shortname||g.idnumber as index, g.idnumber, g.name, g.description, c.shortname as coursename
-                    FROM {groups} g 
+                    FROM {groups} g
                          JOIN {course} c on (g.courseid=c.id)
-                   WHERE g.idnumber is not null 
+                   WHERE g.idnumber is not null
                      AND g.idnumber<>''";
         if ($result = $DB->get_records_sql($dbsql)) {
             foreach ($result as $rs) {
@@ -1344,9 +1344,7 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                $courseid = $DB->get_field_sql("SELECT id 
-                                                  FROM {course} 
-                                                 WHERE shortname="."'".$group[$courselow]."'");
+                $courseid = $DB->get_field('course', 'id', ['shortname' => $group[$courselow]]);
                 if ($DB->record_exists('groups', array('idnumber' => $group[$idnumberlow], 'courseid' => $courseid))) {
                     // Already exists, skip.
                     //$trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
