@@ -1,87 +1,77 @@
 # Release Notes #
 
-## Release 5.0.3 (Build - 2026052200) ##
-### Bug Fixes: ###
-* [PR700](https://github.com/PoetOS/moodle-mod_questionnaire/pull/700): Overview page fix for 5.1.
-* [PR706](https://github.com/PoetOS/moodle-mod_questionnaire/pull/706): Code style issue fix.
-* [PR756](https://github.com/PoetOS/moodle-mod_questionnaire/pull/756): Fix restore for deleted questions.
-* [PR758](https://github.com/PoetOS/moodle-mod_questionnaire/pull/758): Fix wrongly deleted response records.
+## Release 5.3.1 (Build - 2026111201) ##
+  * Security and bug fix release for Moodle 5.3 forward.
+  * Supports back to Moodle 5.0 (now requires the 5.0 release, 2025041400, or later).
+  * All sites should upgrade to this release in order to guarantee security.
+
+  ### Security fixes: ###
+  Issues uncovered by [MDLShield](https://mdlshield.com/) reviews.
+
+  Access and permissions:
+  * The Moodle App web services now check that the user and response belong together.
+  * Final submission uses the server's response id, and every page of a response is checked as complete before it is submitted.
+  * Report deletes and downloads require a sesskey.
+  * Previews and printouts require login and preview rights.
+  * Printing a blank questionnaire requires the printblank capability.
+  * Viewing other users' individual responses requires viewsingleresponse.
+  * Viewing a single response enforces separate groups.
+  * The report's group filter is checked against the groups the user may see.
+  * Staff without a group are refused the non-respondents page in separate groups mode.
+  * Only the owning course can edit a shared public survey.
+  * Previews only use the checked survey.
+  * Question create and delete are limited to the current survey.
+  * Hidden and disabled survey settings fields are no longer trusted.
+  * Response files are only served to users who may view the response.
+
+  Escaping and cleaning output (XSS):
+  * Essay answers are escaped.
+  * Answers and question text in full submission notifications are escaped.
+  * Answers in the survey-address report email are escaped.
+  * Group, respondent and questionnaire names in reports are formatted.
+  * Staff-authored HTML follows Moodle's trusted-text rules instead of noclean.
+  * Choice images and "other" labels are cleaned according to the author's trust.
+
+  Anonymity and privacy:
+  * Anonymous responses can no longer be traced to their authors.
+  * Anonymous exports leave out identifying user details.
+  * Anonymous text results no longer show submission times.
+  * The non-respondents report respects the site's identity and hidden user fields.
+  * Privacy deletion only removes this questionnaire's responses, drafts included.
+  * Uploaded response files are deleted and exported with their responses.
+  * The respondent email address is declared in the privacy metadata.
+
+  Files, server requests and SQL:
+  * Uploaded file types are checked on the server, and response files always download.
+  * File answers are saved under the server's record id.
+  * Emailed exports are written to a per-request directory.
+  * PDF exports no longer fetch remote or inline images found in answers.
+  * The thank-you URL is validated and redirected with redirect().
+  * Grade resets use SQL placeholders and the gradebook API.
+  * Rating and slider answers only keep values the question can produce.
+  * Feedback heading placeholders are substituted without sprintf.
+
+  ### Bug fixes and improvements: ###
+  * Email reports, text and file result links, a default value and a group heading fixed.
+  * Earlier file uploads are kept when a page is shown again.
+  * "Other" answer text is stored as cleaned raw text so submission cannot fail.
+  * The recycle bin's permanent deletion time is shown as a date (#783).
+  * The recycle-bin task runs daily, and its setting is stored under the plugin.
+  * RGraph loads from the chart module instead of blocking footer scripts.
+  * Capability defaults use archetypes; RGraph's details are declared in thirdpartylibs.
+  * Hard-coded text replaced by language strings; debug files removed.
 
 
-## Release 5.0.2 (Build - 2026040400) ##
-### New Features: ###
-* [PR677](https://github.com/PoetOS/moodle-mod_questionnaire/pull/677): New recycle bin for deleted questions.
-* [PR681](https://github.com/PoetOS/moodle-mod_questionnaire/pull/681): Addition of new file type question.
+## Release 5.3.0 (Build - 2026112801) ##
+* Initial release for Moodle 5.3 forward.
+* Supports back to Moodle 5.0.
+* All sites should upgrade to this release in order to guarantee security.
+* To upgrade, it is recommended to delete all of your questionnaire files before installing the new ones.
 
 ### Improvements: ###
-* [PR675](https://github.com/PoetOS/moodle-mod_questionnaire/pull/675): Added group selector to by response report.
-* [PR651](https://github.com/PoetOS/moodle-mod_questionnaire/pull/651): Remove intermittent warnings when questionnaire started.
-* [PR657](https://github.com/PoetOS/moodle-mod_questionnaire/pull/657): Style the summary view page print button.
-* [PR660](https://github.com/PoetOS/moodle-mod_questionnaire/pull/660): Replace deprecated error functions.
-* [PR667](https://github.com/PoetOS/moodle-mod_questionnaire/pull/667): Improve table border appearance.
-* [PR669](https://github.com/PoetOS/moodle-mod_questionnaire/pull/669): Add "Activities" course navigation item.
+* This is a complete refactoring of questionnaire into sensibles classes. Many new unit tests and Behat tests have been created.
+* See [project details on Github](https://github.com/orgs/PoetOS/projects/1/views/1?filterQuery=) for a description of the refactoring.
+* Security issues uncovered by [MDLShield](https://mdlshield.com/) have been fixed.
 
-### Bug Fixes: ###
-* [PR648](https://github.com/PoetOS/moodle-mod_questionnaire/pull/648): Fix install structure to pass core unit tests.
-* [PR680](https://github.com/PoetOS/moodle-mod_questionnaire/pull/680): Make SQL statement compatible to Microsoft SQL Server.
 
-## Release 5.0.1 (Build - 2025110900) ##
-* Initial release for Moodle 5.0 forward.
-
-## Release 4.4.0 (Build - 2025110900) ##
-### New Features: ###
-* [PR590](https://github.com/PoetOS/moodle-mod_questionnaire/pull/590): Allow responses to be deleted automatically after a specified time. This is disabled by default.
-
-### Improvements: ###
-* [PR618](https://github.com/PoetOS/moodle-mod_questionnaire/pull/618): Make printable questionnaire more readable.
-* Updated deprecated functions.
-* [PR589](https://github.com/PoetOS/moodle-mod_questionnaire/pull/589): Allow selection of submitted responses or in progress responses on results pages.
-* [PR596](https://github.com/PoetOS/moodle-mod_questionnaire/pull/596): Allow sorting on name and submission date on summary page.
-* [PR588](https://github.com/PoetOS/moodle-mod_questionnaire/pull/588): Add a print button to the My report page.
-* [PR378](https://github.com/PoetOS/moodle-mod_questionnaire/pull/378): Add open and close dates back to view page.
-* [PR604](https://github.com/PoetOS/moodle-mod_questionnaire/pull/604): Show all "other" free choices for rate questions individually on report pages.
-* [PR616](https://github.com/PoetOS/moodle-mod_questionnaire/pull/616): Only show dependent questions answered on response page.
-* [I120](https://github.com/PoetOS/moodle-mod_questionnaire/issues/120): Added idnumber to export.
-
-### Bug Fixes: ###
-* Ensure numbering doesn't appear on results pages when they are turned off.
-* Mobile - ensure pull to refresh doesn't resend question responses.
-* Fixed empty key error.
-* Fixed oversize icon display in 4.5.
-* Thank you page header is now filtered.
-
-## Release 4.1.1 (Build - 2024082900) ##
-
-### Improvements: ###
-* Compatible with Moodle 4.3 and 4.4.
-* Compatible with PHP8.2.
-* PR449 - Allow localized answer options to be displayed correctly in conditions.
-* PR506 - Accessibility: improved accessibility for essay box type.
-* PR495 - Accessibility: The slider values should be associated with the labels and the slider should be programmatically associated with the question
-* PR497 - Accessibility: Rate table does not have a programmatically associated caption.
-* PR496 - Accessibility: Numeric instructions not programmatically associated with field.
-* PR505 - Accessibility: Rate form controls within the table are not accessible.
-* PR501 - Accessibility: Check boxes missing group label.
-* PR511 - Accessibility: Radio buttons & Yes/No missing group labels.
-* PR517 - Mobile: Update sectiontext questions to display on mobile.
-* PR520 - Add Slider question type compatibility with Feedback features.
-* PR526 - Have additional info text pass through filters everywhere fixes.
-* PR534 - Fix namespace issues with externallib.php file.
-* PR536 - Support for user identity fields in Download Responses.
-* PR577 - Improved headings in report page.
-* PR581 - Mobile: Adapt mobile code to ionic 7.
-* PR569 - Adopt icon size to 24×24 with a smaller content as other icons.
-* PR586, PR579, PR594 - Various deprecations fixed.
-* PR593 - Ensure "pdf" extension force.
-
-### Bug Fixes: ###
-* PR508 - General PHP fixes.
-* PR523 - Behat activity completion fix.
-* PR514 - Section text qtype should not support feedback.
-* PR516 - Course description displays properly.
-
-## Release 4.1.0 (Build - 2023081100) ##
-
-Initial release for Moodle 4.1 forward.
-
-(see CHANGES.md in release 4.00 for earlier changes.)
+(see CHANGES.md in release 5.0.3 for earlier changes.)

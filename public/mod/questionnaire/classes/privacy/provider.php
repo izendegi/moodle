@@ -21,6 +21,10 @@ use core_privacy\local\request\contextlist;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\approved_contextlist;
 use core_privacy\local\request\approved_userlist;
+use core_privacy\local\request\writer;
+use mod_questionnaire\local\db\response_file_record;
+use mod_questionnaire\local\db\response_record;
+use mod_questionnaire\questionnaire;
 
 /**
  * Contains class mod_questionnaire\privacy\provider
@@ -52,48 +56,68 @@ class provider implements
         ], 'privacy:metadata:questionnaire_response');
 
         $collection->add_database_table('questionnaire_response_bool', [
-            'response_id' => 'privacy:metadata:questionnaire_response_bool:response_id',
-            'question_id' => 'privacy:metadata:questionnaire_response_bool:question_id',
-            'choice_id' => 'privacy:metadata:questionnaire_response_bool:choice_id',
+            'responseid' => 'privacy:metadata:questionnaire_response_bool:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_response_bool:question_id',
+            'choiceid' => 'privacy:metadata:questionnaire_response_bool:choice_id',
         ], 'privacy:metadata:questionnaire_response_bool');
 
         $collection->add_database_table('questionnaire_response_date', [
-            'response_id' => 'privacy:metadata:questionnaire_response_date:response_id',
-            'question_id' => 'privacy:metadata:questionnaire_response_date:question_id',
+            'responseid' => 'privacy:metadata:questionnaire_response_date:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_response_date:question_id',
             'response' => 'privacy:metadata:questionnaire_response_date:response',
         ], 'privacy:metadata:questionnaire_response_date');
 
         $collection->add_database_table('questionnaire_response_other', [
-            'response_id' => 'privacy:metadata:questionnaire_response_other:response_id',
-            'question_id' => 'privacy:metadata:questionnaire_response_other:question_id',
-            'choice_id' => 'privacy:metadata:questionnaire_response_other:choice_id',
+            'responseid' => 'privacy:metadata:questionnaire_response_other:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_response_other:question_id',
+            'choiceid' => 'privacy:metadata:questionnaire_response_other:choice_id',
             'response' => 'privacy:metadata:questionnaire_response_other:response',
         ], 'privacy:metadata:questionnaire_response_other');
 
         $collection->add_database_table('questionnaire_response_rank', [
-            'response_id' => 'privacy:metadata:questionnaire_response_rank:response_id',
-            'question_id' => 'privacy:metadata:questionnaire_response_rank:question_id',
-            'choice_id' => 'privacy:metadata:questionnaire_response_rank:choice_id',
-            'rank' => 'privacy:metadata:questionnaire_response_rank:rankvalue',
+            'responseid' => 'privacy:metadata:questionnaire_response_rank:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_response_rank:question_id',
+            'choiceid' => 'privacy:metadata:questionnaire_response_rank:choice_id',
+            'rankvalue' => 'privacy:metadata:questionnaire_response_rank:rankvalue',
         ], 'privacy:metadata:questionnaire_response_rank');
 
         $collection->add_database_table('questionnaire_response_text', [
-            'response_id' => 'privacy:metadata:questionnaire_response_text:response_id',
-            'question_id' => 'privacy:metadata:questionnaire_response_text:question_id',
+            'responseid' => 'privacy:metadata:questionnaire_response_text:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_response_text:question_id',
             'response' => 'privacy:metadata:questionnaire_response_text:response',
         ], 'privacy:metadata:questionnaire_response_text');
 
         $collection->add_database_table('questionnaire_resp_multiple', [
-            'response_id' => 'privacy:metadata:questionnaire_resp_multiple:response_id',
-            'question_id' => 'privacy:metadata:questionnaire_resp_multiple:question_id',
-            'choice_id' => 'privacy:metadata:questionnaire_resp_multiple:choice_id',
+            'responseid' => 'privacy:metadata:questionnaire_resp_multiple:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_resp_multiple:question_id',
+            'choiceid' => 'privacy:metadata:questionnaire_resp_multiple:choice_id',
         ], 'privacy:metadata:questionnaire_resp_multiple');
 
         $collection->add_database_table('questionnaire_resp_single', [
-            'response_id' => 'privacy:metadata:questionnaire_resp_single:response_id',
-            'question_id' => 'privacy:metadata:questionnaire_resp_single:question_id',
-            'choice_id' => 'privacy:metadata:questionnaire_resp_single:choice_id',
+            'responseid' => 'privacy:metadata:questionnaire_resp_single:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_resp_single:question_id',
+            'choiceid' => 'privacy:metadata:questionnaire_resp_single:choice_id',
         ], 'privacy:metadata:questionnaire_resp_single');
+
+        $collection->add_database_table('questionnaire_response_file', [
+            'responseid' => 'privacy:metadata:questionnaire_response_file:response_id',
+            'questionid' => 'privacy:metadata:questionnaire_response_file:question_id',
+            'fileid' => 'privacy:metadata:questionnaire_response_file:file_id',
+        ], 'privacy:metadata:questionnaire_response_file');
+
+        // Files uploaded as answers are stored by the files subsystem.
+        $collection->add_subsystem_link('core_files', [], 'privacy:metadata:core_files');
+
+        // Submission notifications are sent to selected course users through the messaging subsystem.
+        $collection->add_subsystem_link('core_message', [], 'privacy:metadata:core_message');
+
+        // Submitted responses can be emailed to the addresses configured in the survey settings.
+        $collection->add_external_location_link('email', [
+            'email' => 'privacy:metadata:email:email',
+            'fullname' => 'privacy:metadata:email:fullname',
+            'submitted' => 'privacy:metadata:email:submitted',
+            'response' => 'privacy:metadata:email:response',
+        ], 'privacy:metadata:email');
 
         return $collection;
     }
@@ -158,8 +182,7 @@ class provider implements
      * @param   approved_contextlist $contextlist The approved contexts to export information for.
      */
     public static function export_user_data(approved_contextlist $contextlist) {
-        global $DB, $CFG;
-        require_once($CFG->dirroot . '/mod/questionnaire/questionnaire.class.php');
+        global $DB;
 
         if (empty($contextlist->count())) {
             return;
@@ -188,7 +211,7 @@ class provider implements
         $responsedata = [];
         $responses = $DB->get_recordset_sql($sql, $params);
         foreach ($responses as $response) {
-            // If we've moved to a new choice, then write the last choice data and reinit the choice data array.
+            // If we've moved to a new instance, write the previous instance's data and reinitialise.
             if ($lastcmid != $response->cmid) {
                 if (!empty($responsedata)) {
                     $context = \context_module::instance($lastcmid);
@@ -200,15 +223,14 @@ class provider implements
                 }
                 $responsedata = [];
                 $lastcmid = $response->cmid;
-                $course = $DB->get_record("course", ["id" => $response->qcourse]);
-                $cm = get_coursemodule_from_instance("questionnaire", $response->qid, $course->id);
-                $questionnaire = new \questionnaire($course, $cm, $response->qid, null);
+                $questionnaire = questionnaire::from_instanceid($response->qid);
             }
             $responsedata['responses'][] = [
                 'complete' => (($response->complete == 'y') ? get_string('yes') : get_string('no')),
                 'lastsaved' => \core_privacy\local\request\transform::datetime($response->lastsaved),
                 'questions' => $questionnaire->get_structured_response($response->responseid),
             ];
+            self::export_response_files(\context_module::instance($response->cmid), (int)$response->responseid);
         }
         $responses->close();
 
@@ -229,25 +251,15 @@ class provider implements
      * @param context $context Context to delete data from.
      */
     public static function delete_data_for_all_users_in_context(\context $context) {
-        global $DB;
-
         if (!($context instanceof \context_module)) {
             return;
         }
 
-        if (!$cm = get_coursemodule_from_id('questionnaire', $context->instanceid)) {
+        if (!$cmrecord = get_coursemodule_from_id('questionnaire', $context->instanceid)) {
             return;
         }
 
-        if (!($questionnaire = $DB->get_record('questionnaire', ['id' => $cm->instance]))) {
-            return;
-        }
-
-        if ($responses = $DB->get_recordset('questionnaire_response', ['questionnaireid' => $questionnaire->id])) {
-            self::delete_responses($responses);
-        }
-        $responses->close();
-        $DB->delete_records('questionnaire_response', ['questionnaireid' => $questionnaire->id]);
+        self::delete_responses(questionnaire::from_cm(\cm_info::create($cmrecord)));
     }
 
     /**
@@ -256,8 +268,6 @@ class provider implements
      * @param   approved_contextlist $contextlist The approved contexts and user information to delete information for.
      */
     public static function delete_data_for_user(approved_contextlist $contextlist) {
-        global $DB;
-
         if (empty($contextlist->count())) {
             return;
         }
@@ -267,25 +277,11 @@ class provider implements
             if (!($context instanceof \context_module)) {
                 continue;
             }
-            if (!$cm = get_coursemodule_from_id('questionnaire', $context->instanceid)) {
+            if (!$cmrecord = get_coursemodule_from_id('questionnaire', $context->instanceid)) {
                 continue;
             }
 
-            if (!($questionnaire = $DB->get_record('questionnaire', ['id' => $cm->instance]))) {
-                continue;
-            }
-
-            if (
-                $responses = $DB->get_recordset(
-                    'questionnaire_response',
-                    ['questionnaireid' => $questionnaire->id,
-                    'userid' => $userid]
-                )
-            ) {
-                self::delete_responses($responses);
-            }
-            $responses->close();
-            $DB->delete_records('questionnaire_response', ['questionnaireid' => $questionnaire->id, 'userid' => $userid]);
+            self::delete_responses(questionnaire::from_cm(\cm_info::create($cmrecord)), (int)$userid);
         }
     }
 
@@ -296,42 +292,51 @@ class provider implements
      * information for.
      */
     public static function delete_data_for_users(approved_userlist $userlist) {
-        global $DB;
-
         $context = $userlist->get_context();
-        if (!$cm = get_coursemodule_from_id('questionnaire', $context->instanceid)) {
-            return;
-        }
-        if (!($questionnaire = $DB->get_record('questionnaire', ['id' => $cm->instance]))) {
+        if (!$cmrecord = get_coursemodule_from_id('questionnaire', $context->instanceid)) {
             return;
         }
 
-        [$userinsql, $userinparams] = $DB->get_in_or_equal($userlist->get_userids(), SQL_PARAMS_NAMED);
-        $params = array_merge(['questionnaireid' => $questionnaire->id], $userinparams);
-        $select = 'questionnaireid = :questionnaireid AND userid ' . $userinsql;
-        if ($responses = $DB->get_recordset_select('questionnaire_response', $select, $params)) {
-            self::delete_responses($responses);
+        $questionnaire = questionnaire::from_cm(\cm_info::create($cmrecord));
+        foreach ($userlist->get_userids() as $userid) {
+            self::delete_responses($questionnaire, (int)$userid);
         }
-        $responses->close();
-        $DB->delete_records_select('questionnaire_response', $select, $params);
     }
 
     /**
-     * Helper function to delete all the response records for a recordset array of responses.
+     * Delete this questionnaire's responses, complete or not, optionally only those of one user.
      *
-     * @param \moodle_recordset $responses The list of response records to delete for.
+     * Responses are selected by questionnaire, so a public survey's owner never reaches other courses' responses.
+     *
+     * @param questionnaire $questionnaire
+     * @param int|null $userid
      */
-    private static function delete_responses(\moodle_recordset $responses) {
-        global $DB;
+    protected static function delete_responses(questionnaire $questionnaire, ?int $userid = null): void {
+        $conditions = ['questionnaireid' => $questionnaire->id()];
+        if ($userid !== null) {
+            $conditions['userid'] = $userid;
+        }
+        $qresponses = $questionnaire->responses();
+        foreach (response_record::get_records($conditions, 'id') as $record) {
+            $qresponses->delete_response($record->to_record());
+        }
+    }
 
-        foreach ($responses as $response) {
-            $DB->delete_records('questionnaire_response_bool', ['response_id' => $response->id]);
-            $DB->delete_records('questionnaire_response_date', ['response_id' => $response->id]);
-            $DB->delete_records('questionnaire_resp_multiple', ['response_id' => $response->id]);
-            $DB->delete_records('questionnaire_response_other', ['response_id' => $response->id]);
-            $DB->delete_records('questionnaire_response_rank', ['response_id' => $response->id]);
-            $DB->delete_records('questionnaire_resp_single', ['response_id' => $response->id]);
-            $DB->delete_records('questionnaire_response_text', ['response_id' => $response->id]);
+    /**
+     * Export the files uploaded as answers in a response.
+     *
+     * @param \context $context The questionnaire's module context.
+     * @param int $responseid
+     */
+    protected static function export_response_files(\context $context, int $responseid): void {
+        $subcontext = [get_string('responses', 'questionnaire'), $responseid];
+        foreach (response_file_record::get_for_response($responseid) as $record) {
+            writer::with_context($context)->export_area_files(
+                $subcontext,
+                'mod_questionnaire',
+                'response_file',
+                $record->get('id')
+            );
         }
     }
 }
