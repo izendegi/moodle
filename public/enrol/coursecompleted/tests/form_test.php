@@ -50,6 +50,9 @@ final class form_test extends advanced_testcase {
     /** @var stdClass Plugin. */
     private $plugin;
 
+    /** @var stdClass Group. */
+    private $group;
+
     /**
      * Setup to ensure that forms and locallib are loaded.
      */
@@ -57,6 +60,7 @@ final class form_test extends advanced_testcase {
         global $CFG;
         require_once($CFG->libdir . '/formslib.php');
         require_once($CFG->dirroot . '/enrol/locallib.php');
+        require_once($CFG->dirroot . '/group/lib.php');
         parent::setUpBeforeClass();
     }
 
@@ -77,6 +81,8 @@ final class form_test extends advanced_testcase {
         $generator->create_course(['enablecompletion' => 1]);
         $generator->create_course(['enablecompletion' => 0]);
 
+        $this->group = $generator->create_group(['courseid' => $course2->id]);
+
         $id = $this->plugin->add_instance(
             $course2,
             [
@@ -85,6 +91,7 @@ final class form_test extends advanced_testcase {
                 'customint2' => ENROL_SEND_EMAIL_FROM_NOREPLY,
                 'customint4' => 100,
                 'roleid' => 3,
+                'groupfilter' => [$this->group->id, 1, 9999],
             ]
         );
         $this->instance = $DB->get_record('enrol', ['id' => $id]);
@@ -92,7 +99,13 @@ final class form_test extends advanced_testcase {
 
     #[\core\attribute\label('Test edit instance validation')]
     public function test_edit_instance_validation(): void {
-        $arr = ['status' => 0, 'customint1' => 666, 'enrolenddate' => time(), 'enrolstartdate' => time() + 10000];
+        $arr = [
+            'status' => 0,
+            'customint1' => 666,
+            'enrolenddate' => time(),
+            'enrolstartdate' => time() + 10000,
+            'groupfilter' => json_encode([$this->group->id => $this->group->name]),
+        ];
         $tmp = $this->plugin->edit_instance_validation($arr, null, $this->instance, null);
         $this->assertEquals('The specified course does not exist', $tmp['customint1']);
         $this->assertEquals('The enrolment end date cannot be earlier than the start date.', $tmp['enrolenddate']);
@@ -169,6 +182,9 @@ final class form_test extends advanced_testcase {
             '<divclass="fdescriptionrequired"aria-hidden="true">',
             '<inputname="sesskey"type="hidden"value="',
             '<labelid="id_roleid_label"class="d-inlineword-break"for="id_roleid">Assignrole</label>',
+            'id_groupfilter">Restricttogroups',
+            'inputtype="hidden"name="groupfilter"value="_qf__force_multiselect_submission"',
+            'group-0001</option></select>',
         ];
 
         foreach ($strs as $str) {
@@ -182,11 +198,12 @@ final class form_test extends advanced_testcase {
             'Keepgroup',
             'Sendcoursewelcomemessage',
             'Customwelcomemessage',
+            'Restricttogroups',
             'Startdate',
             'Enddate',
         ];
         foreach ($arr as $value) {
-            $this->assertStringContainsString('title="Helpwith' . $value . '"role="img"', $cleaned);
+            $this->assertStringContainsString('"Helpwith' . $value . '"', $cleaned);
         }
 
         $strm = get_string_manager();

@@ -363,7 +363,11 @@ function xmldb_customcert_upgrade($oldversion) {
         // Each batch is committed independently so a partial failure can be retried safely.
         // Only rows whose serialised data actually changes are written back.
         $batchsize = 1000;
-        $lastid = 0;
+        $checkpoint = 'visualmigrationlastid';
+        $lastid = (int)get_config('mod_customcert', $checkpoint);
+        $table = new xmldb_table('customcert_elements');
+        // Dropping width starts only after all legacy rows have been migrated.
+        $haslegacywidth = $dbman->field_exists($table, new xmldb_field('width'));
         do {
             $rowsread = 0;
             $batch = [];
@@ -385,9 +389,30 @@ function xmldb_customcert_upgrade($oldversion) {
                 $recfsize  = isset($rec->fontsize) ? ($rec->fontsize === null ? null : (int)$rec->fontsize) : null;
                 $reccolour = isset($rec->colour) ? ($rec->colour === null ? null : (string)$rec->colour) : null;
 
-                $migrated = $rec->element === 'border'
-                    ? row_migrator::migrate_border_row($rec->data, $recwidth, $recfont, $recfsize, $reccolour)
-                    : row_migrator::migrate_row($rec->data, $recwidth, $recfont, $recfsize, $reccolour, $rec->element);
+                $migrated = match (true) {
+                    $rec->element === 'border' => row_migrator::migrate_border_row(
+                        $rec->data,
+                        $recwidth,
+                        $recfont,
+                        $recfsize,
+                        $reccolour
+                    ),
+                    $rec->element === 'text' && $haslegacywidth => row_migrator::migrate_text_row(
+                        $rec->data,
+                        $recwidth,
+                        $recfont,
+                        $recfsize,
+                        $reccolour
+                    ),
+                    default => row_migrator::migrate_row(
+                        $rec->data,
+                        $recwidth,
+                        $recfont,
+                        $recfsize,
+                        $reccolour,
+                        $rec->element
+                    ),
+                };
 
                 if ($migrated !== $rec->data) {
                     $batch[] = (object) ['id' => $rec->id, 'data' => $migrated];
@@ -395,18 +420,19 @@ function xmldb_customcert_upgrade($oldversion) {
             }
             $rs->close();
 
-            if ($batch) {
+            if ($rowsread) {
                 $transaction = $DB->start_delegated_transaction();
                 foreach ($batch as $row) {
                     $DB->update_record('customcert_elements', $row);
                 }
+                // Commit progress with the rows so a retry never wraps migrated text again.
+                set_config($checkpoint, $lastid, 'mod_customcert');
                 $transaction->allow_commit();
             }
         } while ($rowsread === $batchsize);
 
         // Drop the migrated columns from customcert_elements.
         // Wrapped in field_exists() guards so a retry after partial failure is safe.
-        $table = new xmldb_table('customcert_elements');
         foreach (['width', 'font', 'fontsize', 'colour'] as $mfield) {
             $field = new xmldb_field($mfield);
             if ($dbman->field_exists($table, $field)) {
@@ -416,6 +442,7 @@ function xmldb_customcert_upgrade($oldversion) {
 
         // Savepoint reached.
         upgrade_mod_savepoint(true, 2025122800, 'customcert');
+        unset_config($checkpoint, 'mod_customcert');
     }
 
     if ($oldversion < 2026042008) {

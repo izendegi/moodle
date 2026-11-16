@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   infection:
     name: infection
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: checkout plugin
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           path: this-plugin
 
@@ -24,14 +24,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          ini-values: max_input_vars=5000
+          ini-values: max_input_vars=5000,  opcache.enable_cli=1, opcache.jit = disable
           tools: infection, phpunit
           coverage: pcov
 
       - name: setup pgsql
         uses: m4nu56/postgresql-action@v1
         with:
-          postgresql version: 16
+          postgresql version: 18
           postgresql user: test
           postgresql password: test
 
