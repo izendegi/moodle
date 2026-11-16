@@ -61,6 +61,15 @@ class fundae_course_completion extends base {
 
 
     /**
+     * Database tables that this entity uses (required since Moodle 4.4)
+     *
+     * @return string[]
+     */
+    protected function get_default_tables(): array {
+        return array_keys($this->get_default_table_aliases());
+    }
+
+    /**
      * Database tables that this entity uses and their default aliases
      *
      * @return array
@@ -185,7 +194,7 @@ class fundae_course_completion extends base {
         foreach ($allcolumns as $column) {
             $columns[] = (new column(
                 $column,
-                new lang_string("course_completion_${column}", 'report_fundae'),
+                new lang_string("course_completion_{$column}", 'report_fundae'),
                 $this->get_entity_name()
             ))
                 ->add_joins($this->get_joins())

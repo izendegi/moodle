@@ -321,9 +321,9 @@ class generate_periodic_reports extends scheduled_task {
     private static function generate_report(string $writertype, array $headers, array $userdata, array $filerecord) {
         try {
             // Prepare writer and temporary file.
-            $writer = WriterFactory::createFromFile($writertype);
             $tmpdir = make_unique_writable_directory(make_temp_directory('report_fundae/reports'));
             $tmpfilepath = $tmpdir . '/reportfile.' . $writertype;
+            $writer = WriterFactory::createFromFile($tmpfilepath);
             $writer->openToFile($tmpfilepath);
 
             // Add headers.

@@ -26,6 +26,7 @@ namespace report_fundae\reportbuilder\local\helpers;
 use coding_exception;
 use completion_criteria_completion;
 use completion_info;
+use core_user\output\status_field;
 use context_course;
 use dml_exception;
 use html_writer;
@@ -418,5 +419,44 @@ class fundae_format {
     public static function days($value, stdClass $row) : string {
         $days = floor($value);
         return ($days > 0) ? (string)$days : get_string('lessthanaday', 'report_fundae');
+    }
+
+    /**
+     * Return enrolment plugin instance name.
+     *
+     * Replaces \core_course\reportbuilder\local\formatters\enrolment::enrolment_name(), removed in Moodle 5.0.
+     *
+     * @param string|null $value
+     * @param stdClass $row
+     * @return string
+     */
+    public static function enrolment_name(?string $value, stdClass $row): string {
+        global $DB;
+        if (empty($value)) {
+            return '';
+        }
+        $instance = $DB->get_record('enrol', ['id' => $row->enrolid, 'enrol' => $row->enrol], '*', MUST_EXIST);
+        $plugin = enrol_get_plugin($row->enrol);
+        return $plugin ? $plugin->get_instance_name($instance) : '-';
+    }
+
+    /**
+     * Return enrolment status for user.
+     *
+     * Replaces \core_course\reportbuilder\local\formatters\enrolment::enrolment_status(), deprecated in Moodle 5.2.
+     *
+     * @param string|null $value
+     * @return string|null
+     */
+    public static function enrolment_status(?string $value): ?string {
+        if ($value === null) {
+            return null;
+        }
+        $statusvalues = [
+            status_field::STATUS_ACTIVE => get_string('participationactive', 'enrol'),
+            status_field::STATUS_SUSPENDED => get_string('participationsuspended', 'enrol'),
+            status_field::STATUS_NOT_CURRENT => get_string('participationnotcurrent', 'enrol'),
+        ];
+        return $statusvalues[(int) $value] ?? null;
     }
 }

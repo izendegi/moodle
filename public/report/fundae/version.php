@@ -23,8 +23,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2024032600;
+$plugin->version = 2024032601;
 $plugin->requires = 2022112800;
 $plugin->component = 'report_fundae';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0';
+$plugin->release = '1.0.1 (MGEP)';

@@ -44,6 +44,15 @@ use core_reportbuilder\local\report\{column, filter};
 class fundae_user_messaging extends base {
 
     /**
+     * Database tables that this entity uses (required since Moodle 4.4)
+     *
+     * @return string[]
+     */
+    protected function get_default_tables(): array {
+        return array_keys($this->get_default_table_aliases());
+    }
+
+    /**
      * Database tables that this entity uses and their default aliases
      *
      * @return array
