@@ -30,8 +30,8 @@ defined('MOODLE_INTERNAL') || die();
  */
 function xmldb_report_fundae_upgrade(int $oldversion = 0): bool {
     global $CFG, $DB;
-    $moodle43 = str_contains($CFG->release, '4.3');
-    if ($moodle43 && $oldversion < 2024032000) {
+    $moodle43 = $CFG->branch >= 403;
+    if ($moodle43 && $oldversion < 2024032601) {
         $reportsfundae = $DB->get_records('reportbuilder_report', ['source' => 'report_fundae\reportbuilder\datasource\report_fundae'], '', 'id');
         foreach ($reportsfundae as $report) {
             $columns = $DB->get_records('reportbuilder_column', ['reportid' => $report->id]);

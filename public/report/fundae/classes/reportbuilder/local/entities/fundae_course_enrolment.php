@@ -42,7 +42,6 @@ use lang_string;
 use moodle_exception;
 use core_reportbuilder\local\entities\base;
 use core_reportbuilder\local\report\{column, filter};
-use core_course\reportbuilder\local\formatters\enrolment;
 use core_reportbuilder\local\filters\date;
 use report_fundae\reportbuilder\local\helpers\fundae_format;
 
@@ -56,6 +55,15 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright 3iPunt <https://www.tresipunt.com/>
  */
 class fundae_course_enrolment extends base {
+
+    /**
+     * Database tables that this entity uses (required since Moodle 4.4)
+     *
+     * @return string[]
+     */
+    protected function get_default_tables(): array {
+        return array_keys($this->get_default_table_aliases());
+    }
 
     /**
      * Database tables that this entity uses and their default aliases
@@ -151,7 +159,7 @@ class fundae_course_enrolment extends base {
             ->add_field("{$tablealiasenrol}.enrol")
             ->add_field("{$tablealias}.enrolid")
             ->set_is_sortable(true)
-            ->add_callback([enrolment::class, 'enrolment_name']);
+            ->add_callback([fundae_format::class, 'enrolment_name']);
 
         // Enrolment time created.
         $columns[] = (new column(
@@ -198,7 +206,7 @@ class fundae_course_enrolment extends base {
             ->add_joins($this->get_joins())
             ->add_field($this->get_status_field_sql(), 'status')
             ->set_is_sortable(true)
-            ->add_callback([enrolment::class, 'enrolment_status']);
+            ->add_callback([fundae_format::class, 'enrolment_status']);
 
         return $columns;
     }

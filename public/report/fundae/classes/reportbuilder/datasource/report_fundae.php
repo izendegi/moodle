@@ -86,7 +86,7 @@ class report_fundae extends datasource {
      */
     protected function set_columns(): void {
         $this->add_entity(new fundae_user_time());
-        $this->add_entity(new fundae_user());
+        $this->add_entity((new fundae_user())->set_table_alias('user', 'u'));
         $courseenrolmententity = (new fundae_course_enrolment())
             ->add_join('JOIN {user_enrolments} ue ON ue.userid = u.id ')
             ->add_join('JOIN {enrol} e ON e.id = ue.enrolid AND e.courseid = c.id')
@@ -94,7 +94,7 @@ class report_fundae extends datasource {
             ->set_table_alias('enrol', 'e');
         $this->add_entity($courseenrolmententity);
 
-        $this->add_entity(new course());
+        $this->add_entity((new course())->set_table_alias('course', 'c'));
 
         $completionentity = new fundae_course_completion();
         $completionentity
@@ -117,11 +117,7 @@ class report_fundae extends datasource {
      */
     public function get_default_columns(): array {
         global $CFG;
-        if (   str_contains($CFG->release, '4.5')
-            || str_contains($CFG->release, '5.0')
-            || str_contains($CFG->release, '5.1')
-            || str_contains($CFG->release, '5.2')
-            ) {
+        if ($CFG->branch >= 403) {
             if (file_exists($CFG->dirroot . '/mod/zoom/locallib.php')) {
                 return [
                     'fundae_user:fullnamewithpicture',
