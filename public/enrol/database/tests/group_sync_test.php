@@ -273,6 +273,7 @@ final class group_sync_test extends \advanced_testcase {
      * Manually added members are converted to external database members only if groupupgrading is enabled.
      */
     public function test_sync_group_enrolments_groupupgrading(): void {
+        global $DB;
         $this->resetAfterTest();
         $this->preventResetByRollback();
         $this->init_enrol_database();
@@ -288,10 +289,25 @@ final class group_sync_test extends \advanced_testcase {
         $this->assertSame('', $this->membership('c1grp1', 1));
         $this->assertSame('enrol_self', $this->membership('c1grp1', 2));
 
+        $instanceid = $plugin->add_instance($this->courses[1]);
+        $before = $DB->get_record('groups_members', ['groupid' => $this->groups['c1grp1']->id, 'userid' => $this->users[1]->id]);
         $plugin->set_config('groupupgrading', 1);
+        $sink = $this->redirectEvents();
         $plugin->sync_group_enrolments($trace);
+        $events = $sink->get_events();
+        $sink->close();
         $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
         $this->assertSame('enrol_self', $this->membership('c1grp1', 2));
+
+        // The membership is updated in place: same record, same time added and no group membership events.
+        $after = $DB->get_record('groups_members', ['groupid' => $this->groups['c1grp1']->id, 'userid' => $this->users[1]->id]);
+        $this->assertEquals($before->id, $after->id);
+        $this->assertEquals($before->timeadded, $after->timeadded);
+        $this->assertEquals($instanceid, $after->itemid);
+        foreach ($events as $event) {
+            $this->assertNotInstanceOf(\core\event\group_member_removed::class, $event);
+            $this->assertNotInstanceOf(\core\event\group_member_added::class, $event);
+        }
 
         $this->cleanup_enrol_database();
     }
@@ -332,6 +348,46 @@ final class group_sync_test extends \advanced_testcase {
 
         $plugin->sync_user_group_enrolments($this->users[2]);
         $this->assertFalse($this->membership('c1grp1', 2));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * Memberships are linked to the enrol_database instance of the course, so core removes them on unenrol.
+     */
+    public function test_sync_group_enrolments_itemid(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $trace = new \null_progress_trace();
+
+        // Only course 1 has an enrol_database instance.
+        $instanceid = $plugin->add_instance($this->courses[1]);
+        $instance = $DB->get_record('enrol', ['id' => $instanceid]);
+        $plugin->enrol_user($instance, $this->users[1]->id);
+
+        $this->add_external('userid1', 'tc1', 'grp1');
+        $this->add_external('userid1', 'tc2', 'grp1');
+        $this->add_external('userid2', 'tc1', 'grp2');
+        $plugin->sync_group_enrolments($trace);
+        $itemid = fn(string $group, int $user) => (int) $DB->get_field('groups_members', 'itemid',
+            ['groupid' => $this->groups[$group]->id, 'userid' => $this->users[$user]->id]);
+        $this->assertEquals($instanceid, $itemid('c1grp1', 1));
+        $this->assertEquals($instanceid, $itemid('c1grp2', 2));
+        $this->assertEquals(0, $itemid('c2grp1', 1));
+
+        // Memberships added with another itemid are linked to the instance in the next synchronisation.
+        $DB->set_field('groups_members', 'itemid', 0, ['groupid' => $this->groups['c1grp2']->id]);
+        $plugin->sync_group_enrolments($trace);
+        $this->assertEquals($instanceid, $itemid('c1grp2', 2));
+
+        // Unenrolling from the instance removes the memberships of the course, even if the user is still enrolled.
+        $plugin->unenrol_user($instance, $this->users[1]->id);
+        $this->assertTrue(is_enrolled(\context_course::instance($this->courses[1]->id), $this->users[1]->id));
+        $this->assertFalse($this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 1));
 
         $this->cleanup_enrol_database();
     }
