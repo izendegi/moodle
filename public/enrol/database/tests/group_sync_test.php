@@ -24,14 +24,20 @@ namespace enrol_database;
  * @copyright  2026 Mondragon Unibertsitatea
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_groups')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_group_enrolments')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_user_group_enrolments')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_user_enrolments')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_group_memberships')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_ids_by_field')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'add_group_member')]
 final class group_sync_test extends \advanced_testcase {
 
     /** @var string name of the external group enrolments table, without prefix. */
     private const TABLE = 'enrol_database_test_groupenrols';
+
+    /** @var string name of the external groups table, without prefix. */
+    private const GROUPSTABLE = 'enrol_database_test_groups';
 
     /** @var \stdClass[] test courses, indexed from 1. */
     private array $courses = [];
@@ -142,6 +148,18 @@ final class group_sync_test extends \advanced_testcase {
         }
         $dbman->create_table($table);
 
+        $table = new \xmldb_table(self::GROUPSTABLE);
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('grouping', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $dbman->create_table($table);
+
         set_config('groupenroltable', $CFG->prefix . self::TABLE, 'enrol_database');
         set_config('userfield', 'userid', 'enrol_database');
         set_config('newgroupcourse', 'courseid', 'enrol_database');
@@ -174,6 +192,7 @@ final class group_sync_test extends \advanced_testcase {
         global $DB;
 
         $DB->get_manager()->drop_table(new \xmldb_table(self::TABLE));
+        $DB->get_manager()->drop_table(new \xmldb_table(self::GROUPSTABLE));
         ini_set('error_log', $this->oldlog);
     }
 
@@ -202,6 +221,16 @@ final class group_sync_test extends \advanced_testcase {
     }
 
     /**
+     * Moves back the time the current members were added, as if the previous synchronisation had run some time ago.
+     *
+     * Members added in the same second the synchronisation starts are not removed by it.
+     */
+    private function age_members(): void {
+        global $DB;
+        $DB->execute('UPDATE {groups_members} SET timeadded = timeadded - 10');
+    }
+
+    /**
      * Returns the component of the membership of a user in a group, false if the user is not a member.
      *
      * @param string $group group name in $this->groups.
@@ -212,6 +241,59 @@ final class group_sync_test extends \advanced_testcase {
         global $DB;
         return $DB->get_field('groups_members', 'component',
             ['groupid' => $this->groups[$group]->id, 'userid' => $this->users[$user]->id]);
+    }
+
+    /**
+     * Groups are created in their course, and added to their grouping.
+     */
+    public function test_sync_groups(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $trace = new \null_progress_trace();
+        $plugin->set_config('newgrouptable', $CFG->prefix . self::GROUPSTABLE);
+        $plugin->set_config('newgroupname', 'name');
+        $plugin->set_config('newgroupidnumber', 'idnumber');
+        $plugin->set_config('newgroupgroupings', 'grouping');
+        $plugin->set_config('groupingcreation', 0);
+        $addgroup = fn(string $name, string $idnumber, string $course, string $grouping = '') =>
+            $DB->insert_record(self::GROUPSTABLE, ['name' => $name, 'idnumber' => $idnumber, 'courseid' => $course,
+                'grouping' => $grouping]);
+        $group = fn(int $course, string $idnumber) => $DB->get_record('groups',
+            ['courseid' => $this->courses[$course]->id, 'idnumber' => $idnumber]);
+
+        $addgroup('Group 1', 'grp1', 'tc1'); // Already exists.
+        $addgroup('Group A', 'ga', 'tc1');
+        $addgroup('Group A', 'ga', 'tc2', 'gr1'); // Same idnumber in another course.
+        $addgroup('Group X', 'gx', 'xxx'); // Unknown course.
+        $existinggrouping = $this->getDataGenerator()->create_grouping(['courseid' => $this->courses[2]->id,
+            'idnumber' => 'gr1']);
+
+        $this->assertSame(0, $plugin->sync_groups($trace));
+        $this->assertEquals(2, $DB->count_records('groups', ['idnumber' => 'grp1']));
+        $this->assertNotFalse($group(1, 'ga'));
+        $this->assertSame('', $group(1, 'ga')->description);
+        $this->assertNotFalse($group(2, 'ga'));
+        $this->assertFalse($DB->record_exists('groups', ['idnumber' => 'gx']));
+        $this->assertTrue($DB->record_exists('groupings_groups',
+            ['groupingid' => $existinggrouping->id, 'groupid' => $group(2, 'ga')->id]));
+
+        // A grouping is only looked up in the course of the group, and it is created if enabled.
+        $addgroup('Group B', 'gb', 'tc1', 'gr1');
+        $plugin->sync_groups($trace);
+        $this->assertNotFalse($group(1, 'gb'));
+        $this->assertFalse($DB->record_exists('groupings_groups', ['groupid' => $group(1, 'gb')->id]));
+        $plugin->set_config('groupingcreation', 1);
+        $addgroup('Group C', 'gc', 'tc1', 'gr1');
+        $plugin->sync_groups($trace);
+        $newgrouping = $DB->get_record('groupings', ['courseid' => $this->courses[1]->id, 'idnumber' => 'gr1'], '*', MUST_EXIST);
+        $this->assertTrue($DB->record_exists('groupings_groups',
+            ['groupingid' => $newgrouping->id, 'groupid' => $group(1, 'gc')->id]));
+        $this->assertEquals(1, $DB->count_records('groupings', ['idnumber' => 'gr1', 'courseid' => $this->courses[2]->id]));
+
+        $this->cleanup_enrol_database();
     }
 
     /**
@@ -253,6 +335,7 @@ final class group_sync_test extends \advanced_testcase {
         // Members removed from the external table are removed from the group, only in the course of the removed row.
         $this->remove_external('userid1', 'tc2', 'grp1');
         $this->remove_external('userid3', 'tc1', 'grp2');
+        $this->age_members();
         $plugin->sync_group_enrolments($trace);
         $this->assertFalse($this->membership('c2grp1', 1));
         $this->assertFalse($this->membership('c1grp2', 3));
@@ -341,6 +424,7 @@ final class group_sync_test extends \advanced_testcase {
         $plugin->sync_user_group_enrolments($this->users[2]);
         $this->remove_external('userid1', 'tc2', 'grp1');
         $this->remove_external('userid2', 'tc1', 'grp1');
+        $this->age_members();
         $plugin->sync_user_group_enrolments($this->users[1]);
         $this->assertFalse($this->membership('c2grp1', 1));
         $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
@@ -348,6 +432,29 @@ final class group_sync_test extends \advanced_testcase {
 
         $plugin->sync_user_group_enrolments($this->users[2]);
         $this->assertFalse($this->membership('c1grp1', 2));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * Members added after the external data was read (e.g. by a login while the scheduled task runs) are not removed.
+     */
+    public function test_sync_group_enrolments_recent_members(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+
+        groups_add_member($this->groups['c1grp1']->id, $this->users[1]->id, 'enrol_database');
+        groups_add_member($this->groups['c1grp1']->id, $this->users[2]->id, 'enrol_database');
+        $DB->set_field('groups_members', 'timeadded', time() - 60, ['groupid' => $this->groups['c1grp1']->id]);
+        $DB->set_field('groups_members', 'timeadded', time() + 60,
+            ['groupid' => $this->groups['c1grp1']->id, 'userid' => $this->users[2]->id]);
+
+        $plugin->sync_group_enrolments(new \null_progress_trace());
+        $this->assertFalse($this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 2));
 
         $this->cleanup_enrol_database();
     }
@@ -389,6 +496,47 @@ final class group_sync_test extends \advanced_testcase {
         $this->assertFalse($this->membership('c1grp1', 1));
         $this->assertSame('enrol_database', $this->membership('c2grp1', 1));
 
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * On login the user is first enrolled in the courses and then added to the groups, with the same connection.
+     */
+    public function test_sync_user_enrolments_with_groups(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+
+        $dbman = $DB->get_manager();
+        $table = new \xmldb_table('enrol_database_test_enrols');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $dbman->create_table($table);
+        $plugin->set_config('remoteenroltable', $CFG->prefix . 'enrol_database_test_enrols');
+        $plugin->set_config('remoteuserfield', 'userid');
+        $plugin->set_config('remotecoursefield', 'courseid');
+        $plugin->set_config('remoterolefield', '');
+        $plugin->set_config('defaultrole', $DB->get_field('role', 'id', ['shortname' => 'student']));
+
+        // User 4 is not enrolled in course 1 yet.
+        $DB->insert_record('enrol_database_test_enrols', ['userid' => 'userid4', 'courseid' => 'tc1']);
+        $this->add_external('userid4', 'tc1', 'grp2');
+
+        $plugin->sync_user_enrolments($this->users[4]);
+        $instance = $DB->get_record('enrol', ['courseid' => $this->courses[1]->id, 'enrol' => 'database'], '*', MUST_EXIST);
+        $this->assertTrue($DB->record_exists('user_enrolments', ['enrolid' => $instance->id, 'userid' => $this->users[4]->id]));
+        $this->assertSame('enrol_database', $this->membership('c1grp2', 4));
+        $this->assertEquals($instance->id, $DB->get_field('groups_members', 'itemid',
+            ['groupid' => $this->groups['c1grp2']->id, 'userid' => $this->users[4]->id]));
+
+        $dbman->drop_table($table);
         $this->cleanup_enrol_database();
     }
 
