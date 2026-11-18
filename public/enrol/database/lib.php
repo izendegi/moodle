@@ -439,7 +439,8 @@ class enrol_database_plugin extends enrol_plugin {
                           AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
                                                                           FROM $table ge2
                                                                           JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
-                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber)
+                                                                          JOIN {course} c2 on (ge2.$groupcoursefield = c2.$localcoursefield)
+                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber AND mg2.courseid = c2.id)
                                                                           JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
         if ($result = $DB->get_records_sql($unenrolsql, array('userid' => $user->id))) {
             foreach ($result as $rs){
@@ -1524,7 +1525,8 @@ class enrol_database_plugin extends enrol_plugin {
                           AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
                                                                           FROM $table ge2
                                                                           JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
-                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber)
+                                                                          JOIN {course} c2 on (ge2.$groupcoursefield = c2.$localcoursefield)
+                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber AND mg2.courseid = c2.id)
                                                                           JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
         if ($result = $DB->get_records_sql($unenrolsql)) {
             foreach ($result as $rs){
