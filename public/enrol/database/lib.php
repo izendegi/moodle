@@ -334,8 +334,6 @@ class enrol_database_plugin extends enrol_plugin {
      * @return void
      */
     public function sync_user_group_enrolments($user) {
-        global $CFG, $DB;
-
         if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
                 or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
             return;
@@ -345,119 +343,7 @@ class enrol_database_plugin extends enrol_plugin {
             return;
         }
 
-        $table  = trim($this->get_config('groupenroltable'));
-        $grouptable = trim($this->get_config('newgrouptable'));
-        $idnumber = trim($this->get_config('newgroupidnumber'));
-        $groupcoursefield = trim($this->get_config('newgroupcourse'));
-        $userfield  = trim($this->get_config('userfield'));
-        $localuserfield  = trim($this->get_config('localuserfield'));
-        $localcoursefield = trim($this->get_config('localcoursefield'));
-        $groupfield  = trim($this->get_config('groupfield'));
-
-        // Warning: postgres_fdw is needed to join Moodle tables and external database tables
-        $enrolsql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
-                            mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
-                            mg.idnumber as groupfield, c.id as courseid
-                       FROM $table ge
-                       JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
-                       JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                       JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                      WHERE mu.deleted = 0
-                        AND mu.id = :userid
-                        AND not exists (SELECT 1
-                                          FROM {groups_members} mgm
-                                         WHERE mgm.groupid = mg.id
-                                           AND mgm.userid = mu.id);";
-
-        if ($result = $DB->get_records_sql($enrolsql, array('userid' => $user->id))) {
-            foreach ($result as $rs){
-                $group['userid'] = $rs->userid;
-                $group['groupid'] = $rs->groupid;
-                $group['localuserfield'] = $rs->localuserfield;
-                $group['localcoursefield'] = $rs->localcoursefield;
-                $group['groupfield'] = $rs->groupfield;
-                $group['courseid'] = $rs->courseid;
-                $requestedgroups[$rs->index] = $group;
-            }
-            // Adding users to their respective groups.
-            foreach ($requestedgroups as $group) {
-                require_once($CFG->dirroot.'/group/lib.php');
-
-                groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
-            }
-            unset($requestedgroups);
-        }
-
-        // Upgrade group membership component if the setting is enabled
-        $groupupgrading = $this->get_config('groupupgrading');
-        if ($groupupgrading) {
-            $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
-                                mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
-                                ge.$groupfield as groupfield, c.id as courseid
-                            FROM $table ge
-                            JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
-                            JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                            JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                        WHERE mu.deleted = 0
-                            AND mu.id = :userid
-                            AND exists (SELECT 1
-                                        FROM {groups_members} mgm
-                                        WHERE mgm.groupid = mg.id
-                                            AND mgm.userid = mu.id
-                                            AND mgm.component='');";
-            if ($result = $DB->get_records_sql($updatesql, array('userid' => $user->id))) {
-                foreach ($result as $rs){
-                    $group['userid'] = $rs->userid;
-                    $group['groupid'] = $rs->groupid;
-                    $group['localuserfield'] = $rs->localuserfield;
-                    $group['localcoursefield'] = $rs->localcoursefield;
-                    $group['groupfield'] = $rs->groupfield;
-                    $group['courseid'] = $rs->courseid;
-                    $requestedgroups[$rs->index] = $group;
-                }
-                // Removing users without component from groups and adding them back.
-                foreach ($requestedgroups as $group) {
-                    require_once($CFG->dirroot.'/group/lib.php');
-
-                    groups_remove_member($group['groupid'], $group['userid']);
-                    groups_add_member($group['groupid'], $group['userid'], 'enrol_database');
-                }
-                unset($requestedgroups);
-            }
-        }
-
-        $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
-                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield, mg.courseid as courseid
-                         FROM {groups_members} mgm
-                         JOIN {user} mu on (mu.id = mgm.userid)
-                         JOIN {groups} mg on (mgm.groupid = mg.id)
---                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
-                        WHERE mu.deleted = 0
-                          AND mu.id = :userid
---                          AND (mg.idnumber IS NOT NULL AND mg.idnumber <> '')
-                          AND mgm.component = 'enrol_database'
-                          AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
-                                                                          FROM $table ge2
-                                                                          JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
-                                                                          JOIN {course} c2 on (ge2.$groupcoursefield = c2.$localcoursefield)
-                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber AND mg2.courseid = c2.id)
-                                                                          JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
-        if ($result = $DB->get_records_sql($unenrolsql, array('userid' => $user->id))) {
-            foreach ($result as $rs){
-                $group['userid'] = $rs->userid;
-                $group['groupid'] = $rs->groupid;
-                $group['localuserfield'] = $rs->localuserfield;
-                $group['groupfield'] = $rs->groupfield;
-                $group['courseid'] = $rs->courseid;
-                $requestedunenrolments[$rs->index] = $group;
-            }
-            // Deletes the link between the specified user and group.
-            foreach ($requestedunenrolments as $group) {
-                require_once($CFG->dirroot.'/group/lib.php');
-                groups_remove_member($group['groupid'], $group['userid']);
-            }
-            unset($requestedunenrolments);
-        }
+        $this->sync_group_memberships($extdb, new null_progress_trace(), $user);
 
         // Close db connection.
         $extdb->Close();
@@ -1355,11 +1241,9 @@ class enrol_database_plugin extends enrol_plugin {
      * Forces synchronisation of group enrolments with external database,
      *
      * @param progress_trace $trace
-     * @return void
+     * @return int 0 means success, 1 db connect failure, 4 db read failure
      */
     public function sync_group_enrolments(progress_trace $trace) {
-        global $CFG, $DB;
-
         if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
                 or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
             $trace->output('Group enrolments synchronisation skipped.');
@@ -1379,140 +1263,221 @@ class enrol_database_plugin extends enrol_plugin {
         core_php_time_limit::raise();
         raise_memory_limit(MEMORY_HUGE);
 
-        $table  = trim($this->get_config('groupenroltable'));
-        $grouptable = trim($this->get_config('newgrouptable'));
-        $idnumber = trim($this->get_config('newgroupidnumber'));
-        $groupcoursefield = trim($this->get_config('newgroupcourse'));
-        $userfield  = trim($this->get_config('userfield'));
-        $localuserfield  = trim($this->get_config('localuserfield'));
-        $localcoursefield = trim($this->get_config('localcoursefield'));
-        $groupfield  = trim($this->get_config('groupfield'));
-
-        // Warning: postgres_fdw is needed to join Moodle tables and external database tables
-        $enrolsql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
-                            mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
-                            mg.idnumber as groupfield, c.id as courseid
-                       FROM $table ge
-                       JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
-                       JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                       JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                      WHERE mu.deleted = 0
-                        AND not exists (SELECT 1
-                                          FROM {groups_members} mgm
-                                         WHERE mgm.groupid = mg.id
-                                           AND mgm.userid = mu.id);";
-        if ($result = $DB->get_records_sql($enrolsql)) {
-            foreach ($result as $rs){
-                $group['userid'] = $rs->userid;
-                $group['groupid'] = $rs->groupid;
-                $group['localuserfield'] = $rs->localuserfield;
-                $group['localcoursefield'] = $rs->localcoursefield;
-                $group['groupfield'] = $rs->groupfield;
-                $group['courseid'] = $rs->courseid;
-                $requestedgroups[$rs->index] = $group;
-            }
-            // Adding users to their respective groups.
-            foreach ($requestedgroups as $group) {
-                require_once($CFG->dirroot.'/group/lib.php');
-
-                if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
-                    $trace->output("  adding user ".$group['localuserfield']." to group: ".$group['groupfield'].
-                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                } else {
-                    $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
-                    $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ID ".$errorcourse->courseid.
-                                   ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                }
-            }
-            unset($requestedgroups);
-        }
-
-        // Upgrade group membership component if the setting is enabled
-        $groupupgrading = $this->get_config('groupupgrading');
-        if ($groupupgrading) {
-            $updatesql = "SELECT row_number() over() as index, mu.id as userid, mg.id as groupid,
-                                mu.$localuserfield as localuserfield, c.$localcoursefield as localcoursefield,
-                                ge.$groupfield as groupfield, c.id as courseid
-                            FROM $table ge
-                            JOIN {user} mu on (ge.$userfield = mu.$localuserfield)
-                            JOIN {course} c on (ge.$groupcoursefield = c.$localcoursefield)
-                            JOIN {groups} mg on (ge.$groupfield = mg.idnumber and c.id = mg.courseid)
-                        WHERE mu.deleted = 0
-                            AND exists (SELECT 1
-                                        FROM {groups_members} mgm
-                                        WHERE mgm.groupid = mg.id
-                                            AND mgm.userid = mu.id
-                                            AND mgm.component='');";
-            if ($result = $DB->get_records_sql($updatesql)) {
-                foreach ($result as $rs){
-                    $group['userid'] = $rs->userid;
-                    $group['groupid'] = $rs->groupid;
-                    $group['localuserfield'] = $rs->localuserfield;
-                    $group['localcoursefield'] = $rs->localcoursefield;
-                    $group['groupfield'] = $rs->groupfield;
-                    $group['courseid'] = $rs->courseid;
-                    $requestedgroups[$rs->index] = $group;
-                }
-                // Removing users without component from groups and adding them back.
-                foreach ($requestedgroups as $group) {
-                    require_once($CFG->dirroot.'/group/lib.php');
-
-                    $trace->output("  removing user ".$group['localuserfield']." with empty component from group ".$group['groupfield'].
-                                ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                    groups_remove_member($group['groupid'], $group['userid']);
-                    if(groups_add_member($group['groupid'], $group['userid'], 'enrol_database')){
-                        $trace->output("  adding back the user ".$group['localuserfield']." to group: ".$group['groupfield'].
-                                    ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                    } else {
-                        $errorcourse = $DB->get_record("groups",array("id"=>$group['groupid']),"courseid");
-                        $trace->output("  error adding user ".$group['localuserfield']." to group ".$group['groupfield'].", not enrolled in course ".$errorcourse->courseid.
-                                    ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                    }
-                }
-                unset($requestedgroups);
-            }
-        }
-
-        $unenrolsql = "SELECT row_number() over() as index, mgm.groupid, mgm.userid,
-                              mu.$localuserfield as localuserfield, mg.idnumber as groupfield, mg.courseid as courseid
-                         FROM {groups_members} mgm
-                         JOIN {user} mu on (mu.id = mgm.userid)
-                         JOIN {groups} mg on (mgm.groupid = mg.id)
---                         JOIN $grouptable g on (mg.idnumber = g.$idnumber)
-                        WHERE mu.deleted = 0
---                          AND (mg.idnumber IS NOT NULL AND mg.idnumber <> '')
-                          AND mgm.component = 'enrol_database'
-                          AND (mu.$localuserfield,mgm.groupid) not in ( SELECT ge2.$userfield, mgm2.groupid
-                                                                          FROM $table ge2
-                                                                          JOIN {user} u2 on (ge2.$userfield = u2.$localuserfield)
-                                                                          JOIN {course} c2 on (ge2.$groupcoursefield = c2.$localcoursefield)
-                                                                          JOIN {groups} mg2 on (ge2.$groupfield = mg2.idnumber AND mg2.courseid = c2.id)
-                                                                          JOIN {groups_members} mgm2 on (mg2.id = mgm2.groupid AND u2.id=mgm2.userid));";
-        if ($result = $DB->get_records_sql($unenrolsql)) {
-            foreach ($result as $rs){
-                $group['userid'] = $rs->userid;
-                $group['groupid'] = $rs->groupid;
-                $group['localuserfield'] = $rs->localuserfield;
-                $group['groupfield'] = $rs->groupfield;
-                $group['courseid'] = $rs->courseid;
-                $requestedunenrolments[$rs->index] = $group;
-            }
-            // Deletes the link between the specified user and group.
-            foreach ($requestedunenrolments as $group) {
-                require_once($CFG->dirroot.'/group/lib.php');
-                $trace->output("  removing user ".$group['localuserfield']." from group ".$group['groupfield'].
-                               ": ".$CFG->wwwroot."/group/overview.php?id=".$group['courseid']."&group=".$group['groupid']);
-                groups_remove_member($group['groupid'], $group['userid']);
-            }
-            unset($requestedunenrolments);
-        }
+        $result = $this->sync_group_memberships($extdb, $trace);
 
         // Close db connection.
         $extdb->Close();
 
         $trace->output("...group enrolment synchronisation finished.\n");
         $trace->finished();
+        return $result;
+    }
+
+    /**
+     * Synchronises the group memberships with the external group enrolments table.
+     *
+     * The external table is read once through the external database connection and matched in PHP with the Moodle
+     * users, courses, groups and group members, so that any external database type is supported.
+     *
+     * - Users in the external table that are not members of the group yet are added to it.
+     * - If groupupgrading is enabled, manually added members (empty component) are converted to enrol_database members.
+     * - Members added by enrol_database that are not in the external table anymore are removed from the group.
+     *
+     * @param ADOConnection $extdb connection to the external database.
+     * @param progress_trace $trace
+     * @param stdClass|null $user only synchronise the memberships of this user, all of them when null.
+     * @return int 0 means success, 4 db read failure
+     */
+    protected function sync_group_memberships(ADOConnection $extdb, progress_trace $trace, ?stdClass $user = null): int {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/group/lib.php');
+
+        $table = trim($this->get_config('groupenroltable'));
+        $userfield = trim($this->get_config('userfield'));
+        $groupcoursefield = trim($this->get_config('newgroupcourse'));
+        $groupfield = trim($this->get_config('groupfield'));
+        $localuserfield = trim($this->get_config('localuserfield'));
+        $localcoursefield = trim($this->get_config('localcoursefield'));
+        $groupupgrading = $this->get_config('groupupgrading');
+
+        $userfieldlow = strtolower($userfield);
+        $groupcoursefieldlow = strtolower($groupcoursefield);
+        $groupfieldlow = strtolower($groupfield);
+
+        $conditions = [];
+        $userselect = '';
+        $userparams = [];
+        if ($user) {
+            if (!empty($user->deleted) or !isset($user->$localuserfield) or (string) $user->$localuserfield === '') {
+                return 0;
+            }
+            // The filter is applied by the external database, so only the rows of this user are transferred.
+            $conditions[$userfield] = $user->$localuserfield;
+            $userselect = 'AND gm.userid = :userid';
+            $userparams['userid'] = $user->id;
+        }
+
+        // External memberships, grouped as course => group => list of users.
+        [$sql, $extparams] = $this->db_get_query($extdb, $table, $conditions, [$userfield, $groupcoursefield, $groupfield], true);
+        if (!$rs = $extdb->Execute($sql, $extparams)) {
+            $trace->output('Error reading data from the external group enrolments table');
+            return 4;
+        }
+        $extmembers = [];
+        $extusers = [];
+        while ($fields = $rs->FetchRow()) {
+            $fields = $this->db_decode($fields);
+            $extuser = (string) ($fields[$userfieldlow] ?? '');
+            $extcourse = (string) ($fields[$groupcoursefieldlow] ?? '');
+            $extgroup = (string) ($fields[$groupfieldlow] ?? '');
+            if ($extuser === '' or $extcourse === '' or $extgroup === '') {
+                continue;
+            }
+            $extmembers[$extcourse][$extgroup][] = $extuser;
+            $extusers[$extuser] = true;
+        }
+        $rs->Close();
+
+        // Moodle users and courses matching the external values, and the groups of those courses.
+        if ($user) {
+            // Only this user, even if other users share the same value in the local user field.
+            $userids = [(string) $user->$localuserfield => [$user->id]];
+        } else {
+            $userids = $this->get_ids_by_field('user', $localuserfield, array_keys($extusers), 'deleted = 0');
+        }
+        $courseids = $this->get_ids_by_field('course', $localcoursefield, array_keys($extmembers));
+        unset($extusers);
+        $usernames = [];
+        foreach ($userids as $value => $ids) {
+            foreach ($ids as $id) {
+                $usernames[$id] = $value;
+            }
+        }
+        $groupids = [];
+        $groupinfo = [];
+        foreach (array_chunk(array_unique(array_merge([], ...array_values($courseids))), 1000) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $groups = $DB->get_recordset_sql("SELECT id, courseid, idnumber
+                                                FROM {groups}
+                                               WHERE courseid $insql AND idnumber <> ''", $params);
+            foreach ($groups as $group) {
+                $groupids[$group->courseid][$group->idnumber] = $group->id;
+                $groupinfo[$group->id] = $group;
+            }
+            $groups->close();
+        }
+
+        // Memberships requested by the external table, as groupid => userid => true.
+        $requested = [];
+        foreach ($extmembers as $extcourse => $extgroups) {
+            foreach ($courseids[$extcourse] ?? [] as $courseid) {
+                foreach ($extgroups as $extgroup => $extgroupusers) {
+                    if (!isset($groupids[$courseid][$extgroup])) {
+                        continue;
+                    }
+                    $groupid = $groupids[$courseid][$extgroup];
+                    foreach ($extgroupusers as $extuser) {
+                        foreach ($userids[$extuser] ?? [] as $userid) {
+                            $requested[$groupid][$userid] = true;
+                        }
+                    }
+                }
+            }
+        }
+        unset($extmembers, $userids, $courseids, $groupids);
+
+        // Existing memberships of the requested groups: the value becomes the component of the membership.
+        foreach (array_chunk(array_keys($requested), 1000) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $members = $DB->get_recordset_sql("SELECT gm.id, gm.groupid, gm.userid, gm.component
+                                                 FROM {groups_members} gm
+                                                WHERE gm.groupid $insql $userselect", $params + $userparams);
+            foreach ($members as $member) {
+                if (isset($requested[$member->groupid][$member->userid])) {
+                    $requested[$member->groupid][$member->userid] = (string) $member->component;
+                }
+            }
+            $members->close();
+        }
+
+        // Add the users to their groups, and upgrade the manually added members if enabled.
+        foreach ($requested as $groupid => $members) {
+            $group = $groupinfo[$groupid];
+            $groupurl = $CFG->wwwroot . "/group/overview.php?id=" . $group->courseid . "&group=" . $groupid;
+            foreach ($members as $userid => $component) {
+                if ($component === true) {
+                    if (groups_add_member($groupid, $userid, 'enrol_database')) {
+                        $trace->output("  adding user " . $usernames[$userid] . " to group: " . $group->idnumber .
+                                       ": " . $groupurl);
+                    } else {
+                        $trace->output("  error adding user " . $usernames[$userid] . " to group " . $group->idnumber .
+                                       ", not enrolled in course ID " . $group->courseid . ": " . $groupurl);
+                    }
+                } else if ($component === '' and $groupupgrading) {
+                    $trace->output("  removing user " . $usernames[$userid] . " with empty component from group " .
+                                   $group->idnumber . ": " . $groupurl);
+                    groups_remove_member($groupid, $userid);
+                    if (groups_add_member($groupid, $userid, 'enrol_database')) {
+                        $trace->output("  adding back the user " . $usernames[$userid] . " to group: " . $group->idnumber .
+                                       ": " . $groupurl);
+                    } else {
+                        $trace->output("  error adding user " . $usernames[$userid] . " to group " . $group->idnumber .
+                                       ", not enrolled in course " . $group->courseid . ": " . $groupurl);
+                    }
+                }
+            }
+        }
+
+        // Remove the members added by this plugin that are not in the external table anymore.
+        $members = $DB->get_recordset_sql("SELECT gm.id, gm.groupid, gm.userid, u.$localuserfield AS localuserfield,
+                                                  g.idnumber, g.courseid
+                                             FROM {groups_members} gm
+                                             JOIN {user} u ON u.id = gm.userid
+                                             JOIN {groups} g ON g.id = gm.groupid
+                                            WHERE gm.component = 'enrol_database'
+                                              AND u.deleted = 0
+                                              $userselect", $userparams);
+        $removals = [];
+        foreach ($members as $member) {
+            if (!isset($requested[$member->groupid][$member->userid])) {
+                $removals[] = $member;
+            }
+        }
+        $members->close();
+        unset($requested);
+        foreach ($removals as $member) {
+            $trace->output("  removing user " . $member->localuserfield . " from group " . $member->idnumber . ": " .
+                           $CFG->wwwroot . "/group/overview.php?id=" . $member->courseid . "&group=" . $member->groupid);
+            groups_remove_member($member->groupid, $member->userid);
+        }
+
         return 0;
+    }
+
+    /**
+     * Returns the ids of the records of a Moodle table whose field matches any of the given values.
+     *
+     * @param string $table Moodle table name, without prefix.
+     * @param string $field field to match.
+     * @param array $values values to look for.
+     * @param string $extraselect additional condition, without parameters.
+     * @return array value => list of ids, the same value may match several records.
+     */
+    protected function get_ids_by_field(string $table, string $field, array $values, string $extraselect = ''): array {
+        global $DB;
+
+        $ids = [];
+        // Small chunks, so that the number of parameters is supported by all the databases.
+        foreach (array_chunk(array_map('strval', $values), 1000) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $select = "$field $insql" . ($extraselect ? " AND $extraselect" : '');
+            $records = $DB->get_recordset_select($table, $select, $params, '', "id, $field AS value");
+            foreach ($records as $record) {
+                $ids[(string) $record->value][] = $record->id;
+            }
+            $records->close();
+        }
+        return $ids;
     }
 
     /**
