@@ -84,7 +84,7 @@ $string['newcoursesummary'] = 'Campo de resumen de nuevos cursos';
 $string['newcoursetable'] = 'Tabla de nuevos cursos remotos';
 $string['newcoursetable_desc'] = 'Se especifica el nombre de la tabla que contiene la lista de cursos que deberían crearse automáticamente. Si está vacía, significa que no está creado ningún curso.';
 $string['newcoursetemplate'] = 'Campo de plantilla de nuevos cursos';
-$string['newcoursetemplate_desc'] = 'Los cursos creados automáticamente pueden crearse basándose en un curso plantilla. Define el nombre del campo que guarda el identificador de la plantilla de cursos (según lo definido en el ajuste \'Campo de curso local\')';
+$string['newcoursetemplate_desc'] = 'Los cursos creados automáticamente pueden crearse como copia completa de un curso plantilla, incluidas sus actividades, recursos y bloques, pero sin usuarios ni grupos. Define el nombre del campo que guarda el identificador del curso plantilla (según lo definido en el ajuste \'Campo de plantilla local\')';
 $string['newgroupcourse'] = 'Campo de nombre de nuevos grupos';
 $string['newgroupcourse_desc'] = 'El identificador del curso al que pertenece el nuevo grupo (según lo definido en el ajuste \'Campo de curso local\')';
 $string['newgroupdesc'] = 'Campo de descripción de nuevos grupos';
@@ -115,7 +115,7 @@ $string['settingsheadernewgroups'] = 'Creación de nuevos grupos';
 $string['settingsheaderremote'] = 'Sincronización de matriculación remota';
 $string['syncenrolmentstask'] = 'Tarea de sincronización de las  inscripciones por base de datos externa';
 $string['templatecourse'] = 'Plantilla para nuevo curso';
-$string['templatecourse_desc'] = 'Opcional: Auto-crear cursos puede copiar su configuración de un curso plantilla. Escriba aquí el nombre corto del curso  plantilla.';
+$string['templatecourse_desc'] = 'Opcional: los cursos creados automáticamente se crean como copia completa de un curso plantilla, incluidas sus actividades, recursos y bloques, pero sin usuarios ni grupos. Escriba aquí el nombre corto del curso plantilla. Se usa cuando no se especifica un campo de plantilla de nuevos cursos o no se encuentra la plantilla indicada.';
 $string['userfield'] = 'Campo de nombre de usuario';
 $string['userfield_desc'] = 'El nombre del campo de la tabla remota utilizado para guardar el identificador de usuario.';
 

@@ -82,7 +82,7 @@ $string['newcoursesummary'] = 'New course summary field';
 $string['newcoursetable'] = 'Remote new courses table';
 $string['newcoursetable_desc'] = 'Specify the name of the table that contains list of courses that should be created automatically. Empty means no courses are created.';
 $string['newcoursetemplate'] = 'New course template field';
-$string['newcoursetemplate_desc'] = 'Auto-created courses can copy their settings from a template course. Specify the name of the field where the identifier of the template course (as specified in \'Local course field\' setting) is stored';
+$string['newcoursetemplate_desc'] = 'Auto-created courses can be created as a full copy of a template course, including its activities, resources and blocks, but without users nor groups. Specify the name of the field where the identifier of the template course (as specified in \'Local template field\' setting) is stored';
 $string['newgroupcourse'] = 'New group course identifier field';
 $string['newgroupcourse_desc'] = 'The identifier of the course to which the new group belongs (as specified in \'Local course field\' setting).';
 $string['newgroupdesc'] = 'New group description field';
@@ -113,7 +113,7 @@ $string['settingsheadernewgroups'] = 'Creation of new groups';
 $string['settingsheaderremote'] = 'Remote enrolment sync';
 $string['syncenrolmentstask'] = 'Synchronise external database enrolments task';
 $string['templatecourse'] = 'New course template';
-$string['templatecourse_desc'] = 'Optional: auto-created courses can copy their settings from a template course. Type here the shortname of the template course. Used when no new course template field is specified or the template course is not found';
+$string['templatecourse_desc'] = 'Optional: auto-created courses are created as a full copy of a template course, including its activities, resources and blocks, but without users nor groups. Type here the shortname of the template course. Used when no new course template field is specified or the template course is not found.';
 $string['userfield'] = 'User name field';
 $string['userfield_desc'] = 'The name of the field in the remote table that we are using to match entries in the user table.';
 
