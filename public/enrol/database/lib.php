@@ -1302,7 +1302,8 @@ class enrol_database_plugin extends enrol_plugin {
                          '.json_encode($fields), 1);
                         continue;
                     }
-                    $extdbgroups[$fields[$courselow].$fields[$idnumberlow]] = $fields;
+                    // Course shortname and group idnumber, separated so that different pairs never share a key.
+                    $extdbgroups[$fields[$courselow] . "\0" . $fields[$idnumberlow]] = $fields;
                 }
             }
         } else {
@@ -1312,27 +1313,20 @@ class enrol_database_plugin extends enrol_plugin {
             return 4;
         }
 
-        // Moodle db groups (existing groups).
-        $dbsql = "SELECT c.shortname||g.idnumber as index, g.idnumber, g.name, g.description, c.shortname as coursename
+        // Moodle db groups (existing groups), with the same keys as the external ones.
+        $dbsql = "SELECT g.id, g.idnumber, c.shortname
                     FROM {groups} g
-                         JOIN {course} c on (g.courseid=c.id)
-                   WHERE g.idnumber is not null
-                     AND g.idnumber<>''";
-        if ($result = $DB->get_records_sql($dbsql)) {
-            foreach ($result as $rs) {
-                $group[$idnumberlow] = $rs->idnumber;
-                $group[$namelow] = $rs->name;
-                $group[$descriptionlow] = $rs->description;
-                $group[$courselow] = $rs->coursename;
-                $dbgroups[$rs->index] = $group;
-            }
+                    JOIN {course} c ON c.id = g.courseid
+                   WHERE g.idnumber <> ''";
+        $rs = $DB->get_recordset_sql($dbsql);
+        foreach ($rs as $dbgroup) {
+            $dbgroups[$dbgroup->shortname . "\0" . $dbgroup->idnumber] = true;
         }
+        $rs->close();
 
-        error_reporting(E_ALL & ~E_NOTICE); // Avoids showing the php notice thrown by the next function:
-        $creategroups = array_udiff($extdbgroups, $dbgroups, function($a, $b) {
-            return strcmp(serialize($a), serialize($b));
-        });
-        error_reporting($CFG->debug); // Set again the debug messaging level configured in the site administration.
+        // Only the external groups that do not exist yet in their course have to be created.
+        $creategroups = array_diff_key($extdbgroups, $dbgroups);
+        unset($dbgroups);
 
         if ($creategroups) {
             require_once("$CFG->dirroot/group/lib.php");
