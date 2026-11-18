@@ -106,8 +106,11 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('enrol_database/manualenrol_cleaning', get_string('manualenrol_cleaning', 'enrol_database'), get_string('manualenrol_cleaning_desc', 'enrol_database'), 0));
 
-    $options = array('new'=>'new', 'full'=>'full');
-    $settings->add(new admin_setting_configselect('enrol_database/manualenrol_cleaning_mode', get_string('manualenrol_cleaning_mode', 'enrol_database'), '', 'new', $options));
+    $options = [
+        'new' => get_string('manualenrol_cleaning_mode_new', 'enrol_database'),
+        'full' => get_string('manualenrol_cleaning_mode_full', 'enrol_database'),
+    ];
+    $settings->add(new admin_setting_configselect('enrol_database/manualenrol_cleaning_mode', get_string('manualenrol_cleaning_mode', 'enrol_database'), get_string('manualenrol_cleaning_mode_desc', 'enrol_database'), 'new', $options));
 
     //--- creation of new courses ----------------------------------------------------------------------------
 
