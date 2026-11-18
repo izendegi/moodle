@@ -84,7 +84,7 @@ $string['newcoursesummary'] = 'Ikastaro berrien laburpenaren eremua';
 $string['newcoursetable'] = 'Urrutiko ikastaro berrien taula';
 $string['newcoursetable_desc'] = 'Zehaztu automatikoki sortu beharreko ikastaroen zerrenda duen taularen izena. Hutsik utziz gero ez da ikastarorik sortuko.';
 $string['newcoursetemplate'] = 'Ikastaro berrien txantiloiaren eremua';
-$string['newcoursetemplate_desc'] = 'Automatikoki sortutako ikastaroak txantiloi-ikastaro batetan oinarrituta sortu daitezke. Zehaztu txantiloi-ikastaroaren identifikatzailea gordeta dagoen eremuaren izena (\'Ikastaroaren eremu lokala\' ezarpenenean zehaztutako moduan)';
+$string['newcoursetemplate_desc'] = 'Automatikoki sortutako ikastaroak txantiloi-ikastaro baten kopia oso gisa sor daitezke, haren jarduera, baliabide eta blokeak barne, baina erabiltzaile eta talderik gabe. Zehaztu txantiloi-ikastaroaren identifikatzailea gordeta dagoen eremuaren izena (\'Txantiloiaren eremu lokala\' ezarpenean zehaztutako moduan)';
 $string['newgroupcourse'] = 'Talde berrien ikastaroaren identifikatzailearen eremua';
 $string['newgroupcourse_desc'] = 'Talde sortu beharreko ikastaroaren identifikatzailea (\'Ikastaroaren eremu lokala\' ezarpenenean zehaztutako moduan).';
 $string['newgroupdesc'] = 'Talde berrien deskribapenaren eremua';
@@ -115,7 +115,7 @@ $string['settingsheadernewgroups'] = 'Talde berrien sorrera';
 $string['settingsheaderremote'] = 'Urrutiko rolen sinkronizazioa';
 $string['syncenrolmentstask'] = 'Sinkronizatu kanpoko datu-baseko matrikulazioak ataza';
 $string['templatecourse'] = 'Ikastaro berrien txantiloia';
-$string['templatecourse_desc'] = 'Hautazkoa: automatikoki sortutako ikastaroek ezarpenak txantiloi-ikastaro batetik kopiatu ditzakete. Idatzi hemen txantiloi-ikastaroaren izen laburra.';
+$string['templatecourse_desc'] = 'Hautazkoa: automatikoki sortutako ikastaroak txantiloi-ikastaro baten kopia oso gisa sortzen dira, haren jarduera, baliabide eta blokeak barne, baina erabiltzaile eta talderik gabe. Idatzi hemen txantiloi-ikastaroaren izen laburra. Ikastaro berrien txantiloiaren eremurik zehazten ez denean edo adierazitako txantiloia aurkitzen ez denean erabiltzen da.';
 $string['userfield'] = 'Erabiltzaile identifikatzailearen eremua';
 $string['userfield_desc'] = 'Urrutiko datu-basean erabiltzailea identifikatzeko gordetzeko erabilitako eremuaren izena.';
 
