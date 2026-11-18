@@ -230,7 +230,7 @@ class enrol_database_plugin extends enrol_plugin {
                 }
             }
             $rs->Close();
-            $extdb->Close();
+            // The connection is kept open for the group memberships synchronisation.
         } else {
             // Bad luck, something is wrong with the db connection.
             $extdb->Close();
@@ -323,7 +323,10 @@ class enrol_database_plugin extends enrol_plugin {
             }
         }
         $rs->close();
-        $this->sync_user_group_enrolments($user);
+
+        // Group memberships are synchronised once the user is enrolled in the courses, reusing the connection.
+        $this->sync_user_group_enrolments($user, $extdb);
+        $extdb->Close();
     }
 
     /**
@@ -331,22 +334,25 @@ class enrol_database_plugin extends enrol_plugin {
      * does not create new groups.
      *
      * @param stdClass $user user record
+     * @param ADOConnection|null $extdb open connection to the external database, a new one is opened if not given.
      * @return void
      */
-    public function sync_user_group_enrolments($user) {
+    public function sync_user_group_enrolments($user, ?ADOConnection $extdb = null) {
         if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
                 or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
             return;
         }
 
-        if (!$extdb = $this->db_init()) {
+        $ownconnection = !$extdb;
+        if ($ownconnection and !$extdb = $this->db_init()) {
             return;
         }
 
         $this->sync_group_memberships($extdb, new null_progress_trace(), $user);
 
-        // Close db connection.
-        $extdb->Close();
+        if ($ownconnection) {
+            $extdb->Close();
+        }
     }
 
     /**
@@ -785,7 +791,6 @@ class enrol_database_plugin extends enrol_plugin {
         $categoryname_l = strtolower($categoryname);
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
-        $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
         $defaultcategory    = $this->get_config('defaultcategory');
@@ -850,7 +855,8 @@ class enrol_database_plugin extends enrol_plugin {
                             $course->category = $categoryid;
                         } else {
                             // Bad luck, better not continue because unwanted ppl might get access to course in different category.
-                            $trace->output('error: invalid category '.$localcategoryfield.', can not create course: '.$fields[$shortname_l], 1);
+                            $trace->output("error: invalid category path '".$fields[$categoryname_l]."', can not create course: ".
+                                           $fields[$shortname_l], 1);
                             continue;
                         }
                     } else if ($category and $fields[$category_l]) {
@@ -1154,6 +1160,7 @@ class enrol_database_plugin extends enrol_plugin {
                     $extdbgroups[$fields[$courselow] . "\0" . $fields[$idnumberlow]] = $fields;
                 }
             }
+            $rs->Close();
         } else {
             $extdb->Close();
             $trace->output('Error reading data from the external groups table');
@@ -1198,7 +1205,7 @@ class enrol_database_plugin extends enrol_plugin {
                 $newgroup->courseid = $courseid;
                 $newgroup->name = $group[$namelow];
                 $newgroup->idnumber = $group[$idnumberlow];
-                $newgroup->description = $group[$descriptionlow];
+                $newgroup->description = $description ? ($group[$descriptionlow] ?? '') : '';
                 $newgroup->course = $group[$courselow];
                 $newgroup->enablemessaging = $messaging;
 
@@ -1317,6 +1324,10 @@ class enrol_database_plugin extends enrol_plugin {
             $userparams['userid'] = $user->id;
         }
 
+        // Memberships added after this moment may come from newer external data (e.g. the login of a user while the
+        // scheduled task is running), so they are not removed by this run.
+        $synctime = time();
+
         // External memberships, grouped as course => group => list of users.
         [$sql, $extparams] = $this->db_get_query($extdb, $table, $conditions, [$userfield, $groupcoursefield, $groupfield], true);
         if (!$rs = $extdb->Execute($sql, $extparams)) {
@@ -1423,7 +1434,7 @@ class enrol_database_plugin extends enrol_plugin {
                 if (!$add) {
                     continue;
                 }
-                if (groups_add_member($groupid, $userid, 'enrol_database', $group->itemid)) {
+                if ($this->add_group_member($groupid, $userid, $group->itemid)) {
                     $trace->output("  adding user " . $usernames[$userid] . " to group: " . $group->idnumber .
                                    ": " . $groupurl);
                 } else {
@@ -1454,8 +1465,9 @@ class enrol_database_plugin extends enrol_plugin {
                                              JOIN {user} u ON u.id = gm.userid
                                              JOIN {groups} g ON g.id = gm.groupid
                                             WHERE gm.component = 'enrol_database'
+                                              AND gm.timeadded < :synctime
                                               AND u.deleted = 0
-                                              $userselect", $userparams);
+                                              $userselect", ['synctime' => $synctime] + $userparams);
         $removals = [];
         foreach ($members as $member) {
             if (!isset($requested[$member->groupid][$member->userid])) {
@@ -1471,6 +1483,30 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         return 0;
+    }
+
+    /**
+     * Adds a user to a group as a member managed by this plugin.
+     *
+     * The scheduled task and the login of the user may try to add the same member at the same time. In that case
+     * the insert of one of them fails because of the unique key of the group members table, and the member is already
+     * there, so it is not an error.
+     *
+     * @param int $groupid
+     * @param int $userid
+     * @param int $itemid id of the enrol_database instance of the course, 0 if there is none.
+     * @return bool true if the user is a member of the group, false if the user can not be added (e.g. not enrolled).
+     */
+    protected function add_group_member(int $groupid, int $userid, int $itemid): bool {
+        global $DB;
+        try {
+            return groups_add_member($groupid, $userid, 'enrol_database', $itemid);
+        } catch (dml_write_exception $e) {
+            if (!$DB->is_transaction_started() and groups_is_member($groupid, $userid)) {
+                return true;
+            }
+            throw $e;
+        }
     }
 
     /**
