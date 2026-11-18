@@ -116,3 +116,7 @@ $string['templatecourse'] = 'New course template';
 $string['templatecourse_desc'] = 'Optional: auto-created courses can copy their settings from a template course. Type here the shortname of the template course. Used when no new course template field is specified or the template course is not found';
 $string['userfield'] = 'User name field';
 $string['userfield_desc'] = 'The name of the field in the remote table that we are using to match entries in the user table.';
+
+// Deprecated since Moodle 6.0.
+$string['dbsybasequoting'] = 'Use sybase quotes';
+$string['dbsybasequoting_desc'] = 'Sybase style single quote escaping - needed for MS SQL and some other databases. Do not use for MySQL!';
