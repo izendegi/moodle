@@ -1364,9 +1364,12 @@ class enrol_database_plugin extends enrol_plugin {
                 .$newgroup->course);
                 $newgroupid = groups_create_group($newgroup);
 
-                if ($group[$groupinglow]){
-                    $recordset = $DB->get_record('groupings', ['idnumber' => $group[$groupinglow], 'courseid' => $courseid]);
-                    if(!$recordset and $groupingcreation) {
+                if ($grouping && !empty($group[$groupinglow])) {
+                    $existinggrouping = $DB->get_record('groupings',
+                        ['idnumber' => $group[$groupinglow], 'courseid' => $courseid], 'id');
+                    if ($existinggrouping) {
+                        groups_assign_grouping($existinggrouping->id, $newgroupid);
+                    } else if ($groupingcreation) {
                         $newgrouping = new stdClass();
                         $newgrouping->idnumber = $group[$groupinglow];
                         $newgrouping->courseid = $courseid;
@@ -1375,7 +1378,9 @@ class enrol_database_plugin extends enrol_plugin {
 
                         groups_assign_grouping($newgroupingid, $newgroupid);
                     } else {
-                        groups_assign_grouping($recordset->id, $newgroupid);
+                        $trace->output("  [x] Grouping ID number " . $group[$groupinglow] . " not found in course "
+                                       . $group[$courselow] . " (and not creating groupings), group "
+                                       . $group[$idnumberlow] . " will not be added to it.");
                     }
                 }
             }
