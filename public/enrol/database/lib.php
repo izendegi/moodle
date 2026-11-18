@@ -1026,6 +1026,7 @@ class enrol_database_plugin extends enrol_plugin {
                     global $USER;
                     $olduser = $USER;
                     $USER = get_admin();
+                    $duplicatecoursereturns = null;
                     try {
                         static $backupsettings = array(
                             array('name' => 'users', 'value' => 0)
@@ -1063,6 +1064,19 @@ class enrol_database_plugin extends enrol_plugin {
                         // Log the failure and go on with the next course.
                         $trace->output('error: could not create course ' . $newcourse->shortname . ' from template '
                                 . $templateid . ': ' . $e->getMessage(), 1);
+                        // The duplication creates the course before restoring the template into it, so a failure can
+                        // leave an incomplete course that would block the shortname. It did not exist before (it was
+                        // checked above), so it is removed to be created again in the next synchronisation.
+                        if (!$duplicatecoursereturns and
+                                $incomplete = $DB->get_record('course', ['shortname' => $newcourse->shortname])) {
+                            try {
+                                delete_course($incomplete, false);
+                                $trace->output('removed incomplete course ' . $newcourse->shortname, 1);
+                            } catch (\Throwable $e) {
+                                $trace->output('error: could not remove incomplete course ' . $newcourse->shortname . ': '
+                                        . $e->getMessage(), 1);
+                            }
+                        }
                     } finally {
                         // Drop the elevated privileges even if the duplication fails.
                         $USER = $olduser;
@@ -1169,22 +1183,45 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Moodle db groups (existing groups), with the same keys as the external ones.
-        $dbsql = "SELECT g.id, g.idnumber, c.$localcoursefield AS coursekey
+        $dbsql = "SELECT g.id, g.courseid, g.idnumber, g.description, c.$localcoursefield AS coursekey
                     FROM {groups} g
                     JOIN {course} c ON c.id = g.courseid
                    WHERE g.idnumber <> ''";
         $rs = $DB->get_recordset_sql($dbsql);
         foreach ($rs as $dbgroup) {
-            $dbgroups[$dbgroup->coursekey . "\0" . $dbgroup->idnumber] = true;
+            $dbgroups[$dbgroup->coursekey . "\0" . $dbgroup->idnumber] = $dbgroup;
         }
         $rs->close();
+
+        require_once("$CFG->dirroot/group/lib.php");
+
+        // Existing groups: if the field is configured, the description follows the external table. The name is not
+        // updated, as teachers may rename the groups, and an empty external description keeps the one in Moodle.
+        if ($description) {
+            foreach (array_intersect_key($extdbgroups, $dbgroups) as $key => $group) {
+                $dbgroup = $dbgroups[$key];
+                $newdescription = (string) ($group[$descriptionlow] ?? '');
+                if ($newdescription === '' or $newdescription === (string) $dbgroup->description) {
+                    continue;
+                }
+                $update = new stdClass();
+                $update->id = $dbgroup->id;
+                $update->courseid = $dbgroup->courseid;
+                $update->description = $newdescription;
+                // Keep the group messaging as it is: groups_update_group() disables the group conversation if not given.
+                $update->enablemessaging = (int) $DB->get_field('message_conversations', 'enabled',
+                    ['component' => 'core_group', 'itemtype' => 'groups', 'itemid' => $dbgroup->id]);
+                $trace->output("  updating description of group " . $dbgroup->idnumber . " in course " . $group[$courselow]
+                               . ": '" . $newdescription . "'");
+                groups_update_group($update);
+            }
+        }
 
         // Only the external groups that do not exist yet in their course have to be created.
         $creategroups = array_diff_key($extdbgroups, $dbgroups);
         unset($dbgroups);
 
         if ($creategroups) {
-            require_once("$CFG->dirroot/group/lib.php");
             foreach ($creategroups as $group) {
                 // The course to which the group will belong must exist.
                 $courseid = $DB->get_field('course', 'id', [$localcoursefield => $group[$courselow]]);
