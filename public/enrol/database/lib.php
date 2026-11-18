@@ -2038,9 +2038,9 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                // We build the category tree, and we query if a category exists for that category path.
-                $categorypath .= '/' . $currentcat;
-                $categorypath = trim($categorypath, '/');
+                // We build the category tree, and we query if a category exists for that category path. The idnumber
+                // of each category is its path with the configured separator, as in the external database.
+                $categorypath .= ($categorypath === '' ? '' : $separator) . $currentcat;
 
                 if (!$autocreate) {
                     // If not autocreating, only the category matching the whole path is valid, so it is looked up
