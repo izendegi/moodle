@@ -115,4 +115,25 @@ final class get_categoryid_test extends \advanced_testcase {
         $this->assertEquals($c->id, $plugin->get_categoryid('a/b/c', $trace));
         $this->assertEquals($count + 2, $DB->count_records('course_categories'));
     }
+
+    /**
+     * The idnumber of the created categories is their path with the configured separator.
+     */
+    public function test_other_separator(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $plugin = $this->get_plugin('|', true);
+        $trace = new \null_progress_trace();
+
+        $id = $plugin->get_categoryid('a | b|c', $trace);
+        $c = $DB->get_record('course_categories', ['idnumber' => 'a|b|c'], '*', MUST_EXIST);
+        $this->assertEquals($c->id, $id);
+        $this->assertEquals('c', $c->name);
+        $this->assertTrue($DB->record_exists('course_categories', ['idnumber' => 'a|b', 'id' => $c->parent]));
+        $this->assertFalse($DB->record_exists('course_categories', ['idnumber' => 'a/b/c']));
+
+        $plugin->set_config('autocreatecategory', 0);
+        $this->assertEquals($c->id, $plugin->get_categoryid('a|b|c', $trace));
+        $this->assertFalse($plugin->get_categoryid('a/b/c', $trace));
+    }
 }
