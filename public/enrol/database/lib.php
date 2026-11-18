@@ -1274,6 +1274,7 @@ class enrol_database_plugin extends enrol_plugin {
         $grouping = trim($this->get_config('newgroupgroupings'));
         $groupingcreation = $this->get_config('groupingcreation');
         $messaging = $this->get_config('groupmessaging');
+        $localcoursefield = trim($this->get_config('localcoursefield'));
 
         $namelow = strtolower($name);
         $idnumberlow = strtolower($idnumber);
@@ -1298,11 +1299,11 @@ class enrol_database_plugin extends enrol_plugin {
                 while ($fields = $rs->FetchRow()) {
                     $fields = $this->db_decode($fields);
                     if (empty($fields[$namelow]) or empty($fields[$idnumberlow]) or empty($fields[$courselow])) {
-                        $trace->output('error: invalid external group record, name, id number and course shortname are mandatory:
+                        $trace->output('error: invalid external group record, name, id number and course are mandatory:
                          '.json_encode($fields), 1);
                         continue;
                     }
-                    // Course shortname and group idnumber, separated so that different pairs never share a key.
+                    // Course identifier and group idnumber, separated so that different pairs never share a key.
                     $extdbgroups[$fields[$courselow] . "\0" . $fields[$idnumberlow]] = $fields;
                 }
             }
@@ -1314,13 +1315,13 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Moodle db groups (existing groups), with the same keys as the external ones.
-        $dbsql = "SELECT g.id, g.idnumber, c.shortname
+        $dbsql = "SELECT g.id, g.idnumber, c.$localcoursefield AS coursekey
                     FROM {groups} g
                     JOIN {course} c ON c.id = g.courseid
                    WHERE g.idnumber <> ''";
         $rs = $DB->get_recordset_sql($dbsql);
         foreach ($rs as $dbgroup) {
-            $dbgroups[$dbgroup->shortname . "\0" . $dbgroup->idnumber] = true;
+            $dbgroups[$dbgroup->coursekey . "\0" . $dbgroup->idnumber] = true;
         }
         $rs->close();
 
@@ -1332,16 +1333,16 @@ class enrol_database_plugin extends enrol_plugin {
             require_once("$CFG->dirroot/group/lib.php");
             foreach ($creategroups as $group) {
                 // The course to which the group will belong must exist.
-                if (!$DB->record_exists('course', array('shortname' => $group[$courselow]))) {
-                    $trace->output("  [x] Course shortname " . $group[$courselow] . " to which the group ID number "
+                $courseid = $DB->get_field('course', 'id', [$localcoursefield => $group[$courselow]]);
+                if (!$courseid) {
+                    $trace->output("  [x] Course " . $localcoursefield . " " . $group[$courselow] . " to which the group ID number "
                                    . $group[$idnumberlow] ." should belong doesn't exist, group will not be created.");
                     continue;
                 }
 
-                $courseid = $DB->get_field('course', 'id', ['shortname' => $group[$courselow]]);
                 if ($DB->record_exists('groups', array('idnumber' => $group[$idnumberlow], 'courseid' => $courseid))) {
                     // Already exists, skip.
-                    //$trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
+                    //$trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course "
                     //               .$group[$courselow].", but with a different name.");
                     continue;
                 }
