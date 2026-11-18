@@ -1357,10 +1357,16 @@ class enrol_database_plugin extends enrol_plugin {
         $groupinfo = [];
         foreach (array_chunk(array_unique(array_merge([], ...array_values($courseids))), 1000) as $chunk) {
             [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            // The memberships are linked to the enrol_database instance of the course, if there is one.
+            $instanceids = $DB->get_records_sql_menu("SELECT courseid, MIN(id)
+                                                        FROM {enrol}
+                                                       WHERE enrol = 'database' AND courseid $insql
+                                                    GROUP BY courseid", $params);
             $groups = $DB->get_recordset_sql("SELECT id, courseid, idnumber
                                                 FROM {groups}
                                                WHERE courseid $insql AND idnumber <> ''", $params);
             foreach ($groups as $group) {
+                $group->itemid = (int) ($instanceids[$group->courseid] ?? 0);
                 $groupids[$group->courseid][$group->idnumber] = $group->id;
                 $groupinfo[$group->id] = $group;
             }
@@ -1386,47 +1392,60 @@ class enrol_database_plugin extends enrol_plugin {
         }
         unset($extmembers, $userids, $courseids, $groupids);
 
-        // Existing memberships of the requested groups: the value becomes the component of the membership.
+        // Existing memberships of the requested groups: they are marked as existing, and the manually added ones (if
+        // groupupgrading is enabled) and the ones of this plugin not linked to the enrol instance of the course are
+        // collected to be updated.
+        $updates = [];
         foreach (array_chunk(array_keys($requested), 1000) as $chunk) {
             [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
-            $members = $DB->get_recordset_sql("SELECT gm.id, gm.groupid, gm.userid, gm.component
+            $members = $DB->get_recordset_sql("SELECT gm.id, gm.groupid, gm.userid, gm.component, gm.itemid
                                                  FROM {groups_members} gm
                                                 WHERE gm.groupid $insql $userselect", $params + $userparams);
             foreach ($members as $member) {
-                if (isset($requested[$member->groupid][$member->userid])) {
-                    $requested[$member->groupid][$member->userid] = (string) $member->component;
+                if (!isset($requested[$member->groupid][$member->userid])) {
+                    continue;
+                }
+                $requested[$member->groupid][$member->userid] = false;
+                $itemid = $groupinfo[$member->groupid]->itemid;
+                if (($member->component === '' and $groupupgrading) or
+                        ($member->component === 'enrol_database' and (int) $member->itemid !== $itemid)) {
+                    $updates[] = $member;
                 }
             }
             $members->close();
         }
 
-        // Add the users to their groups, and upgrade the manually added members if enabled.
+        // Add the users to their groups.
         foreach ($requested as $groupid => $members) {
             $group = $groupinfo[$groupid];
             $groupurl = $CFG->wwwroot . "/group/overview.php?id=" . $group->courseid . "&group=" . $groupid;
-            foreach ($members as $userid => $component) {
-                if ($component === true) {
-                    if (groups_add_member($groupid, $userid, 'enrol_database')) {
-                        $trace->output("  adding user " . $usernames[$userid] . " to group: " . $group->idnumber .
-                                       ": " . $groupurl);
-                    } else {
-                        $trace->output("  error adding user " . $usernames[$userid] . " to group " . $group->idnumber .
-                                       ", not enrolled in course ID " . $group->courseid . ": " . $groupurl);
-                    }
-                } else if ($component === '' and $groupupgrading) {
-                    $trace->output("  removing user " . $usernames[$userid] . " with empty component from group " .
-                                   $group->idnumber . ": " . $groupurl);
-                    groups_remove_member($groupid, $userid);
-                    if (groups_add_member($groupid, $userid, 'enrol_database')) {
-                        $trace->output("  adding back the user " . $usernames[$userid] . " to group: " . $group->idnumber .
-                                       ": " . $groupurl);
-                    } else {
-                        $trace->output("  error adding user " . $usernames[$userid] . " to group " . $group->idnumber .
-                                       ", not enrolled in course " . $group->courseid . ": " . $groupurl);
-                    }
+            foreach ($members as $userid => $add) {
+                if (!$add) {
+                    continue;
+                }
+                if (groups_add_member($groupid, $userid, 'enrol_database', $group->itemid)) {
+                    $trace->output("  adding user " . $usernames[$userid] . " to group: " . $group->idnumber .
+                                   ": " . $groupurl);
+                } else {
+                    $trace->output("  error adding user " . $usernames[$userid] . " to group " . $group->idnumber .
+                                   ", not enrolled in course ID " . $group->courseid . ": " . $groupurl);
                 }
             }
         }
+
+        // Take over the manually added members and link the members to the enrol instance of the course. The membership
+        // itself does not change, so it is updated in place: no group membership events are triggered.
+        foreach ($updates as $member) {
+            $group = $groupinfo[$member->groupid];
+            if ($member->component === '') {
+                $trace->output("  upgrading membership of user " . $usernames[$member->userid] . " in group " .
+                               $group->idnumber . " to enrol_database: " . $CFG->wwwroot . "/group/overview.php?id=" .
+                               $group->courseid . "&group=" . $member->groupid);
+            }
+            $DB->update_record('groups_members',
+                (object) ['id' => $member->id, 'component' => 'enrol_database', 'itemid' => $group->itemid]);
+        }
+        unset($updates);
 
         // Remove the members added by this plugin that are not in the external table anymore.
         $members = $DB->get_recordset_sql("SELECT gm.id, gm.groupid, gm.userid, u.$localuserfield AS localuserfield,
