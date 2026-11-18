@@ -1203,14 +1203,31 @@ class enrol_database_plugin extends enrol_plugin {
                         array('name' => 'users', 'value' => 0)
                     );
 
+                    // Templates are usually hidden, so use the site default visibility instead of the template's one.
                     $duplicatecoursereturns = core_course_external::duplicate_course($templateid, $newcourse->fullname,
-                            $newcourse->shortname, $newcourse->category, 1, $backupsettings);
+                            $newcourse->shortname, $newcourse->category, empty($courseconfig->visible) ? 0 : 1, $backupsettings);
 
-                    $updatecourse = array('courses' => array(
-                            'id' => $duplicatecoursereturns['id'],
-                            'idnumber' => $newcourse->idnumber,
-                            'summary' => $newcourse->summary));
-                    core_course_external::update_courses($updatecourse);
+                    $updatecourses = [[
+                        'id' => $duplicatecoursereturns['id'],
+                        'idnumber' => $newcourse->idnumber,
+                        'summary' => $newcourse->summary,
+                    ]];
+                    // The duplicate keeps the dates of the template, apply the external ones if there are any.
+                    // They go in a separate update so that invalid dates do not prevent setting the idnumber.
+                    if (isset($fields->startdate) || isset($fields->enddate)) {
+                        $dates = ['id' => $duplicatecoursereturns['id'], 'startdate' => $newcourse->startdate];
+                        if (isset($newcourse->enddate)) {
+                            $dates['enddate'] = $newcourse->enddate;
+                        }
+                        $updatecourses[] = $dates;
+                    }
+                    foreach ($updatecourses as $updatecourse) {
+                        $result = core_course_external::update_courses([$updatecourse]);
+                        foreach ($result['warnings'] as $warning) {
+                            $trace->output('error: could not update course ' . $newcourse->shortname . ': '
+                                    . $warning['message'], 1);
+                        }
+                    }
                     groups_delete_groups($duplicatecoursereturns['id'], $showfeedback=false);
                     groups_delete_groupings($duplicatecoursereturns['id'], $showfeedback=false);
 
