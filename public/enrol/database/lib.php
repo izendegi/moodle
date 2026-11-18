@@ -1924,14 +1924,16 @@ class enrol_database_plugin extends enrol_plugin {
                 }
                 // Not separator, but autocreate (only if the category does not exist).
             } else {
-                if (!$catidnumber) {
-                    $newcategory = new stdClass();
-                    $newcategory->name = $categoryname;
-                    $newcategory->idnumber = $categoryname;
-                    $newcategory = core_course_category::create($newcategory);
-
-                    return $newcategory->id;
+                if ($catidnumber) {
+                    // The category already exists.
+                    return $catidnumber->id;
                 }
+                $newcategory = new stdClass();
+                $newcategory->name = $categoryname;
+                $newcategory->idnumber = $categoryname;
+                $newcategory = core_course_category::create($newcategory);
+
+                return $newcategory->id;
             }
         } else {
             $categoryname = trim($categoryname);
@@ -1957,18 +1959,13 @@ class enrol_database_plugin extends enrol_plugin {
                 // We build the category tree, and we query if a category exists for that category path.
                 $categorypath .= '/' . $currentcat;
                 $categorypath = trim($categorypath, '/');
-                $dbcat = $DB->get_record('course_categories', array('idnumber' => $categorypath), 'id');
 
                 if (!$autocreate) {
-                    // If not autocreating, if exists a category for the category tree build above, that will be the
-                    // category we're looking for.
-                    if ($dbcat) {
-                        return $dbcat;
-                    } else {
-                        continue;
-                    }
+                    // If not autocreating, only the category matching the whole path is valid, so it is looked up
+                    // once the path is complete.
+                    continue;
                 } else {
-
+                    $dbcat = $DB->get_record('course_categories', array('idnumber' => $categorypath), 'id');
                     $newcategory = new stdClass();
 
                     if (!$dbcat) {
@@ -1991,8 +1988,17 @@ class enrol_database_plugin extends enrol_plugin {
                 }
             }
 
+            if ($categorypath === '') {
+                $trace->output('error: category name syntax invalid (no category found between separators): '
+                        .$categoryname, 1);
+                return false;
+            }
+
             if (!$autocreate) {
-                // If we have arrived here not having to autocreate the category, means that the category does not exist.
+                // Do not fall back to a parent category: unwanted people might get access to the course.
+                if ($dbcat = $DB->get_record('course_categories', array('idnumber' => $categorypath), 'id')) {
+                    return $dbcat->id;
+                }
                 $trace->output('error: category ['.$categoryname.'] not found (and not autocreating categories)', 1);
                 return false;
             } else {
