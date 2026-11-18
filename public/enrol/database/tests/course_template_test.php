@@ -1,0 +1,187 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace enrol_database;
+
+/**
+ * Tests for the creation of courses from a template course of the external database enrolment plugin.
+ *
+ * @package    enrol_database
+ * @category   test
+ * @copyright  2026 Mondragon Unibertsitatea
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_courses')]
+final class course_template_test extends \advanced_testcase {
+
+    /** @var string name of the external courses table, without prefix. */
+    private const TABLE = 'enrol_database_test_newcourses';
+
+    /** @var string original error log. */
+    private $oldlog;
+
+    public static function tearDownAfterClass(): void {
+        global $DB;
+        // Apply sqlsrv native driver error and logging default settings while finishing the AdoDB tests.
+        if ($DB->get_dbfamily() === 'mssql') {
+            sqlsrv_configure("WarningsReturnAsErrors", false);
+            sqlsrv_configure("LogSubsystems", SQLSRV_LOG_SYSTEM_OFF);
+            sqlsrv_configure("LogSeverity", SQLSRV_LOG_SEVERITY_ERROR);
+        }
+        parent::tearDownAfterClass();
+    }
+
+    /**
+     * Points the plugin to the Moodle database as external database and creates the external courses table.
+     */
+    private function init_enrol_database(): void {
+        global $CFG, $DB;
+
+        // Discard error logs from AdoDB.
+        $this->oldlog = ini_get('error_log');
+        ini_set('error_log', "$CFG->dataroot/testlog.log");
+
+        set_config('dbencoding', 'utf-8', 'enrol_database');
+        set_config('dbhost', $CFG->dbhost, 'enrol_database');
+        set_config('dbuser', $CFG->dbuser, 'enrol_database');
+        set_config('dbpass', $CFG->dbpass, 'enrol_database');
+        set_config('dbname', $CFG->dbname, 'enrol_database');
+        if (!empty($CFG->dboptions['dbport'])) {
+            set_config('dbhost', $CFG->dbhost . ':' . $CFG->dboptions['dbport'], 'enrol_database');
+        }
+
+        switch ($DB->get_dbfamily()) {
+            case 'mysql':
+                set_config('dbtype', 'mysqli', 'enrol_database');
+                set_config('dbsetupsql', "SET NAMES 'UTF-8'", 'enrol_database');
+                if (!empty($CFG->dboptions['dbsocket'])) {
+                    $dbsocket = $CFG->dboptions['dbsocket'];
+                    if ((strpos($dbsocket, '/') === false and strpos($dbsocket, '\\') === false)) {
+                        $dbsocket = ini_get('mysqli.default_socket');
+                    }
+                    set_config('dbtype', 'mysqli://' . rawurlencode($CFG->dbuser) . ':' . rawurlencode($CFG->dbpass) . '@' .
+                        rawurlencode($CFG->dbhost) . '/' . rawurlencode($CFG->dbname) . '?socket=' . rawurlencode($dbsocket),
+                        'enrol_database');
+                }
+                break;
+
+            case 'postgres':
+                set_config('dbtype', 'postgres7', 'enrol_database');
+                $setupsql = "SET NAMES 'UTF-8'";
+                if (!empty($CFG->dboptions['dbschema'])) {
+                    $setupsql .= "; SET search_path = '" . $CFG->dboptions['dbschema'] . "'";
+                }
+                set_config('dbsetupsql', $setupsql, 'enrol_database');
+                if (!empty($CFG->dboptions['dbsocket']) and ($CFG->dbhost === 'localhost' or $CFG->dbhost === '127.0.0.1')) {
+                    if (strpos($CFG->dboptions['dbsocket'], '/') !== false) {
+                        $socket = $CFG->dboptions['dbsocket'];
+                        if (!empty($CFG->dboptions['dbport'])) {
+                            $socket .= ':' . $CFG->dboptions['dbport'];
+                        }
+                        set_config('dbhost', $socket, 'enrol_database');
+                    } else {
+                        set_config('dbhost', '', 'enrol_database');
+                    }
+                }
+                break;
+
+            case 'mssql':
+                set_config('dbtype', 'mssqlnative', 'enrol_database');
+                // The native sqlsrv driver uses a comma as separator between host and port.
+                $dbhost = $CFG->dbhost;
+                if (!empty($CFG->dboptions['dbport'])) {
+                    $dbhost .= ',' . $CFG->dboptions['dbport'];
+                }
+                set_config('dbhost', $dbhost, 'enrol_database');
+                break;
+
+            default:
+                throw new \coding_exception('Unknown database driver ' . get_class($DB));
+        }
+
+        $dbman = $DB->get_manager();
+        $table = new \xmldb_table(self::TABLE);
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('fullname', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('shortname', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('template', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('startdate', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $dbman->create_table($table);
+
+        set_config('newcoursetable', $CFG->prefix . self::TABLE, 'enrol_database');
+        set_config('newcoursefullname', 'fullname', 'enrol_database');
+        set_config('newcourseshortname', 'shortname', 'enrol_database');
+        set_config('newcourseidnumber', 'idnumber', 'enrol_database');
+        set_config('newcoursetemplate', 'template', 'enrol_database');
+        set_config('localtemplatefield', 'idnumber', 'enrol_database');
+        set_config('newcoursestartdate', 'startdate', 'enrol_database');
+        set_config('templatecourse', '', 'enrol_database');
+    }
+
+    /**
+     * Drops the external table.
+     */
+    private function cleanup_enrol_database(): void {
+        global $DB;
+
+        $DB->get_manager()->drop_table(new \xmldb_table(self::TABLE));
+        ini_set('error_log', $this->oldlog);
+    }
+
+    /**
+     * Courses are created as a copy of their template, with the site default visibility and the external dates.
+     */
+    public function test_sync_courses_template(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        set_config('visible', 1, 'moodlecourse');
+
+        $generator = $this->getDataGenerator();
+        $template = $generator->create_course(['shortname' => 'tpl', 'idnumber' => 'TPL', 'visible' => 0,
+            'startdate' => mktime(0, 0, 0, 9, 1, 2025)]);
+        $generator->create_module('page', ['course' => $template->id, 'name' => 'Template page']);
+        $generator->create_group(['courseid' => $template->id, 'idnumber' => 'tplgroup']);
+        $startdate = mktime(0, 0, 0, 9, 1, 2026);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 1', 'shortname' => 'new1', 'idnumber' => 'NEW1',
+            'template' => 'TPL', 'startdate' => (string) $startdate]);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 2', 'shortname' => 'new2', 'idnumber' => 'NEW2',
+            'template' => 'XXX', 'startdate' => (string) $startdate]);
+
+        $this->assertSame(0, $plugin->sync_courses(new \null_progress_trace()));
+
+        $course = $DB->get_record('course', ['shortname' => 'new1'], '*', MUST_EXIST);
+        $this->assertEquals('NEW1', $course->idnumber);
+        $this->assertEquals(1, $course->visible);
+        $this->assertEquals($startdate, $course->startdate);
+        $this->assertTrue($DB->record_exists('page', ['course' => $course->id, 'name' => 'Template page']));
+        $this->assertFalse($DB->record_exists('groups', ['courseid' => $course->id]));
+
+        // An unknown template uses the default template, without copying any course.
+        $course = $DB->get_record('course', ['shortname' => 'new2'], '*', MUST_EXIST);
+        $this->assertEquals('NEW2', $course->idnumber);
+        $this->assertFalse($DB->record_exists('page', ['course' => $course->id]));
+
+        $this->cleanup_enrol_database();
+    }
+}

@@ -154,6 +154,7 @@ final class group_sync_test extends \advanced_testcase {
         $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('courseid', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('grouping', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('description', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
         if ($dbman->table_exists($table)) {
             $dbman->drop_table($table);
@@ -258,6 +259,9 @@ final class group_sync_test extends \advanced_testcase {
         $plugin->set_config('newgroupidnumber', 'idnumber');
         $plugin->set_config('newgroupgroupings', 'grouping');
         $plugin->set_config('groupingcreation', 0);
+        $plugin->set_config('groupmessaging', 1);
+        // The scheduled task runs as admin, who can create group conversations.
+        $this->setAdminUser();
         $addgroup = fn(string $name, string $idnumber, string $course, string $grouping = '') =>
             $DB->insert_record(self::GROUPSTABLE, ['name' => $name, 'idnumber' => $idnumber, 'courseid' => $course,
                 'grouping' => $grouping]);
@@ -292,6 +296,36 @@ final class group_sync_test extends \advanced_testcase {
         $this->assertTrue($DB->record_exists('groupings_groups',
             ['groupingid' => $newgrouping->id, 'groupid' => $group(1, 'gc')->id]));
         $this->assertEquals(1, $DB->count_records('groupings', ['idnumber' => 'gr1', 'courseid' => $this->courses[2]->id]));
+
+        // Existing groups keep their name (teachers may rename them) and, if the field is configured, take the
+        // description of the external table, unless it is empty.
+        $c2ga = $group(2, 'ga');
+        $c1ga = $group(1, 'ga');
+        $DB->set_field(self::GROUPSTABLE, 'name', 'Group A renamed', ['idnumber' => 'ga', 'courseid' => 'tc1']);
+        $DB->set_field(self::GROUPSTABLE, 'description', 'New description', ['idnumber' => 'ga', 'courseid' => 'tc1']);
+        $plugin->sync_groups($trace);
+        $this->assertEquals($c1ga, $group(1, 'ga'));
+        $plugin->set_config('newgroupdesc', 'description');
+        $grp1description = $group(1, 'grp1')->description;
+        $this->assertNotEmpty($grp1description);
+        $sink = $this->redirectEvents();
+        $plugin->sync_groups($trace);
+        $this->assertEquals('Group A', $group(1, 'ga')->name);
+        $this->assertEquals('New description', $group(1, 'ga')->description);
+        $this->assertEquals($grp1description, $group(1, 'grp1')->description);
+        $this->assertEquals($c2ga, $group(2, 'ga'));
+        // Only the group whose description changed is updated.
+        $updated = array_filter($sink->get_events(), fn($event) => $event instanceof \core\event\group_updated);
+        $this->assertEquals([$c1ga->id], array_map(fn($event) => $event->objectid, array_values($updated)));
+        $sink->close();
+
+        // The group conversation is not disabled by the update.
+        $this->assertEquals(1, $DB->get_field('message_conversations', 'enabled',
+            ['component' => 'core_group', 'itemtype' => 'groups', 'itemid' => $c1ga->id], MUST_EXIST));
+        $sink = $this->redirectEvents();
+        $plugin->sync_groups($trace);
+        $this->assertCount(0, array_filter($sink->get_events(), fn($event) => $event instanceof \core\event\group_updated));
+        $sink->close();
 
         $this->cleanup_enrol_database();
     }
