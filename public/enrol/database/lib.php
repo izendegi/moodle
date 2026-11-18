@@ -747,93 +747,16 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
                         $trace->output("enrolling $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
 
-                        // If new mode is enabled, check if there is a manual enrolment for the recently enrolled user-course and remove the duplicated manual enrolment
+                        // If new mode is enabled, remove the duplicated manual enrolment of the recently enrolled user.
                         if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'new') {
-                            // If there are more roles assigned to the user in that course, in order to remove the manual enrolment those roles and their archetypes must have higher sortorders
-                            $sql_check_manual_enrol = "SELECT e.id AS enrolid, ctx.id as contextid, ctx.instanceid as instanceid
-                                                         FROM {enrol} e
-                                                         JOIN {user_enrolments} ue ON (e.id = ue.enrolid)
-                                                         JOIN {role_assignments} ra ON (ue.userid=ra.userid AND (ue.enrolid=ra.itemid OR (e.enrol='manual' AND ra.itemid=0)))
-                                                         JOIN {context} ctx ON (ra.contextid=ctx.id AND ctx.contextlevel=50)
-                                                         JOIN {course} c ON (ctx.instanceid=c.id AND e.courseid = c.id)
-                                                         JOIN {role} r ON (ra.roleid=r.id)
-                                                        WHERE e.enrol = 'manual'
-                                                          AND ra.itemid=0
-                                                          AND ue.userid = :userid
-                                                          AND e.courseid = :courseid
-                                                          AND NOT EXISTS (SELECT r2.id
-                                                                            FROM {role_assignments} ra2
-                                                                            JOIN {role} r2 ON (ra2.roleid=r2.id)
-                                                                            JOIN {role} r3 ON (r2.archetype = r3.shortname)
-                                                                            JOIN {context} ctx2 ON (ra2.contextid=ctx2.id AND ctx2.contextlevel=50)
-                                                                            JOIN {course} c2 ON (ctx2.instanceid=c2.id ),
-                                                                                 {role} externalrole
-                                                                           WHERE ra2.userid=ra.userid
-                                                                             AND c2.id = e.courseid
-                                                                             AND externalrole.id= :roleid
-                                                                             AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
-                                                                         )
-                                                    ";
-                            $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
-                            $manual_enrol = $DB->get_record_sql($sql_check_manual_enrol, $params_check_manual);
-                            if ($manual_enrol) {
-                                $enrol_plugin = enrol_get_plugin('manual');
-                                $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
-
-                                if ($manual_instance) {
-                                    role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
-                                    $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
-                                    $enrol_plugin->unenrol_user($manual_instance, $userid);
-                                    $trace->output("manual enrolment removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
-                                } else {
-                                    $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.",1);
-                                }
-                            }
+                            $this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid], $trace);
                         }
                     }
-                    // If full mode is enabled, check if there is a manual enrolment for every user in the external db and remove the duplicated manual enrolment
+                    // If full mode is enabled, remove the duplicated manual enrolment of every manually enrolled user in the external db.
                     if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'full' and isset($manualusers[$userid])) {
-                        // If there are more roles assigned to the user in that course, in order to remove the manual enrolment those roles and their archetypes must have higher sortorders
-                        $sql_check_manual_enrol = "SELECT e.id AS enrolid, ctx.id as contextid, ctx.instanceid as instanceid
-                                                     FROM {enrol} e
-                                                     JOIN {user_enrolments} ue ON (e.id = ue.enrolid)
-                                                     JOIN {role_assignments} ra ON (ue.userid=ra.userid AND (ue.enrolid=ra.itemid OR (e.enrol='manual' AND ra.itemid=0)))
-                                                     JOIN {context} ctx ON (ra.contextid=ctx.id AND ctx.contextlevel=50)
-                                                     JOIN {course} c ON (ctx.instanceid=c.id AND e.courseid = c.id)
-                                                     JOIN {role} r ON (ra.roleid=r.id)
-                                                    WHERE e.enrol = 'manual'
-                                                      AND ra.itemid=0
-                                                      AND ue.userid = :userid
-                                                      AND e.courseid = :courseid
-                                                      AND NOT EXISTS (SELECT r2.id
-                                                                        FROM {role_assignments} ra2
-                                                                        JOIN {role} r2 ON (ra2.roleid=r2.id)
-                                                                        JOIN {role} r3 ON (r2.archetype = r3.shortname)
-                                                                        JOIN {context} ctx2 ON (ra2.contextid=ctx2.id AND ctx2.contextlevel=50)
-                                                                        JOIN {course} c2 ON (ctx2.instanceid=c2.id ),
-                                                                             {role} externalrole
-                                                                       WHERE ra2.userid=ra.userid
-                                                                         AND c2.id = e.courseid
-                                                                         AND externalrole.id= :roleid
-                                                                         AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
-                                                                        )
-                                                    ";
-                        $params_check_manual = array('userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid);
-                        $manual_enrol = $DB->get_record_sql($sql_check_manual_enrol, $params_check_manual);
-                        if ($manual_enrol) {
-                            $enrol_plugin = enrol_get_plugin('manual');
-                            $manual_instance = $DB->get_record('enrol', array('id' => $manual_enrol->enrolid));
-
-                            if ($manual_instance) {
-                                role_unassign_all(array('contextid'=>$manual_enrol->contextid, 'userid'=>$userid, 'component'=>'', 'itemid'=>0));
-                                $trace->output("manually assigned roles removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
-                                $enrol_plugin->unenrol_user($manual_instance, $userid);
-                                $trace->output("manual enrolment removed for $localuserfield '".$useridentifier[$userid]."' in course $course->mapping.",1);
-                                // The user is no longer manually enrolled, no need to check the other roles.
-                                unset($manualusers[$userid]);
-                            } else {
-                                $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.",1);
-                            }
+                        if ($this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid], $trace)) {
+                            // The user is no longer manually enrolled, no need to check the other roles.
+                            unset($manualusers[$userid]);
                         }
                     }
                 }
@@ -1910,6 +1833,69 @@ class enrol_database_plugin extends enrol_plugin {
         ini_set('display_errors', $olddisplay);
         error_reporting($CFG->debug);
         ob_end_flush();
+    }
+
+    /**
+     * Removes the manual enrolment of a user in a course when it duplicates the external database enrolment.
+     *
+     * The manual enrolment is only removed if the user does not have any other role in the course with a higher
+     * priority (lower sortorder, directly or through its archetype) than the role assigned by the external database.
+     *
+     * @param stdClass $course course record, with the id and mapping fields.
+     * @param int $userid
+     * @param int $roleid role assigned by the external database.
+     * @param string $useridentifier identifier of the user in the external database, for the logs.
+     * @param progress_trace $trace
+     * @return bool true if the manual enrolment has been removed.
+     */
+    protected function remove_duplicated_manual_enrolment(stdClass $course, int $userid, int $roleid, string $useridentifier,
+            progress_trace $trace): bool {
+        global $DB;
+
+        $localuserfield = $this->get_config('localuserfield');
+
+        // If the user has other roles in the course, they and their archetypes must have higher sortorders than the
+        // external role for the manual enrolment to be removed.
+        $sql = "SELECT e.id AS enrolid, ctx.id as contextid, ctx.instanceid as instanceid
+                  FROM {enrol} e
+                  JOIN {user_enrolments} ue ON (e.id = ue.enrolid)
+                  JOIN {role_assignments} ra ON (ue.userid=ra.userid AND (ue.enrolid=ra.itemid OR (e.enrol='manual' AND ra.itemid=0)))
+                  JOIN {context} ctx ON (ra.contextid=ctx.id AND ctx.contextlevel=50)
+                  JOIN {course} c ON (ctx.instanceid=c.id AND e.courseid = c.id)
+                  JOIN {role} r ON (ra.roleid=r.id)
+                 WHERE e.enrol = 'manual'
+                   AND ra.itemid=0
+                   AND ue.userid = :userid
+                   AND e.courseid = :courseid
+                   AND NOT EXISTS (SELECT r2.id
+                                     FROM {role_assignments} ra2
+                                     JOIN {role} r2 ON (ra2.roleid=r2.id)
+                                     JOIN {role} r3 ON (r2.archetype = r3.shortname)
+                                     JOIN {context} ctx2 ON (ra2.contextid=ctx2.id AND ctx2.contextlevel=50)
+                                     JOIN {course} c2 ON (ctx2.instanceid=c2.id ),
+                                          {role} externalrole
+                                    WHERE ra2.userid=ra.userid
+                                      AND c2.id = e.courseid
+                                      AND externalrole.id= :roleid
+                                      AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
+                                  )";
+        $params = ['userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid];
+        $manualenrol = $DB->get_record_sql($sql, $params);
+        if (!$manualenrol) {
+            return false;
+        }
+
+        $manualinstance = $DB->get_record('enrol', ['id' => $manualenrol->enrolid]);
+        if (!$manualinstance) {
+            $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.", 1);
+            return false;
+        }
+
+        role_unassign_all(['contextid' => $manualenrol->contextid, 'userid' => $userid, 'component' => '', 'itemid' => 0]);
+        $trace->output("manually assigned roles removed for $localuserfield '$useridentifier' in course $course->mapping.", 1);
+        enrol_get_plugin('manual')->unenrol_user($manualinstance, $userid);
+        $trace->output("manual enrolment removed for $localuserfield '$useridentifier' in course $course->mapping.", 1);
+        return true;
     }
 
     /**
