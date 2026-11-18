@@ -1,0 +1,360 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace enrol_database;
+
+/**
+ * Tests for the group membership synchronisation of the external database enrolment plugin.
+ *
+ * @package    enrol_database
+ * @category   test
+ * @copyright  2026 Mondragon Unibertsitatea
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_group_enrolments')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_user_group_enrolments')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_group_memberships')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_ids_by_field')]
+final class group_sync_test extends \advanced_testcase {
+
+    /** @var string name of the external group enrolments table, without prefix. */
+    private const TABLE = 'enrol_database_test_groupenrols';
+
+    /** @var \stdClass[] test courses, indexed from 1. */
+    private array $courses = [];
+
+    /** @var \stdClass[] test users, indexed from 1. */
+    private array $users = [];
+
+    /** @var \stdClass[] test groups, indexed by name. */
+    private array $groups = [];
+
+    /** @var string original error log. */
+    private $oldlog;
+
+    public static function tearDownAfterClass(): void {
+        global $DB;
+        // Apply sqlsrv native driver error and logging default settings while finishing the AdoDB tests.
+        if ($DB->get_dbfamily() === 'mssql') {
+            sqlsrv_configure("WarningsReturnAsErrors", false);
+            sqlsrv_configure("LogSubsystems", SQLSRV_LOG_SYSTEM_OFF);
+            sqlsrv_configure("LogSeverity", SQLSRV_LOG_SEVERITY_ERROR);
+        }
+        parent::tearDownAfterClass();
+    }
+
+    /**
+     * Points the plugin to the Moodle database as external database and creates the external table and test data.
+     *
+     * Two courses (shortnames tc1 and tc2) with groups grp1 and grp2 in tc1 and grp1 in tc2, and four users
+     * (idnumbers userid1 to userid4). All users are enrolled in both courses except user 4, who is not enrolled in tc1.
+     */
+    private function init_enrol_database(): void {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/group/lib.php');
+
+        // Discard error logs from AdoDB.
+        $this->oldlog = ini_get('error_log');
+        ini_set('error_log', "$CFG->dataroot/testlog.log");
+
+        set_config('dbencoding', 'utf-8', 'enrol_database');
+        set_config('dbhost', $CFG->dbhost, 'enrol_database');
+        set_config('dbuser', $CFG->dbuser, 'enrol_database');
+        set_config('dbpass', $CFG->dbpass, 'enrol_database');
+        set_config('dbname', $CFG->dbname, 'enrol_database');
+        if (!empty($CFG->dboptions['dbport'])) {
+            set_config('dbhost', $CFG->dbhost . ':' . $CFG->dboptions['dbport'], 'enrol_database');
+        }
+
+        switch ($DB->get_dbfamily()) {
+            case 'mysql':
+                set_config('dbtype', 'mysqli', 'enrol_database');
+                set_config('dbsetupsql', "SET NAMES 'UTF-8'", 'enrol_database');
+                if (!empty($CFG->dboptions['dbsocket'])) {
+                    $dbsocket = $CFG->dboptions['dbsocket'];
+                    if ((strpos($dbsocket, '/') === false and strpos($dbsocket, '\\') === false)) {
+                        $dbsocket = ini_get('mysqli.default_socket');
+                    }
+                    set_config('dbtype', 'mysqli://' . rawurlencode($CFG->dbuser) . ':' . rawurlencode($CFG->dbpass) . '@' .
+                        rawurlencode($CFG->dbhost) . '/' . rawurlencode($CFG->dbname) . '?socket=' . rawurlencode($dbsocket),
+                        'enrol_database');
+                }
+                break;
+
+            case 'postgres':
+                set_config('dbtype', 'postgres7', 'enrol_database');
+                $setupsql = "SET NAMES 'UTF-8'";
+                if (!empty($CFG->dboptions['dbschema'])) {
+                    $setupsql .= "; SET search_path = '" . $CFG->dboptions['dbschema'] . "'";
+                }
+                set_config('dbsetupsql', $setupsql, 'enrol_database');
+                if (!empty($CFG->dboptions['dbsocket']) and ($CFG->dbhost === 'localhost' or $CFG->dbhost === '127.0.0.1')) {
+                    if (strpos($CFG->dboptions['dbsocket'], '/') !== false) {
+                        $socket = $CFG->dboptions['dbsocket'];
+                        if (!empty($CFG->dboptions['dbport'])) {
+                            $socket .= ':' . $CFG->dboptions['dbport'];
+                        }
+                        set_config('dbhost', $socket, 'enrol_database');
+                    } else {
+                        set_config('dbhost', '', 'enrol_database');
+                    }
+                }
+                break;
+
+            case 'mssql':
+                set_config('dbtype', 'mssqlnative', 'enrol_database');
+                // The native sqlsrv driver uses a comma as separator between host and port.
+                $dbhost = $CFG->dbhost;
+                if (!empty($CFG->dboptions['dbport'])) {
+                    $dbhost .= ',' . $CFG->dboptions['dbport'];
+                }
+                set_config('dbhost', $dbhost, 'enrol_database');
+                break;
+
+            default:
+                throw new \coding_exception('Unknown database driver ' . get_class($DB));
+        }
+
+        // NOTE: It is strongly discouraged to create new tables in advanced_testcase classes, but there is no other
+        // simple way to test the external database sync, so transactions are disabled and the table is dropped at the end.
+        $dbman = $DB->get_manager();
+        $table = new \xmldb_table(self::TABLE);
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('groupid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $dbman->create_table($table);
+
+        set_config('groupenroltable', $CFG->prefix . self::TABLE, 'enrol_database');
+        set_config('userfield', 'userid', 'enrol_database');
+        set_config('newgroupcourse', 'courseid', 'enrol_database');
+        set_config('groupfield', 'groupid', 'enrol_database');
+        set_config('localuserfield', 'idnumber', 'enrol_database');
+        set_config('localcoursefield', 'shortname', 'enrol_database');
+        set_config('groupupgrading', 0, 'enrol_database');
+
+        $generator = $this->getDataGenerator();
+        for ($i = 1; $i <= 2; $i++) {
+            $this->courses[$i] = $generator->create_course(['shortname' => 'tc' . $i, 'idnumber' => 'courseid' . $i]);
+        }
+        $this->groups['c1grp1'] = $generator->create_group(['courseid' => $this->courses[1]->id, 'idnumber' => 'grp1']);
+        $this->groups['c1grp2'] = $generator->create_group(['courseid' => $this->courses[1]->id, 'idnumber' => 'grp2']);
+        $this->groups['c2grp1'] = $generator->create_group(['courseid' => $this->courses[2]->id, 'idnumber' => 'grp1']);
+        for ($i = 1; $i <= 4; $i++) {
+            $this->users[$i] = $generator->create_user(['username' => 'username' . $i, 'idnumber' => 'userid' . $i]);
+            foreach ($this->courses as $index => $course) {
+                if ($i != 4 or $index != 1) {
+                    $generator->enrol_user($this->users[$i]->id, $course->id);
+                }
+            }
+        }
+    }
+
+    /**
+     * Drops the external table.
+     */
+    private function cleanup_enrol_database(): void {
+        global $DB;
+
+        $DB->get_manager()->drop_table(new \xmldb_table(self::TABLE));
+        ini_set('error_log', $this->oldlog);
+    }
+
+    /**
+     * Adds a row to the external table.
+     *
+     * @param string $user external user identifier.
+     * @param string $course external course identifier.
+     * @param string $group external group identifier.
+     */
+    private function add_external(string $user, string $course, string $group): void {
+        global $DB;
+        $DB->insert_record(self::TABLE, ['userid' => $user, 'courseid' => $course, 'groupid' => $group]);
+    }
+
+    /**
+     * Removes a row from the external table.
+     *
+     * @param string $user external user identifier.
+     * @param string $course external course identifier.
+     * @param string $group external group identifier.
+     */
+    private function remove_external(string $user, string $course, string $group): void {
+        global $DB;
+        $DB->delete_records(self::TABLE, ['userid' => $user, 'courseid' => $course, 'groupid' => $group]);
+    }
+
+    /**
+     * Returns the component of the membership of a user in a group, false if the user is not a member.
+     *
+     * @param string $group group name in $this->groups.
+     * @param int $user user index in $this->users.
+     * @return string|false
+     */
+    private function membership(string $group, int $user) {
+        global $DB;
+        return $DB->get_field('groups_members', 'component',
+            ['groupid' => $this->groups[$group]->id, 'userid' => $this->users[$user]->id]);
+    }
+
+    /**
+     * Groups members are added and removed by the scheduled synchronisation.
+     */
+    public function test_sync_group_enrolments(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $trace = new \null_progress_trace();
+
+        $this->add_external('userid1', 'tc1', 'grp1');
+        $this->add_external('userid1', 'tc1', 'grp1'); // Duplicated rows are fine.
+        $this->add_external('userid2', 'tc1', 'grp1');
+        $this->add_external('userid1', 'tc2', 'grp1');
+        $this->add_external('userid3', 'tc1', 'grp2');
+        $this->add_external('userid4', 'tc1', 'grp2'); // Not enrolled in the course, can not be added.
+        $this->add_external('xxxxxxx', 'tc1', 'grp1'); // Unknown user.
+        $this->add_external('userid2', 'xxx', 'grp1'); // Unknown course.
+        $this->add_external('userid2', 'tc1', 'xxxx'); // Unknown group.
+        $this->add_external('userid3', 'tc2', 'grp2'); // Group of another course.
+
+        $this->assertSame(0, $plugin->sync_group_enrolments($trace));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 2));
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp2', 3));
+        $this->assertFalse($this->membership('c1grp2', 4));
+        $this->assertFalse($this->membership('c2grp1', 2));
+        $this->assertFalse($this->membership('c2grp1', 3));
+        $this->assertEquals(4, $DB->count_records('groups_members'));
+
+        // A second run does not change anything.
+        $plugin->sync_group_enrolments($trace);
+        $this->assertEquals(4, $DB->count_records('groups_members'));
+
+        // Members removed from the external table are removed from the group, only in the course of the removed row.
+        $this->remove_external('userid1', 'tc2', 'grp1');
+        $this->remove_external('userid3', 'tc1', 'grp2');
+        $plugin->sync_group_enrolments($trace);
+        $this->assertFalse($this->membership('c2grp1', 1));
+        $this->assertFalse($this->membership('c1grp2', 3));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 2));
+
+        // Members not added by this plugin are never removed.
+        groups_add_member($this->groups['c2grp1']->id, $this->users[3]->id);
+        groups_add_member($this->groups['c1grp2']->id, $this->users[2]->id, 'enrol_self');
+        $plugin->sync_group_enrolments($trace);
+        $this->assertSame('', $this->membership('c2grp1', 3));
+        $this->assertSame('enrol_self', $this->membership('c1grp2', 2));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * Manually added members are converted to external database members only if groupupgrading is enabled.
+     */
+    public function test_sync_group_enrolments_groupupgrading(): void {
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $trace = new \null_progress_trace();
+
+        groups_add_member($this->groups['c1grp1']->id, $this->users[1]->id);
+        groups_add_member($this->groups['c1grp1']->id, $this->users[2]->id, 'enrol_self');
+        $this->add_external('userid1', 'tc1', 'grp1');
+        $this->add_external('userid2', 'tc1', 'grp1');
+
+        $plugin->sync_group_enrolments($trace);
+        $this->assertSame('', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_self', $this->membership('c1grp1', 2));
+
+        $plugin->set_config('groupupgrading', 1);
+        $plugin->sync_group_enrolments($trace);
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_self', $this->membership('c1grp1', 2));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * The synchronisation on login only changes the memberships of the user logging in.
+     */
+    public function test_sync_user_group_enrolments(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+
+        // Another user with the same idnumber as user 1.
+        $this->users[5] = $this->getDataGenerator()->create_user(['username' => 'username5', 'idnumber' => 'userid1']);
+        $this->getDataGenerator()->enrol_user($this->users[5]->id, $this->courses[1]->id);
+
+        $this->add_external('userid1', 'tc1', 'grp1');
+        $this->add_external('userid1', 'tc2', 'grp1');
+        $this->add_external('userid2', 'tc1', 'grp1');
+
+        $plugin->sync_user_group_enrolments($this->users[1]);
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 1));
+        $this->assertFalse($this->membership('c1grp1', 2));
+        $this->assertFalse($this->membership('c1grp1', 5));
+        $this->assertEquals(2, $DB->count_records('groups_members'));
+
+        // Only the memberships of the user logging in are removed.
+        $plugin->sync_user_group_enrolments($this->users[2]);
+        $this->remove_external('userid1', 'tc2', 'grp1');
+        $this->remove_external('userid2', 'tc1', 'grp1');
+        $plugin->sync_user_group_enrolments($this->users[1]);
+        $this->assertFalse($this->membership('c2grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 2));
+
+        $plugin->sync_user_group_enrolments($this->users[2]);
+        $this->assertFalse($this->membership('c1grp1', 2));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * Courses and users can be matched with other fields.
+     */
+    public function test_sync_group_enrolments_mapping_fields(): void {
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('localuserfield', 'username');
+        $plugin->set_config('localcoursefield', 'id');
+
+        $this->add_external('username1', (string) $this->courses[1]->id, 'grp1');
+        $this->add_external('username2', (string) $this->courses[2]->id, 'grp1');
+
+        $plugin->sync_group_enrolments(new \null_progress_trace());
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 2));
+        $this->assertFalse($this->membership('c2grp1', 1));
+
+        $this->cleanup_enrol_database();
+    }
+}
