@@ -1365,7 +1365,7 @@ class enrol_database_plugin extends enrol_plugin {
                 $newgroupid = groups_create_group($newgroup);
 
                 if ($group[$groupinglow]){
-                    $recordset = $DB->get_record('groupings', array('idnumber' => $group[$groupinglow]));
+                    $recordset = $DB->get_record('groupings', ['idnumber' => $group[$groupinglow], 'courseid' => $courseid]);
                     if(!$recordset and $groupingcreation) {
                         $newgrouping = new stdClass();
                         $newgrouping->idnumber = $group[$groupinglow];
