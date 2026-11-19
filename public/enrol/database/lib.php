@@ -1916,32 +1916,28 @@ class enrol_database_plugin extends enrol_plugin {
         $localuserfield = $this->get_config('localuserfield');
 
         // If the user has other roles in the course, they and their archetypes must have higher sortorders than the
-        // external role for the manual enrolment to be removed.
-        $sql = "SELECT e.id AS enrolid, ctx.id as contextid, ctx.instanceid as instanceid
+        // external role for the manual enrolment to be removed. Roles without archetype (e.g. custom roles) are
+        // compared by their own sortorder only.
+        $sql = "SELECT DISTINCT e.id AS enrolid, ctx.id AS contextid
                   FROM {enrol} e
-                  JOIN {user_enrolments} ue ON (e.id = ue.enrolid)
-                  JOIN {role_assignments} ra ON (ue.userid=ra.userid AND (ue.enrolid=ra.itemid OR (e.enrol='manual' AND ra.itemid=0)))
-                  JOIN {context} ctx ON (ra.contextid=ctx.id AND ctx.contextlevel=50)
-                  JOIN {course} c ON (ctx.instanceid=c.id AND e.courseid = c.id)
-                  JOIN {role} r ON (ra.roleid=r.id)
+                  JOIN {user_enrolments} ue ON ue.enrolid = e.id
+                  JOIN {context} ctx ON ctx.instanceid = e.courseid AND ctx.contextlevel = :courselevel
+                  JOIN {role_assignments} ra ON ra.userid = ue.userid AND ra.contextid = ctx.id AND ra.itemid = 0
                  WHERE e.enrol = 'manual'
-                   AND ra.itemid=0
                    AND ue.userid = :userid
                    AND e.courseid = :courseid
-                   AND NOT EXISTS (SELECT r2.id
+                   AND NOT EXISTS (SELECT 1
                                      FROM {role_assignments} ra2
-                                     JOIN {role} r2 ON (ra2.roleid=r2.id)
-                                     JOIN {role} r3 ON (r2.archetype = r3.shortname)
-                                     JOIN {context} ctx2 ON (ra2.contextid=ctx2.id AND ctx2.contextlevel=50)
-                                     JOIN {course} c2 ON (ctx2.instanceid=c2.id ),
-                                          {role} externalrole
-                                    WHERE ra2.userid=ra.userid
-                                      AND c2.id = e.courseid
-                                      AND externalrole.id= :roleid
+                                     JOIN {role} r2 ON r2.id = ra2.roleid
+                                LEFT JOIN {role} r3 ON r3.shortname = r2.archetype
+                                     JOIN {role} externalrole ON externalrole.id = :roleid
+                                    WHERE ra2.userid = ue.userid
+                                      AND ra2.contextid = ctx.id
                                       AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
                                   )";
-        $params = ['userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid];
-        $manualenrol = $DB->get_record_sql($sql, $params);
+        $params = ['userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid, 'courselevel' => CONTEXT_COURSE];
+        // A user may be enrolled in more than one manual instance of the course, the first one is removed.
+        $manualenrol = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE);
         if (!$manualenrol) {
             return false;
         }
