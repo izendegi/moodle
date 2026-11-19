@@ -31,6 +31,7 @@ namespace enrol_database;
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_group_memberships')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_ids_by_field')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'add_group_member')]
+#[\PHPUnit\Framework\Attributes\CoversClass(\enrol_database\task\sync_enrolments::class)]
 final class group_sync_test extends \advanced_testcase {
 
     /** @var string name of the external group enrolments table, without prefix. */
@@ -790,6 +791,83 @@ final class group_sync_test extends \advanced_testcase {
         $plugin->sync_user_group_enrolments($this->users[4]);
         $this->assertSame('enrol_database', $this->membership('c2grp1', 4));
 
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * The scheduled task creates a course and its group, enrols a user in the course and adds the user to the group, all
+     * in the same run: the group memberships are synchronised after the enrolments.
+     */
+    public function test_task_sync_enrolments(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+
+        // The plugin must be enabled for the task to run.
+        $enabled = array_filter(explode(',', $CFG->enrol_plugins_enabled));
+        set_config('enrol_plugins_enabled', implode(',', array_unique(array_merge($enabled, ['database']))));
+
+        // External tables of new courses and of user enrolments.
+        $dbman = $DB->get_manager();
+        $tables = [
+            'enrol_database_test_taskcourses' => ['fullname', 'shortname', 'idnumber'],
+            'enrol_database_test_enrols' => ['userid', 'courseid'],
+        ];
+        foreach ($tables as $name => $fields) {
+            $table = new \xmldb_table($name);
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            foreach ($fields as $field) {
+                $table->add_field($field, XMLDB_TYPE_CHAR, '255', null, null, null);
+            }
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            if ($dbman->table_exists($table)) {
+                $dbman->drop_table($table);
+            }
+            $dbman->create_table($table);
+        }
+
+        $plugin->set_config('newcoursetable', $CFG->prefix . 'enrol_database_test_taskcourses');
+        $plugin->set_config('newcoursefullname', 'fullname');
+        $plugin->set_config('newcourseshortname', 'shortname');
+        $plugin->set_config('newcourseidnumber', 'idnumber');
+        $plugin->set_config('newcoursecategory', '');
+        $plugin->set_config('templatecourse', '');
+        $plugin->set_config('defaultcategory', \core_course_category::get_default()->id);
+        $plugin->set_config('remoteenroltable', $CFG->prefix . 'enrol_database_test_enrols');
+        $plugin->set_config('remoteuserfield', 'userid');
+        $plugin->set_config('remotecoursefield', 'courseid');
+        $plugin->set_config('remoterolefield', '');
+        $plugin->set_config('defaultrole', $DB->get_field('role', 'id', ['shortname' => 'student']));
+        $plugin->set_config('newgrouptable', $CFG->prefix . self::GROUPSTABLE);
+        $plugin->set_config('newgroupname', 'name');
+        $plugin->set_config('newgroupidnumber', 'idnumber');
+        $plugin->set_config('groupmessaging', 0);
+
+        // A new course, a new group in it, and user 1 enrolled in the course and added to the group.
+        $DB->insert_record('enrol_database_test_taskcourses', ['fullname' => 'Task course', 'shortname' => 'tcnew',
+            'idnumber' => 'tcnew']);
+        $DB->insert_record(self::GROUPSTABLE, ['name' => 'New group', 'idnumber' => 'gnew', 'courseid' => 'tcnew']);
+        $DB->insert_record('enrol_database_test_enrols', ['userid' => 'userid1', 'courseid' => 'tcnew']);
+        $this->add_external('userid1', 'tcnew', 'gnew');
+
+        $task = new \enrol_database\task\sync_enrolments();
+        ob_start();
+        $task->execute();
+        $output = ob_get_clean();
+
+        $course = $DB->get_record('course', ['shortname' => 'tcnew'], '*', MUST_EXIST);
+        $group = $DB->get_record('groups', ['courseid' => $course->id, 'idnumber' => 'gnew'], '*', MUST_EXIST);
+        $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'database'], '*', MUST_EXIST);
+        $this->assertTrue($DB->record_exists('user_enrolments', ['enrolid' => $instance->id, 'userid' => $this->users[1]->id]));
+        $this->assertEquals('enrol_database', $DB->get_field('groups_members', 'component',
+            ['groupid' => $group->id, 'userid' => $this->users[1]->id]));
+        $this->assertStringContainsString('Starting group enrolment synchronisation', $output);
+
+        foreach (array_keys($tables) as $name) {
+            $dbman->drop_table(new \xmldb_table($name));
+        }
         $this->cleanup_enrol_database();
     }
 
