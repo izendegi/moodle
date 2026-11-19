@@ -1032,11 +1032,11 @@ class enrol_database_plugin extends enrol_plugin {
                     require_once("$CFG->dirroot/course/externallib.php");
                     require_once("$CFG->dirroot/group/lib.php");
 
-                    // This requires special permissions. Temporarily elevate our privileges.
-                    // And remember to drop the elevated privileges as soon as they are not needed.
+                    // This requires special permissions. Temporarily elevate our privileges through the session manager,
+                    // which keeps the global and the session user in sync, and drop them as soon as they are not needed.
                     global $USER;
                     $olduser = $USER;
-                    $USER = get_admin();
+                    \core\session\manager::set_user(get_admin());
                     $duplicatecoursereturns = null;
                     try {
                         static $backupsettings = array(
@@ -1090,7 +1090,7 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                     } finally {
                         // Drop the elevated privileges even if the duplication fails.
-                        $USER = $olduser;
+                        \core\session\manager::set_user($olduser);
                     }
                 } else {
                     // Course creation without a template.
