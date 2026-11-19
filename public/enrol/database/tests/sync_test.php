@@ -1164,4 +1164,69 @@ final class sync_test extends \advanced_testcase {
 
         $this->cleanup_enrol_database();
     }
+
+    /**
+     * The remote field names are used in the external queries as configured, and only the column names of the
+     * results are compared in lowercase, so that databases with case-sensitive column names are supported.
+     */
+    public function test_remote_field_names_case(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+
+        $plugin = new class extends \enrol_database_plugin {
+            /** @var array[] condition names and fields of every external query. */
+            public array $queries = [];
+
+            protected function db_get_query(\ADOConnection $extdb, $table, array $conditions, array $fields,
+                    $distinct = false, $sort = "") {
+                $this->queries[] = ['conditions' => array_keys($conditions), 'fields' => $fields];
+                return parent::db_get_query($extdb, $table, $conditions, $fields, $distinct, $sort);
+            }
+        };
+        $this->assertSame('database', $plugin->get_name());
+
+        $plugin->set_config('remotecoursefield', 'CourseID');
+        $plugin->set_config('remoteuserfield', 'UserID');
+        $plugin->set_config('remoterolefield', 'RoleID');
+        $plugin->set_config('remoteotheruserfield', 'OtherUser');
+        $plugin->set_config('newcoursefullname', 'FullName');
+        $plugin->set_config('newcourseshortname', 'ShortName');
+        $plugin->set_config('newcourseidnumber', 'IDNumber');
+        $plugin->set_config('newcoursecategory', 'Category');
+        $plugin->set_config('localcoursefield', 'idnumber');
+        $plugin->set_config('localuserfield', 'idnumber');
+        $plugin->set_config('localrolefield', 'shortname');
+        $plugin->set_config('localcategoryfield', 'id');
+        $plugin->set_config('defaultcategory', \core_course_category::get_default()->id);
+
+        $DB->insert_record('enrol_database_test_enrols',
+            ['userid' => 'userid1', 'courseid' => 'courseid1', 'roleid' => 'student']);
+        $DB->insert_record('enrol_database_test_enrols',
+            ['userid' => 'userid2', 'courseid' => 'courseid1', 'roleid' => 'editingteacher']);
+        $DB->insert_record('enrol_database_test_courses',
+            ['fullname' => 'New course', 'shortname' => 'ncase1', 'idnumber' => 'ncase1', 'category' => '']);
+
+        $trace = new \null_progress_trace();
+        $plugin->sync_user_enrolments(self::$users[1]);
+        $plugin->sync_enrolments($trace);
+        $plugin->sync_courses($trace);
+
+        // The results are matched whatever the case of the configured names.
+        $this->assertIsEnrolled(1, 1, ENROL_USER_ACTIVE, 'student');
+        $this->assertIsEnrolled(2, 1, ENROL_USER_ACTIVE, 'editingteacher');
+        $this->assertTrue($DB->record_exists('course', ['shortname' => 'ncase1', 'idnumber' => 'ncase1']));
+
+        // And the external queries use the names as configured.
+        $this->assertContainsEquals(['conditions' => ['UserID'], 'fields' => []], $plugin->queries);
+        $this->assertContainsEquals(['conditions' => [], 'fields' => ['CourseID']], $plugin->queries);
+        $this->assertContainsEquals(['conditions' => ['CourseID'], 'fields' => ['UserID', 'RoleID', 'OtherUser']],
+            $plugin->queries);
+        $this->assertContainsEquals(['conditions' => [], 'fields' => ['FullName', 'ShortName', 'Category', 'IDNumber']],
+            $plugin->queries);
+
+        $this->cleanup_enrol_database();
+    }
 }
