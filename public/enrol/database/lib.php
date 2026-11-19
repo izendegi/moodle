@@ -1520,6 +1520,14 @@ class enrol_database_plugin extends enrol_plugin {
         }
         $rs->Close();
 
+        // An empty external table (or one without any valid row) in a full synchronisation is more likely a problem of
+        // the external data (e.g. the table is being reloaded) or of the settings than a request to empty all the
+        // groups, so nothing is removed. The synchronisation of a single user may legitimately have no rows.
+        if (!$user and !$extmembers) {
+            $trace->output('The external group enrolments table has no valid rows, no group members are removed.');
+            return 0;
+        }
+
         // Moodle users and courses matching the external values, and the groups of those courses.
         if ($user) {
             // Only this user, even if other users share the same value in the local user field.

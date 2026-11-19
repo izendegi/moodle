@@ -507,6 +507,47 @@ final class group_sync_test extends \advanced_testcase {
     }
 
     /**
+     * If the external table has no valid rows, the scheduled synchronisation does not remove any member, but the
+     * synchronisation of a single user does.
+     */
+    public function test_sync_group_enrolments_empty_table(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+
+        groups_add_member($this->groups['c1grp1']->id, $this->users[1]->id, 'enrol_database');
+        groups_add_member($this->groups['c1grp1']->id, $this->users[2]->id, 'enrol_database');
+        $this->age_members();
+
+        // Empty table.
+        $trace = new \progress_trace_buffer(new \text_progress_trace(), false);
+        $this->assertSame(0, $plugin->sync_group_enrolments($trace));
+        $this->assertStringContainsString('no group members are removed', $trace->get_buffer());
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 2));
+
+        // Only rows without the mandatory values.
+        $DB->insert_record(self::TABLE, ['userid' => 'userid1', 'courseid' => 'tc1', 'groupid' => '']);
+        $plugin->sync_group_enrolments(new \null_progress_trace());
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 2));
+
+        // The synchronisation of a single user removes its memberships.
+        $plugin->sync_user_group_enrolments($this->users[1]);
+        $this->assertFalse($this->membership('c1grp1', 1));
+
+        // With any valid row, the members that are not in the table are removed.
+        $this->add_external('userid3', 'tc2', 'grp1');
+        $plugin->sync_group_enrolments(new \null_progress_trace());
+        $this->assertFalse($this->membership('c1grp1', 2));
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 3));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
      * Members added after the external data was read (e.g. by a login while the scheduled task runs) are not removed.
      */
     public function test_sync_group_enrolments_recent_members(): void {
@@ -521,6 +562,8 @@ final class group_sync_test extends \advanced_testcase {
         $DB->set_field('groups_members', 'timeadded', time() - 60, ['groupid' => $this->groups['c1grp1']->id]);
         $DB->set_field('groups_members', 'timeadded', time() + 60,
             ['groupid' => $this->groups['c1grp1']->id, 'userid' => $this->users[2]->id]);
+        // Another membership, as nothing is removed if the external table is empty.
+        $this->add_external('userid3', 'tc2', 'grp1');
 
         $plugin->sync_group_enrolments(new \null_progress_trace());
         $this->assertFalse($this->membership('c1grp1', 1));
