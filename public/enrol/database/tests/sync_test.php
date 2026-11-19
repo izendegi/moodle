@@ -33,6 +33,7 @@ namespace enrol_database;
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'db_get_query')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'remove_duplicated_manual_enrolment')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'remove_user_duplicated_manual_enrolment')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_categoryid')]
 final class sync_test extends \advanced_testcase {
     protected static $courses = array();
     protected static $users = array();
@@ -149,6 +150,7 @@ final class sync_test extends \advanced_testcase {
         $table->add_field('shortname', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('category', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('categorypath', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('startdate', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('enddate', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
@@ -1350,6 +1352,55 @@ final class sync_test extends \advanced_testcase {
         $generator->enrol_user(self::$users[3]->id, $course->id, 'student', 'manual');
         $plugin->sync_user_enrolments(self::$users[3]);
         $this->assertTrue($ismanual(3));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * New courses are created in the category of their path, which has priority over the category field. A course whose
+     * path is not valid is not created, as it might end up in a category where the wrong people have access to it.
+     */
+    public function test_sync_courses_category_path(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('newcoursecategorypath', 'categorypath');
+        $plugin->set_config('categoryseparator', '/');
+        $plugin->set_config('autocreatecategory', 0);
+        $plugin->set_config('localcategoryfield', 'id');
+        $defaultcategory = \core_course_category::get_default();
+        $plugin->set_config('defaultcategory', $defaultcategory->id);
+
+        $generator = $this->getDataGenerator();
+        $parent = $generator->create_category(['idnumber' => 'a']);
+        $child = $generator->create_category(['idnumber' => 'a/b', 'parent' => $parent->id]);
+        $other = $generator->create_category(['idnumber' => 'other']);
+        $addcourse = fn(string $shortname, ?string $path, string $category) => $DB->insert_record(
+            'enrol_database_test_courses', ['fullname' => $shortname, 'shortname' => $shortname, 'idnumber' => $shortname,
+            'categorypath' => $path, 'category' => $category]);
+        $categoryof = fn(string $shortname) => $DB->get_field('course', 'category', ['shortname' => $shortname]);
+
+        $addcourse('path1', 'a/b', (string) $other->id);   // The path has priority over the category field.
+        $addcourse('path2', 'a/missing', (string) $other->id);   // Invalid path: the course is not created.
+        $addcourse('path3', '', (string) $other->id);   // Empty path: the category field is used.
+        $addcourse('path4', null, '');   // Neither path nor category: the default category is used.
+
+        $this->assertSame(0, $plugin->sync_courses(new \null_progress_trace()));
+        $this->assertEquals($child->id, $categoryof('path1'));
+        $this->assertFalse($categoryof('path2'));
+        $this->assertEquals($other->id, $categoryof('path3'));
+        $this->assertEquals($defaultcategory->id, $categoryof('path4'));
+
+        // With autocreation, the missing categories of the path are created, and the course in the deepest one.
+        $plugin->set_config('autocreatecategory', 1);
+        $this->assertSame(0, $plugin->sync_courses(new \null_progress_trace()));
+        $missing = $DB->get_record('course_categories', ['idnumber' => 'a/missing'], '*', MUST_EXIST);
+        $this->assertEquals($parent->id, $missing->parent);
+        $this->assertEquals($missing->id, $categoryof('path2'));
 
         $this->cleanup_enrol_database();
     }
