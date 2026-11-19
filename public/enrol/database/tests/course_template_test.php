@@ -25,6 +25,7 @@ namespace enrol_database;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_courses')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'duplicate_template_course')]
 final class course_template_test extends \advanced_testcase {
 
     /** @var string name of the external courses table, without prefix. */
@@ -210,5 +211,60 @@ final class course_template_test extends \advanced_testcase {
         $this->assertFalse(is_siteadmin());
 
         $this->cleanup_enrol_database();
+    }
+
+    /**
+     * The template is copied with its activities, but without users, groups nor groupings, and the backup file is removed.
+     */
+    public function test_duplicate_template_course(): void {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/group/lib.php');
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $plugin = new class extends \enrol_database_plugin {
+            /**
+             * Calls the protected method duplicate_template_course().
+             *
+             * @param mixed ...$args
+             * @return int
+             */
+            public function duplicate(...$args): int {
+                return $this->duplicate_template_course(...$args);
+            }
+        };
+
+        $generator = $this->getDataGenerator();
+        $category = $generator->create_category();
+        $template = $generator->create_course(['shortname' => 'tpl', 'visible' => 0]);
+        $generator->create_module('page', ['course' => $template->id, 'name' => 'Template page']);
+        $group = $generator->create_group(['courseid' => $template->id]);
+        $grouping = $generator->create_grouping(['courseid' => $template->id]);
+        groups_assign_grouping($grouping->id, $group->id);
+        $student = $generator->create_and_enrol($template, 'student');
+        groups_add_member($group->id, $student->id);
+
+        $courseid = $plugin->duplicate((int) $template->id, 'Copy 1', 'copy1', (int) $category->id, 1);
+
+        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+        $this->assertEquals('Copy 1', $course->fullname);
+        $this->assertEquals('copy1', $course->shortname);
+        $this->assertEquals($category->id, $course->category);
+        $this->assertEquals(1, $course->visible);
+        $this->assertTrue($DB->record_exists('page', ['course' => $courseid, 'name' => 'Template page']));
+        $this->assertFalse($DB->record_exists('groups', ['courseid' => $courseid]));
+        $this->assertFalse($DB->record_exists('groupings', ['courseid' => $courseid]));
+        $this->assertEmpty(enrol_get_course_users($courseid));
+        // The template is not changed and the backup file is not kept in it.
+        $this->assertTrue($DB->record_exists('groups', ['id' => $group->id]));
+        $this->assertFalse($DB->record_exists_select('files', "component = 'backup' AND filename <> '.' AND contextid = ?",
+            [\context_course::instance($template->id)->id]));
+
+        // If the copy fails, no course is left.
+        try {
+            $plugin->duplicate(-1, 'Copy 2', 'copy2', (int) $category->id, 1);
+            $this->fail('An exception was expected');
+        } catch (\moodle_exception $e) {
+            $this->assertFalse($DB->record_exists('course', ['shortname' => 'copy2']));
+        }
     }
 }
