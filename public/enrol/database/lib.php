@@ -338,8 +338,7 @@ class enrol_database_plugin extends enrol_plugin {
      * @return void
      */
     public function sync_user_group_enrolments($user, ?ADOConnection $extdb = null) {
-        if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
-                or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
+        if (!$this->is_group_enrolment_sync_configured()) {
             return;
         }
 
@@ -1284,14 +1283,30 @@ class enrol_database_plugin extends enrol_plugin {
     }
 
     /**
+     * Whether all the settings needed by the group enrolments synchronisation are set.
+     *
+     * The course of each row of the group enrolments table is read from the field set in the 'newgroupcourse'
+     * setting, so it is needed as well, even if no new groups are created.
+     *
+     * @return bool
+     */
+    protected function is_group_enrolment_sync_configured(): bool {
+        foreach (['dbtype', 'groupenroltable', 'userfield', 'groupfield', 'newgroupcourse'] as $setting) {
+            if (trim((string) $this->get_config($setting)) === '') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Forces synchronisation of group enrolments with external database,
      *
      * @param progress_trace $trace
      * @return int 0 means success, 1 db connect failure, 4 db read failure
      */
     public function sync_group_enrolments(progress_trace $trace) {
-        if (!$this->get_config('dbtype') or !$this->get_config('groupenroltable')
-                or !$this->get_config('userfield') or !$this->get_config('groupfield')) {
+        if (!$this->is_group_enrolment_sync_configured()) {
             $trace->output('Group enrolments synchronisation skipped.');
             $trace->finished();
             return 0;
