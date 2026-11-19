@@ -331,6 +331,42 @@ final class group_sync_test extends \advanced_testcase {
     }
 
     /**
+     * The optional settings of the groups synchronisation may not be saved: no PHP deprecation is raised.
+     */
+    public function test_sync_groups_unset_optional_settings(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('newgrouptable', $CFG->prefix . self::GROUPSTABLE);
+        $plugin->set_config('newgroupname', 'name');
+        $plugin->set_config('newgroupidnumber', 'idnumber');
+        $plugin->set_config('groupmessaging', 0);
+        unset_config('newgroupdesc', 'enrol_database');
+        unset_config('newgroupgroupings', 'enrol_database');
+        $DB->insert_record(self::GROUPSTABLE, ['name' => 'Group A', 'idnumber' => 'ga', 'courseid' => 'tc1']);
+
+        // PHP deprecations do not make the test fail, so they are collected.
+        $deprecations = [];
+        set_error_handler(function(int $errno, string $errstr, string $errfile, int $errline) use (&$deprecations): bool {
+            $deprecations[] = "$errstr ($errfile:$errline)";
+            return true;
+        }, E_DEPRECATED);
+        try {
+            $this->assertSame(0, enrol_get_plugin('database')->sync_groups(new \null_progress_trace()));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertTrue($DB->record_exists('groups', ['courseid' => $this->courses[1]->id, 'idnumber' => 'ga']));
+        $this->assertSame([], array_values(array_filter($deprecations,
+            fn(string $deprecation) => str_contains($deprecation, 'enrol' . DIRECTORY_SEPARATOR . 'database'))));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
      * Groups members are added and removed by the scheduled synchronisation.
      */
     public function test_sync_group_enrolments(): void {
