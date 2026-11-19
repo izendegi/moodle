@@ -333,6 +333,9 @@ class enrol_database_plugin extends enrol_plugin {
      * Forces synchronisation of user group enrolments with external database,
      * does not create new groups.
      *
+     * It runs on login, so errors are not thrown: they are written to the server error log and reported with
+     * debugging(), and the memberships are synchronised later by the scheduled task.
+     *
      * @param stdClass $user user record
      * @param ADOConnection|null $extdb open connection to the external database, a new one is opened if not given.
      * @return void
@@ -347,10 +350,19 @@ class enrol_database_plugin extends enrol_plugin {
             return;
         }
 
-        $this->sync_group_memberships($extdb, new null_progress_trace(), $user);
-
-        if ($ownconnection) {
-            $extdb->Close();
+        try {
+            $this->sync_group_memberships($extdb, new null_progress_trace(), $user);
+        } catch (Exception $e) {
+            // A failure must not prevent the user from logging in. It is always logged in the server error log, as
+            // debugging() only shows it on sites in developer mode.
+            $message = 'enrol_database: error synchronising the group memberships of user ' . $user->id .
+                ' with the external database: ' . $e->getMessage();
+            error_log($message);
+            debugging($message, DEBUG_DEVELOPER, $e->getTrace());
+        } finally {
+            if ($ownconnection) {
+                $extdb->Close();
+            }
         }
     }
 
