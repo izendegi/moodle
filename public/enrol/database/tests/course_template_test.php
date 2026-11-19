@@ -26,6 +26,7 @@ namespace enrol_database;
  */
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_courses')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'duplicate_template_course')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'restore_template_backup')]
 final class course_template_test extends \advanced_testcase {
 
     /** @var string name of the external courses table, without prefix. */
@@ -402,5 +403,61 @@ final class course_template_test extends \advanced_testcase {
         } catch (\moodle_exception $e) {
             $this->assertFalse($DB->record_exists('course', ['shortname' => 'copy2']));
         }
+    }
+
+    /**
+     * If the restore fails once the new course has been created, the incomplete course is removed, so that it does not
+     * block its shortname, and the backup file is not kept in the template.
+     */
+    public function test_duplicate_template_course_restore_error(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $plugin = new class extends \enrol_database_plugin {
+            /**
+             * Calls the protected method duplicate_template_course().
+             *
+             * @param mixed ...$args
+             * @return int
+             */
+            public function duplicate(...$args): int {
+                return $this->duplicate_template_course(...$args);
+            }
+
+            /**
+             * Fails as a restore that breaks once the new course exists.
+             *
+             * @param string $backupid
+             * @param int $newcourseid
+             * @param int $userid
+             * @param array $settings
+             * @return void
+             */
+            protected function restore_template_backup(string $backupid, int $newcourseid, int $userid,
+                    array $settings): void {
+                global $DB;
+                if (!$DB->record_exists('course', ['id' => $newcourseid])) {
+                    throw new \coding_exception('The new course should exist when it is restored');
+                }
+                throw new \moodle_exception('error');
+            }
+        };
+
+        $generator = $this->getDataGenerator();
+        $category = $generator->create_category();
+        $template = $generator->create_course(['shortname' => 'tpl']);
+        $generator->create_module('page', ['course' => $template->id]);
+        $count = $DB->count_records('course');
+
+        try {
+            $plugin->duplicate((int) $template->id, 'Copy 3', 'copy3', (int) $category->id, 1);
+            $this->fail('An exception was expected');
+        } catch (\moodle_exception $e) {
+            $this->assertNotInstanceOf(\coding_exception::class, $e);
+        }
+        $this->assertFalse($DB->record_exists('course', ['shortname' => 'copy3']));
+        $this->assertEquals($count, $DB->count_records('course'));
+        $this->assertFalse($DB->record_exists_select('files', "component = 'backup' AND filename <> '.' AND contextid = ?",
+            [\context_course::instance($template->id)->id]));
     }
 }
