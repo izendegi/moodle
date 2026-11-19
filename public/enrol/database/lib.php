@@ -2106,118 +2106,77 @@ class enrol_database_plugin extends enrol_plugin {
      * creating categories for deeper categories, building the tree (the next
      * category would be 'categoryname1/categoryname2', and so on).
      *
-     * @param string $categoryname the field used to check if category exists (in the course_categories table) in idnumber field.
-     * @param progress_trace $trace
+     * The idnumber of each category is its path, so it can not be longer than the idnumber field (100 characters).
      *
-     * @return category id (int) or false.
-     * @uses $DB
+     * @param string $categoryname path of the category, the idnumbers of the categories separated by the separator.
+     * @param progress_trace $trace
+     * @return int|false id of the category, false if it does not exist and it can not be created.
      */
     public function get_categoryid($categoryname, $trace) {
         global $DB;
 
-        if (empty($categoryname)) {
-            $defaultcategory = core_course_category::get_default();
-            return $defaultcategory->id;
+        $categoryname = trim((string) $categoryname);
+        if ($categoryname === '') {
+            // The default category of the plugin settings, or the site default one if it does not exist.
+            $defaultcategory = null;
+            if ($defaultcategoryid = (int) $this->get_config('defaultcategory')) {
+                $defaultcategory = core_course_category::get($defaultcategoryid, IGNORE_MISSING, true);
+            }
+            return ($defaultcategory ?? core_course_category::get_default())->id;
         }
 
-        $separator = $this->get_config('categoryseparator');
+        $separator = (string) $this->get_config('categoryseparator');
         $autocreate = $this->get_config('autocreatecategory');
-        $catidnumber = $DB->get_record('course_categories', array('idnumber' => $categoryname), 'id');
 
-        if (!$separator) {
-            if (!$autocreate) {
-                if ($catidnumber) {
-                    // Yay, correctly specified category!
-                    return $catidnumber->id;
-                } else {
-                    // Bad luck, better not continue because unwanted ppl might get access to course in different category.
-                    $trace->output('error: category ['.$categoryname.'] not found (and not autocreating categories)', 1);
-                    return false;
-                }
-                // Not separator, but autocreate (only if the category does not exist).
-            } else {
-                if ($catidnumber) {
-                    // The category already exists.
-                    return $catidnumber->id;
-                }
-                $newcategory = new stdClass();
-                $newcategory->name = $categoryname;
-                $newcategory->idnumber = $categoryname;
-                $newcategory = core_course_category::create($newcategory);
-
-                return $newcategory->id;
-            }
+        // Names of the categories of the path, from the top level one.
+        if ($separator === '') {
+            $names = [$categoryname];
         } else {
-            $categoryname = trim($categoryname);
-            if ((strpos($categoryname, $separator) === 0) || (strrpos($categoryname, $separator) === (strlen($categoryname) - 1))) {
+            if (str_starts_with($categoryname, $separator) || str_ends_with($categoryname, $separator)) {
                 $trace->output('error: category name syntax invalid (can not start or end with category separator): '
-                        .$categoryname, 1);
+                        . $categoryname, 1);
                 return false;
             }
-        }
-
-        $categorypath = '';
-        $categoryidpath = '';
-        $parent = 0;
-        if ($separator) {
-            // We iterate through the subcategories splited by the separator.
-            $categories = explode($separator, $categoryname);
-            foreach ($categories as $depth => $currentcat) {
-                $currentcat = trim($currentcat);
-                if (empty($currentcat)) {
-                    continue;
-                }
-
-                // We build the category tree, and we query if a category exists for that category path. The idnumber
-                // of each category is its path with the configured separator, as in the external database.
-                $categorypath .= ($categorypath === '' ? '' : $separator) . $currentcat;
-
-                if (!$autocreate) {
-                    // If not autocreating, only the category matching the whole path is valid, so it is looked up
-                    // once the path is complete.
-                    continue;
-                } else {
-                    $dbcat = $DB->get_record('course_categories', array('idnumber' => $categorypath), 'id');
-                    $newcategory = new stdClass();
-
-                    if (!$dbcat) {
-                        // If the subcategory does not exist, we create it.
-                        $newcategory->name = $currentcat;
-                        $newcategory->idnumber = $categorypath;
-                        $newcategory->parent = $parent;
-                        if ($depth > 0) {
-                            $newcategory->path = $categoryidpath;
-                        }
-
-                        $newcategory = core_course_category::create($newcategory);
-                    } else {
-                        // If it exists, we take it's id.
-                        $newcategory->id = $dbcat->id;
-                    }
-
-                    $categoryidpath .= '/' . $newcategory->id;
-                    $parent = $newcategory->id;
-                }
-            }
-
-            if ($categorypath === '') {
+            $names = array_values(array_filter(array_map('trim', explode($separator, $categoryname)),
+                fn(string $name) => $name !== ''));
+            if (!$names) {
                 $trace->output('error: category name syntax invalid (no category found between separators): '
-                        .$categoryname, 1);
+                        . $categoryname, 1);
                 return false;
-            }
-
-            if (!$autocreate) {
-                // Do not fall back to a parent category: unwanted people might get access to the course.
-                if ($dbcat = $DB->get_record('course_categories', array('idnumber' => $categorypath), 'id')) {
-                    return $dbcat->id;
-                }
-                $trace->output('error: category ['.$categoryname.'] not found (and not autocreating categories)', 1);
-                return false;
-            } else {
-                // We return the last created subcategory's id, which will actually be the whole category path.
-                return $newcategory->id;
             }
         }
+
+        // The idnumber of each category is its path with the configured separator, as in the external database.
+        $categorypath = implode($separator, $names);
+        if (core_text::strlen($categorypath) > 100) {
+            $trace->output('error: category path too long (the idnumber can not be longer than 100 characters): '
+                    . $categoryname, 1);
+            return false;
+        }
+
+        if ($dbcat = $DB->get_record('course_categories', ['idnumber' => $categorypath], 'id')) {
+            return $dbcat->id;
+        }
+        if (!$autocreate) {
+            // Do not fall back to a parent category: unwanted people might get access to the course.
+            $trace->output('error: category [' . $categoryname . '] not found (and not autocreating categories)', 1);
+            return false;
+        }
+
+        // Create the missing part of the tree, reusing the categories that already exist.
+        $parent = 0;
+        $path = '';
+        foreach ($names as $name) {
+            $path .= ($path === '' ? '' : $separator) . $name;
+            if ($dbcat = $DB->get_record('course_categories', ['idnumber' => $path], 'id')) {
+                $parent = $dbcat->id;
+            } else {
+                $newcategory = core_course_category::create((object) ['name' => $name, 'idnumber' => $path,
+                    'parent' => $parent]);
+                $parent = $newcategory->id;
+            }
+        }
+        return $parent;
     }
 }
 /**
