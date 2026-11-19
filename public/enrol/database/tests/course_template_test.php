@@ -119,6 +119,7 @@ final class course_template_test extends \advanced_testcase {
         $table->add_field('fullname', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('shortname', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('summary', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('template', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('startdate', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
@@ -182,6 +183,33 @@ final class course_template_test extends \advanced_testcase {
         $course = $DB->get_record('course', ['shortname' => 'new2'], '*', MUST_EXIST);
         $this->assertEquals('NEW2', $course->idnumber);
         $this->assertFalse($DB->record_exists('page', ['course' => $course->id]));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * The summary of the new courses is taken from the external table, with or without template: the summary of the
+     * template is not kept.
+     */
+    public function test_sync_courses_summary(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('newcoursesummary', 'summary');
+
+        $this->getDataGenerator()->create_course(['shortname' => 'tpl', 'idnumber' => 'TPL',
+            'summary' => 'Template summary']);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 1', 'shortname' => 'new1', 'idnumber' => 'NEW1',
+            'template' => 'TPL', 'summary' => 'Summary 1']);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 2', 'shortname' => 'new2', 'idnumber' => 'NEW2',
+            'summary' => 'Summary 2']);
+
+        $this->assertSame(0, $plugin->sync_courses(new \null_progress_trace()));
+        $this->assertEquals('Summary 1', $DB->get_field('course', 'summary', ['shortname' => 'new1'], MUST_EXIST));
+        $this->assertEquals('Summary 2', $DB->get_field('course', 'summary', ['shortname' => 'new2'], MUST_EXIST));
+        $this->assertEquals('Template summary', $DB->get_field('course', 'summary', ['shortname' => 'tpl']));
 
         $this->cleanup_enrol_database();
     }
