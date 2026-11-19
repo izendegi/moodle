@@ -638,7 +638,17 @@ final class group_sync_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->preventResetByRollback();
         $this->init_enrol_database();
-        $plugin = enrol_get_plugin('database');
+        $plugin = new class extends \enrol_database_plugin {
+            /** @var array[] fields of every external query. */
+            public array $queries = [];
+
+            protected function db_get_query(\ADOConnection $extdb, $table, array $conditions, array $fields,
+                    $distinct = false, $sort = "") {
+                $this->queries[] = $fields;
+                return parent::db_get_query($extdb, $table, $conditions, $fields, $distinct, $sort);
+            }
+        };
+        $this->assertSame('database', $plugin->get_name());
         $plugin->set_config('newgrouptable', $CFG->prefix . self::GROUPSTABLE);
         $plugin->set_config('newgroupname', 'Name');
         $plugin->set_config('newgroupidnumber', 'IDNumber');
@@ -653,6 +663,9 @@ final class group_sync_test extends \advanced_testcase {
         $group = $DB->get_record('groups', ['courseid' => $this->courses[1]->id, 'idnumber' => 'ga'], '*', MUST_EXIST);
         $this->assertEquals('Group A', $group->name);
         $this->assertEquals('Description A', $group->description);
+
+        // The external query uses the names as configured, the case only matters when matching the results.
+        $this->assertEquals([['Name', 'IDNumber', 'CourseID', 'Description']], $plugin->queries);
 
         $this->cleanup_enrol_database();
     }
