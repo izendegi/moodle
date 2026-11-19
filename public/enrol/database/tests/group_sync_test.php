@@ -32,6 +32,7 @@ namespace enrol_database;
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_ids_by_field')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'add_group_member')]
 #[\PHPUnit\Framework\Attributes\CoversClass(\enrol_database\task\sync_enrolments::class)]
+#[\PHPUnit\Framework\Attributes\CoversFunction('enrol_database_allow_group_member_remove')]
 final class group_sync_test extends \advanced_testcase {
 
     /** @var string name of the external group enrolments table, without prefix. */
@@ -792,6 +793,28 @@ final class group_sync_test extends \advanced_testcase {
         $this->assertSame('enrol_database', $this->membership('c2grp1', 4));
 
         $this->cleanup_enrol_database();
+    }
+
+    /**
+     * The members added by the plugin can not be removed from the group in the user interface, the other ones can.
+     */
+    public function test_allow_group_member_remove(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/group/lib.php');
+        require_once($CFG->dirroot . '/enrol/database/lib.php');
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $group = $generator->create_group(['courseid' => $course->id]);
+        $external = $generator->create_and_enrol($course);
+        $manual = $generator->create_and_enrol($course);
+        groups_add_member($group->id, $external->id, 'enrol_database');
+        groups_add_member($group->id, $manual->id);
+
+        $this->assertFalse(enrol_database_allow_group_member_remove(0, $group->id, $external->id));
+        $this->assertFalse(groups_remove_member_allowed($group, $external));
+        $this->assertTrue(groups_remove_member_allowed($group, $manual));
     }
 
     /**
