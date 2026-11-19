@@ -187,6 +187,37 @@ final class course_template_test extends \advanced_testcase {
     }
 
     /**
+     * The template is looked up by idnumber if the 'Local template field' setting is not set or has an invalid value.
+     */
+    public function test_sync_courses_template_local_field_default(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+
+        $template = $this->getDataGenerator()->create_course(['shortname' => 'tpl', 'idnumber' => 'TPL']);
+        $this->getDataGenerator()->create_module('page', ['course' => $template->id, 'name' => 'Template page']);
+        $page = fn(string $shortname) => $DB->record_exists('page',
+            ['course' => $DB->get_field('course', 'id', ['shortname' => $shortname], MUST_EXIST), 'name' => 'Template page']);
+
+        // Not set.
+        unset_config('localtemplatefield', 'enrol_database');
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 1', 'shortname' => 'new1', 'idnumber' => 'NEW1',
+            'template' => 'TPL']);
+        $this->assertSame(0, enrol_get_plugin('database')->sync_courses(new \null_progress_trace()));
+        $this->assertTrue($page('new1'));
+
+        // Invalid value.
+        set_config('localtemplatefield', 'fullname', 'enrol_database');
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 2', 'shortname' => 'new2', 'idnumber' => 'NEW2',
+            'template' => 'TPL']);
+        $this->assertSame(0, enrol_get_plugin('database')->sync_courses(new \null_progress_trace()));
+        $this->assertTrue($page('new2'));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
      * The copy of the template runs as admin whatever the current user is, and the current user is restored after it.
      */
     public function test_sync_courses_template_current_user(): void {
