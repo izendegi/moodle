@@ -153,7 +153,7 @@ final class group_sync_test extends \advanced_testcase {
         $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('courseid', XMLDB_TYPE_CHAR, '255', null, null, null);
-        $table->add_field('grouping', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('groupingcode', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_field('description', XMLDB_TYPE_CHAR, '255', null, null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
         if ($dbman->table_exists($table)) {
@@ -257,14 +257,14 @@ final class group_sync_test extends \advanced_testcase {
         $plugin->set_config('newgrouptable', $CFG->prefix . self::GROUPSTABLE);
         $plugin->set_config('newgroupname', 'name');
         $plugin->set_config('newgroupidnumber', 'idnumber');
-        $plugin->set_config('newgroupgroupings', 'grouping');
+        $plugin->set_config('newgroupgroupings', 'groupingcode');
         $plugin->set_config('groupingcreation', 0);
         $plugin->set_config('groupmessaging', 1);
         // The scheduled task runs as admin, who can create group conversations.
         $this->setAdminUser();
         $addgroup = fn(string $name, string $idnumber, string $course, string $grouping = '') =>
             $DB->insert_record(self::GROUPSTABLE, ['name' => $name, 'idnumber' => $idnumber, 'courseid' => $course,
-                'grouping' => $grouping]);
+                'groupingcode' => $grouping]);
         $group = fn(int $course, string $idnumber) => $DB->get_record('groups',
             ['courseid' => $this->courses[$course]->id, 'idnumber' => $idnumber]);
 
