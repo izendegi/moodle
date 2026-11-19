@@ -459,8 +459,8 @@ class enrol_database_plugin extends enrol_plugin {
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
 
-        $manual_enrol_check = $this->get_config('manualenrol_cleaning');
-        $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
+        $manualenrolcleaning = $this->get_config('manualenrol_cleaning');
+        $manualenrolcleaningmode = $this->get_config('manualenrol_cleaning_mode');
 
         // Create roles mapping.
         $allroles = get_all_roles();
@@ -592,6 +592,8 @@ class enrol_database_plugin extends enrol_plugin {
                 continue; // Weird!
             }
             $context = context_course::instance($course->id);
+            // Participants page of the course, for the trace.
+            $courseurl = $CFG->wwwroot . '/user/index.php?id=' . $course->id;
 
             // Get current list of enrolled users with their roles.
             $currentroles   = array();
@@ -635,14 +637,16 @@ class enrol_database_plugin extends enrol_plugin {
                     while ($fields = $rs->FetchRow()) {
                         $fields = array_change_key_case($fields, CASE_LOWER);
                         if (empty($fields[$userfield_l])) {
-                            $trace->output("error: skipping user without mandatory $localuserfield in course $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                            $trace->output("error: skipping user without mandatory $localuserfield in course " .
+                                "$course->mapping: " . $courseurl, 1);
                             continue;
                         }
                         $mapping = $fields[$userfield_l];
                         if (!isset($usermapping[$mapping])) {
                             $usersearch[$localuserfield] = $mapping;
                             if (!$user = $DB->get_record('user', $usersearch, 'id', IGNORE_MULTIPLE)) {
-                                $trace->output("error: skipping unknown $localuserfield '$mapping' in course $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                                $trace->output("error: skipping unknown $localuserfield '$mapping' in course " .
+                                    "$course->mapping: " . $courseurl, 1);
                                 continue;
                             }
                             $usermapping[$mapping] = $user->id;
@@ -652,7 +656,8 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         if (empty($fields[$rolefield_l]) or !isset($roles[$fields[$rolefield_l]])) {
                             if (!$defaultrole) {
-                                $trace->output("error: skipping user $localuserfield '$mapping' in course $course->mapping - missing course and default role: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                                $trace->output("error: skipping user $localuserfield '$mapping' in course " .
+                                    "$course->mapping - missing course and default role: " . $courseurl, 1);
                                 continue;
                             }
                             $roleid = $defaultrole;
@@ -669,7 +674,8 @@ class enrol_database_plugin extends enrol_plugin {
                 }
                 $rs->Close();
             } else {
-                $trace->output("error: skipping course $course->mapping - could not match with external database: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                $trace->output("error: skipping course $course->mapping - could not match with external database: " .
+                    $courseurl, 1);
                 continue;
             }
             unset($usermapping);
@@ -677,7 +683,7 @@ class enrol_database_plugin extends enrol_plugin {
             // In full mode, find with a single query which users are manually enrolled in the course, so that the
             // duplicated manual enrolment check below only runs for them.
             $manualusers = [];
-            if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'full') {
+            if ($manualenrolcleaning and $manualenrolcleaningmode == 'full') {
                 $manualusers = $DB->get_records_sql_menu("SELECT DISTINCT ue.userid, 1
                                                             FROM {user_enrolments} ue
                                                             JOIN {enrol} e ON e.id = ue.enrolid
@@ -693,16 +699,20 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentroles[$userid][$roleid] = $roleid;
                         $currentenrols[$userid][$roleid] = $roleid;
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
-                        $trace->output("enrolling $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                        $trace->output("enrolling $localuserfield '" . $useridentifier[$userid] . "' as " .
+                            $allroles[$roleid]->shortname . " ==> $course->mapping: " . $courseurl, 1);
 
                         // If new mode is enabled, remove the duplicated manual enrolment of the recently enrolled user.
-                        if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'new') {
-                            $this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid], $trace);
+                        if ($manualenrolcleaning and $manualenrolcleaningmode == 'new') {
+                            $this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid],
+                                $trace);
                         }
                     }
-                    // If full mode is enabled, remove the duplicated manual enrolment of every manually enrolled user in the external db.
-                    if ($manual_enrol_check and $manual_enrol_cleaning_mode == 'full' and isset($manualusers[$userid])) {
-                        if ($this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid], $trace)) {
+                    // If full mode is enabled, remove the duplicated manual enrolment of every manually enrolled user in the
+                    // external database.
+                    if ($manualenrolcleaning and $manualenrolcleaningmode == 'full' and isset($manualusers[$userid])) {
+                        if ($this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid],
+                                $trace)) {
                             // The user is no longer manually enrolled, no need to check the other roles.
                             unset($manualusers[$userid]);
                         }
@@ -712,7 +722,8 @@ class enrol_database_plugin extends enrol_plugin {
                 // Reenable enrolment when previously disable enrolment refreshed.
                 if ($currentstatus[$userid] == ENROL_USER_SUSPENDED) {
                     $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE);
-                    $trace->output("unsuspending $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                    $trace->output("unsuspending $localuserfield '" . $useridentifier[$userid] . "' ==> $course->mapping: " .
+                        $courseurl, 1);
                 }
             }
 
@@ -722,7 +733,8 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($currentroles[$userid][$roleid])) {
                         role_assign($roleid, $userid, $context->id, 'enrol_database', $instance->id);
                         $currentroles[$userid][$roleid] = $roleid;
-                        $trace->output("assigning user roles: $localuserfield '".$useridentifier[$userid]."' as ".$allroles[$roleid]->shortname." ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                        $trace->output("assigning user roles: $localuserfield '" . $useridentifier[$userid] . "' as " .
+                            $allroles[$roleid]->shortname . " ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
 
@@ -731,7 +743,8 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($userroles[$cr])) {
                         role_unassign($cr, $userid, $context->id, 'enrol_database', $instance->id);
                         unset($currentroles[$userid][$cr]);
-                        $trace->output("unassigning user roles: ".$allroles[$cr]->shortname." role to $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                        $trace->output("unassigning user roles: " . $allroles[$cr]->shortname . " role to $localuserfield '" .
+                            $useridentifier[$userid] . "' ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
 
@@ -753,7 +766,8 @@ class enrol_database_plugin extends enrol_plugin {
                             continue;
                         }
                         $this->unenrol_user($instance, $userid);
-                        $trace->output("unenrolling user: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                        $trace->output("unenrolling user: $localuserfield '" . $useridentifier[$userid] .
+                            "' ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
 
@@ -768,7 +782,8 @@ class enrol_database_plugin extends enrol_plugin {
                     }
                     if ($status != ENROL_USER_SUSPENDED) {
                         $this->update_user_enrol($instance, $userid, ENROL_USER_SUSPENDED);
-                        $trace->output("suspending user: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                        $trace->output("suspending user: $localuserfield '" . $useridentifier[$userid] .
+                            "' ==> $course->mapping: " . $courseurl, 1);
                     }
                     if ($unenrolaction == ENROL_EXT_REMOVED_SUSPENDNOROLES) {
                         if (isset($requestedroles[$userid])) {
@@ -777,7 +792,8 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         role_unassign_all(array('contextid'=>$context->id, 'userid'=>$userid, 'component'=>'enrol_database', 'itemid'=>$instance->id));
 
-                        $trace->output("unassigning user all roles: $localuserfield '".$useridentifier[$userid]."' ==> $course->mapping: ".$CFG->wwwroot."/user/index.php?id=".$course->id, 1);
+                        $trace->output("unassigning user all roles: $localuserfield '" . $useridentifier[$userid] .
+                            "' ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
             }
@@ -918,7 +934,8 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                     } else if ($category and $fields[$category_l]) {
                         // Old-style category lookup using localcategoryfield.
-                        if ($coursecategory = $DB->get_record('course_categories', array($localcategoryfield => $fields[$category_l]))) {
+                        if ($coursecategory = $DB->get_record('course_categories',
+                                [$localcategoryfield => $fields[$category_l]])) {
                             // Yay, correctly specified category!
                             $course->category = $coursecategory->id;
                         } else {
@@ -983,7 +1000,7 @@ class enrol_database_plugin extends enrol_plugin {
             $defaulttemplate = false;
             $defaulttemplateid = 0;
             if ($templatecourse) {
-                if ($defaulttemplate = $DB->get_record('course', array('shortname'=>$templatecourse))) {
+                if ($defaulttemplate = $DB->get_record('course', ['shortname' => $templatecourse])) {
                     $defaulttemplate = fullclone(course_get_format($defaulttemplate)->get_course());
                     $defaulttemplateid = $defaulttemplate->id;
                     if (!isset($defaulttemplate->numsections)) {
@@ -1308,11 +1325,11 @@ class enrol_database_plugin extends enrol_plugin {
         $descriptionlow = strtolower($description);
         $groupinglow = strtolower($grouping);
 
-        $extdbgroups = array();
-        $dbgroups = array();
+        $extdbgroups = [];
+        $dbgroups = [];
 
         // External db groups.
-        $sqlfields = array($name, $idnumber, $course);
+        $sqlfields = [$name, $idnumber, $course];
         if ($description) {
             $sqlfields[] = $description;
         }
@@ -1392,10 +1409,8 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                if ($DB->record_exists('groups', array('idnumber' => $group[$idnumberlow], 'courseid' => $courseid))) {
-                    // Already exists, skip.
-                    //$trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course "
-                    //               .$group[$courselow].", but with a different name.");
+                if ($DB->record_exists('groups', ['idnumber' => $group[$idnumberlow], 'courseid' => $courseid])) {
+                    // Already exists (with a different case in the idnumber), skip.
                     continue;
                 }
 
@@ -1554,7 +1569,7 @@ class enrol_database_plugin extends enrol_plugin {
             // The column names are compared in lowercase, whatever case the external database returns.
             $fields = array_change_key_case($fields, CASE_LOWER);
             $fields = $this->db_decode($fields);
-            $extuser =(string) ($fields[$userfieldlow] ?? '');
+            $extuser = (string) ($fields[$userfieldlow] ?? '');
             $extcourse = (string) ($fields[$groupcoursefieldlow] ?? '');
             $extgroup = (string) ($fields[$groupfieldlow] ?? '');
             if ($extuser === '' or $extcourse === '' or $extgroup === '') {
@@ -2232,8 +2247,10 @@ class enrol_database_plugin extends enrol_plugin {
         return $parent;
     }
 }
+
 /**
- * Prevent removal of enrol_database group member allocation.
+ * Prevents the removal of the group members added by the external database enrolment plugin.
+ *
  * @param int $itemid
  * @param int $groupid
  * @param int $userid
