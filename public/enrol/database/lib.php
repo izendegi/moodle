@@ -927,6 +927,13 @@ class enrol_database_plugin extends enrol_plugin {
 
             $templatecourse = $this->get_config('templatecourse');
 
+            // Field that identifies the template of each course ('Local template field' setting). It is used as a column
+            // name, so only the values offered by the setting are accepted, and its default is used if it is not set.
+            $localtemplatefield = $this->get_config('localtemplatefield');
+            if (!in_array($localtemplatefield, ['id', 'idnumber', 'shortname'], true)) {
+                $localtemplatefield = 'idnumber';
+            }
+
             $defaulttemplate = false;
             $defaulttemplateid = 0;
             if ($templatecourse) {
@@ -971,8 +978,7 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($createcourses as $fields) {
                 $templateid = $defaulttemplateid;
                 if ($fields->template) {
-                    if ($coursetemplate = $DB->get_record('course',
-                            array($this->get_config('localtemplatefield') => $fields->template))) {
+                    if ($coursetemplate = $DB->get_record('course', [$localtemplatefield => $fields->template])) {
                         $newcourse = fullclone(course_get_format($coursetemplate)->get_course());
                         $templateid = $newcourse->id;
                         unset($newcourse->id);
