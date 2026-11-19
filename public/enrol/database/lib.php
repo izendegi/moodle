@@ -1028,66 +1028,45 @@ class enrol_database_plugin extends enrol_plugin {
 
                 if ($templateid) {
                     // If we have a real template (i.e., based on an existing course) duplicate it (including all activities,
-                    // blocks, filters and enrolments) and update the resulting course with the new course fields.
-                    require_once("$CFG->dirroot/course/externallib.php");
-                    require_once("$CFG->dirroot/group/lib.php");
+                    // blocks and filters, but no users nor groups) and update the resulting course with the new course fields.
 
-                    // This requires special permissions. Temporarily elevate our privileges through the session manager,
-                    // which keeps the global and the session user in sync, and drop them as soon as they are not needed.
+                    // Some parts of the restore use the current user, so run it as admin through the session manager,
+                    // which keeps the global and the session user in sync, and drop it as soon as it is not needed.
                     global $USER;
                     $olduser = $USER;
                     \core\session\manager::set_user(get_admin());
-                    $duplicatecoursereturns = null;
                     try {
-                        static $backupsettings = array(
-                            array('name' => 'users', 'value' => 0)
-                        );
-
                         // Templates are usually hidden, so use the site default visibility instead of the template's one.
-                        $duplicatecoursereturns = core_course_external::duplicate_course($templateid, $newcourse->fullname,
-                                $newcourse->shortname, $newcourse->category, empty($courseconfig->visible) ? 0 : 1,
-                                $backupsettings);
+                        $newcourseid = $this->duplicate_template_course($templateid, $newcourse->fullname,
+                                $newcourse->shortname, $newcourse->category, empty($courseconfig->visible) ? 0 : 1);
 
                         $updatecourses = [[
-                            'id' => $duplicatecoursereturns['id'],
+                            'id' => $newcourseid,
                             'idnumber' => $newcourse->idnumber,
                             'summary' => $newcourse->summary,
                         ]];
                         // The duplicate keeps the dates of the template, apply the external ones if there are any.
                         // They go in a separate update so that invalid dates do not prevent setting the idnumber.
                         if (isset($fields->startdate) || isset($fields->enddate)) {
-                            $dates = ['id' => $duplicatecoursereturns['id'], 'startdate' => $newcourse->startdate];
+                            $dates = ['id' => $newcourseid, 'startdate' => $newcourse->startdate];
                             if (isset($newcourse->enddate)) {
                                 $dates['enddate'] = $newcourse->enddate;
                             }
                             $updatecourses[] = $dates;
                         }
                         foreach ($updatecourses as $updatecourse) {
-                            $result = core_course_external::update_courses([$updatecourse]);
-                            foreach ($result['warnings'] as $warning) {
-                                $trace->output('error: could not update course ' . $newcourse->shortname . ': '
-                                        . $warning['message'], 1);
-                            }
-                        }
-                        groups_delete_groups($duplicatecoursereturns['id'], $showfeedback=false);
-                        groups_delete_groupings($duplicatecoursereturns['id'], $showfeedback=false);
-                    } catch (\Throwable $e) {
-                        // Log the failure and go on with the next course.
-                        $trace->output('error: could not create course ' . $newcourse->shortname . ' from template '
-                                . $templateid . ': ' . $e->getMessage(), 1);
-                        // The duplication creates the course before restoring the template into it, so a failure can
-                        // leave an incomplete course that would block the shortname. It did not exist before (it was
-                        // checked above), so it is removed to be created again in the next synchronisation.
-                        if (!$duplicatecoursereturns and
-                                $incomplete = $DB->get_record('course', ['shortname' => $newcourse->shortname])) {
                             try {
-                                delete_course($incomplete, false);
-                                $trace->output('removed incomplete course ' . $newcourse->shortname, 1);
-                            } catch (\Throwable $e) {
-                                $trace->output('error: could not remove incomplete course ' . $newcourse->shortname . ': '
+                                update_course((object) $updatecourse);
+                            } catch (moodle_exception $e) {
+                                $trace->output('error: could not update course ' . $newcourse->shortname . ': '
                                         . $e->getMessage(), 1);
                             }
                         }
+                    } catch (\Throwable $e) {
+                        // Log the failure and go on with the next course. An incomplete course has already been removed,
+                        // so it will be created again in the next synchronisation.
+                        $trace->output('error: could not create course ' . $newcourse->shortname . ' from template '
+                                . $templateid . ': ' . $e->getMessage(), 1);
                     } finally {
                         // Drop the elevated privileges even if the duplication fails.
                         \core\session\manager::set_user($olduser);
@@ -1109,6 +1088,122 @@ class enrol_database_plugin extends enrol_plugin {
         $trace->finished();
 
         return 0;
+    }
+
+    /**
+     * Creates a new course as a copy of a template course, without users, groups nor groupings.
+     *
+     * It works as core_course_external::duplicate_course(), with the same backup settings, but it uses the backup and
+     * restore API directly: the capabilities are checked for the admin user and the groups are not copied at all.
+     * If the copy fails, the new course is removed, so that it does not block its shortname.
+     *
+     * @param int $templateid id of the template course.
+     * @param string $fullname full name of the new course.
+     * @param string $shortname short name of the new course.
+     * @param int $categoryid category of the new course.
+     * @param int $visible visibility of the new course.
+     * @return int id of the new course.
+     * @throws moodle_exception if the copy fails.
+     */
+    protected function duplicate_template_course(int $templateid, string $fullname, string $shortname, int $categoryid,
+            int $visible): int {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/backup/util/includes/backup_includes.php');
+        require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
+
+        $userid = get_admin()->id;
+        // The defaults of core_course_external::duplicate_course(), plus no groups and groupings.
+        $settings = [
+            'activities' => 1,
+            'blocks' => 1,
+            'filters' => 1,
+            'users' => 0,
+            'enrolments' => backup::ENROL_WITHUSERS,
+            'role_assignments' => 0,
+            'comments' => 0,
+            'userscompletion' => 0,
+            'logs' => 0,
+            'grade_histories' => 0,
+            'groups' => 0,
+        ];
+
+        $bc = null;
+        $rc = null;
+        $file = null;
+        $backupbasepath = null;
+        $newcourseid = null;
+        try {
+            $bc = new backup_controller(backup::TYPE_1COURSE, $templateid, backup::FORMAT_MOODLE, backup::INTERACTIVE_NO,
+                backup::MODE_SAMESITE, $userid);
+            foreach ($settings as $name => $value) {
+                if ($bc->get_plan()->setting_exists($name)) {
+                    $bc->get_plan()->get_setting($name)->set_value($value);
+                }
+            }
+            $backupid = $bc->get_backupid();
+            $backupbasepath = $bc->get_plan()->get_basepath();
+            $bc->execute_plan();
+            $file = $bc->get_results()['backup_destination'];
+            $bc->destroy();
+            $bc = null;
+
+            if (!file_exists($backupbasepath . '/moodle_backup.xml')) {
+                $file->extract_to_pathname(get_file_packer('application/vnd.moodle.backup'), $backupbasepath);
+            }
+
+            $newcourseid = restore_dbops::create_new_course($fullname, $shortname, $categoryid);
+            $rc = new restore_controller($backupid, $newcourseid, backup::INTERACTIVE_NO, backup::MODE_SAMESITE, $userid,
+                backup::TARGET_NEW_COURSE);
+            foreach ($settings as $name => $value) {
+                if ($rc->get_plan()->setting_exists($name)) {
+                    $setting = $rc->get_plan()->get_setting($name);
+                    if ($setting->get_status() == backup_setting::NOT_LOCKED) {
+                        $setting->set_value($value);
+                    }
+                }
+            }
+            if (!$rc->execute_precheck()) {
+                $precheckresults = $rc->get_precheck_results();
+                if (!empty($precheckresults['errors'])) {
+                    throw new moodle_exception('backupprecheckerrors', 'webservice', '',
+                        implode(' ', $precheckresults['errors']));
+                }
+            }
+            $rc->execute_plan();
+            $rc->destroy();
+            $rc = null;
+
+            // The restore sets the names and the visibility of the template, set the ones of the new course.
+            $DB->update_record('course', (object) ['id' => $newcourseid, 'fullname' => $fullname,
+                'shortname' => $shortname, 'visible' => $visible]);
+            rebuild_course_cache($newcourseid, true);
+        } catch (\Throwable $e) {
+            // Remove the incomplete course, so that it is created again in the next synchronisation.
+            if ($newcourseid and $course = $DB->get_record('course', ['id' => $newcourseid])) {
+                try {
+                    delete_course($course, false);
+                } catch (\Throwable $deleteerror) {
+                    debugging('Could not remove the incomplete course ' . $shortname . ': ' . $deleteerror->getMessage(),
+                        DEBUG_DEVELOPER);
+                }
+            }
+            throw $e;
+        } finally {
+            if ($bc) {
+                $bc->destroy();
+            }
+            if ($rc) {
+                $rc->destroy();
+            }
+            if ($backupbasepath and empty($CFG->keeptempdirectoriesonbackup)) {
+                fulldelete($backupbasepath);
+            }
+            if ($file) {
+                $file->delete();
+            }
+        }
+
+        return $newcourseid;
     }
 
     /**
