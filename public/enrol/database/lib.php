@@ -1164,6 +1164,8 @@ class enrol_database_plugin extends enrol_plugin {
         if ($rs = $extdb->Execute($sql, $extparams)) {
             if (!$rs->EOF) {
                 while ($fields = $rs->FetchRow()) {
+                    // The column names are compared in lowercase, whatever case the external database returns.
+                    $fields = array_change_key_case($fields, CASE_LOWER);
                     $fields = $this->db_decode($fields);
                     if (empty($fields[$namelow]) or empty($fields[$idnumberlow]) or empty($fields[$courselow])) {
                         $trace->output('error: invalid external group record, name, id number and course are mandatory:
@@ -1374,8 +1376,10 @@ class enrol_database_plugin extends enrol_plugin {
         $extmembers = [];
         $extusers = [];
         while ($fields = $rs->FetchRow()) {
+            // The column names are compared in lowercase, whatever case the external database returns.
+            $fields = array_change_key_case($fields, CASE_LOWER);
             $fields = $this->db_decode($fields);
-            $extuser = (string) ($fields[$userfieldlow] ?? '');
+            $extuser =(string) ($fields[$userfieldlow] ?? '');
             $extcourse = (string) ($fields[$groupcoursefieldlow] ?? '');
             $extgroup = (string) ($fields[$groupfieldlow] ?? '');
             if ($extuser === '' or $extcourse === '' or $extgroup === '') {
