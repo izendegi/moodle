@@ -595,4 +595,65 @@ final class group_sync_test extends \advanced_testcase {
 
         $this->cleanup_enrol_database();
     }
+
+    /**
+     * The remote field names may be configured in any case: the columns returned by the external database are
+     * matched in lowercase, so no member is skipped nor removed because of the case of the column names.
+     */
+    public function test_sync_group_enrolments_field_names_case(): void {
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $trace = new \null_progress_trace();
+        $plugin->set_config('userfield', 'UserID');
+        $plugin->set_config('newgroupcourse', 'CourseID');
+        $plugin->set_config('groupfield', 'GroupID');
+
+        // An existing member that is still in the external table must be kept.
+        groups_add_member($this->groups['c1grp1']->id, $this->users[1]->id, 'enrol_database');
+        $this->age_members();
+        $this->add_external('userid1', 'tc1', 'grp1');
+        $this->add_external('userid2', 'tc1', 'grp1');
+        $this->add_external('userid3', 'tc2', 'grp1');
+
+        $this->assertSame(0, $plugin->sync_group_enrolments($trace));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+        $this->assertSame('enrol_database', $this->membership('c1grp1', 2));
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 3));
+
+        // The same applies to the synchronisation on login.
+        $this->add_external('userid4', 'tc2', 'grp1');
+        $plugin->sync_user_group_enrolments($this->users[4]);
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 4));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * The remote field names of the new groups table may be configured in any case.
+     */
+    public function test_sync_groups_field_names_case(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('newgrouptable', $CFG->prefix . self::GROUPSTABLE);
+        $plugin->set_config('newgroupname', 'Name');
+        $plugin->set_config('newgroupidnumber', 'IDNumber');
+        $plugin->set_config('newgroupcourse', 'CourseID');
+        $plugin->set_config('newgroupdesc', 'Description');
+        $plugin->set_config('groupmessaging', 0);
+
+        $DB->insert_record(self::GROUPSTABLE, ['name' => 'Group A', 'idnumber' => 'ga', 'courseid' => 'tc1',
+            'description' => 'Description A']);
+
+        $this->assertSame(0, $plugin->sync_groups(new \null_progress_trace()));
+        $group = $DB->get_record('groups', ['courseid' => $this->courses[1]->id, 'idnumber' => 'ga'], '*', MUST_EXIST);
+        $this->assertEquals('Group A', $group->name);
+        $this->assertEquals('Description A', $group->description);
+
+        $this->cleanup_enrol_database();
+    }
 }
