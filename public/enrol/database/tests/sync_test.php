@@ -32,6 +32,7 @@ namespace enrol_database;
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_user_enrolments')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'db_get_query')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'remove_duplicated_manual_enrolment')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'remove_user_duplicated_manual_enrolment')]
 final class sync_test extends \advanced_testcase {
     protected static $courses = array();
     protected static $users = array();
@@ -1290,6 +1291,65 @@ final class sync_test extends \advanced_testcase {
         $this->assertFalse($ismanual(1));
         $this->assertTrue($ismanual(2));
         $this->assertTrue($ismanual(4));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * Duplicated manual enrolments are removed on login too, following the same mode as the scheduled synchronisation.
+     */
+    public function test_sync_user_enrolments_manual_enrolment_cleaning(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('localcoursefield', 'idnumber');
+        $plugin->set_config('localuserfield', 'idnumber');
+        $plugin->set_config('localrolefield', 'shortname');
+        $plugin->set_config('defaultrole', self::$roles['student']->id);
+        $plugin->set_config('manualenrol_cleaning', 1);
+        $plugin->set_config('manualenrol_cleaning_mode', 'new');
+
+        $course = self::$courses[1];
+        $manualinstance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+        $ismanual = fn(int $user) => $DB->record_exists('user_enrolments',
+            ['enrolid' => $manualinstance->id, 'userid' => self::$users[$user]->id]);
+        $generator = $this->getDataGenerator();
+        for ($i = 1; $i <= 3; $i++) {
+            $DB->insert_record('enrol_database_test_enrols',
+                ['userid' => 'userid' . $i, 'courseid' => 'courseid1', 'roleid' => 'student']);
+        }
+
+        // New enrolment: the manual student enrolment is removed, the manual teacher one is kept.
+        $generator->enrol_user(self::$users[1]->id, $course->id, 'student', 'manual');
+        $generator->enrol_user(self::$users[2]->id, $course->id, 'editingteacher', 'manual');
+        $plugin->sync_user_enrolments(self::$users[1]);
+        $plugin->sync_user_enrolments(self::$users[2]);
+        $this->assertIsEnrolled(1, 1, ENROL_USER_ACTIVE, 'student');
+        $this->assertIsEnrolled(2, 1, ENROL_USER_ACTIVE, 'student');
+        $this->assertFalse($ismanual(1));
+        $this->assertTrue($ismanual(2));
+
+        // In "new" mode, a user already enrolled from the external database is not checked again.
+        $plugin->sync_user_enrolments(self::$users[3]);
+        $generator->enrol_user(self::$users[3]->id, $course->id, 'student', 'manual');
+        $plugin->sync_user_enrolments(self::$users[3]);
+        $this->assertTrue($ismanual(3));
+
+        // In "full" mode, it is.
+        $plugin->set_config('manualenrol_cleaning_mode', 'full');
+        $plugin->sync_user_enrolments(self::$users[3]);
+        $this->assertFalse($ismanual(3));
+        $this->assertIsEnrolled(3, 1, ENROL_USER_ACTIVE, 'student');
+
+        // Nothing is removed if the setting is disabled.
+        $plugin->set_config('manualenrol_cleaning', 0);
+        $generator->enrol_user(self::$users[3]->id, $course->id, 'student', 'manual');
+        $plugin->sync_user_enrolments(self::$users[3]);
+        $this->assertTrue($ismanual(3));
 
         $this->cleanup_enrol_database();
     }
