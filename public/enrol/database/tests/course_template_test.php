@@ -188,6 +188,45 @@ final class course_template_test extends \advanced_testcase {
     }
 
     /**
+     * The default template ('New course template' setting) is copied with its activities, without groups, for the courses
+     * without template and for the courses whose template is not found. A template found has priority over it.
+     */
+    public function test_sync_courses_default_template(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('templatecourse', 'deftpl');
+
+        $generator = $this->getDataGenerator();
+        $default = $generator->create_course(['shortname' => 'deftpl']);
+        $generator->create_module('page', ['course' => $default->id, 'name' => 'Default page']);
+        $generator->create_group(['courseid' => $default->id]);
+        $template = $generator->create_course(['shortname' => 'tpl', 'idnumber' => 'TPL']);
+        $generator->create_module('page', ['course' => $template->id, 'name' => 'Template page']);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 1', 'shortname' => 'new1', 'idnumber' => 'NEW1']);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 2', 'shortname' => 'new2', 'idnumber' => 'NEW2',
+            'template' => 'XXX']);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 3', 'shortname' => 'new3', 'idnumber' => 'NEW3',
+            'template' => 'TPL']);
+
+        $this->assertSame(0, $plugin->sync_courses(new \null_progress_trace()));
+        $pages = fn(string $shortname) => $DB->get_fieldset('page', 'name',
+            ['course' => $DB->get_field('course', 'id', ['shortname' => $shortname], MUST_EXIST)]);
+        $this->assertEquals(['Default page'], $pages('new1'));
+        $this->assertEquals(['Default page'], $pages('new2'));
+        $this->assertEquals(['Template page'], $pages('new3'));
+        foreach (['new1', 'new2'] as $shortname) {
+            $course = $DB->get_record('course', ['shortname' => $shortname], '*', MUST_EXIST);
+            $this->assertEquals(strtoupper($shortname), $course->idnumber);
+            $this->assertFalse($DB->record_exists('groups', ['courseid' => $course->id]));
+        }
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
      * The summary of the new courses is taken from the external table, with or without template: the summary of the
      * template is not kept.
      */
