@@ -597,6 +597,62 @@ final class group_sync_test extends \advanced_testcase {
     }
 
     /**
+     * An error synchronising the group memberships on login does not stop the login: the user is still enrolled
+     * in the courses and the error is reported with debugging().
+     */
+    public function test_sync_user_enrolments_group_error(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+
+        $plugin = new class extends \enrol_database_plugin {
+            protected function sync_group_memberships(\ADOConnection $extdb, \progress_trace $trace,
+                    ?\stdClass $user = null): int {
+                throw new \moodle_exception('error');
+            }
+        };
+        $this->assertSame('database', $plugin->get_name());
+
+        $dbman = $DB->get_manager();
+        $table = new \xmldb_table('enrol_database_test_enrols');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $dbman->create_table($table);
+        $plugin->set_config('remoteenroltable', $CFG->prefix . 'enrol_database_test_enrols');
+        $plugin->set_config('remoteuserfield', 'userid');
+        $plugin->set_config('remotecoursefield', 'courseid');
+        $plugin->set_config('remoterolefield', '');
+        $plugin->set_config('defaultrole', $DB->get_field('role', 'id', ['shortname' => 'student']));
+        $DB->insert_record('enrol_database_test_enrols', ['userid' => 'userid4', 'courseid' => 'tc1']);
+        $this->add_external('userid4', 'tc1', 'grp2');
+        // Empty the test error log, so that only the errors of this test are in it.
+        file_put_contents(ini_get('error_log'), '');
+
+        $plugin->sync_user_enrolments($this->users[4]);
+        $this->assertDebuggingCalled();
+        // The error is also written to the error log, which init_enrol_database() points to a test file.
+        $this->assertStringContainsString(
+            'enrol_database: error synchronising the group memberships of user ' . $this->users[4]->id,
+            (string) file_get_contents(ini_get('error_log')));
+        $instance = $DB->get_record('enrol', ['courseid' => $this->courses[1]->id, 'enrol' => 'database'], '*', MUST_EXIST);
+        $this->assertTrue($DB->record_exists('user_enrolments', ['enrolid' => $instance->id, 'userid' => $this->users[4]->id]));
+        $this->assertFalse($this->membership('c1grp2', 4));
+
+        // The same when it is called with its own connection.
+        $plugin->sync_user_group_enrolments($this->users[4]);
+        $this->assertDebuggingCalled();
+
+        $dbman->drop_table($table);
+        $this->cleanup_enrol_database();
+    }
+
+    /**
      * The group enrolments are not synchronised without the course field, which is set in the 'newgroupcourse' setting.
      */
     public function test_sync_group_enrolments_without_course_field(): void {
