@@ -184,4 +184,31 @@ final class course_template_test extends \advanced_testcase {
 
         $this->cleanup_enrol_database();
     }
+
+    /**
+     * The copy of the template runs as admin whatever the current user is, and the current user is restored after it.
+     */
+    public function test_sync_courses_template_current_user(): void {
+        global $DB, $USER;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+
+        $generator = $this->getDataGenerator();
+        $generator->create_course(['shortname' => 'tpl', 'idnumber' => 'TPL']);
+        $DB->insert_record(self::TABLE, ['fullname' => 'New course 1', 'shortname' => 'new1', 'idnumber' => 'NEW1',
+            'template' => 'TPL']);
+
+        // A user without permissions to create courses.
+        $user = $generator->create_user();
+        $this->setUser($user);
+
+        $this->assertSame(0, $plugin->sync_courses(new \null_progress_trace()));
+        $this->assertTrue($DB->record_exists('course', ['shortname' => 'new1', 'idnumber' => 'NEW1']));
+        $this->assertEquals($user->id, $USER->id);
+        $this->assertFalse(is_siteadmin());
+
+        $this->cleanup_enrol_database();
+    }
 }
