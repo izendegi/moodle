@@ -597,6 +597,34 @@ final class group_sync_test extends \advanced_testcase {
     }
 
     /**
+     * The group enrolments are not synchronised without the course field, which is set in the 'newgroupcourse' setting.
+     */
+    public function test_sync_group_enrolments_without_course_field(): void {
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+
+        groups_add_member($this->groups['c1grp1']->id, $this->users[1]->id, 'enrol_database');
+        $this->age_members();
+        $this->add_external('userid2', 'tc1', 'grp1');
+
+        foreach (['', '  '] as $value) {
+            $plugin->set_config('newgroupcourse', $value);
+            $trace = new \progress_trace_buffer(new \text_progress_trace(), false);
+            $this->assertSame(0, $plugin->sync_group_enrolments($trace));
+            $this->assertStringContainsString('Group enrolments synchronisation skipped.', $trace->get_buffer());
+            $plugin->sync_user_group_enrolments($this->users[2]);
+
+            // Nothing changes: no members are added nor removed.
+            $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+            $this->assertFalse($this->membership('c1grp1', 2));
+        }
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
      * The remote field names may be configured in any case: the columns returned by the external database are
      * matched in lowercase, so no member is skipped nor removed because of the case of the column names.
      */
