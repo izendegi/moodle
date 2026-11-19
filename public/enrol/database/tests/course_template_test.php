@@ -218,6 +218,44 @@ final class course_template_test extends \advanced_testcase {
     }
 
     /**
+     * The optional settings may not be saved and the template field may be NULL: no PHP deprecation is raised.
+     */
+    public function test_sync_courses_unset_optional_settings(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        unset_config('newcoursesummary', 'enrol_database');
+        unset_config('newcoursecategorypath', 'enrol_database');
+
+        // PHP deprecations do not make the test fail, so they are collected.
+        $deprecations = [];
+        set_error_handler(function(int $errno, string $errstr, string $errfile, int $errline) use (&$deprecations): bool {
+            $deprecations[] = "$errstr ($errfile:$errline)";
+            return true;
+        }, E_DEPRECATED);
+        try {
+            // The template field is configured, but it is NULL in the external table.
+            $DB->insert_record(self::TABLE, ['fullname' => 'New course 1', 'shortname' => 'new1', 'idnumber' => 'NEW1']);
+            $this->assertSame(0, enrol_get_plugin('database')->sync_courses(new \null_progress_trace()));
+
+            // The template field is not configured either.
+            unset_config('newcoursetemplate', 'enrol_database');
+            $DB->insert_record(self::TABLE, ['fullname' => 'New course 2', 'shortname' => 'new2', 'idnumber' => 'NEW2']);
+            $this->assertSame(0, enrol_get_plugin('database')->sync_courses(new \null_progress_trace()));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertTrue($DB->record_exists('course', ['shortname' => 'new1']));
+        $this->assertTrue($DB->record_exists('course', ['shortname' => 'new2']));
+        $this->assertSame([], array_values(array_filter($deprecations,
+            fn(string $deprecation) => str_contains($deprecation, 'enrol' . DIRECTORY_SEPARATOR . 'database'))));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
      * The copy of the template runs as admin whatever the current user is, and the current user is restored after it.
      */
     public function test_sync_courses_template_current_user(): void {
