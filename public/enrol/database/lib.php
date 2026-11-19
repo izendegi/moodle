@@ -596,11 +596,12 @@ class enrol_database_plugin extends enrol_plugin {
             $courseurl = $CFG->wwwroot . '/user/index.php?id=' . $course->id;
 
             // Get current list of enrolled users with their roles.
-            $currentroles   = array();
-            $currentenrols  = array();
-            $currentstatus  = array();
-            $usermapping    = array();
-            $useridentifier = array();
+            $currentroles  = array();
+            $currentenrols = array();
+            $currentstatus = array();
+            $usermapping   = array();
+            // Identifier of each user in the external database, for the trace.
+            $useridentifier = [];
             $sql = "SELECT u.$localuserfield AS mapping, u.id AS userid, ue.status, ra.roleid
                       FROM {user} u
                       JOIN {role_assignments} ra ON (ra.userid = u.id AND ra.component = 'enrol_database' AND ra.itemid = :enrolid)
