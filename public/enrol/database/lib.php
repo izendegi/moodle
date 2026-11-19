@@ -157,7 +157,7 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Read remote enrols and create instances.
-        [$sql, $extparams] = $this->db_get_query($extdb, $table, [$userfield_l => $user->$localuserfield], [], false);
+        [$sql, $extparams] = $this->db_get_query($extdb, $table, [$userfield => $user->$localuserfield], [], false);
 
         if ($rs = $extdb->Execute($sql, $extparams)) {
             if (!$rs->EOF) {
@@ -442,7 +442,7 @@ class enrol_database_plugin extends enrol_plugin {
         } else {
             // Get a list of courses to be synced that are in external table.
             $externalcourses = array();
-            [$sql, $extparams] = $this->db_get_query($extdb, $table, [], [$coursefield_l], true);
+            [$sql, $extparams] = $this->db_get_query($extdb, $table, [], [$coursefield], true);
             if ($rs = $extdb->Execute($sql, $extparams)) {
                 if (!$rs->EOF) {
                     while ($mapping = $rs->FetchRow()) {
@@ -521,12 +521,12 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Sync user enrolments.
-        $sqlfields = array($userfield_l);
+        $sqlfields = array($userfield);
         if ($rolefield) {
-            $sqlfields[] = $rolefield_l;
+            $sqlfields[] = $rolefield;
         }
         if ($otheruserfield) {
-            $sqlfields[] = $otheruserfieldlower;
+            $sqlfields[] = $otheruserfield;
         }
         foreach ($existing as $course) {
             if ($ignorehidden and !$course->visible) {
@@ -800,21 +800,21 @@ class enrol_database_plugin extends enrol_plugin {
             $defaultcategory = core_course_category::get_default();
         }
 
-        $sqlfields = array($fullname_l, $shortname_l);
+        $sqlfields = array($fullname, $shortname);
         if ($category) {
-            $sqlfields[] = $category_l;
+            $sqlfields[] = $category;
         }
         if ($summary) {
-            $sqlfields[] = $summary_l;
+            $sqlfields[] = $summary;
         }
         if ($template) {
-            $sqlfields[] = $template_l;
+            $sqlfields[] = $template;
         }
         if ($idnumber) {
-            $sqlfields[] = $idnumber_l;
+            $sqlfields[] = $idnumber;
         }
         if ($categoryname) {
-            $sqlfields[] = $categoryname_l;
+            $sqlfields[] = $categoryname;
         }
         if ($startdate) {
             $sqlfields[] = $startdate;
@@ -1153,12 +1153,12 @@ class enrol_database_plugin extends enrol_plugin {
         $dbgroups = array();
 
         // External db groups.
-        $sqlfields = array($namelow, $idnumberlow, $courselow);
+        $sqlfields = array($name, $idnumber, $course);
         if ($description) {
-            $sqlfields[] = $descriptionlow;
+            $sqlfields[] = $description;
         }
         if ($grouping) {
-            $sqlfields[] = $groupinglow;
+            $sqlfields[] = $grouping;
         }
         [$sql, $extparams] = $this->db_get_query($extdb, $table, [], $sqlfields, true);
         if ($rs = $extdb->Execute($sql, $extparams)) {
