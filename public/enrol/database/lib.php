@@ -1198,7 +1198,6 @@ class enrol_database_plugin extends enrol_plugin {
         ];
 
         $bc = null;
-        $rc = null;
         $file = null;
         $backupbasepath = null;
         $newcourseid = null;
@@ -1222,26 +1221,7 @@ class enrol_database_plugin extends enrol_plugin {
             }
 
             $newcourseid = restore_dbops::create_new_course($fullname, $shortname, $categoryid);
-            $rc = new restore_controller($backupid, $newcourseid, backup::INTERACTIVE_NO, backup::MODE_SAMESITE, $userid,
-                backup::TARGET_NEW_COURSE);
-            foreach ($settings as $name => $value) {
-                if ($rc->get_plan()->setting_exists($name)) {
-                    $setting = $rc->get_plan()->get_setting($name);
-                    if ($setting->get_status() == backup_setting::NOT_LOCKED) {
-                        $setting->set_value($value);
-                    }
-                }
-            }
-            if (!$rc->execute_precheck()) {
-                $precheckresults = $rc->get_precheck_results();
-                if (!empty($precheckresults['errors'])) {
-                    throw new moodle_exception('backupprecheckerrors', 'webservice', '',
-                        implode(' ', $precheckresults['errors']));
-                }
-            }
-            $rc->execute_plan();
-            $rc->destroy();
-            $rc = null;
+            $this->restore_template_backup($backupid, $newcourseid, $userid, $settings);
 
             // The restore sets the names and the visibility of the template, set the ones of the new course.
             $DB->update_record('course', (object) ['id' => $newcourseid, 'fullname' => $fullname,
@@ -1262,9 +1242,6 @@ class enrol_database_plugin extends enrol_plugin {
             if ($bc) {
                 $bc->destroy();
             }
-            if ($rc) {
-                $rc->destroy();
-            }
             if ($backupbasepath and empty($CFG->keeptempdirectoriesonbackup)) {
                 fulldelete($backupbasepath);
             }
@@ -1274,6 +1251,41 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         return $newcourseid;
+    }
+
+    /**
+     * Restores the backup of a template course into a new course, as part of duplicate_template_course().
+     *
+     * @param string $backupid id of the backup of the template course.
+     * @param int $newcourseid id of the new, empty course.
+     * @param int $userid id of the user that runs the restore.
+     * @param array $settings restore settings, as setting name => value.
+     * @return void
+     * @throws moodle_exception if the restore fails.
+     */
+    protected function restore_template_backup(string $backupid, int $newcourseid, int $userid, array $settings): void {
+        $rc = new restore_controller($backupid, $newcourseid, backup::INTERACTIVE_NO, backup::MODE_SAMESITE, $userid,
+            backup::TARGET_NEW_COURSE);
+        try {
+            foreach ($settings as $name => $value) {
+                if ($rc->get_plan()->setting_exists($name)) {
+                    $setting = $rc->get_plan()->get_setting($name);
+                    if ($setting->get_status() == backup_setting::NOT_LOCKED) {
+                        $setting->set_value($value);
+                    }
+                }
+            }
+            if (!$rc->execute_precheck()) {
+                $precheckresults = $rc->get_precheck_results();
+                if (!empty($precheckresults['errors'])) {
+                    throw new moodle_exception('backupprecheckerrors', 'webservice', '',
+                        implode(' ', $precheckresults['errors']));
+                }
+            }
+            $rc->execute_plan();
+        } finally {
+            $rc->destroy();
+        }
     }
 
     /**
