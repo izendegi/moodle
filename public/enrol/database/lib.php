@@ -784,10 +784,11 @@ class enrol_database_plugin extends enrol_plugin {
         $fullname     = trim($this->get_config('newcoursefullname'));
         $shortname    = trim($this->get_config('newcourseshortname'));
         $idnumber     = trim($this->get_config('newcourseidnumber'));
-        $summary      = trim($this->get_config('newcoursesummary'));
-        $template     = trim($this->get_config('newcoursetemplate') ?? '');
+        // The optional settings added by this plugin may not be saved yet, so they are cast to string.
+        $summary      = trim((string) $this->get_config('newcoursesummary'));
+        $template     = trim((string) $this->get_config('newcoursetemplate'));
         $category     = trim($this->get_config('newcoursecategory'));
-        $categoryname = trim($this->get_config('newcoursecategorypath'));
+        $categoryname = trim((string) $this->get_config('newcoursecategorypath'));
 
         $startdate    = trim($this->get_config('newcoursestartdate'));
         $enddate      = trim($this->get_config('newcourseenddate'));
@@ -859,7 +860,7 @@ class enrol_database_plugin extends enrol_plugin {
                     $course->shortname = $fields[$shortname_l];
                     $course->idnumber  = $idnumber_l ? $fields[$idnumber_l] : '';
                     $course->summary   = $summary_l ? $fields[$summary_l] : '';
-                    $course->template  = $template_l ? trim($fields[$template_l]) : '';
+                    $course->template  = $template_l ? trim((string) ($fields[$template_l] ?? '')) : '';
 
                     if ($categoryname_l and $fields[$categoryname_l]) {
                         if ($categoryid = $this->get_categoryid($fields[$categoryname_l], $trace)) {
@@ -1248,9 +1249,10 @@ class enrol_database_plugin extends enrol_plugin {
         $table = trim($this->get_config('newgrouptable'));
         $name = trim($this->get_config('newgroupname'));
         $idnumber = trim($this->get_config('newgroupidnumber'));
-        $description = trim($this->get_config('newgroupdesc'));
+        // The optional settings may not be saved yet, so they are cast to string.
+        $description = trim((string) $this->get_config('newgroupdesc'));
         $course = trim($this->get_config('newgroupcourse'));
-        $grouping = trim($this->get_config('newgroupgroupings'));
+        $grouping = trim((string) $this->get_config('newgroupgroupings'));
         $groupingcreation = $this->get_config('groupingcreation');
         $messaging = $this->get_config('groupmessaging');
         $localcoursefield = trim($this->get_config('localcoursefield'));
