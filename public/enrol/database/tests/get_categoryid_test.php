@@ -136,4 +136,58 @@ final class get_categoryid_test extends \advanced_testcase {
         $this->assertEquals($c->id, $plugin->get_categoryid('a|b|c', $trace));
         $this->assertFalse($plugin->get_categoryid('a/b/c', $trace));
     }
+
+    /**
+     * Separators of more than one character are checked at both ends of the path as well.
+     */
+    public function test_multiple_character_separator(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $plugin = $this->get_plugin('::', true);
+        $trace = new \null_progress_trace();
+        $count = $DB->count_records('course_categories');
+
+        $this->assertFalse($plugin->get_categoryid('a::b::', $trace));
+        $this->assertFalse($plugin->get_categoryid('::a::b', $trace));
+        $this->assertEquals($count, $DB->count_records('course_categories'));
+
+        $id = $plugin->get_categoryid('a :: b', $trace);
+        $this->assertEquals($id, $DB->get_field('course_categories', 'id', ['idnumber' => 'a::b']));
+        $this->assertEquals($count + 2, $DB->count_records('course_categories'));
+    }
+
+    /**
+     * A path longer than the idnumber field is rejected before any category is created.
+     */
+    public function test_path_too_long(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $plugin = $this->get_plugin('/', true);
+        $trace = new \null_progress_trace();
+        $count = $DB->count_records('course_categories');
+
+        $this->assertFalse($plugin->get_categoryid(str_repeat('a', 60) . '/' . str_repeat('b', 60), $trace));
+        $this->assertEquals($count, $DB->count_records('course_categories'));
+
+        // The limit is the length of the whole path.
+        $this->assertNotFalse($plugin->get_categoryid(str_repeat('a', 49) . '/' . str_repeat('b', 50), $trace));
+        $this->assertEquals($count + 2, $DB->count_records('course_categories'));
+    }
+
+    /**
+     * An empty path returns the default category of the plugin settings, or the site default one if it does not exist.
+     */
+    public function test_empty_path(): void {
+        $this->resetAfterTest();
+        $category = $this->getDataGenerator()->create_category();
+        $plugin = $this->get_plugin('/', false);
+        $trace = new \null_progress_trace();
+
+        $plugin->set_config('defaultcategory', $category->id);
+        $this->assertEquals($category->id, $plugin->get_categoryid('', $trace));
+        $this->assertEquals($category->id, $plugin->get_categoryid('  ', $trace));
+
+        $plugin->set_config('defaultcategory', $category->id + 1000);
+        $this->assertEquals(\core_course_category::get_default()->id, $plugin->get_categoryid('', $trace));
+    }
 }
