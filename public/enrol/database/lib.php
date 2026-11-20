@@ -116,6 +116,9 @@ class enrol_database_plugin extends enrol_plugin {
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
 
+        $manualenrolcleaning = $this->get_config('manualenrol_cleaning');
+        $manualenrolcleaningmode = $this->get_config('manualenrol_cleaning_mode');
+
         $ignorehidden     = $this->get_config('ignorehiddencourses');
 
         if (!is_object($user) or !property_exists($user, 'id')) {
@@ -235,6 +238,7 @@ class enrol_database_plugin extends enrol_plugin {
             }
             $instance = $instances[$courseid];
 
+            $newenrolment = false;
             if (isset($enrols[$courseid])) {
                 if ($e = $DB->get_record('user_enrolments', array('userid' => $user->id, 'enrolid' => $instance->id))) {
                     // Reenable enrolment when previously disable enrolment refreshed.
@@ -244,6 +248,7 @@ class enrol_database_plugin extends enrol_plugin {
                 } else {
                     $roleid = reset($enrols[$courseid]);
                     $this->enrol_user($instance, $user->id, $roleid, 0, 0, ENROL_USER_ACTIVE);
+                    $newenrolment = true;
                 }
             }
 
@@ -265,6 +270,13 @@ class enrol_database_plugin extends enrol_plugin {
                 if (!isset($existing[$rid])) {
                     role_assign($rid, $user->id, $context->id, 'enrol_database', $instance->id);
                 }
+            }
+
+            // Remove the duplicated manual enrolment, as the scheduled synchronisation does: in "new" mode only when the
+            // user has just been enrolled, in "full" mode whenever the user is enrolled from the external database.
+            if ($manualenrolcleaning and isset($enrols[$courseid])
+                    and ($newenrolment or $manualenrolcleaningmode == 'full')) {
+                $this->remove_user_duplicated_manual_enrolment($user, $courseid, $enrols[$courseid]);
             }
         }
 
@@ -316,6 +328,39 @@ class enrol_database_plugin extends enrol_plugin {
     }
 
     /**
+     * Removes the duplicated manual enrolment of a user that logs in, for the roles of the external database.
+     *
+     * It runs on login, so errors are not thrown: they are written to the server error log and reported with
+     * debugging(), and the manual enrolment is removed later by the scheduled task if its mode is "full".
+     *
+     * @param stdClass $user user record.
+     * @param int $courseid
+     * @param int[] $roleids roles assigned by the external database in the course.
+     * @return void
+     */
+    protected function remove_user_duplicated_manual_enrolment(stdClass $user, int $courseid, array $roleids): void {
+        $localuserfield = $this->get_config('localuserfield');
+        // The course mapping is only used in the trace, which is not shown on login.
+        $course = (object) ['id' => $courseid, 'mapping' => $courseid];
+        $trace = new null_progress_trace();
+        try {
+            foreach ($roleids as $roleid) {
+                if ($this->remove_duplicated_manual_enrolment($course, $user->id, $roleid,
+                        (string) ($user->$localuserfield ?? ''), $trace)) {
+                    // The user is no longer manually enrolled, no need to check the other roles.
+                    break;
+                }
+            }
+        } catch (Exception $e) {
+            // A failure must not prevent the user from logging in.
+            $message = 'enrol_database: error removing the duplicated manual enrolment of user ' . $user->id .
+                ' in course ' . $courseid . ': ' . $e->getMessage();
+            error_log($message);
+            debugging($message, DEBUG_DEVELOPER, $e->getTrace());
+        }
+    }
+
+    /**
      * Forces synchronisation of all enrolments with external database.
      *
      * @param progress_trace $trace
@@ -362,6 +407,9 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
+
+        $manualenrolcleaning = $this->get_config('manualenrol_cleaning');
+        $manualenrolcleaningmode = $this->get_config('manualenrol_cleaning_mode');
 
         // Create roles mapping.
         $allroles = get_all_roles();
@@ -499,6 +547,8 @@ class enrol_database_plugin extends enrol_plugin {
             $currentenrols = array();
             $currentstatus = array();
             $usermapping   = array();
+            // Identifier of each user in the external database, for the trace.
+            $useridentifier = [];
             $sql = "SELECT u.$localuserfield AS mapping, u.id AS userid, ue.status, ra.roleid
                       FROM {user} u
                       JOIN {role_assignments} ra ON (ra.userid = u.id AND ra.component = 'enrol_database' AND ra.itemid = :enrolid)
@@ -513,6 +563,7 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($rs as $ue) {
                 $currentroles[$ue->userid][$ue->roleid] = $ue->roleid;
                 $usermapping[$ue->mapping] = $ue->userid;
+                $useridentifier[$ue->userid] = $ue->mapping;
 
                 if (isset($ue->status)) {
                     $currentenrols[$ue->userid][$ue->roleid] = $ue->roleid;
@@ -563,6 +614,7 @@ class enrol_database_plugin extends enrol_plugin {
                         if (empty($fields[$otheruserfieldlower])) {
                             $requestedenrols[$userid][$roleid] = $roleid;
                         }
+                        $useridentifier[$userid] = $mapping;
                     }
                 }
                 $rs->Close();
@@ -571,6 +623,17 @@ class enrol_database_plugin extends enrol_plugin {
                 continue;
             }
             unset($usermapping);
+
+            // In full mode, find with a single query which users are manually enrolled in the course, so that the
+            // duplicated manual enrolment check below only runs for them.
+            $manualusers = [];
+            if ($manualenrolcleaning and $manualenrolcleaningmode == 'full') {
+                $manualusers = $DB->get_records_sql_menu("SELECT DISTINCT ue.userid, 1
+                                                            FROM {user_enrolments} ue
+                                                            JOIN {enrol} e ON e.id = ue.enrolid
+                                                           WHERE e.enrol = 'manual'
+                                                             AND e.courseid = :courseid", ['courseid' => $course->id]);
+            }
 
             // Enrol all users and sync roles.
             foreach ($requestedenrols as $userid => $userroles) {
@@ -581,6 +644,21 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentenrols[$userid][$roleid] = $roleid;
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
                         $trace->output("enrolling: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+
+                        // If new mode is enabled, remove the duplicated manual enrolment of the recently enrolled user.
+                        if ($manualenrolcleaning and $manualenrolcleaningmode == 'new') {
+                            $this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid],
+                                $trace);
+                        }
+                    }
+                    // If full mode is enabled, remove the duplicated manual enrolment of every manually enrolled user in the
+                    // external database.
+                    if ($manualenrolcleaning and $manualenrolcleaningmode == 'full' and isset($manualusers[$userid])) {
+                        if ($this->remove_duplicated_manual_enrolment($course, $userid, $roleid, $useridentifier[$userid],
+                                $trace)) {
+                            // The user is no longer manually enrolled, no need to check the other roles.
+                            unset($manualusers[$userid]);
+                        }
                     }
                 }
 
@@ -1231,5 +1309,64 @@ class enrol_database_plugin extends enrol_plugin {
         ini_set('display_errors', $olddisplay);
         error_reporting($CFG->debug);
         ob_end_flush();
+    }
+
+    /**
+     * Removes the manual enrolment of a user in a course when it duplicates the external database enrolment.
+     *
+     * The manual enrolment is only removed if the user does not have any other role in the course with a higher
+     * priority (lower sortorder, directly or through its archetype) than the role assigned by the external database.
+     *
+     * @param stdClass $course course record, with the id and mapping fields.
+     * @param int $userid
+     * @param int $roleid role assigned by the external database.
+     * @param string $useridentifier identifier of the user in the external database, for the logs.
+     * @param progress_trace $trace
+     * @return bool true if the manual enrolment has been removed.
+     */
+    protected function remove_duplicated_manual_enrolment(stdClass $course, int $userid, int $roleid, string $useridentifier,
+            progress_trace $trace): bool {
+        global $DB;
+
+        $localuserfield = $this->get_config('localuserfield');
+
+        // If the user has other roles in the course, they and their archetypes must have higher sortorders than the
+        // external role for the manual enrolment to be removed. Roles without archetype (e.g. custom roles) are
+        // compared by their own sortorder only.
+        $sql = "SELECT DISTINCT e.id AS enrolid, ctx.id AS contextid
+                  FROM {enrol} e
+                  JOIN {user_enrolments} ue ON ue.enrolid = e.id
+                  JOIN {context} ctx ON ctx.instanceid = e.courseid AND ctx.contextlevel = :courselevel
+                  JOIN {role_assignments} ra ON ra.userid = ue.userid AND ra.contextid = ctx.id AND ra.itemid = 0
+                 WHERE e.enrol = 'manual'
+                   AND ue.userid = :userid
+                   AND e.courseid = :courseid
+                   AND NOT EXISTS (SELECT 1
+                                     FROM {role_assignments} ra2
+                                     JOIN {role} r2 ON r2.id = ra2.roleid
+                                LEFT JOIN {role} r3 ON r3.shortname = r2.archetype
+                                     JOIN {role} externalrole ON externalrole.id = :roleid
+                                    WHERE ra2.userid = ue.userid
+                                      AND ra2.contextid = ctx.id
+                                      AND (r2.sortorder < externalrole.sortorder OR r3.sortorder < externalrole.sortorder)
+                                  )";
+        $params = ['userid' => $userid, 'courseid' => $course->id, 'roleid' => $roleid, 'courselevel' => CONTEXT_COURSE];
+        // A user may be enrolled in more than one manual instance of the course, the first one is removed.
+        $manualenrol = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE);
+        if (!$manualenrol) {
+            return false;
+        }
+
+        $manualinstance = $DB->get_record('enrol', ['id' => $manualenrol->enrolid]);
+        if (!$manualinstance) {
+            $trace->output("error: Could not find enrol instance for manual enrolment in course $course->mapping.", 1);
+            return false;
+        }
+
+        role_unassign_all(['contextid' => $manualenrol->contextid, 'userid' => $userid, 'component' => '', 'itemid' => 0]);
+        $trace->output("manually assigned roles removed for $localuserfield '$useridentifier' in course $course->mapping.", 1);
+        enrol_get_plugin('manual')->unenrol_user($manualinstance, $userid);
+        $trace->output("manual enrolment removed for $localuserfield '$useridentifier' in course $course->mapping.", 1);
+        return true;
     }
 }
