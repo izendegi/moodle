@@ -1228,6 +1228,14 @@ class restore_groups_structure_step extends restore_structure_step {
 
         $restorefiles = false; // Only if we end creating the group
 
+        // The component and itemid that created the group (if any) can't be restored yet, because the itemid points to
+        // data that hasn't been restored at this point (e.g. enrolment instances). The group is created as a manual
+        // group, and its component will be set later by {@see restore_groups_components_step} if possible.
+        $component = $data->component ?? '';
+        $itemid = $data->itemid ?? 0;
+        $data->component = '';
+        $data->itemid = 0;
+
         // This is for backwards compatibility with old backups. If the backup data for a group contains a non-empty value of
         // hidepicture, then we'll exclude this group's picture from being restored.
         if (!empty($data->hidepicture)) {
@@ -1250,6 +1258,12 @@ class restore_groups_structure_step extends restore_structure_step {
             // group doesn't exist, create
             $newitemid = $DB->insert_record('groups', $data);
             $restorefiles = true; // We'll restore the files
+
+            if ($component !== '') {
+                // Keep the original component and itemid, to be processed once the rest of the course data is restored.
+                restore_dbops::set_backup_ids_record($this->get_restoreid(), 'group_component', $oldid, $newitemid, null,
+                    ['component' => $component, 'itemid' => $itemid]);
+            }
         } else {
             // group exists, use it
             $newitemid = $groupdb->id;
@@ -1435,6 +1449,90 @@ class restore_groups_members_structure_step extends restore_structure_step {
                 }
             }
         }
+    }
+}
+
+/**
+ * Execution step that sets the component and itemid of the restored groups that were created by a component.
+ *
+ * It must be executed after enrolments have been restored, because enrolment plugins are the usual creators of groups.
+ * Groups whose component and itemid can't be restored are kept as manual groups.
+ */
+class restore_groups_components_step extends restore_execution_step {
+    #[\Override]
+    protected function define_execution() {
+        global $DB;
+
+        $params = ['backupid' => $this->get_restoreid(), 'itemname' => 'group_component'];
+        $rs = $DB->get_recordset('backup_ids_temp', $params, '', 'itemid, newitemid, info');
+        $updated = false;
+        foreach ($rs as $record) {
+            $info = (object) backup_controller_dbops::decode_backup_temp_info($record->info);
+            $data = (object) [
+                'oldid' => $record->itemid,
+                'newid' => $record->newitemid,
+                'component' => $info->component,
+                'itemid' => $info->itemid,
+            ];
+
+            $owner = $this->get_new_owner($data);
+            if ($owner === null) {
+                $message = "Restore of '{$data->component}/{$data->itemid}' group is not supported, " .
+                    "using standard group instead.";
+                $this->log($message, backup::LOG_WARNING);
+                continue;
+            }
+
+            $DB->update_record('groups', (object) [
+                'id' => $data->newid,
+                'component' => $owner['component'],
+                'itemid' => $owner['itemid'],
+            ]);
+            $updated = true;
+        }
+        $rs->close();
+
+        if ($updated) {
+            cache_helper::invalidate_by_definition('core', 'groupdata', [], [$this->get_courseid()]);
+        }
+    }
+
+    /**
+     * Calculates the component and itemid that the restored group should have.
+     *
+     * Groups created by enrolment plugins are linked to the restored enrolment instance, as long as it has been restored
+     * using the same enrolment plugin (and not, for instance, as a manual enrolment). Other components can implement the
+     * {component}_restore_group(restore_groups_components_step $step, stdClass $data): ?int callback, returning the
+     * new itemid of the group, or null if the group should be restored as a standard group.
+     *
+     * @param stdClass $data The original component and itemid, and the old and new group ids.
+     * @return array|null The new component and itemid, or null if the group should be restored as a standard group.
+     */
+    protected function get_new_owner(stdClass $data): ?array {
+        global $DB;
+
+        if (str_starts_with($data->component, 'enrol_')) {
+            $mapping = restore_dbops::get_backup_ids_record($this->get_restoreid(), 'enrol', $data->itemid);
+            if (!$mapping || empty($mapping->newitemid)) {
+                return null;
+            }
+            // Enrolment instances can be restored using a different enrolment plugin (e.g. as manual enrolments).
+            // In that case, the group is not linked to the new instance, because it wasn't created by that plugin.
+            $enrol = $DB->get_field('enrol', 'enrol', ['id' => $mapping->newitemid]);
+            if ('enrol_' . $enrol !== $data->component) {
+                return null;
+            }
+            return ['component' => $data->component, 'itemid' => (int) $mapping->newitemid];
+        }
+
+        if (!core_component::get_component_directory($data->component)) {
+            return null;
+        }
+        $newitemid = component_callback($data->component, 'restore_group', [$this, $data], null);
+        if ($newitemid === null || $newitemid === false) {
+            return null;
+        }
+        return ['component' => $data->component, 'itemid' => (int) $newitemid];
     }
 }
 

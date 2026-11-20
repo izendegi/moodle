@@ -530,6 +530,7 @@ EOD;
      * $record should be either an array or a stdClass containing infomation about the group to create.
      * At the very least it needs to contain courseid.
      * Default values are added for name, description, and descriptionformat if they are not present.
+     * The optional component and itemid fields are passed to groups_create_group() as the creator of the group.
      *
      * This function calls groups_create_group() to create the group within the database.
      * @see groups_create_group
@@ -570,7 +571,7 @@ EOD;
             $record['participation'] = true;
         }
 
-        $id = groups_create_group((object)$record);
+        $id = groups_create_group((object)$record, false, false, $record['component'] ?? null, (int) ($record['itemid'] ?? 0));
 
         // Allow tests to set group pictures.
         if (!empty($record['picturepath'])) {

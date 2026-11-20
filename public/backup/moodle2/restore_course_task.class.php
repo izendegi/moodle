@@ -111,6 +111,10 @@ class restore_course_task extends restore_task {
             $this->add_step(new restore_enrolments_structure_step('course_enrolments', 'enrolments.xml'));
         }
 
+        // Restore the components that created the groups, this must be done after enrolments because most of them are
+        // created by enrolment plugins.
+        $this->add_step(new restore_groups_components_step('groups_components'));
+
         // Populate groups, this must be done after enrolments because only enrolled users may be in groups.
         $this->add_step(new restore_groups_members_structure_step('create_groups_members', '../groups.xml'));
 
