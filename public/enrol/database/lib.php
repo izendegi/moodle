@@ -1058,6 +1058,7 @@ class enrol_database_plugin extends enrol_plugin {
 
         // Existing groups: if the field is configured, the description follows the external table. The name is not
         // updated, as teachers may rename the groups, and an empty external description keeps the one in Moodle.
+        // TODO MDL-51202: once groups can be owned by a component, update the name of the groups owned by this plugin.
         if ($description) {
             foreach (array_intersect_key($extdbgroups, $dbgroups) as $key => $group) {
                 $dbgroup = $dbgroups[$key];
@@ -1141,20 +1142,33 @@ class enrol_database_plugin extends enrol_plugin {
     }
 
     /**
-     * Whether all the settings needed by the group enrolments synchronisation are set.
+     * Returns the field of the remote group enrolments table that identifies the course of each row.
      *
-     * The course of each row of the group enrolments table is read from the field set in the 'newgroupcourse'
-     * setting, so it is needed as well, even if no new groups are created.
+     * It is the 'groupenrolcoursefield' setting. If it is not set, the field of the remote groups table set in the
+     * 'newgroupcourse' setting is used, as both tables usually share the name of the course column.
+     *
+     * @return string field name, empty if none of the settings is set.
+     */
+    protected function get_group_enrolment_course_field(): string {
+        $coursefield = trim((string) $this->get_config('groupenrolcoursefield'));
+        if ($coursefield === '') {
+            $coursefield = trim((string) $this->get_config('newgroupcourse'));
+        }
+        return $coursefield;
+    }
+
+    /**
+     * Whether all the settings needed by the group enrolments synchronisation are set.
      *
      * @return bool
      */
     protected function is_group_enrolment_sync_configured(): bool {
-        foreach (['dbtype', 'groupenroltable', 'userfield', 'groupfield', 'newgroupcourse'] as $setting) {
+        foreach (['dbtype', 'groupenroltable', 'groupenroluserfield', 'groupenrolgroupfield'] as $setting) {
             if (trim((string) $this->get_config($setting)) === '') {
                 return false;
             }
         }
-        return true;
+        return $this->get_group_enrolment_course_field() !== '';
     }
 
     /**
@@ -1212,9 +1226,9 @@ class enrol_database_plugin extends enrol_plugin {
         require_once($CFG->dirroot . '/group/lib.php');
 
         $table = trim($this->get_config('groupenroltable'));
-        $userfield = trim($this->get_config('userfield'));
-        $groupcoursefield = trim($this->get_config('newgroupcourse'));
-        $groupfield = trim($this->get_config('groupfield'));
+        $userfield = trim($this->get_config('groupenroluserfield'));
+        $groupcoursefield = $this->get_group_enrolment_course_field();
+        $groupfield = trim($this->get_config('groupenrolgroupfield'));
         $localuserfield = trim($this->get_config('localuserfield'));
         $localcoursefield = trim($this->get_config('localcoursefield'));
         $groupupgrading = $this->get_config('groupupgrading');
