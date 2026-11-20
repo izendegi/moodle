@@ -30,6 +30,7 @@ namespace enrol_database;
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_user_enrolments')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'sync_group_memberships')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_ids_by_field')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_group_enrolment_course_field')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'add_group_member')]
 #[\PHPUnit\Framework\Attributes\CoversClass(\enrol_database\task\sync_enrolments::class)]
 #[\PHPUnit\Framework\Attributes\CoversFunction('enrol_database_allow_group_member_remove')]
@@ -163,9 +164,9 @@ final class group_sync_test extends \advanced_testcase {
         $dbman->create_table($table);
 
         set_config('groupenroltable', $CFG->prefix . self::TABLE, 'enrol_database');
-        set_config('userfield', 'userid', 'enrol_database');
+        set_config('groupenroluserfield', 'userid', 'enrol_database');
         set_config('newgroupcourse', 'courseid', 'enrol_database');
-        set_config('groupfield', 'groupid', 'enrol_database');
+        set_config('groupenrolgroupfield', 'groupid', 'enrol_database');
         set_config('localuserfield', 'idnumber', 'enrol_database');
         set_config('localcoursefield', 'shortname', 'enrol_database');
         set_config('groupupgrading', 0, 'enrol_database');
@@ -742,7 +743,62 @@ final class group_sync_test extends \advanced_testcase {
     }
 
     /**
-     * The group enrolments are not synchronised without the course field, which is set in the 'newgroupcourse' setting.
+     * The course field of the group enrolments table is read from the 'groupenrolcoursefield' setting, or from the
+     * 'newgroupcourse' one if it is not set, so the remote groups table does not need to be configured.
+     */
+    public function test_sync_group_enrolments_course_field(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+        $plugin = enrol_get_plugin('database');
+        $trace = new \null_progress_trace();
+
+        // A group enrolments table whose course column has a different name than the one of the groups table.
+        $dbman = $DB->get_manager();
+        $table = new \xmldb_table('enrol_database_test_grpenrols2');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('coursecode', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('groupid', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $dbman->create_table($table);
+        $DB->insert_record('enrol_database_test_grpenrols2', ['userid' => 'userid1', 'coursecode' => 'tc1', 'groupid' => 'grp1']);
+        $DB->insert_record('enrol_database_test_grpenrols2', ['userid' => 'userid2', 'coursecode' => 'tc2', 'groupid' => 'grp1']);
+        $plugin->set_config('groupenroltable', $CFG->prefix . 'enrol_database_test_grpenrols2');
+
+        // The setting of the group enrolments table is used, whatever the course field of the groups table is.
+        $plugin->set_config('groupenrolcoursefield', 'coursecode');
+        foreach (['courseid', ''] as $newgroupcourse) {
+            $plugin->set_config('newgroupcourse', $newgroupcourse);
+            $this->assertSame(0, $plugin->sync_group_enrolments($trace));
+            $this->assertSame('enrol_database', $this->membership('c1grp1', 1));
+            $this->assertSame('enrol_database', $this->membership('c2grp1', 2));
+        }
+
+        // The synchronisation on login uses it as well.
+        $DB->insert_record('enrol_database_test_grpenrols2', ['userid' => 'userid3', 'coursecode' => 'tc1', 'groupid' => 'grp2']);
+        $plugin->sync_user_group_enrolments($this->users[3]);
+        $this->assertSame('enrol_database', $this->membership('c1grp2', 3));
+
+        // Without it, the course field of the groups table is used.
+        $plugin->set_config('groupenrolcoursefield', '');
+        $plugin->set_config('groupenroltable', $CFG->prefix . self::TABLE);
+        $plugin->set_config('newgroupcourse', 'courseid');
+        $this->add_external('userid4', 'tc2', 'grp1');
+        $this->assertSame(0, $plugin->sync_group_enrolments($trace));
+        $this->assertSame('enrol_database', $this->membership('c2grp1', 4));
+
+        $dbman->drop_table($table);
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * The group enrolments are not synchronised without the course field, which is set in the 'groupenrolcoursefield'
+     * setting or, if it is not set, in the 'newgroupcourse' one.
      */
     public function test_sync_group_enrolments_without_course_field(): void {
         $this->resetAfterTest();
@@ -755,6 +811,7 @@ final class group_sync_test extends \advanced_testcase {
         $this->add_external('userid2', 'tc1', 'grp1');
 
         foreach (['', '  '] as $value) {
+            $plugin->set_config('groupenrolcoursefield', $value);
             $plugin->set_config('newgroupcourse', $value);
             $trace = new \progress_trace_buffer(new \text_progress_trace(), false);
             $this->assertSame(0, $plugin->sync_group_enrolments($trace));
@@ -779,9 +836,9 @@ final class group_sync_test extends \advanced_testcase {
         $this->init_enrol_database();
         $plugin = enrol_get_plugin('database');
         $trace = new \null_progress_trace();
-        $plugin->set_config('userfield', 'UserID');
+        $plugin->set_config('groupenroluserfield', 'UserID');
         $plugin->set_config('newgroupcourse', 'CourseID');
-        $plugin->set_config('groupfield', 'GroupID');
+        $plugin->set_config('groupenrolgroupfield', 'GroupID');
 
         // An existing member that is still in the external table must be kept.
         groups_add_member($this->groups['c1grp1']->id, $this->users[1]->id, 'enrol_database');

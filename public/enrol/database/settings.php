@@ -132,7 +132,7 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_heading(
         'enrol_database_newgroupsheader',
         get_string('settingsheadernewgroups', 'enrol_database'),
-        ''
+        get_string('settingsheadernewgroups_desc', 'enrol_database')
     ));
 
     $settings->add(new admin_setting_configtext(
@@ -152,21 +152,21 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configtext(
         'enrol_database/newgroupname',
         get_string('newgroupname', 'enrol_database'),
-        '',
+        get_string('newgroupname_desc', 'enrol_database'),
         ''
     ));
 
     $settings->add(new admin_setting_configtext(
         'enrol_database/newgroupidnumber',
         get_string('newgroupidnumber', 'enrol_database'),
-        '',
+        get_string('newgroupidnumber_desc', 'enrol_database'),
         ''
     ));
 
     $settings->add(new admin_setting_configtext(
         'enrol_database/newgroupdesc',
         get_string('newgroupdesc', 'enrol_database'),
-        '',
+        get_string('newgroupdesc_desc', 'enrol_database'),
         ''
     ));
 
@@ -194,7 +194,7 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_heading(
         'enrol_database_groupenrolheader',
         get_string('settingsheadergroupenrol', 'enrol_database'),
-        ''
+        get_string('settingsheadergroupenrol_desc', 'enrol_database')
     ));
 
     $settings->add(new admin_setting_configtext(
@@ -205,16 +205,23 @@ if ($ADMIN->fulltree) {
     ));
 
     $settings->add(new admin_setting_configtext(
-        'enrol_database/userfield',
-        get_string('userfield', 'enrol_database'),
-        get_string('userfield_desc', 'enrol_database'),
+        'enrol_database/groupenroluserfield',
+        get_string('groupenroluserfield', 'enrol_database'),
+        get_string('groupenroluserfield_desc', 'enrol_database'),
         ''
     ));
 
     $settings->add(new admin_setting_configtext(
-        'enrol_database/groupfield',
-        get_string('groupfield', 'enrol_database'),
-        get_string('groupfield_desc', 'enrol_database'),
+        'enrol_database/groupenrolcoursefield',
+        get_string('groupenrolcoursefield', 'enrol_database'),
+        get_string('groupenrolcoursefield_desc', 'enrol_database'),
+        ''
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'enrol_database/groupenrolgroupfield',
+        get_string('groupenrolgroupfield', 'enrol_database'),
+        get_string('groupenrolgroupfield_desc', 'enrol_database'),
         ''
     ));
 
