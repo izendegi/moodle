@@ -97,7 +97,7 @@ class enrol_database_plugin extends enrol_plugin {
             return;
         }
 
-        $table            = $this->get_config('remoteenroltable');
+        $table            = trim($this->get_config('remoteenroltable'));
         $coursefield      = trim($this->get_config('remotecoursefield'));
         $userfield        = trim($this->get_config('remoteuserfield'));
         $rolefield        = trim($this->get_config('remoterolefield'));
@@ -332,7 +332,7 @@ class enrol_database_plugin extends enrol_plugin {
             return 0;
         }
 
-        $trace->output('Starting user enrolment synchronisation...');
+        $trace->output("\nStarting user enrolment synchronisation...");
 
         if (!$extdb = $this->db_init()) {
             $trace->output('Error while communicating with external enrolment database');
@@ -344,7 +344,7 @@ class enrol_database_plugin extends enrol_plugin {
         core_php_time_limit::raise();
         raise_memory_limit(MEMORY_HUGE);
 
-        $table            = $this->get_config('remoteenroltable');
+        $table            = trim($this->get_config('remoteenroltable'));
         $coursefield      = trim($this->get_config('remotecoursefield'));
         $userfield        = trim($this->get_config('remoteuserfield'));
         $rolefield        = trim($this->get_config('remoterolefield'));
@@ -493,12 +493,16 @@ class enrol_database_plugin extends enrol_plugin {
                 continue; // Weird!
             }
             $context = context_course::instance($course->id);
+            // Participants page of the course, for the trace.
+            $courseurl = $CFG->wwwroot . '/user/index.php?id=' . $course->id;
 
             // Get current list of enrolled users with their roles.
             $currentroles  = array();
             $currentenrols = array();
             $currentstatus = array();
             $usermapping   = array();
+            // Identifier of each user in the external database, for the trace.
+            $useridentifier = [];
             $sql = "SELECT u.$localuserfield AS mapping, u.id AS userid, ue.status, ra.roleid
                       FROM {user} u
                       JOIN {role_assignments} ra ON (ra.userid = u.id AND ra.component = 'enrol_database' AND ra.itemid = :enrolid)
@@ -513,6 +517,7 @@ class enrol_database_plugin extends enrol_plugin {
             foreach ($rs as $ue) {
                 $currentroles[$ue->userid][$ue->roleid] = $ue->roleid;
                 $usermapping[$ue->mapping] = $ue->userid;
+                $useridentifier[$ue->userid] = $ue->mapping;
 
                 if (isset($ue->status)) {
                     $currentenrols[$ue->userid][$ue->roleid] = $ue->roleid;
@@ -534,14 +539,16 @@ class enrol_database_plugin extends enrol_plugin {
                     while ($fields = $rs->FetchRow()) {
                         $fields = array_change_key_case($fields, CASE_LOWER);
                         if (empty($fields[$userfield_l])) {
-                            $trace->output("error: skipping user without mandatory $localuserfield in course '$course->mapping'", 1);
+                            $trace->output("error: skipping user without mandatory $localuserfield in course " .
+                                "$course->mapping: " . $courseurl, 1);
                             continue;
                         }
                         $mapping = $fields[$userfield_l];
                         if (!isset($usermapping[$mapping])) {
                             $usersearch[$localuserfield] = $mapping;
                             if (!$user = $DB->get_record('user', $usersearch, 'id', IGNORE_MULTIPLE)) {
-                                $trace->output("error: skipping unknown user $localuserfield '$mapping' in course '$course->mapping'", 1);
+                                $trace->output("error: skipping unknown $localuserfield '$mapping' in course " .
+                                    "$course->mapping: " . $courseurl, 1);
                                 continue;
                             }
                             $usermapping[$mapping] = $user->id;
@@ -551,7 +558,8 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         if (empty($fields[$rolefield_l]) or !isset($roles[$fields[$rolefield_l]])) {
                             if (!$defaultrole) {
-                                $trace->output("error: skipping user '$userid' in course '$course->mapping' - missing course and default role", 1);
+                                $trace->output("error: skipping user $localuserfield '$mapping' in course " .
+                                    "$course->mapping - missing course and default role: " . $courseurl, 1);
                                 continue;
                             }
                             $roleid = $defaultrole;
@@ -563,11 +571,13 @@ class enrol_database_plugin extends enrol_plugin {
                         if (empty($fields[$otheruserfieldlower])) {
                             $requestedenrols[$userid][$roleid] = $roleid;
                         }
+                        $useridentifier[$userid] = $mapping;
                     }
                 }
                 $rs->Close();
             } else {
-                $trace->output("error: skipping course '$course->mapping' - could not match with external database", 1);
+                $trace->output("error: skipping course $course->mapping - could not match with external database: " .
+                    $courseurl, 1);
                 continue;
             }
             unset($usermapping);
@@ -580,14 +590,16 @@ class enrol_database_plugin extends enrol_plugin {
                         $currentroles[$userid][$roleid] = $roleid;
                         $currentenrols[$userid][$roleid] = $roleid;
                         $currentstatus[$userid] = ENROL_USER_ACTIVE;
-                        $trace->output("enrolling: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+                        $trace->output("enrolling $localuserfield '" . $useridentifier[$userid] . "' as " .
+                            $allroles[$roleid]->shortname . " ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
 
                 // Reenable enrolment when previously disable enrolment refreshed.
                 if ($currentstatus[$userid] == ENROL_USER_SUSPENDED) {
                     $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE);
-                    $trace->output("unsuspending: $userid ==> $course->shortname", 1);
+                    $trace->output("unsuspending $localuserfield '" . $useridentifier[$userid] . "' ==> $course->mapping: " .
+                        $courseurl, 1);
                 }
             }
 
@@ -597,7 +609,8 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($currentroles[$userid][$roleid])) {
                         role_assign($roleid, $userid, $context->id, 'enrol_database', $instance->id);
                         $currentroles[$userid][$roleid] = $roleid;
-                        $trace->output("assigning roles: $userid ==> $course->shortname as ".$allroles[$roleid]->shortname, 1);
+                        $trace->output("assigning user roles: $localuserfield '" . $useridentifier[$userid] . "' as " .
+                            $allroles[$roleid]->shortname . " ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
 
@@ -606,7 +619,8 @@ class enrol_database_plugin extends enrol_plugin {
                     if (empty($userroles[$cr])) {
                         role_unassign($cr, $userid, $context->id, 'enrol_database', $instance->id);
                         unset($currentroles[$userid][$cr]);
-                        $trace->output("unsassigning roles: $userid ==> $course->shortname", 1);
+                        $trace->output("unassigning user roles: " . $allroles[$cr]->shortname . " role to $localuserfield '" .
+                            $useridentifier[$userid] . "' ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
 
@@ -628,7 +642,8 @@ class enrol_database_plugin extends enrol_plugin {
                             continue;
                         }
                         $this->unenrol_user($instance, $userid);
-                        $trace->output("unenrolling: $userid ==> $course->shortname", 1);
+                        $trace->output("unenrolling user: $localuserfield '" . $useridentifier[$userid] .
+                            "' ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
 
@@ -643,7 +658,8 @@ class enrol_database_plugin extends enrol_plugin {
                     }
                     if ($status != ENROL_USER_SUSPENDED) {
                         $this->update_user_enrol($instance, $userid, ENROL_USER_SUSPENDED);
-                        $trace->output("suspending: $userid ==> $course->shortname", 1);
+                        $trace->output("suspending user: $localuserfield '" . $useridentifier[$userid] .
+                            "' ==> $course->mapping: " . $courseurl, 1);
                     }
                     if ($unenrolaction == ENROL_EXT_REMOVED_SUSPENDNOROLES) {
                         if (isset($requestedroles[$userid])) {
@@ -652,7 +668,8 @@ class enrol_database_plugin extends enrol_plugin {
                         }
                         role_unassign_all(array('contextid'=>$context->id, 'userid'=>$userid, 'component'=>'enrol_database', 'itemid'=>$instance->id));
 
-                        $trace->output("unsassigning all roles: $userid ==> $course->shortname", 1);
+                        $trace->output("unassigning user all roles: $localuserfield '" . $useridentifier[$userid] .
+                            "' ==> $course->mapping: " . $courseurl, 1);
                     }
                 }
             }
@@ -661,7 +678,7 @@ class enrol_database_plugin extends enrol_plugin {
         // Close db connection.
         $extdb->Close();
 
-        $trace->output('...user enrolment synchronisation finished.');
+        $trace->output("...user enrolment synchronisation finished.");
         $trace->finished();
 
         return 0;
@@ -670,8 +687,8 @@ class enrol_database_plugin extends enrol_plugin {
     /**
      * Performs a full sync with external database.
      *
-     * First it creates new courses if necessary, then
-     * enrols and unenrols users.
+     * It creates new courses if necessary,
+     * to then enrol and unenrol users.
      *
      * @param progress_trace $trace
      * @return int 0 means success, 1 db connect failure, 4 db read failure
@@ -686,7 +703,7 @@ class enrol_database_plugin extends enrol_plugin {
             return 0;
         }
 
-        $trace->output('Starting course synchronisation...');
+        $trace->output("\nStarting course synchronisation...");
 
         // We may need a lot of memory here.
         core_php_time_limit::raise();
