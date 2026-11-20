@@ -622,6 +622,76 @@ final class lib_test extends \advanced_testcase {
     }
 
     /**
+     * Test groups_create_group storing the component and itemid that created the group.
+     */
+    public function test_groups_create_group_with_component(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+
+        // Group created by a component.
+        $data = (object) ['courseid' => $course->id, 'name' => 'Component group'];
+        $groupid = groups_create_group($data, false, false, 'enrol_manual', $instance->id);
+        $group = $DB->get_record('groups', ['id' => $groupid], '*', MUST_EXIST);
+        $this->assertEquals('enrol_manual', $group->component);
+        $this->assertEquals($instance->id, $group->itemid);
+
+        // Group created by a component, without itemid.
+        $data = (object) ['courseid' => $course->id, 'name' => 'Component group without itemid'];
+        $groupid = groups_create_group($data, false, false, 'enrol_manual');
+        $group = $DB->get_record('groups', ['id' => $groupid], '*', MUST_EXIST);
+        $this->assertEquals('enrol_manual', $group->component);
+        $this->assertEquals(0, $group->itemid);
+
+        // Manual group: the component and itemid in the group data are ignored.
+        $data = (object) [
+            'courseid' => $course->id,
+            'name' => 'Manual group',
+            'component' => 'enrol_manual',
+            'itemid' => $instance->id,
+        ];
+        $groupid = groups_create_group($data);
+        $group = $DB->get_record('groups', ['id' => $groupid], '*', MUST_EXIST);
+        $this->assertSame('', $group->component);
+        $this->assertEquals(0, $group->itemid);
+
+        // The data generator passes the component and itemid to groups_create_group().
+        $group = $this->getDataGenerator()->create_group([
+            'courseid' => $course->id,
+            'component' => 'enrol_manual',
+            'itemid' => $instance->id,
+        ]);
+        $this->assertEquals('enrol_manual', $group->component);
+        $this->assertEquals($instance->id, $group->itemid);
+    }
+
+    /**
+     * Test groups_create_group with an invalid component.
+     */
+    public function test_groups_create_group_with_invalid_component(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+
+        $this->expectException(\coding_exception::class);
+        $this->expectExceptionMessage('An invalid component was specified');
+        groups_create_group((object) ['courseid' => $course->id, 'name' => 'Group'], false, false, 'enrol_doesnotexist', 1);
+    }
+
+    /**
+     * Test groups_create_group with an itemid but without component.
+     */
+    public function test_groups_create_group_with_itemid_without_component(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+
+        $this->expectException(\coding_exception::class);
+        $this->expectExceptionMessage('A component must be specified if an itemid is given');
+        groups_create_group((object) ['courseid' => $course->id, 'name' => 'Group'], false, false, null, 1);
+    }
+
+    /**
      * Test groups_update_group enabling and disabling a group conversation.
      */
     public function test_groups_update_group_conversation(): void {

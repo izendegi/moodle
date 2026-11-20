@@ -255,11 +255,35 @@ function groups_remove_member($grouporid, $userorid) {
  * @param stdClass $data group properties
  * @param stdClass $editform
  * @param array $editoroptions
+ * @param string|null $component Optional name of the component creating the group (e.g. 'enrol_database').
+ *      Leave empty for groups created manually.
+ * @param int $itemid Optional id of the component instance creating the group (e.g. the enrolment instance id).
+ *      It can only be set if a component is given.
  * @return int id of group or throws an exception on error
  * @throws moodle_exception
+ * @throws coding_exception if the component is not valid, or an itemid is given without a component
  */
-function groups_create_group($data, $editform = false, $editoroptions = false) {
+function groups_create_group(
+    $data,
+    $editform = false,
+    $editoroptions = false,
+    ?string $component = null,
+    int $itemid = 0,
+) {
     global $CFG, $DB, $USER;
+
+    // The component and itemid can only be set through the parameters, never through the group data.
+    $data->component = '';
+    $data->itemid = 0;
+    if (!empty($component)) {
+        if (!core_component::get_component_directory($component)) {
+            throw new coding_exception('Invalid call to groups_create_group(). An invalid component was specified');
+        }
+        $data->component = $component;
+        $data->itemid = $itemid;
+    } else if ($itemid !== 0) {
+        throw new coding_exception('Invalid call to groups_create_group(). A component must be specified if an itemid is given');
+    }
 
     //check that courseid exists
     $course = $DB->get_record('course', array('id' => $data->courseid), '*', MUST_EXIST);

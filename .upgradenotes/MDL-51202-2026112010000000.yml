@@ -1,0 +1,21 @@
+issueNumber: MDL-51202
+notes:
+  core_group:
+    - message: >-
+        The `groups` table has two new fields, `component` and `itemid`, to
+        store the component (and its instance) that created a group, as the
+        `groups_members` table already does for group memberships. They can be
+        set using the new optional `$component` and `$itemid` parameters of
+        `groups_create_group()`, and they are blank (and 0) for groups created
+        manually.
+      type: improved
+  core_backup:
+    - message: >-
+        The `component` and `itemid` fields of groups are now included in
+        course backups. On restore, groups created by enrolment plugins are
+        linked to the restored enrolment instance. Other components can restore
+        them by implementing the new
+        `<component>_restore_group(restore_groups_components_step $step,
+        stdClass $data): ?int` callback, returning the new itemid. Otherwise,
+        the groups are restored as standard groups.
+      type: improved
