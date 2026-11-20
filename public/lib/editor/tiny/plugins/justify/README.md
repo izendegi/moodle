@@ -4,7 +4,7 @@ Moodle TinyMCE justify plugin — adds a **Justify** button to the TinyMCE edito
 
 ## Requirements
 
-- Moodle 4.1 or later (TinyMCE editor)
+- Moodle 4.5 or later (TinyMCE editor)
 
 ## Installation
 
