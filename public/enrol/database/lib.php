@@ -220,7 +220,7 @@ class enrol_database_plugin extends enrol_plugin {
                 }
             }
             $rs->Close();
-            $extdb->Close();
+            // The connection is kept open for the group memberships synchronisation.
         } else {
             // Bad luck, something is wrong with the db connection.
             $extdb->Close();
@@ -313,6 +313,47 @@ class enrol_database_plugin extends enrol_plugin {
             }
         }
         $rs->close();
+
+        // Group memberships are synchronised once the user is enrolled in the courses, reusing the connection.
+        $this->sync_user_group_enrolments($user, $extdb);
+        $extdb->Close();
+    }
+
+    /**
+     * Forces synchronisation of user group enrolments with external database,
+     * does not create new groups.
+     *
+     * It runs on login, so errors are not thrown: they are written to the server error log and reported with
+     * debugging(), and the memberships are synchronised later by the scheduled task.
+     *
+     * @param stdClass $user user record
+     * @param ADOConnection|null $extdb open connection to the external database, a new one is opened if not given.
+     * @return void
+     */
+    public function sync_user_group_enrolments($user, ?ADOConnection $extdb = null) {
+        if (!$this->is_group_enrolment_sync_configured()) {
+            return;
+        }
+
+        $ownconnection = !$extdb;
+        if ($ownconnection && !$extdb = $this->db_init()) {
+            return;
+        }
+
+        try {
+            $this->sync_group_memberships($extdb, new null_progress_trace(), $user);
+        } catch (Exception $e) {
+            // A failure must not prevent the user from logging in. It is always logged in the server error log, as
+            // debugging() only shows it on sites in developer mode.
+            $message = 'enrol_database: error synchronising the group memberships of user ' . $user->id .
+                ' with the external database: ' . $e->getMessage();
+            error_log($message);
+            debugging($message, DEBUG_DEVELOPER, $e->getTrace());
+        } finally {
+            if ($ownconnection) {
+                $extdb->Close();
+            }
+        }
     }
 
     /**
@@ -916,6 +957,509 @@ class enrol_database_plugin extends enrol_plugin {
     }
 
     /**
+     * It synchronizes user groups with external database,
+     * creating new ones if necessary.
+     * Groups can be added to groupings if defined, and if groupingcreation
+     * setting is enabled defined new groupings are created.
+     *
+     * @param progress_trace $trace
+     * @return int 0 means success, 1 db connect failure, 4 db read failure
+     * @throws dml_exception
+     */
+    public function sync_groups(progress_trace $trace) {
+        global $CFG, $DB;
+
+        if (
+            !$this->get_config('dbtype') || !$this->get_config('newgrouptable') ||
+            !$this->get_config('newgroupname') || !$this->get_config('newgroupidnumber') ||
+            !$this->get_config('newgroupcourse')
+        ) {
+            $trace->output('Groups synchronisation skipped.');
+            $trace->finished();
+            return 0;
+        }
+
+        $trace->output("\nStarting group synchronisation...");
+
+        // We may need a lot of memory here.
+        core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_HUGE);
+
+        if (!$extdb = $this->db_init()) {
+            $trace->output('Error while communicating with external enrolment database');
+            $trace->finished();
+            return 1;
+        }
+
+        $table = trim($this->get_config('newgrouptable'));
+        $name = trim($this->get_config('newgroupname'));
+        $idnumber = trim($this->get_config('newgroupidnumber'));
+        // The optional settings may not be saved yet, so they are cast to string.
+        $description = trim((string) $this->get_config('newgroupdesc'));
+        $course = trim($this->get_config('newgroupcourse'));
+        $grouping = trim((string) $this->get_config('newgroupgroupings'));
+        $groupingcreation = $this->get_config('groupingcreation');
+        $messaging = $this->get_config('groupmessaging');
+        $localcoursefield = trim($this->get_config('localcoursefield'));
+
+        $namelow = strtolower($name);
+        $idnumberlow = strtolower($idnumber);
+        $courselow = strtolower($course);
+        $descriptionlow = strtolower($description);
+        $groupinglow = strtolower($grouping);
+
+        $extdbgroups = [];
+        $dbgroups = [];
+
+        // External db groups.
+        $sqlfields = [$name, $idnumber, $course];
+        if ($description) {
+            $sqlfields[] = $description;
+        }
+        if ($grouping) {
+            $sqlfields[] = $grouping;
+        }
+        [$sql, $extparams] = $this->db_get_query($extdb, $table, [], $sqlfields, true);
+        if ($rs = $extdb->Execute($sql, $extparams)) {
+            if (!$rs->EOF) {
+                while ($fields = $rs->FetchRow()) {
+                    // The column names are compared in lowercase, whatever case the external database returns.
+                    $fields = array_change_key_case($fields, CASE_LOWER);
+                    $fields = $this->db_decode($fields);
+                    if (empty($fields[$namelow]) || empty($fields[$idnumberlow]) || empty($fields[$courselow])) {
+                        $error = 'error: invalid external group record, name, id number and course are mandatory: ';
+                        $trace->output($error . json_encode($fields), 1);
+                        continue;
+                    }
+                    // Course identifier and group idnumber, separated so that different pairs never share a key.
+                    $extdbgroups[$fields[$courselow] . "\0" . $fields[$idnumberlow]] = $fields;
+                }
+            }
+            $rs->Close();
+        } else {
+            $extdb->Close();
+            $trace->output('Error reading data from the external groups table');
+            $trace->finished();
+            return 4;
+        }
+
+        // Moodle db groups (existing groups), with the same keys as the external ones.
+        $dbsql = "SELECT g.id, g.courseid, g.idnumber, g.description, c.$localcoursefield AS coursekey
+                    FROM {groups} g
+                    JOIN {course} c ON c.id = g.courseid
+                   WHERE g.idnumber <> ''";
+        $rs = $DB->get_recordset_sql($dbsql);
+        foreach ($rs as $dbgroup) {
+            $dbgroups[$dbgroup->coursekey . "\0" . $dbgroup->idnumber] = $dbgroup;
+        }
+        $rs->close();
+
+        require_once("$CFG->dirroot/group/lib.php");
+
+        // Existing groups: if the field is configured, the description follows the external table. The name is not
+        // updated, as teachers may rename the groups, and an empty external description keeps the one in Moodle.
+        if ($description) {
+            foreach (array_intersect_key($extdbgroups, $dbgroups) as $key => $group) {
+                $dbgroup = $dbgroups[$key];
+                $newdescription = (string) ($group[$descriptionlow] ?? '');
+                if ($newdescription === '' || $newdescription === (string) $dbgroup->description) {
+                    continue;
+                }
+                $update = new stdClass();
+                $update->id = $dbgroup->id;
+                $update->courseid = $dbgroup->courseid;
+                $update->description = $newdescription;
+                // Keep the group messaging as it is: groups_update_group() disables the group conversation if not given.
+                $conversation = ['component' => 'core_group', 'itemtype' => 'groups', 'itemid' => $dbgroup->id];
+                $update->enablemessaging = (int) $DB->get_field('message_conversations', 'enabled', $conversation);
+                $trace->output("  updating description of group " . $dbgroup->idnumber . " in course " . $group[$courselow]
+                               . ": '" . $newdescription . "'");
+                groups_update_group($update);
+            }
+        }
+
+        // Only the external groups that do not exist yet in their course have to be created.
+        $creategroups = array_diff_key($extdbgroups, $dbgroups);
+        unset($dbgroups);
+
+        if ($creategroups) {
+            foreach ($creategroups as $group) {
+                // The course to which the group will belong must exist.
+                $courseid = $DB->get_field('course', 'id', [$localcoursefield => $group[$courselow]]);
+                if (!$courseid) {
+                    $trace->output("  [x] Course " . $localcoursefield . " " . $group[$courselow] . " to which the group ID number "
+                                   . $group[$idnumberlow] . " should belong doesn't exist, group will not be created.");
+                    continue;
+                }
+
+                if ($DB->record_exists('groups', ['idnumber' => $group[$idnumberlow], 'courseid' => $courseid])) {
+                    // Already exists (with a different case in the idnumber), skip.
+                    continue;
+                }
+
+                $newgroup = new stdClass();
+                $newgroup->courseid = $courseid;
+                $newgroup->name = $group[$namelow];
+                $newgroup->idnumber = $group[$idnumberlow];
+                $newgroup->description = $description ? ($group[$descriptionlow] ?? '') : '';
+                $newgroup->course = $group[$courselow];
+                $newgroup->enablemessaging = $messaging;
+
+                $trace->output("  creating group: $newgroup->name, $newgroup->idnumber, $newgroup->description, in course "
+                               . $newgroup->course);
+                $newgroupid = groups_create_group($newgroup);
+
+                if ($grouping && !empty($group[$groupinglow])) {
+                    $groupingconditions = ['idnumber' => $group[$groupinglow], 'courseid' => $courseid];
+                    $existinggrouping = $DB->get_record('groupings', $groupingconditions, 'id');
+                    if ($existinggrouping) {
+                        groups_assign_grouping($existinggrouping->id, $newgroupid);
+                    } else if ($groupingcreation) {
+                        $newgrouping = new stdClass();
+                        $newgrouping->idnumber = $group[$groupinglow];
+                        $newgrouping->courseid = $courseid;
+                        $newgrouping->name = $group[$groupinglow];
+                        $newgroupingid = groups_create_grouping($newgrouping);
+
+                        groups_assign_grouping($newgroupingid, $newgroupid);
+                    } else {
+                        $trace->output("  [x] Grouping ID number " . $group[$groupinglow] . " not found in course "
+                                       . $group[$courselow] . " (and not creating groupings), group "
+                                       . $group[$idnumberlow] . " will not be added to it.");
+                    }
+                }
+            }
+            unset($creategroups);
+        }
+
+        // Close db connection.
+        $extdb->Close();
+
+        $trace->output('...group synchronisation finished.');
+        $trace->finished();
+        return 0;
+    }
+
+    /**
+     * Whether all the settings needed by the group enrolments synchronisation are set.
+     *
+     * The course of each row of the group enrolments table is read from the field set in the 'newgroupcourse'
+     * setting, so it is needed as well, even if no new groups are created.
+     *
+     * @return bool
+     */
+    protected function is_group_enrolment_sync_configured(): bool {
+        foreach (['dbtype', 'groupenroltable', 'userfield', 'groupfield', 'newgroupcourse'] as $setting) {
+            if (trim((string) $this->get_config($setting)) === '') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Forces synchronisation of group enrolments with external database,
+     *
+     * @param progress_trace $trace
+     * @return int 0 means success, 1 db connect failure, 4 db read failure
+     */
+    public function sync_group_enrolments(progress_trace $trace) {
+        if (!$this->is_group_enrolment_sync_configured()) {
+            $trace->output('Group enrolments synchronisation skipped.');
+            $trace->finished();
+            return 0;
+        }
+
+        $trace->output("\nStarting group enrolment synchronisation...");
+
+        if (!$extdb = $this->db_init()) {
+            $trace->output('Error while communicating with external enrolment database');
+            $trace->finished();
+            return 1;
+        }
+
+        // We may need a lot of memory here.
+        core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_HUGE);
+
+        $result = $this->sync_group_memberships($extdb, $trace);
+
+        // Close db connection.
+        $extdb->Close();
+
+        $trace->output("...group enrolment synchronisation finished.\n");
+        $trace->finished();
+        return $result;
+    }
+
+    /**
+     * Synchronises the group memberships with the external group enrolments table.
+     *
+     * The external table is read once through the external database connection and matched in PHP with the Moodle
+     * users, courses, groups and group members, so that any external database type is supported.
+     *
+     * - Users in the external table that are not members of the group yet are added to it.
+     * - If groupupgrading is enabled, manually added members (empty component) are converted to enrol_database members.
+     * - Members added by enrol_database that are not in the external table anymore are removed from the group.
+     *
+     * @param ADOConnection $extdb connection to the external database.
+     * @param progress_trace $trace
+     * @param stdClass|null $user only synchronise the memberships of this user, all of them when null.
+     * @return int 0 means success, 4 db read failure
+     */
+    protected function sync_group_memberships(ADOConnection $extdb, progress_trace $trace, ?stdClass $user = null): int {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/group/lib.php');
+
+        $table = trim($this->get_config('groupenroltable'));
+        $userfield = trim($this->get_config('userfield'));
+        $groupcoursefield = trim($this->get_config('newgroupcourse'));
+        $groupfield = trim($this->get_config('groupfield'));
+        $localuserfield = trim($this->get_config('localuserfield'));
+        $localcoursefield = trim($this->get_config('localcoursefield'));
+        $groupupgrading = $this->get_config('groupupgrading');
+
+        $userfieldlow = strtolower($userfield);
+        $groupcoursefieldlow = strtolower($groupcoursefield);
+        $groupfieldlow = strtolower($groupfield);
+
+        $conditions = [];
+        $userselect = '';
+        $userparams = [];
+        if ($user) {
+            if (!empty($user->deleted) || !isset($user->$localuserfield) || (string) $user->$localuserfield === '') {
+                return 0;
+            }
+            // The filter is applied by the external database, so only the rows of this user are transferred.
+            $conditions[$userfield] = $user->$localuserfield;
+            $userselect = 'AND gm.userid = :userid';
+            $userparams['userid'] = $user->id;
+        }
+
+        // Memberships added after this moment may come from newer external data (e.g. the login of a user while the
+        // scheduled task is running), so they are not removed by this run.
+        $synctime = time();
+
+        // External memberships, grouped as course => group => list of users.
+        [$sql, $extparams] = $this->db_get_query($extdb, $table, $conditions, [$userfield, $groupcoursefield, $groupfield], true);
+        if (!$rs = $extdb->Execute($sql, $extparams)) {
+            $trace->output('Error reading data from the external group enrolments table');
+            return 4;
+        }
+        $extmembers = [];
+        $extusers = [];
+        while ($fields = $rs->FetchRow()) {
+            // The column names are compared in lowercase, whatever case the external database returns.
+            $fields = array_change_key_case($fields, CASE_LOWER);
+            $fields = $this->db_decode($fields);
+            $extuser = (string) ($fields[$userfieldlow] ?? '');
+            $extcourse = (string) ($fields[$groupcoursefieldlow] ?? '');
+            $extgroup = (string) ($fields[$groupfieldlow] ?? '');
+            if ($extuser === '' || $extcourse === '' || $extgroup === '') {
+                continue;
+            }
+            $extmembers[$extcourse][$extgroup][] = $extuser;
+            $extusers[$extuser] = true;
+        }
+        $rs->Close();
+
+        // An empty external table (or one without any valid row) in a full synchronisation is more likely a problem of
+        // the external data (e.g. the table is being reloaded) or of the settings than a request to empty all the
+        // groups, so nothing is removed. The synchronisation of a single user may legitimately have no rows.
+        if (!$user && !$extmembers) {
+            $trace->output('The external group enrolments table has no valid rows, no group members are removed.');
+            return 0;
+        }
+
+        // Moodle users and courses matching the external values, and the groups of those courses.
+        if ($user) {
+            // Only this user, even if other users share the same value in the local user field.
+            $userids = [(string) $user->$localuserfield => [$user->id]];
+        } else {
+            $userids = $this->get_ids_by_field('user', $localuserfield, array_keys($extusers), 'deleted = 0');
+        }
+        $courseids = $this->get_ids_by_field('course', $localcoursefield, array_keys($extmembers));
+        unset($extusers);
+        $usernames = [];
+        foreach ($userids as $value => $ids) {
+            foreach ($ids as $id) {
+                $usernames[$id] = $value;
+            }
+        }
+        $groupids = [];
+        $groupinfo = [];
+        foreach (array_chunk(array_unique(array_merge([], ...array_values($courseids))), 1000) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            // The memberships are linked to the enrol_database instance of the course, if there is one.
+            $instanceids = $DB->get_records_sql_menu("SELECT courseid, MIN(id)
+                                                        FROM {enrol}
+                                                       WHERE enrol = 'database' AND courseid $insql
+                                                    GROUP BY courseid", $params);
+            $groups = $DB->get_recordset_sql("SELECT id, courseid, idnumber
+                                                FROM {groups}
+                                               WHERE courseid $insql AND idnumber <> ''", $params);
+            foreach ($groups as $group) {
+                $group->itemid = (int) ($instanceids[$group->courseid] ?? 0);
+                $groupids[$group->courseid][$group->idnumber] = $group->id;
+                $groupinfo[$group->id] = $group;
+            }
+            $groups->close();
+        }
+
+        // Memberships requested by the external table, as groupid => userid => true.
+        $requested = [];
+        foreach ($extmembers as $extcourse => $extgroups) {
+            foreach ($courseids[$extcourse] ?? [] as $courseid) {
+                foreach ($extgroups as $extgroup => $extgroupusers) {
+                    if (!isset($groupids[$courseid][$extgroup])) {
+                        continue;
+                    }
+                    $groupid = $groupids[$courseid][$extgroup];
+                    foreach ($extgroupusers as $extuser) {
+                        foreach ($userids[$extuser] ?? [] as $userid) {
+                            $requested[$groupid][$userid] = true;
+                        }
+                    }
+                }
+            }
+        }
+        unset($extmembers, $userids, $courseids, $groupids);
+
+        // Existing memberships of the requested groups: they are marked as existing, and the manually added ones (if
+        // groupupgrading is enabled) and the ones of this plugin not linked to the enrol instance of the course are
+        // collected to be updated.
+        $updates = [];
+        foreach (array_chunk(array_keys($requested), 1000) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $members = $DB->get_recordset_sql("SELECT gm.id, gm.groupid, gm.userid, gm.component, gm.itemid
+                                                 FROM {groups_members} gm
+                                                WHERE gm.groupid $insql $userselect", $params + $userparams);
+            foreach ($members as $member) {
+                if (!isset($requested[$member->groupid][$member->userid])) {
+                    continue;
+                }
+                $requested[$member->groupid][$member->userid] = false;
+                $itemid = $groupinfo[$member->groupid]->itemid;
+                if (
+                    ($member->component === '' && $groupupgrading) ||
+                    ($member->component === 'enrol_database' && (int) $member->itemid !== $itemid)
+                ) {
+                    $updates[] = $member;
+                }
+            }
+            $members->close();
+        }
+
+        // Add the users to their groups.
+        foreach ($requested as $groupid => $members) {
+            $group = $groupinfo[$groupid];
+            $groupurl = $CFG->wwwroot . "/group/overview.php?id=" . $group->courseid . "&group=" . $groupid;
+            foreach ($members as $userid => $add) {
+                if (!$add) {
+                    continue;
+                }
+                if ($this->add_group_member($groupid, $userid, $group->itemid)) {
+                    $trace->output("  adding user " . $usernames[$userid] . " to group: " . $group->idnumber .
+                                   ": " . $groupurl);
+                } else {
+                    $trace->output("  error adding user " . $usernames[$userid] . " to group " . $group->idnumber .
+                                   ", not enrolled in course ID " . $group->courseid . ": " . $groupurl);
+                }
+            }
+        }
+
+        // Take over the manually added members and link the members to the enrol instance of the course. The membership
+        // itself does not change, so it is updated in place: no group membership events are triggered.
+        foreach ($updates as $member) {
+            $group = $groupinfo[$member->groupid];
+            if ($member->component === '') {
+                $trace->output("  upgrading membership of user " . $usernames[$member->userid] . " in group " .
+                               $group->idnumber . " to enrol_database: " . $CFG->wwwroot . "/group/overview.php?id=" .
+                               $group->courseid . "&group=" . $member->groupid);
+            }
+            $membership = (object) ['id' => $member->id, 'component' => 'enrol_database', 'itemid' => $group->itemid];
+            $DB->update_record('groups_members', $membership);
+        }
+        unset($updates);
+
+        // Remove the members added by this plugin that are not in the external table anymore.
+        $members = $DB->get_recordset_sql("SELECT gm.id, gm.groupid, gm.userid, u.$localuserfield AS localuserfield,
+                                                  g.idnumber, g.courseid
+                                             FROM {groups_members} gm
+                                             JOIN {user} u ON u.id = gm.userid
+                                             JOIN {groups} g ON g.id = gm.groupid
+                                            WHERE gm.component = 'enrol_database'
+                                              AND gm.timeadded < :synctime
+                                              AND u.deleted = 0
+                                              $userselect", ['synctime' => $synctime] + $userparams);
+        $removals = [];
+        foreach ($members as $member) {
+            if (!isset($requested[$member->groupid][$member->userid])) {
+                $removals[] = $member;
+            }
+        }
+        $members->close();
+        unset($requested);
+        foreach ($removals as $member) {
+            $trace->output("  removing user " . $member->localuserfield . " from group " . $member->idnumber . ": " .
+                           $CFG->wwwroot . "/group/overview.php?id=" . $member->courseid . "&group=" . $member->groupid);
+            groups_remove_member($member->groupid, $member->userid);
+        }
+
+        return 0;
+    }
+
+    /**
+     * Adds a user to a group as a member managed by this plugin.
+     *
+     * The scheduled task and the login of the user may try to add the same member at the same time. In that case
+     * the insert of one of them fails because of the unique key of the group members table, and the member is already
+     * there, so it is not an error.
+     *
+     * @param int $groupid
+     * @param int $userid
+     * @param int $itemid id of the enrol_database instance of the course, 0 if there is none.
+     * @return bool true if the user is a member of the group, false if the user can not be added (e.g. not enrolled).
+     */
+    protected function add_group_member(int $groupid, int $userid, int $itemid): bool {
+        global $DB;
+        try {
+            return groups_add_member($groupid, $userid, 'enrol_database', $itemid);
+        } catch (dml_write_exception $e) {
+            if (!$DB->is_transaction_started() && groups_is_member($groupid, $userid)) {
+                return true;
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Returns the ids of the records of a Moodle table whose field matches any of the given values.
+     *
+     * @param string $table Moodle table name, without prefix.
+     * @param string $field field to match.
+     * @param array $values values to look for.
+     * @param string $extraselect additional condition, without parameters.
+     * @return array value => list of ids, the same value may match several records.
+     */
+    protected function get_ids_by_field(string $table, string $field, array $values, string $extraselect = ''): array {
+        global $DB;
+
+        $ids = [];
+        // Small chunks, so that the number of parameters is supported by all the databases.
+        foreach (array_chunk(array_map('strval', $values), 1000) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $select = "$field $insql" . ($extraselect ? " AND $extraselect" : '');
+            $records = $DB->get_recordset_select($table, $select, $params, '', "id, $field AS value");
+            foreach ($records as $record) {
+                $ids[(string) $record->value][] = $record->id;
+            }
+            $records->close();
+        }
+        return $ids;
+    }
+
+    /**
      * Build a SELECT statement to run against the external database, with values escaped into the SQL.
      *
      * @deprecated since Moodle 6.0.
@@ -1232,4 +1776,16 @@ class enrol_database_plugin extends enrol_plugin {
         error_reporting($CFG->debug);
         ob_end_flush();
     }
+}
+
+/**
+ * Prevents the removal of the group members added by the external database enrolment plugin.
+ *
+ * @param int $itemid
+ * @param int $groupid
+ * @param int $userid
+ * @return bool
+ */
+function enrol_database_allow_group_member_remove($itemid, $groupid, $userid) {
+    return false;
 }
