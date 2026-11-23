@@ -34,6 +34,8 @@ namespace enrol_database;
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'remove_duplicated_manual_enrolment')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'remove_user_duplicated_manual_enrolment')]
 #[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'get_categoryid')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'create_user_from_remote')]
+#[\PHPUnit\Framework\Attributes\CoversMethod(\enrol_database_plugin::class, 'is_user_creation_misconfigured')]
 final class sync_test extends \advanced_testcase {
     protected static $courses = array();
     protected static $users = array();
@@ -164,6 +166,29 @@ final class sync_test extends \advanced_testcase {
         set_config('newcourseidnumber', 'idnumber', 'enrol_database');
         set_config('newcoursecategory', 'category', 'enrol_database');
 
+        $table = new \xmldb_table('enrol_database_test_users');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('username', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('email', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('firstname', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('lastname', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_field('authmethod', XMLDB_TYPE_CHAR, '255', null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $dbman->create_table($table);
+        // User creation is disabled until the remote users table is set.
+        set_config('newusertable', '', 'enrol_database');
+        set_config('newuserusername', 'username', 'enrol_database');
+        set_config('newuseremail', 'email', 'enrol_database');
+        set_config('newuserfirstname', 'firstname', 'enrol_database');
+        set_config('newuserlastname', 'lastname', 'enrol_database');
+        set_config('newuseridnumber', 'idnumber', 'enrol_database');
+        set_config('newuserauth', 'manual', 'enrol_database');
+        set_config('newuserauthfield', '', 'enrol_database');
+
         // Create some test users and courses.
         for ($i = 1; $i <= 4; $i++) {
             self::$courses[$i] = $this->getDataGenerator()->create_course(array('fullname' => 'Test course '.$i, 'shortname' => 'tc'.$i, 'idnumber' => 'courseid'.$i));
@@ -186,6 +211,8 @@ final class sync_test extends \advanced_testcase {
         $dbman->drop_table($table);
         $table = new \xmldb_table('enrol_database_test_courses');
         $dbman->drop_table($table);
+        $table = new \xmldb_table('enrol_database_test_users');
+        $dbman->drop_table($table);
 
         self::$courses = null;
         self::$users = null;
@@ -199,6 +226,7 @@ final class sync_test extends \advanced_testcase {
 
         $DB->delete_records('enrol_database_test_enrols', array());
         $DB->delete_records('enrol_database_test_courses', array());
+        $DB->delete_records('enrol_database_test_users', []);
 
         $plugin = enrol_get_plugin('database');
         $instances = $DB->get_records('enrol', array('enrol' => 'database'));
@@ -1293,6 +1321,118 @@ final class sync_test extends \advanced_testcase {
         $this->assertFalse($ismanual(1));
         $this->assertTrue($ismanual(2));
         $this->assertTrue($ismanual(4));
+
+        $this->cleanup_enrol_database();
+    }
+
+    /**
+     * Users of the remote enrolments table that do not exist in Moodle are created from the remote users table.
+     */
+    public function test_sync_enrolments_create_users(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->init_enrol_database();
+
+        $plugin = enrol_get_plugin('database');
+        $plugin->set_config('localcoursefield', 'idnumber');
+        $plugin->set_config('localuserfield', 'email');
+        $plugin->set_config('localrolefield', 'shortname');
+        $plugin->set_config('defaultrole', self::$roles['student']->id);
+
+        $remoteusers = [
+            // Created with the default authentication method.
+            ['email' => 'new1@example.com', 'username' => 'newuser1', 'firstname' => 'New', 'lastname' => 'User 1',
+                'idnumber' => 'newid1', 'authmethod' => ''],
+            // Created with the authentication method of the remote users table, and the username in lowercase.
+            ['email' => 'new2@example.com', 'username' => 'NewUser2', 'firstname' => 'New', 'lastname' => 'User 2',
+                'idnumber' => '', 'authmethod' => 'nologin'],
+            // Not created: missing mandatory field.
+            ['email' => 'nofirstname@example.com', 'username' => 'newuser3', 'firstname' => '', 'lastname' => 'User 3',
+                'idnumber' => '', 'authmethod' => ''],
+            // Not created: the username belongs to another user.
+            ['email' => 'dupusername@example.com', 'username' => 'username1', 'firstname' => 'New', 'lastname' => 'User 4',
+                'idnumber' => '', 'authmethod' => ''],
+            // Not created: the authentication method is not enabled.
+            ['email' => 'badauth@example.com', 'username' => 'newuser5', 'firstname' => 'New', 'lastname' => 'User 5',
+                'idnumber' => '', 'authmethod' => 'cas'],
+        ];
+        foreach ($remoteusers as $remoteuser) {
+            $DB->insert_record('enrol_database_test_users', $remoteuser);
+        }
+        $emails = array_merge(array_column($remoteusers, 'email'), ['missing@example.com']);
+        foreach ($emails as $email) {
+            foreach (['courseid1', 'courseid2'] as $courseid) {
+                $DB->insert_record('enrol_database_test_enrols', ['userid' => $email, 'courseid' => $courseid]);
+            }
+        }
+        $usercount = $DB->count_records('user');
+
+        // Without remote users table, unknown users are skipped.
+        $plugin->sync_enrolments(new \null_progress_trace());
+        $this->assertEquals($usercount, $DB->count_records('user'));
+
+        // With remote users table, they are created and enrolled in every course.
+        $plugin->set_config('newusertable', $DB->get_prefix() . 'enrol_database_test_users');
+        $plugin->set_config('newuserauthfield', 'authmethod');
+        $trace = new \progress_trace_buffer(new \text_progress_trace(), false);
+        $plugin->sync_enrolments($trace);
+        $output = $trace->get_buffer();
+        $this->assertEquals($usercount + 2, $DB->count_records('user'));
+
+        $new1 = $DB->get_record('user', ['email' => 'new1@example.com'], '*', MUST_EXIST);
+        $this->assertEquals('newuser1', $new1->username);
+        $this->assertEquals('New', $new1->firstname);
+        $this->assertEquals('User 1', $new1->lastname);
+        $this->assertEquals('newid1', $new1->idnumber);
+        $this->assertEquals('manual', $new1->auth);
+        $this->assertEquals(1, $new1->confirmed);
+        $new2 = $DB->get_record('user', ['email' => 'new2@example.com'], '*', MUST_EXIST);
+        $this->assertEquals('nologin', $new2->auth);
+        $this->assertEquals('newuser2', $new2->username);
+        foreach ([$new1, $new2] as $user) {
+            foreach ([1, 2] as $courseindex) {
+                $this->assertTrue(is_enrolled(\context_course::instance(self::$courses[$courseindex]->id), $user));
+            }
+        }
+
+        // Each user is created, or fails to be created, only once.
+        $this->assertEquals(1, substr_count($output, "creating user email 'new1@example.com'"));
+        $this->assertEquals(1, substr_count($output, "creating user email 'new2@example.com'"));
+        $error = "error: could not create email";
+        $this->assertEquals(1, substr_count($output, "$error 'nofirstname@example.com' from the remote users table - " .
+            "missing mandatory firstname"));
+        $this->assertEquals(1, substr_count($output, "$error 'dupusername@example.com' from the remote users table - " .
+            "username 'username1'"));
+        $this->assertEquals(1, substr_count($output, "$error 'badauth@example.com' from the remote users table - " .
+            "authentication method 'cas'"));
+        $this->assertEquals(2, substr_count($output, "error: skipping unknown email 'missing@example.com'"));
+        $this->assertEquals(2, substr_count($output, "error: skipping unknown email 'badauth@example.com'"));
+        $this->assertStringNotContainsString('warning: users can not be created', $output);
+
+        // Users can not be created when the local user field is id.
+        $plugin->set_config('localuserfield', 'id');
+        $DB->delete_records('enrol_database_test_enrols');
+        $DB->insert_record('enrol_database_test_enrols', ['userid' => '999999', 'courseid' => 'courseid1']);
+        $trace = new \progress_trace_buffer(new \text_progress_trace(), false);
+        $plugin->sync_enrolments($trace);
+        $output = $trace->get_buffer();
+        $this->assertEquals($usercount + 2, $DB->count_records('user'));
+        $this->assertStringContainsString("error: skipping unknown id '999999'", $output);
+        $this->assertStringNotContainsString('creating user', $output);
+        $this->assertStringNotContainsString('could not create', $output);
+        // The misconfiguration is reported once.
+        $warning = 'warning: users can not be created from the remote users table, because no field of it is mapped to ' .
+            'the local user field';
+        $this->assertEquals(1, substr_count($output, "$warning id"));
+
+        // Same when the local user field is idnumber and the remote users table has no idnumber field.
+        $plugin->set_config('localuserfield', 'idnumber');
+        $plugin->set_config('newuseridnumber', '');
+        $trace = new \progress_trace_buffer(new \text_progress_trace(), false);
+        $plugin->sync_enrolments($trace);
+        $this->assertEquals(1, substr_count($trace->get_buffer(), "$warning idnumber"));
 
         $this->cleanup_enrol_database();
     }

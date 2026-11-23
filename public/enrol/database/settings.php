@@ -114,6 +114,60 @@ if ($ADMIN->fulltree) {
         get_string('manualenrol_cleaning_mode', 'enrol_database'),
         get_string('manualenrol_cleaning_mode_desc', 'enrol_database'), 'new', $options));
 
+    $settings->add(new admin_setting_heading(
+        'enrol_database_newusersheader',
+        get_string('settingsheadernewusers', 'enrol_database'),
+        ''
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'enrol_database/newusertable',
+        get_string('newusertable', 'enrol_database'),
+        get_string('newusertable_desc', 'enrol_database'),
+        ''
+    ));
+
+    $newuserfields = [
+        'username' => 'username',
+        'email' => 'email',
+        'firstname' => 'firstname',
+        'lastname' => 'lastname',
+    ];
+    foreach ($newuserfields as $field => $default) {
+        $settings->add(new admin_setting_configtext(
+            'enrol_database/newuser' . $field,
+            get_string('newuser' . $field, 'enrol_database'),
+            '',
+            $default
+        ));
+    }
+
+    $settings->add(new admin_setting_configtext(
+        'enrol_database/newuseridnumber',
+        get_string('newuseridnumber', 'enrol_database'),
+        get_string('newuseridnumber_desc', 'enrol_database'),
+        'idnumber'
+    ));
+
+    $options = [];
+    foreach (core_component::get_plugin_list('auth') as $auth => $unused) {
+        $options[$auth] = get_string('pluginname', 'auth_' . $auth);
+    }
+    $settings->add(new admin_setting_configselect(
+        'enrol_database/newuserauth',
+        get_string('newuserauth', 'enrol_database'),
+        get_string('newuserauth_desc', 'enrol_database'),
+        'manual',
+        $options
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'enrol_database/newuserauthfield',
+        get_string('newuserauthfield', 'enrol_database'),
+        get_string('newuserauthfield_desc', 'enrol_database'),
+        ''
+    ));
+
     $settings->add(new admin_setting_heading('enrol_database_newcoursesheader', get_string('settingsheadernewcourses', 'enrol_database'), ''));
 
     $settings->add(new admin_setting_configtext('enrol_database/newcoursetable', get_string('newcoursetable', 'enrol_database'), get_string('newcoursetable_desc', 'enrol_database'), ''));
