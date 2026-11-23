@@ -73,7 +73,7 @@ function xmldb_format_remuiformat_upgrade($oldversion) {
     }
 
     if ($oldversion < 2021070800) {
-        // Define table remuiformat_course_module_visits to be created.
+        // Define table format_remuiformat_course_visits to be created.
         $table = new xmldb_table('format_remuiformat_course_visits');
 
         // Adding fields to table format_remuiformat_course_visits.
