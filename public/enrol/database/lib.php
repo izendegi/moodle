@@ -430,6 +430,11 @@ class enrol_database_plugin extends enrol_plugin {
 
         $trace->output("\nStarting user enrolment synchronisation...");
 
+        if ($this->is_user_creation_misconfigured()) {
+            $trace->output("warning: users can not be created from the remote users table, because no field of it is " .
+                "mapped to the local user field " . $this->get_config('localuserfield'), 1);
+        }
+
         if (!$extdb = $this->db_init()) {
             $trace->output('Error while communicating with external enrolment database');
             $trace->finished();
@@ -576,6 +581,10 @@ class enrol_database_plugin extends enrol_plugin {
             $ignorehidden = $this->get_config('ignorehiddencourses');
         }
 
+        // Users not found in Moodle that could not be created from the remote users table, so that they are only
+        // searched there once.
+        $notcreatedusers = [];
+
         // Sync user enrolments.
         $sqlfields = array($userfield);
         if ($rolefield) {
@@ -630,12 +639,16 @@ class enrol_database_plugin extends enrol_plugin {
             $requestedenrols = array();
             [$sql, $extparams] = $this->db_get_query($extdb, $table, [$coursefield => $course->mapping], $sqlfields);
             if ($rs = $extdb->Execute($sql, $extparams)) {
-                if (!$rs->EOF) {
+                // Read all the rows before processing them, because unknown users may be searched in the remote users
+                // table, and some drivers can not run a query while another result set is open.
+                $extrows = $rs->EOF ? [] : $rs->GetArray();
+                $rs->Close();
+                if ($extrows) {
                     $usersearch = array('deleted' => 0);
                     if ($localuserfield === 'username') {
                         $usersearch['mnethostid'] = $CFG->mnet_localhost_id;
                     }
-                    while ($fields = $rs->FetchRow()) {
+                    foreach ($extrows as $fields) {
                         $fields = array_change_key_case($fields, CASE_LOWER);
                         if (empty($fields[$userfield_l])) {
                             $trace->output("error: skipping user without mandatory $localuserfield in course " .
@@ -645,13 +658,21 @@ class enrol_database_plugin extends enrol_plugin {
                         $mapping = $fields[$userfield_l];
                         if (!isset($usermapping[$mapping])) {
                             $usersearch[$localuserfield] = $mapping;
-                            if (!$user = $DB->get_record('user', $usersearch, 'id', IGNORE_MULTIPLE)) {
+                            if ($user = $DB->get_record('user', $usersearch, 'id', IGNORE_MULTIPLE)) {
+                                $userid = $user->id;
+                            } else if (!isset($notcreatedusers[$mapping])) {
+                                // Try to create the unknown user from the remote users table.
+                                $userid = $this->create_user_from_remote($extdb, $mapping, $trace);
+                            } else {
+                                $userid = null;
+                            }
+                            if (!$userid) {
+                                $notcreatedusers[$mapping] = true;
                                 $trace->output("error: skipping unknown $localuserfield '$mapping' in course " .
                                     "$course->mapping: " . $courseurl, 1);
                                 continue;
                             }
-                            $usermapping[$mapping] = $user->id;
-                            $userid = $user->id;
+                            $usermapping[$mapping] = $userid;
                         } else {
                             $userid = $usermapping[$mapping];
                         }
@@ -673,7 +694,7 @@ class enrol_database_plugin extends enrol_plugin {
                         $useridentifier[$userid] = $mapping;
                     }
                 }
-                $rs->Close();
+                unset($extrows);
             } else {
                 $trace->output("error: skipping course $course->mapping - could not match with external database: " .
                     $courseurl, 1);
@@ -807,6 +828,125 @@ class enrol_database_plugin extends enrol_plugin {
         $trace->finished();
 
         return 0;
+    }
+
+    /**
+     * Whether the remote users table is set but users can not be created from it.
+     *
+     * Users are searched in the remote users table by the field mapped to the local user field, so they can not be
+     * created when it has no field mapped (always when the local user field is id).
+     *
+     * @return bool true if the remote users table is set and no field of it is mapped to the local user field.
+     */
+    protected function is_user_creation_misconfigured(): bool {
+        if (trim((string) $this->get_config('newusertable')) === '') {
+            return false;
+        }
+        return trim((string) $this->get_config('newuser' . $this->get_config('localuserfield'))) === '';
+    }
+
+    /**
+     * Creates a user that does not exist in Moodle with the data found in the remote users table.
+     *
+     * The user is searched in the remote users table by the column mapped to the local user field, so users can not be
+     * created when the local user field is id. The authentication method is the default one, unless the remote auth
+     * column has a value. The password is not set, so the authentication method must not depend on it.
+     *
+     * @param ADOConnection $extdb connection to the external database.
+     * @param string $mapping value of the local user field of the user in the remote enrolments table.
+     * @param progress_trace $trace
+     * @return int|null id of the new user, null if it has not been created.
+     */
+    protected function create_user_from_remote(ADOConnection $extdb, string $mapping, progress_trace $trace): ?int {
+        global $CFG, $DB;
+
+        $table = trim((string) $this->get_config('newusertable'));
+        $localuserfield = $this->get_config('localuserfield');
+
+        // Remote columns of each user field, the ones without a column are not filled.
+        $columns = [];
+        foreach (['username', 'email', 'firstname', 'lastname', 'idnumber'] as $field) {
+            $column = trim((string) $this->get_config('newuser' . $field));
+            if ($column !== '') {
+                $columns[$field] = $column;
+            }
+        }
+        $authcolumn = trim((string) $this->get_config('newuserauthfield'));
+
+        if ($table === '' || empty($columns[$localuserfield])) {
+            // User creation disabled, or the user can not be searched in the remote users table.
+            return null;
+        }
+
+        $sqlfields = array_values($columns);
+        if ($authcolumn !== '') {
+            $sqlfields[] = $authcolumn;
+        }
+        // The mapping comes from the remote table as is, and db_get_query() encodes it again.
+        $conditions = [$columns[$localuserfield] => $this->db_decode($mapping)];
+        [$sql, $extparams] = $this->db_get_query($extdb, $table, $conditions, $sqlfields);
+        if (!$rs = $extdb->Execute($sql, $extparams)) {
+            $trace->output("error: could not read the remote users table to create $localuserfield '$mapping'", 1);
+            return null;
+        }
+        $fields = $rs->EOF ? false : $rs->FetchRow();
+        $rs->Close();
+        if (!$fields) {
+            // The user is not in the remote users table either.
+            return null;
+        }
+        $fields = array_change_key_case($fields, CASE_LOWER);
+
+        $user = new stdClass();
+        foreach ($columns as $field => $column) {
+            $user->$field = trim((string) $this->db_decode($fields[strtolower($column)] ?? ''));
+        }
+        // Moodle usernames are lowercase.
+        $user->username = core_text::strtolower($user->username);
+        // Keep the exact value of the remote enrolments table, so the user is found in the next synchronisations.
+        $user->$localuserfield = $mapping;
+        $user->auth = $this->get_config('newuserauth') ?: 'manual';
+        if ($authcolumn !== '' && !empty($fields[strtolower($authcolumn)])) {
+            $user->auth = trim($this->db_decode($fields[strtolower($authcolumn)]));
+        }
+        $user->mnethostid = $CFG->mnet_localhost_id;
+        $user->confirmed = 1;
+
+        // Check the user data before creating it.
+        $error = null;
+        $emailselect = $DB->sql_equal('email', ':email', false) . ' AND deleted = 0';
+        $missing = array_filter(['username', 'email', 'firstname', 'lastname'], fn($field) => ($user->$field ?? '') === '');
+        if ($missing) {
+            $error = 'missing mandatory ' . implode(', ', $missing);
+        } else if (!is_enabled_auth($user->auth) || !exists_auth_plugin($user->auth)) {
+            $error = "authentication method '$user->auth' not enabled";
+        } else if (!validate_email($user->email)) {
+            $error = "invalid email '$user->email'";
+        } else if ($DB->record_exists('user', ['username' => $user->username, 'mnethostid' => $user->mnethostid])) {
+            $error = "username '$user->username' already used by another user";
+        } else if (empty($CFG->allowaccountssameemail) &&
+                $DB->record_exists_select('user', $emailselect, ['email' => $user->email])) {
+            $error = "email '$user->email' already used by another user";
+        } else if (!empty($user->idnumber) &&
+                $DB->record_exists('user', ['idnumber' => $user->idnumber, 'deleted' => 0])) {
+            $error = "idnumber '$user->idnumber' already used by another user";
+        }
+        if (!$error) {
+            require_once($CFG->dirroot . '/user/lib.php');
+            try {
+                $userid = user_create_user($user, false);
+            } catch (moodle_exception $e) {
+                $error = $e->getMessage();
+            }
+        }
+        if ($error) {
+            $trace->output("error: could not create $localuserfield '$mapping' from the remote users table - $error", 1);
+            return null;
+        }
+
+        $trace->output("creating user $localuserfield '$mapping' from the remote users table: " .
+            $CFG->wwwroot . '/user/view.php?id=' . $userid, 1);
+        return $userid;
     }
 
     /**
@@ -2094,6 +2234,27 @@ class enrol_database_plugin extends enrol_plugin {
                 $columns = array_keys($rs->fetchRow());
 
                 echo $OUTPUT->notification('External course table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
+                $rs->Close();
+            }
+        }
+
+        $usertable = trim((string) $this->get_config('newusertable'));
+        if ($this->is_user_creation_misconfigured()) {
+            echo $OUTPUT->notification('Users can not be created from the external user table, because no field of it ' .
+                'is mapped to the local user field ' . $this->get_config('localuserfield') . '.', 'notifyproblem');
+        }
+        if ($usertable !== '') {
+            $rs = $adodb->Execute("SELECT *
+                                     FROM $usertable");
+            if (!$rs) {
+                echo $OUTPUT->notification('Can not read external user table.', 'notifyproblem');
+            } else if ($rs->EOF) {
+                echo $OUTPUT->notification('External user table is empty.', 'notifyproblem');
+                $rs->Close();
+            } else {
+                $columns = array_keys($rs->fetchRow());
+                echo $OUTPUT->notification('External user table contains following columns:<br />' .
+                    implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
         }
