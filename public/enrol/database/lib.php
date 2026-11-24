@@ -160,7 +160,7 @@ class enrol_database_plugin extends enrol_plugin {
         }
 
         // Read remote enrols and create instances.
-        [$sql, $extparams] = $this->db_get_query($extdb, $table, [$userfield => $user->$localuserfield], [], false);
+        [$sql, $extparams] = $this->db_get_query($extdb, $table, [$userfield_l => $user->$localuserfield], [], false);
 
         if ($rs = $extdb->Execute($sql, $extparams)) {
             if (!$rs->EOF) {
@@ -463,6 +463,8 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
+        $manual_enrol_check = $this->get_config('manualenrol_cleaning');
+        $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
 
         $manualenrolcleaning = $this->get_config('manualenrol_cleaning');
         $manualenrolcleaningmode = $this->get_config('manualenrol_cleaning_mode');
@@ -503,7 +505,7 @@ class enrol_database_plugin extends enrol_plugin {
         } else {
             // Get a list of courses to be synced that are in external table.
             $externalcourses = array();
-            [$sql, $extparams] = $this->db_get_query($extdb, $table, [], [$coursefield], true);
+            [$sql, $extparams] = $this->db_get_query($extdb, $table, [], [$coursefield_l], true);
             if ($rs = $extdb->Execute($sql, $extparams)) {
                 if (!$rs->EOF) {
                     while ($mapping = $rs->FetchRow()) {
@@ -586,12 +588,12 @@ class enrol_database_plugin extends enrol_plugin {
         $notcreatedusers = [];
 
         // Sync user enrolments.
-        $sqlfields = array($userfield);
+        $sqlfields = array($userfield_l);
         if ($rolefield) {
-            $sqlfields[] = $rolefield;
+            $sqlfields[] = $rolefield_l;
         }
         if ($otheruserfield) {
-            $sqlfields[] = $otheruserfield;
+            $sqlfields[] = $otheruserfieldlower;
         }
         foreach ($existing as $course) {
             if ($ignorehidden and !$course->visible) {
@@ -1005,6 +1007,7 @@ class enrol_database_plugin extends enrol_plugin {
         $categoryname_l = strtolower($categoryname);
         $startdatelowercased = strtolower($startdate);
         $enddatelowercased   = strtolower($enddate);
+        $categoryname_l = strtolower($categoryname);
 
         $localcategoryfield = $this->get_config('localcategoryfield', 'id');
         $defaultcategory    = $this->get_config('defaultcategory');
@@ -1014,9 +1017,15 @@ class enrol_database_plugin extends enrol_plugin {
             $defaultcategory = core_course_category::get_default();
         }
 
-        $sqlfields = array($fullname, $shortname);
+        $sqlfields = array($fullname_l, $shortname_l);
         if ($category) {
-            $sqlfields[] = $category;
+            $sqlfields[] = $category_l;
+        }
+        if ($summary) {
+            $sqlfields[] = $summary_l;
+        }
+        if ($template) {
+            $sqlfields[] = $template_l;
         }
         if ($summary) {
             $sqlfields[] = $summary;
@@ -1025,7 +1034,10 @@ class enrol_database_plugin extends enrol_plugin {
             $sqlfields[] = $template;
         }
         if ($idnumber) {
-            $sqlfields[] = $idnumber;
+            $sqlfields[] = $idnumber_l;
+        }
+        if ($categoryname) {
+            $sqlfields[] = $categoryname_l;
         }
         if ($categoryname) {
             $sqlfields[] = $categoryname;
@@ -2425,6 +2437,16 @@ class enrol_database_plugin extends enrol_plugin {
 /**
  * Prevents the removal of the group members added by the external database enrolment plugin.
  *
+ * @param int $itemid
+ * @param int $groupid
+ * @param int $userid
+ * @return bool
+ */
+function enrol_database_allow_group_member_remove($itemid, $groupid, $userid) {
+    return false;
+}
+/**
+ * Prevent removal of enrol_database group member allocation.
  * @param int $itemid
  * @param int $groupid
  * @param int $userid
