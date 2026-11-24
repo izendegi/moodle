@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   ci:
     name: ci
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: checkout plugin
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           path: this-plugin
 

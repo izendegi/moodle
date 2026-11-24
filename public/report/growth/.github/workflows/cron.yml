@@ -7,7 +7,7 @@ on:
 jobs:
   ci:
     name: Cron
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -22,13 +22,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        moodle-branch: ['MOODLE_500_STABLE']
+        moodle-branch: ['MOODLE_502_STABLE']
         php: ['8.3']
         database: ['pgsql']
 
     steps:
       - name: checkout plugin
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           path: this-plugin
 
