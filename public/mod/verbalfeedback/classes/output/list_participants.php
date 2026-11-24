@@ -14,17 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class containing data for users that need to be given with verbalfeedback.
- *
- * @package   mod_verbalfeedback
- * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 namespace mod_verbalfeedback\output;
 
 use coding_exception;
 use mod_verbalfeedback\api;
+use mod_verbalfeedback\utils\instance_utils;
 use mod_verbalfeedback\utils\user_utils;
 use moodle_url;
 use core\output\renderable;
@@ -37,6 +31,7 @@ use core_course\output\actionbar\group_selector;
 /**
  * Class containing data for users that need to be given with verbalfeedback.
  *
+ * @package    mod_verbalfeedback
  * @copyright  2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -84,7 +79,7 @@ class list_participants implements renderable, templatable {
         $this->isopen = $isopen;
         $this->cm = get_coursemodule_from_instance('verbalfeedback', $this->verbalfeedback->id);
         $this->course = get_course($this->cm->course);
-        $this->groupid = groups_get_course_group($this->course, true);
+        $this->groupid = instance_utils::get_current_group($this->cm, $this->course);
     }
 
     /** Set filter parameters for the participants list.
@@ -113,7 +108,7 @@ class list_participants implements renderable, templatable {
             $resetparameters['status'] = $statusvalue;
         }
         $resetlink = new moodle_url('/mod/verbalfeedback/view.php', $resetparameters);
-        $groupid = groups_get_course_group($this->course, true);
+        $groupid = instance_utils::get_current_group($this->cm, $this->course);
         $userselector = new user_selector(
             course: $this->course,
             resetlink: $resetlink,

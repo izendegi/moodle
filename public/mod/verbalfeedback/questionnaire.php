@@ -50,15 +50,24 @@ $instancerepository = new instance_repository();
 $submissionrepository = new submission_repository();
 
 $submission = null;
-$instance = null;
+$instance = $instancerepository->get_by_id($cm->instance);
 if ($preview) {
-    if (!$instance = $instancerepository->get_by_id($cm->instance)) {
+    if (!$instance) {
         throw new moodle_exception('errorverbalfeedbacknotfound', 'mod_verbalfeedback', $viewurl);
     }
 } else {
     $submission = $submissionrepository->get_by_id($submissionid);
-    $instance = $instancerepository->get_by_id($submission->get_instance_id());
+    if ($submission === null || $submission->get_instance_id() != $cm->instance) {
+        throw new moodle_exception('invalididprovided', 'mod_verbalfeedback');
+    }
+    if (
+        $submission->get_from_user_id() != $USER->id &&
+        !has_capability('mod/verbalfeedback:view_all_reports', $context)
+    ) {
+        throw new moodle_exception('nopermissions', 'error');
+    }
 }
+
 $PAGE->set_context($context);
 $PAGE->set_cm($cm, $course);
 $PAGE->set_pagelayout('incourse');
@@ -89,37 +98,7 @@ if ($preview) {
     $submission->set_instance_id($instance->get_id());
     $submission->set_from_user_id(0); // A non-existing user.
     $questionnairedata = new questionnaire($context->id, $submission, true);
-
-    // Iterate and drop criteria with weight 0.
-    // First, let's filter our set of criteria inside the categories.
-
-    foreach ($questionnairedata->categories as $category) {
-        $filteredcriteria = array_filter($category->criteria, function ($criterion) {
-            // Adding our criteria for a valid category.
-            return
-                property_exists($criterion, 'weight') // The property weight exists.
-                && $criterion->weight != "0.00"; // And it's not '0.00'.
-        });
-        // If you want to keep the index of the entry just remove the next line.
-        $filteredcriteria = array_values($filteredcriteria);
-        // Overwrite the original criteria with the filtered set.
-        $category->criteria = $filteredcriteria;
-    }
-
-    // Iterate and drop categories with weight 0.
-    // Then, let's filter our set of categories.
-
-    $filteredcategories = array_filter($questionnairedata->categories, function ($category) {
-        // Adding our criteria for a valid category.
-        return
-            property_exists($category, 'weight') // The property weight exists.
-            && $category->weight != "0.00"; // And it's not '0.00'.
-    });
-
-    // If you want to keep the index of the entry just remove the next line.
-    $filteredcategories = array_values($filteredcategories);
-    // Overwrite the original categories with the filtered set.
-    $questionnairedata->categories = $filteredcategories;
+    $questionnairedata->filter_empty_categories_and_criteria();
 
     $renderer = $PAGE->get_renderer('mod_verbalfeedback');
 
@@ -152,38 +131,7 @@ if ($preview) {
 
         // Verbalfeedback question list.
         $questionnairedata = new questionnaire($context->id, $submission);
-
-
-        // Iterate and drop criteria with weight 0.
-        // First, let's filter our set of criteria inside the categories.
-
-        foreach ($questionnairedata->categories as $category) {
-            $filteredcriteria = array_filter($category->criteria, function ($criterion) {
-                // Adding our criteria for a valid category.
-                return
-                    property_exists($criterion, 'weight') // The property weight exists.
-                    && $criterion->weight != "0.00"; // And it's not '0.00'.
-            });
-            // If you want to keep the index of the entry just remove the next line.
-            $filteredcriteria = array_values($filteredcriteria);
-            // Overwrite the original criteria with the filtered set.
-            $category->criteria = $filteredcriteria;
-        }
-
-        // Iterate and drop categories with weight 0.
-        // Then, let's filter our set of categories.
-
-        $filteredcategories = array_filter($questionnairedata->categories, function ($category) {
-            // Adding our criteria for a valid category.
-            return
-                property_exists($category, 'weight') // The property weight exists.
-                && $category->weight != "0.00"; // And it's not '0.00'.
-        });
-
-        // If you want to keep the index of the entry just remove the next line.
-        $filteredcategories = array_values($filteredcategories);
-        // Overwrite the original categories with the filtered set.
-        $questionnairedata->categories = $filteredcategories;
+        $questionnairedata->filter_empty_categories_and_criteria();
 
         $renderer = $PAGE->get_renderer('mod_verbalfeedback');
         echo $renderer->render($questionnairedata);

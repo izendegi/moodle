@@ -14,14 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Helper functions for the verbal feedback activity module.
- *
- * @package   mod_verbalfeedback
- * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 namespace mod_verbalfeedback;
+
 use Exception;
 use mod_verbalfeedback\model\instance_category;
 use mod_verbalfeedback\model\language;
@@ -35,6 +29,7 @@ require_once($CFG->libdir . '/weblib.php');
 /**
  * Class containing helper functions for the verbal feedback activity module.
  *
+ * @package   mod_verbalfeedback
  * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -145,7 +140,7 @@ class helper {
      */
     public static function parseyamlfile(string $someyaml, ?int $options = null, ?int $debug = null) {
         if (version_compare(PHP_VERSION, '8.1.14') >= 0) {
-            require_once(implode(DIRECTORY_SEPARATOR, [dirname(__FILE__), 'vendor', 'autoload.php']));
+            require_once(implode(DIRECTORY_SEPARATOR, [dirname(__FILE__), '..', 'vendor', 'autoload.php']));
             return \Dallgoot\Yaml\Yaml::parseFile($someyaml, $options, $debug);
         }
         throw new Exception('YAML parsing requires at least PHP 8.1.14');

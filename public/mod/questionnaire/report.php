@@ -66,15 +66,15 @@ require_course_login($course, true, $cm);
 $renderer = $PAGE->get_renderer('mod_questionnaire');
 if ($outputtarget == 'pdf') {
     $page = ($action == 'vresp') ? page::response_pdf() : page::report_pdf();
-} else { // Default to HTML.
+} else {
+    // Default to HTML.
     $page = page::report();
 }
 
 // If you can't view the questionnaire, a specified response or the requested group, error out.
 $context = $questionnaire->context();
 if (
-    !$questionnaire->capabilities()->can_view_all_responses(null, true) ||
-    ($rid && !$questionnaire->capabilities()->can_view_response((int)$rid)) ||
+    !$questionnaire->capabilities()->can_open_report($action, $outputtarget, (int)$rid) ||
     !$questionnaire->capabilities()->can_view_group((int)$currentgroupid)
 ) {
     throw new \moodle_exception('nopermissions', 'mod_questionnaire');

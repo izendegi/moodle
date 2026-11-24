@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class for performing DB actions for the verbalfeedback activity module.
- *
- * @package   mod_verbalfeedback
- * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace mod_verbalfeedback\repository;
 
 use Exception;
@@ -37,6 +29,10 @@ use mod_verbalfeedback\repository\model\localized_string_type;
 
 /**
  * The instance repository class.
+ *
+ * @package    mod_verbalfeedback
+ * @copyright  2021 Kevin Tippenhauer
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class instance_repository {
     /**
@@ -611,9 +607,14 @@ class instance_repository {
      * @param float $weight The category weight
      * @return bool
      * @throws \dml_exception
+     * @throws \moodle_exception
      */
     public function update_category_weight($categoryid, $weight) {
         global $DB;
+        $weight = (float)$weight;
+        if ($weight < 0.0 || $weight > 1.0) {
+            throw new \moodle_exception("Invalid value for weight: {$weight}.");
+        }
         // Update all users grades.
         verbalfeedback_update_grades(
             self::get_by_id(
@@ -631,14 +632,21 @@ class instance_repository {
      * @param float $weight The criterion weight
      * @return bool
      * @throws \dml_exception
+     * @throws \moodle_exception
      */
     public function update_criterion_weight($criterionid, $weight) {
         global $DB;
+        $weight = (float)$weight;
+        if ($weight < 0.0) {
+            throw new \moodle_exception("Invalid value for weight: {$weight}.");
+        }
         // Update all users grades.
         $instanceid = $DB->get_field_sql(
-            'SELECT v.id FROM {verbalfeedback} v JOIN {verbalfeedback_i_category} vc ' .
-            'ON vc.instanceid = v.id JOIN {verbalfeedback_i_criterion} vcr ' .
-            'ON vc.id = vcr.categoryid WHERE vcr.id = ' . $criterionid
+            'SELECT v.id FROM {verbalfeedback} v
+                JOIN {verbalfeedback_i_category} vc ON vc.instanceid = v.id
+                JOIN {verbalfeedback_i_criterion} vcr ON vc.id = vcr.categoryid
+                WHERE vcr.id = ?',
+            [$criterionid]
         );
         verbalfeedback_update_grades(self::get_by_id($instanceid), 0);
         return $DB->set_field(tables::INSTANCE_CRITERION_TABLE, 'weight', $weight, ['id' => $criterionid]);

@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class for performing DB actions for the verbalfeedback activity module.
- *
- * @package   mod_verbalfeedback
- * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace mod_verbalfeedback\repository;
 
 use Exception;
@@ -37,6 +29,10 @@ use mod_verbalfeedback\repository\model\localized_string_type;
 
 /**
  * The template criterion repository class
+ *
+ * @package    mod_verbalfeedback
+ * @copyright  2021 Kevin Tippenhauer
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class template_criterion_repository {
     /**
@@ -317,7 +313,7 @@ class template_criterion_repository {
         $typeid = localized_string_type::str2id($type);
         $cachekey = $typeid . '~~' . $foreignkey;
 
-        if (array_key_exists($cachekey, $strings) && !PHPUNIT_TEST) {
+        if (array_key_exists($cachekey, $strings) && !defined('PHPUNIT_TEST')) {
             // We already have this cached, so return it.
             return $strings[$cachekey];
         }

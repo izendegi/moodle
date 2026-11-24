@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class for performing DB actions for the verbal feedback activity module.
- *
- * @package   mod_verbalfeedback
- * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace mod_verbalfeedback\repository;
 
 defined('MOODLE_INTERNAL') || die();
@@ -35,6 +27,10 @@ require_once(__DIR__ . '/../../lib.php');
 
 /**
  * The submission repository class.
+ *
+ * @package    mod_verbalfeedback
+ * @copyright  2021 Kevin Tippenhauer
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class submission_repository {
     /**
@@ -150,6 +146,28 @@ class submission_repository {
             $submissions[] = $submission;
         }
         return $submissions;
+    }
+
+    /**
+     * Gets the distinct ids of the users who provided a completed feedback for the given rated user.
+     *
+     * @param int $instanceid The instance id.
+     * @param int $touserid The id of the rated user.
+     * @return array<int> The ids of the rating (reviewing) users.
+     */
+    public function get_completed_fromuserids(int $instanceid, int $touserid): array {
+        global $DB;
+        $fromuserids = $DB->get_fieldset_select(
+            tables::SUBMISSION_TABLE,
+            'DISTINCT fromuserid',
+            'instanceid = :instanceid AND touserid = :touserid AND status = :status',
+            [
+                'instanceid' => $instanceid,
+                'touserid' => $touserid,
+                'status' => submission_status::COMPLETE,
+            ]
+        );
+        return array_map('intval', $fromuserids);
     }
 
     /**

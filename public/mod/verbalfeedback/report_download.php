@@ -36,16 +36,24 @@ global $DB;
 
 $instanceid = required_param('instance', PARAM_INT);
 $touserid = required_param('touser', PARAM_INT);
+$fromuserid = optional_param('fromuser', 0, PARAM_INT);
 [$course, $cm] = get_course_and_cm_from_instance($instanceid, 'verbalfeedback');
 require_login($course, true, $cm);
 $context = context_module::instance($cm->id);
 $instancerepo = new instance_repository();
 $instance = $instancerepo->get_by_id($instanceid);
 $viewownreport = $touserid == $USER->id;
+$viewownsubmission = $fromuserid == $USER->id;
+$canviewall = has_capability('mod/verbalfeedback:view_all_reports', $context);
 $participants = [];
 
 if (!$viewownreport) {
-    require_capability('mod/verbalfeedback:view_all_reports', $context);
+    require_capability('mod/verbalfeedback:can_respond', $context);
+    // When a certain fromuser is specified, we only allow users who can view all reports or
+    // the user with it's own report as a single reviewer.
+    if ($fromuserid != 0 && !$canviewall && !$viewownsubmission) {
+        throw new \moodle_exception('nopermissions', 'error');
+    }
 } else if (!$instance->reports_are_released($instance)) {
     throw new moodle_exception('errorreportnotavailable', 'mod_verbalfeedback');
 }
@@ -59,6 +67,9 @@ $urlparams = [
     'touser' => $touserid,
     'forcedownload' => 1,
 ];
+if ($fromuserid != 0) {
+    $urlparams['fromuser'] = $fromuserid;
+}
 $PAGE->set_url('/mod/verbalfeedback/report_download.php', $urlparams);
 $PAGE->set_heading($course->fullname);
 $instancename = format_string($instance->get_name());
@@ -75,7 +86,7 @@ $userheading = [
 
 // Get the responses to the user.
 $reportservice = new report_service();
-$report = $reportservice->create_report($instanceid, $touserid);
+$report = $reportservice->create_report($instanceid, $touserid, $fromuserid);
 
 $fonthandler = new font($report);
 
@@ -154,27 +165,29 @@ $pdf->AddPage();
 $fonthandler->set_font_for_pdf($pdf);
 
 // Image size from logo image.
-$image = @getimagesize($imagefile);
+if (isset($imagefile)) {
+    $image = @getimagesize($imagefile);
 
-if ($image) {
-    $imagefilewidth = $image[0];
-    $imagefileheight = $image[1];
-    $imagescaledwidth = 18 * $imagefilewidth / $imagefileheight;
+    if ($image) {
+        $imagefilewidth = $image[0];
+        $imagefileheight = $image[1];
+        $imagescaledwidth = 18 * $imagefilewidth / $imagefileheight;
+    }
+
+    $pdf->Image('@' . file_get_contents($imagefile), 15, 5, $imagescaledwidth, 18);
+    $pdf->ImageSVG(
+        '@' . $radarimg,
+        $x = 16,
+        $y = 28,
+        $w = '',
+        $h = '',
+        $link = '',
+        $align = '',
+        $palign = 'R',
+        $border = 1,
+        $fitonpage = false
+    );
 }
-
-$pdf->Image('@' . file_get_contents($imagefile), 15, 5, $imagescaledwidth, 18);
-$pdf->ImageSVG(
-    '@' . $radarimg,
-    $x = 16,
-    $y = 28,
-    $w = '',
-    $h = '',
-    $link = '',
-    $align = '',
-    $palign = 'R',
-    $border = 1,
-    $fitonpage = false
-);
 $pdf->writeHTML($html, true, false, true, false, '');
 
 $pdf->lastPage();

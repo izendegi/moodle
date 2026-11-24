@@ -14,13 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class containing data to render the questionnaire page.
- *
- * @package   mod_verbalfeedback
- * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 namespace mod_verbalfeedback\output;
 
 use coding_exception;
@@ -38,8 +31,10 @@ use stdClass;
 use templatable;
 
 /**
- * Class containing data to render the questionnaire page.
+ * Class containing data to render the questionnaire page where
+ * a trainer is applying the criteria parameters of a student.
  *
+ * @package    mod_verbalfeedback
  * @copyright  2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -85,6 +80,41 @@ class questionnaire implements renderable, templatable {
             $this->touserid = $submission->get_to_user_id();
             $this->fromuserid = $submission->get_from_user_id();
         }
+    }
+
+    /**
+     * Filter categories and criteria with weight 0.
+     */
+    public function filter_empty_categories_and_criteria() {
+        // Iterate and drop categories with weight 0.
+        $filteredcategories = array_filter($this->categories, function ($category) {
+            // Adding our criteria for a valid category.
+            return
+                property_exists($category, 'weight') // The property weight exists.
+                && $category->weight != "0.00"; // And it's not '0.00'.
+        });
+
+        // From the remaining categories, drop criteria with weight 0.
+        foreach ($filteredcategories as $category) {
+            $filteredcriteria = array_filter($category->criteria, function ($criterion) {
+                // Adding our criteria for a valid category.
+                return
+                    property_exists($criterion, 'weight') // The property weight exists.
+                    && $criterion->weight != "0.00"; // And it's not '0.00'.
+            });
+            // If you want to keep the index of the entry just remove the next line.
+            $filteredcriteria = array_values($filteredcriteria);
+            // Overwrite the original criteria with the filtered set.
+            $category->criteria = $filteredcriteria;
+        }
+        // In case there are empty categories because of filtered criteria, drop these as well.
+        foreach ($filteredcategories as $key => $category) {
+            if (empty($category->criteria)) {
+                unset($filteredcategories[$key]);
+            }
+        }
+        // Overwrite the original categories with the filtered set.
+        $this->categories = array_values($filteredcategories);
     }
 
     /**
