@@ -463,8 +463,9 @@ class enrol_database_plugin extends enrol_plugin {
 
         $unenrolaction    = $this->get_config('unenrolaction');
         $defaultrole      = $this->get_config('defaultrole');
-        $manual_enrol_check = $this->get_config('manualenrol_cleaning');
-        $manual_enrol_cleaning_mode = $this->get_config('manualenrol_cleaning_mode');
+
+        $manualenrolcleaning = $this->get_config('manualenrol_cleaning');
+        $manualenrolcleaningmode = $this->get_config('manualenrol_cleaning_mode');
 
         // Create roles mapping.
         $allroles = get_all_roles();
@@ -1561,13 +1562,8 @@ class enrol_database_plugin extends enrol_plugin {
                     continue;
                 }
 
-                $courseid = $DB->get_field_sql("SELECT id
-                                                  FROM {course}
-                                                 WHERE shortname="."'".$group[$courselow]."'");
-                if ($DB->record_exists('groups', array('idnumber' => $group[$idnumberlow], 'courseid' => $courseid))) {
-                    // Already exists, skip.
-                    //$trace->output("[x] Skipping group name ".$group[$namelow].", it already exists in course shortname "
-                    //               .$group[$courselow].", but with a different name.");
+                if ($DB->record_exists('groups', ['idnumber' => $group[$idnumberlow], 'courseid' => $courseid])) {
+                    // Already exists (with a different case in the idnumber), skip.
                     continue;
                 }
 
@@ -2218,6 +2214,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External enrolment table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
@@ -2235,6 +2232,7 @@ class enrol_database_plugin extends enrol_plugin {
 
             } else {
                 $columns = array_keys($rs->fetchRow());
+
                 echo $OUTPUT->notification('External course table contains following columns:<br />'.implode(', ', $columns), 'notifysuccess');
                 $rs->Close();
             }
