@@ -49,7 +49,7 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('enrol_database/debugdb', get_string('debugdb', 'enrol_database'), get_string('debugdb_desc', 'enrol_database'), 0));
 
-    //--- local field mapping --------------------------------------------------------------------------------
+
 
     $settings->add(new admin_setting_heading('enrol_database_localheader', get_string('settingsheaderlocal', 'enrol_database'), ''));
 
@@ -81,7 +81,6 @@ if ($ADMIN->fulltree) {
 
     $otheruserfieldlabel = get_string('remoteotheruserfield', 'enrol_database');
     $otheruserfielddesc  = get_string('remoteotheruserfield_desc', 'enrol_database');
-
     $settings->add(new admin_setting_configtext('enrol_database/remoteotheruserfield', $otheruserfieldlabel, $otheruserfielddesc, ''));
 
     if (!during_initial_install()) {
@@ -212,19 +211,9 @@ if ($ADMIN->fulltree) {
         get_string('autocreatecategory', 'enrol_database'),
         get_string('autocreatecategory_desc', 'enrol_database'), 0));
 
-    $settings->add(new admin_setting_configtext('enrol_database/newcoursetemplate', get_string('newcoursetemplate', 'enrol_database'), '', ''));
-
-    $settings->add(new admin_setting_configtext('enrol_database/newcoursecategory', get_string('newcoursecategory', 'enrol_database'), get_string('newcoursecategory_desc', 'enrol_database'), ''));
-
-    $settings->add(new admin_setting_configtext('enrol_database/newcoursecategorypath', get_string('newcoursecategorypath', 'enrol_database'), get_string('newcoursecategorypath_desc', 'enrol_database'), ''));
-
-    $settings->add(new admin_setting_configtext('enrol_database/categoryseparator', get_string('categoryseparator', 'enrol_database'), get_string('categoryseparator_desc', 'enrol_database'), ''));
-
-    $settings->add(new admin_setting_configcheckbox('enrol_database/autocreatecategory',
-          get_string('autocreatecategory', 'enrol_database'),
-          get_string('autocreatecategory_desc', 'enrol_database'), 0));
-
-    $settings->add(new admin_settings_coursecat_select('enrol_database/defaultcategory', get_string('defaultcategory', 'enrol_database'), get_string('defaultcategory_desc', 'enrol_database'), 1));
+    $settings->add(new admin_settings_coursecat_select('enrol_database/defaultcategory',
+        get_string('defaultcategory', 'enrol_database'),
+        get_string('defaultcategory_desc', 'enrol_database'), 1));
 
     $settings->add(new admin_setting_configtext('enrol_database/templatecourse', get_string('templatecourse', 'enrol_database'), get_string('templatecourse_desc', 'enrol_database'), ''));
 
