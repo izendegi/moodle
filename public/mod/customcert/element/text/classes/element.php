@@ -1,0 +1,148 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * This file contains the customcert element text's core interaction API.
+ *
+ * @package    customcertelement_text
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+namespace customcertelement_text;
+
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element as base_element;
+use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element_helper;
+use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use pdf;
+use stdClass;
+
+/**
+ * The customcert element text's core interaction API.
+ *
+ * @package    customcertelement_text
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class element extends base_element implements
+    persistable_element_interface,
+    preparable_form_interface,
+    renderable_element_interface
+{
+    /**
+     * Build the configuration form for this element.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function build_form(MoodleQuickForm $mform): void {
+        $mform->addElement('textarea', 'text', get_string('text', 'customcertelement_text'));
+        $mform->setType('text', PARAM_RAW);
+        $mform->addHelpButton('text', 'text', 'customcertelement_text');
+
+        element_helper::render_common_form_elements($mform, $this->showposxy);
+    }
+
+    /**
+     * Prepare the form by populating the text field from stored data.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function prepare_form(MoodleQuickForm $mform): void {
+        $value = $this->get_value();
+        if ($value !== null) {
+            $mform->getElement('text')->setValue($value);
+        }
+    }
+
+    /**
+     * Normalise text form submission into JSON-friendly array.
+     *
+     * @param stdClass $formdata
+     * @return array
+     */
+    public function normalise_data(stdClass $formdata): array {
+        return [
+            'text' => (string)($formdata->text ?? ''),
+            'font' => (string)($formdata->font ?? ''),
+            'fontsize' => (int)($formdata->fontsize ?? 0),
+            'colour' => (string)($formdata->colour ?? ''),
+            'width' => (int)($formdata->width ?? 0),
+        ];
+    }
+
+    /**
+     * Handles rendering the element on the pdf.
+     *
+     * @param pdf $pdf the pdf object
+     * @param bool $preview true if it is a preview, false otherwise
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
+     */
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+        if ($renderer) {
+            $renderer->render_content($this, $this->get_text());
+        } else {
+            element_helper::render_content($pdf, $this, $this->get_text());
+        }
+    }
+
+    /**
+     * Render the element in html for the drag and drop interface.
+     *
+     * @param element_renderer|null $renderer the renderer service
+     * @return string the html
+     */
+    public function render_html(?element_renderer $renderer = null): string {
+        if ($renderer) {
+            return (string) $renderer->render_content($this, $this->get_text());
+        }
+
+        return element_helper::render_html_content($this, $this->get_text());
+    }
+
+
+    /**
+     * Return the stored text value.
+     *
+     * Overrides the base get_value() to read from the element-specific 'text' key.
+     *
+     * @return string|null
+     */
+    public function get_value(): ?string {
+        $payload = $this->get_payload();
+        if (array_key_exists('text', $payload)) {
+            return is_scalar($payload['text']) ? (string)$payload['text'] : null;
+        }
+        return null;
+    }
+
+    /**
+     * Helper function that returns the text.
+     *
+     * @return string
+     */
+    protected function get_text(): string {
+        $context = element_helper::get_context($this->get_id());
+        $content = (string)($this->get_value() ?? '');
+        return format_text($content, FORMAT_HTML, ['context' => $context]);
+    }
+}

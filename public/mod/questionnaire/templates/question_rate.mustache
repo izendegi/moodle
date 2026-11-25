@@ -1,0 +1,137 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_questionnaire/question_rate
+
+    Rate (scale) question for the survey-answer page: one header row of rating
+    degrees and one radio row per item. Each radio fills its cell via its label,
+    so clicking anywhere in the cell selects it — no JavaScript involved.
+
+    Classes required for JS:
+    * none
+
+    Data attributes required for JS:
+    * data-questionnaire-rate-uncheck — on radios of "no duplicate choices"
+      questions; handled by mod_questionnaire/survey_inputs.
+
+    Context variables required for this template:
+    * qelements - object:
+      * caption - string: plain-text question content for the table caption.
+      * twidth - string: table width hint.
+      * itemcolwidth - string: width hint for the item-label column(s).
+      * ratecolwidth - string: width hint for each rating column.
+      * numratecols - int: number of rating columns (including N/A).
+      * osgood - bool: true for Osgood scales (item text split left/right).
+      * headercols - array of {text}: rating-degree header cells.
+      * rows - array: one per item:
+        * itemtext - string: HTML of the item label.
+        * other - object (optional): {name, id, value} for an "Other" text input.
+        * notcompleted - bool: row was left unanswered on a partial submit.
+        * rowtitle - string: title attribute text for an incomplete row.
+        * cells - array of {name, value, id, checked, disabled, rateuncheck, label}.
+        * osgoodright - string (optional): HTML of the right-side Osgood label.
+
+    Example context (json):
+    {
+        "qelements": {
+            "caption": "Rate these",
+            "twidth": "100%",
+            "itemcolwidth": "59%",
+            "ratecolwidth": "20%",
+            "numratecols": 2,
+            "osgood": false,
+            "headercols": [
+                {"text": "One"},
+                {"text": "Two"}
+            ],
+            "rows": [
+                {
+                    "itemtext": "Cheese",
+                    "notcompleted": false,
+                    "rowtitle": "",
+                    "cells": [
+                        {
+                            "name": "q1_2",
+                            "value": 1,
+                            "id": "q1_2_1",
+                            "checked": false,
+                            "disabled": false,
+                            "rateuncheck": false,
+                            "label": "Row 2, Cheese: Column 2, One."
+                        },
+                        {
+                            "name": "q1_2",
+                            "value": 2,
+                            "id": "q1_2_2",
+                            "checked": false,
+                            "disabled": false,
+                            "rateuncheck": false,
+                            "label": "Row 2, Cheese: Column 3, Two."
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}}
+{{#qelements}}
+<div class="table-responsive">
+    <table class="questionnaire-rate{{#osgood}} questionnaire-rate-osgood{{/osgood}}" style="width: {{twidth}}">
+        <caption class="accesshide">{{caption}}</caption>
+        <colgroup>
+            <col style="width: {{itemcolwidth}}">
+            <col span="{{numratecols}}" style="width: {{ratecolwidth}}">
+            {{#osgood}}<col style="width: {{itemcolwidth}}">{{/osgood}}
+        </colgroup>
+        <thead>
+            <tr>
+                <td></td>
+                {{#headercols}}
+                <th scope="col" class="questionnaire-rate-degree">{{{text}}}</th>
+                {{/headercols}}
+                {{#osgood}}<td></td>{{/osgood}}
+            </tr>
+        </thead>
+        <tbody>
+            {{#rows}}
+            <tr class="raterow{{#notcompleted}} notcompleted{{/notcompleted}}"{{#rowtitle}} title="{{.}}"{{/rowtitle}}>
+                <th scope="row" class="questionnaire-rate-item">
+                    {{{itemtext}}}
+                    {{#other}}
+                    <input type="text" class="form-control form-control-sm d-inline-block w-auto"
+                           name="{{name}}" id="{{id}}" value="{{value}}">
+                    {{/other}}
+                </th>
+                {{#cells}}
+                <td class="questionnaire-rate-cell">
+                    <label>
+                        <input type="radio" name="{{name}}" id="{{id}}" value="{{value}}"
+                               {{#checked}}checked{{/checked}} {{#disabled}}disabled{{/disabled}}
+                               {{#rateuncheck}}data-questionnaire-rate-uncheck{{/rateuncheck}}>
+                        <span class="accesshide">{{label}}</span>
+                    </label>
+                </td>
+                {{/cells}}
+                {{#osgoodright}}
+                <th scope="row" class="questionnaire-rate-item questionnaire-rate-item-right">{{{.}}}</th>
+                {{/osgoodright}}
+            </tr>
+            {{/rows}}
+        </tbody>
+    </table>
+</div>
+{{/qelements}}

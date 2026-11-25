@@ -1,0 +1,71 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Handles AJAX requests for the customcert module.
+ *
+ * @package    mod_customcert
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+use mod_customcert\template;
+use mod_customcert\event\template_updated;
+use mod_customcert\service\element_factory;
+use mod_customcert\service\element_repository;
+use mod_customcert\service\template_repository;
+
+require_once(__DIR__ . '/../../config.php');
+
+if (!defined('AJAX_SCRIPT')) {
+    define('AJAX_SCRIPT', true);
+}
+
+$tid = required_param('tid', PARAM_INT);
+$values = required_param('values', PARAM_RAW);
+$values = json_decode($values);
+
+$template = template::from_record((new template_repository())->get_by_id_or_fail($tid));
+if ($cm = $template->get_cm()) {
+    $courseid = $cm->course;
+    require_login($courseid, false, $cm);
+} else {
+    require_login();
+}
+// Make sure the user has the required capabilities.
+$template->require_manage();
+// Validate the session key to prevent CSRF attacks.
+require_sesskey();
+
+$factory = element_factory::build_with_defaults();
+$elementrepo = new element_repository($factory);
+
+$contextid = $template->get_contextid();
+foreach ($values as $value) {
+    // Verify the element belongs to this template before updating — prevents cross-template
+    // parameter tampering where a user authorised for template A supplies element IDs from template B.
+    $elementrepo->get_for_template_or_fail($template->get_id(), (int)$value->id);
+    // Round fractional positions to the nearest integer — the DB column is INT
+    // but the JS editor may emit sub-pixel values.
+    $elementrepo->update_position(
+        (int)$value->id,
+        (int)round((float)$value->posx),
+        (int)round((float)$value->posy),
+        $contextid
+    );
+}
+
+template_updated::create_from_template($template)->trigger();

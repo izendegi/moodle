@@ -1,0 +1,595 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * PHPUnit questionnaire generator tests
+ *
+ * @package    mod_questionnaire
+ * @copyright  2015 Mike Churchward (mike@churchward.ca)
+ * @author     Mike Churchward
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+namespace mod_questionnaire;
+
+use mod_questionnaire\local\question\question;
+
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+require_once($CFG->dirroot . '/mod/questionnaire/tests/generator_test.php');
+require_once($CFG->dirroot . '/mod/questionnaire/tests/questiontypes_test.php');
+require_once($CFG->dirroot . '/mod/questionnaire/classes/local/question/question.php');
+
+/**
+ * Unit tests for questionnaire_responsetypes_testcase.
+ * @group mod_questionnaire
+ */
+final class responsetypes_test extends \advanced_testcase {
+    /**
+     * Test responses in a yes/no question.
+     *
+     * @return void
+     * @throws dml_exception
+     *
+     * @covers \mod_questionnaire\local\question\yesno
+     */
+    public function test_create_response_boolean(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questinnaire with one boolean response question.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_test_questionnaire($course, QUESYESNO, ['content' => 'Enter yes or no']);
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $response = $generator->create_question_response($questionnaire, $question, 'y', $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid);
+
+        // Retrieve the specific boolean response.
+        $booleanresponses = $DB->get_records('questionnaire_response_bool', ['responseid' => $response->id]);
+        $this->assertEquals(1, count($booleanresponses));
+        $booleanresponse = reset($booleanresponses);
+        $this->assertEquals($question->id(), $booleanresponse->questionid);
+        $this->assertEquals('y', $booleanresponse->choiceid);
+    }
+
+    /**
+     * Test responses in a essay question.
+     *
+     * @return void
+     * @throws dml_exception
+     *
+     * @covers \mod_questionnaire\local\question\essay
+     */
+    public function test_create_response_text(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questionnaire with one text response question.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questiondata = ['content' => 'Enter some text', 'length' => 0, 'precise' => 5];
+        $questionnaire = $generator->create_test_questionnaire($course, QUESESSAY, $questiondata);
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $response = $generator->create_question_response($questionnaire, $question, 'This is my essay.', $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid);
+
+        // Retrieve the specific text response.
+        $textresponses = $DB->get_records('questionnaire_response_text', ['responseid' => $response->id]);
+        $this->assertEquals(1, count($textresponses));
+        $textresponse = reset($textresponses);
+        $this->assertEquals($question->id(), $textresponse->questionid);
+        $this->assertEquals('This is my essay.', $textresponse->response);
+    }
+
+    /**
+     * Test responses in a slider question.
+     *
+     * @return void
+     * @throws dml_exception
+     *
+     * @covers \mod_questionnaire\local\question\slider
+     */
+    public function test_create_response_slider(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questionnaire with one text response question.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questiondata = ['content' => 'Enter some text'];
+        $questionnaire = $generator->create_test_questionnaire($course, QUESSLIDER, $questiondata);
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $response = $generator->create_question_response($questionnaire, $question, 5, $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid);
+
+        // Retrieve the specific text response.
+        $textresponses = $DB->get_records('questionnaire_response_text', ['responseid' => $response->id]);
+        $this->assertEquals(1, count($textresponses));
+        $textresponse = reset($textresponses);
+        $this->assertEquals($question->id(), $textresponse->questionid);
+        $this->assertEquals(5, $textresponse->response);
+    }
+
+    /**
+     * Test responses in a date question.
+     *
+     * @return void
+     * @throws dml_exception
+     *
+     * @covers \mod_questionnaire\local\question\date
+     */
+    public function test_create_response_date(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questionnaire with one text response question.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_test_questionnaire($course, QUESDATE, ['content' => 'Enter a date']);
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        // Date format is configured per site. This won't work unless it matches the configured format.
+        $response = $generator->create_question_response($questionnaire, $question, '2015-01-27', $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid);
+
+        // Retrieve the specific date response.
+        $dateresponses = $DB->get_records('questionnaire_response_date', ['responseid' => $response->id]);
+        $this->assertEquals(1, count($dateresponses));
+        $dateresponse = reset($dateresponses);
+        $this->assertEquals($question->id(), $dateresponse->questionid);
+        // The date is always stored in the database in the same way.
+        $this->assertEquals('2015-01-27', $dateresponse->response);
+    }
+
+    /**
+     * Test responses in a single choice radio question.
+     *
+     * @return void
+     * @throws dml_exception
+     *
+     * @covers \mod_questionnaire\local\question\radio
+     */
+    public function test_create_response_single(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questinnaire with one question with choices including an "other" option.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $choicedata = [
+            (object)['content' => 'One', 'value' => 1],
+            (object)['content' => 'Two', 'value' => 2],
+            (object)['content' => 'Three', 'value' => 3],
+            (object)['content' => '!other=Something else', 'value' => 4],
+        ];
+        $questionnaire = $generator->create_test_questionnaire($course, QUESRADIO, ['content' => 'Select one'], $choicedata);
+
+        // Create a response using one of the choices.
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $val = 'unknown';
+        foreach ($question->choices as $cid => $choice) {
+            if ($choice->content == 'Two') {
+                $val = $cid;
+            }
+        }
+        $response = $generator->create_question_response($questionnaire, $question, $val, $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid);
+
+        // Retrieve the specific single response.
+        $singresponses = $DB->get_records('questionnaire_resp_single', ['responseid' => $response->id]);
+        $this->assertEquals(1, count($singresponses));
+        $singresponse = reset($singresponses);
+        $this->assertEquals($question->id(), $singresponse->questionid);
+        $this->assertEquals($val, $singresponse->choiceid);
+
+        // Create another response using the '!other' choice.
+        foreach ($question->choices as $cid => $choice) {
+            if ($choice->content == '!other=Something else') {
+                $val = $cid;
+            }
+        }
+        $vals = ['q' . $question->id() => $val,
+                 'q' . $question->id() . \mod_questionnaire\local\question\choice::id_other_choice_name($val) => 'Forty-four'];
+        $userid = 2;
+        $response = $generator->create_question_response($questionnaire, $question, $vals, $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid, 1, 2);
+
+        // Retrieve the specific single response.
+        $singresponses = $DB->get_records('questionnaire_resp_single', ['responseid' => $response->id]);
+        $this->assertEquals(1, count($singresponses));
+        $singresponse = reset($singresponses);
+        $this->assertEquals($question->id(), $singresponse->questionid);
+        $this->assertEquals($val, $singresponse->choiceid);
+
+        // Retrieve the 'other' response data.
+        $otherresponses = $DB->get_records(
+            'questionnaire_response_other',
+            ['responseid' => $response->id, 'questionid' => $question->id()]
+        );
+        $this->assertEquals(1, count($otherresponses));
+        $otherresponse = reset($otherresponses);
+        $this->assertEquals($val, $otherresponse->choiceid);
+        $this->assertEquals('Forty-four', $otherresponse->response);
+    }
+
+    /**
+     * Test responses in a multiple choices question.
+     *
+     * @return void
+     * @throws dml_exception
+     *
+     * @covers \mod_questionnaire\local\question\rate
+     */
+    public function test_create_response_multiple(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questionnaire with one question with choices including an "other" option.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $choicedata = [
+            (object)['content' => 'One', 'value' => 1],
+            (object)['content' => 'Two', 'value' => 2],
+            (object)['content' => 'Three', 'value' => 3],
+            (object)['content' => '!other=Another number', 'value' => 4],
+        ];
+        $questionnaire = $generator->create_test_questionnaire($course, QUESCHECK, ['content' => 'Select any'], $choicedata);
+
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $val = [];
+        foreach ($question->choices as $cid => $choice) {
+            if (($choice->content == 'Two') || ($choice->content == 'Three')) {
+                $val[$cid] = $cid;
+            } else if ($choice->content == '!other=Another number') {
+                $val[$cid] = $cid;
+                $val[\mod_questionnaire\local\question\choice::id_other_choice_name($cid)] = 'Forty-four';
+                $ocid = $cid;
+            }
+        }
+        $vals = ['q' . $question->id() => $val];
+        $response = $generator->create_question_response($questionnaire, $question, $vals, $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid);
+
+        // Retrieve the specific multiples responses.
+        $multresponses = $DB->get_records('questionnaire_resp_multiple', ['responseid' => $response->id]);
+        $this->assertEquals(3, count($multresponses));
+        $multresponse = reset($multresponses);
+        $this->assertEquals($question->id(), $multresponse->questionid);
+        $this->assertEquals(reset($val), $multresponse->choiceid);
+        $multresponse = next($multresponses);
+        $this->assertEquals($question->id(), $multresponse->questionid);
+        $this->assertEquals(next($val), $multresponse->choiceid);
+
+        // Retrieve the specific other response.
+        $otherresponses = $DB->get_records(
+            'questionnaire_response_other',
+            ['responseid' => $response->id, 'questionid' => $question->id()]
+        );
+        $this->assertEquals(1, count($otherresponses));
+        $otherresponse = reset($otherresponses);
+        $this->assertEquals($ocid, $otherresponse->choiceid);
+        $this->assertEquals('Forty-four', $otherresponse->response);
+    }
+
+    /**
+     * Test response's ranks in a rate question.
+     *
+     * @return void
+     * @throws dml_exception
+     *
+     * @covers \mod_questionnaire\local\question\rate
+     */
+    public function test_create_response_rank(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questionnaire with one ranking question.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $choicedata = [
+            (object)['content' => 'One', 'value' => 1],
+            (object)['content' => 'Two', 'value' => 2],
+            (object)['content' => 'Three', 'value' => 3],
+        ];
+        $questiondata = ['content' => 'Rank these', 'length' => 5, 'precise' => 0];
+        $questionnaire = $generator->create_test_questionnaire($course, QUESRATE, $questiondata, $choicedata);
+
+        // Create a response for each choice.
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $vals = [];
+        $i = 1;
+        foreach ($question->choices as $cid => $choice) {
+            $vals[$cid] = $i;
+            $vals['q' . $question->id() . '_' . $cid] = $i++;
+        }
+        $response = $generator->create_question_response($questionnaire, $question, $vals, $userid);
+
+        // Test the responses for this questionnaire.
+        $this->response_tests($questionnaire->id(), $response->id, $userid);
+
+        // Retrieve the specific rank response.
+        $multresponses = $DB->get_records('questionnaire_response_rank', ['responseid' => $response->id]);
+        $this->assertEquals(3, count($multresponses));
+        foreach ($multresponses as $multresponse) {
+            $this->assertEquals($question->id(), $multresponse->questionid);
+            $this->assertEquals($vals[$multresponse->choiceid], $multresponse->rankvalue);
+        }
+    }
+
+    // General tests to call from specific tests above.
+
+    /**
+     * Create a test questionnaire.
+     *
+     * @param int $qtype
+     * @param array $questiondata
+     * @param null $choicedata
+     * @return questionnaire
+     */
+    public function create_test_questionnaire($qtype, $questiondata = [], $choicedata = null) {
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(['course' => $course->id]);
+
+        $questiondata['typeid'] = $qtype;
+        $questiondata['surveyid'] = $questionnaire->surveyid();
+        $questiondata['name'] = isset($questiondata['name']) ? $questiondata['name'] : 'Q1';
+        $questiondata['content'] = isset($questiondata['content']) ? $questiondata['content'] : 'Test content';
+        $generator->create_question($questionnaire, $questiondata, $choicedata);
+
+        return \mod_questionnaire\questionnaire::from_instanceid($questionnaire->id());
+    }
+
+    /**
+     * General assertions for responses.
+     *
+     * @param int $questionnaireid
+     * @param int $responseid
+     * @param int $userid
+     * @param int $attemptcount
+     * @param int $responsecount
+     */
+    private function response_tests(
+        $questionnaireid,
+        $responseid,
+        $userid,
+        $attemptcount = 1,
+        $responsecount = 1
+    ): void {
+        global $DB;
+
+        $attempts = $DB->get_records(
+            'questionnaire_response',
+            ['questionnaireid' => $questionnaireid, 'userid' => $userid, 'id' => $responseid, 'complete' => 'y']
+        );
+        $this->assertEquals($attemptcount, count($attempts));
+        $responses = $DB->get_records('questionnaire_response', ['questionnaireid' => $questionnaireid]);
+        $this->assertEquals($responsecount, count($responses));
+        $this->assertArrayHasKey($responseid, $responses);
+        $this->assertEquals($responseid, $responses[$responseid]->id);
+    }
+
+    /**
+     * Tests that an old boolean response is deleted correctly.
+     *
+     * @covers \mod_questionnaire\local\response\boolean
+     */
+    public function test_create_old_response_boolean(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Some common variables used below.
+        $userid = 1;
+
+        // Set up a questionnaire with one boolean response question.
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        // Add a questionnaire that will delete old responses after one month.
+        $questionnaire1 = $generator->create_test_questionnaire($course, QUESYESNO, ['content' => 'Enter yes or no']);
+        $questions1 = $questionnaire1->questions();
+        $question1 = reset($questions1);
+        $response1 = $generator->create_question_response($questionnaire1, $question1, 'y', $userid);
+
+        $questionnaire2 = $generator->create_test_questionnaire($course, QUESYESNO, ['content' => 'Enter yes or no']);
+        $questions2 = $questionnaire2->questions();
+        $question2 = reset($questions2);
+        $response2 = $generator->create_question_response($questionnaire2, $question2, 'y', $userid);
+
+        $this->response_tests($questionnaire1->id(), $response1->id, $userid);
+        $this->response_tests($questionnaire2->id(), $response2->id, $userid);
+
+        // Set the removeafterfield for questionnaires.
+        $newquestionairre1 = new \stdClass();
+        $newquestionairre1->id = $questionnaire1->id();
+        $newquestionairre1->removeafter = 2592000;
+        $newquestionairre2 = new \stdClass();
+        $newquestionairre2->id = $questionnaire2->id();
+        $newquestionairre2->removeafter = 2592000;
+        $DB->update_record('questionnaire', $newquestionairre1);
+        $DB->update_record('questionnaire', $newquestionairre2);
+        // Retrieve the specific boolean response.
+        $booleanresponses1 = $DB->get_record('questionnaire_response', ['id' => $response1->id]);
+        $booleanresponses2 = $DB->get_record('questionnaire_response', ['id' => $response2->id]);
+        // Set the submitted time to 31 day in the past.
+        $booleanresponses1->submitted = $booleanresponses1->submitted - 2592000 - 86400;
+        $booleanresponses2->submitted = $booleanresponses2->submitted - 2592000 - 86400;
+        $DB->update_record('questionnaire_response', $booleanresponses1);
+        $DB->update_record('questionnaire_response', $booleanresponses2);
+        \mod_questionnaire\local\response\questionnaire_responses::delete_old_responses();
+        $responseresult1 = $DB->record_exists('questionnaire_response', ['id' => $response1->id]);
+        $responseresult2 = $DB->record_exists('questionnaire_response', ['id' => $response2->id]);
+        $this->assertEmpty($responseresult1);
+        $this->assertEmpty($responseresult2);
+        $boolresponseresult1 = $DB->record_exists('questionnaire_response_bool', ['responseid' => $response1->id]);
+        $boolresponseresult2 = $DB->record_exists('questionnaire_response_bool', ['responseid' => $response2->id]);
+        $this->assertEmpty($boolresponseresult1);
+        $this->assertEmpty($boolresponseresult2);
+    }
+
+    /**
+     * Radio "other" text with markup is saved, cleaned, instead of failing validation.
+     *
+     * @covers \mod_questionnaire\local\response\single::insert_response
+     */
+    public function test_radio_other_response_with_markup_is_cleaned(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $choicedata = [(object)['content' => 'One', 'value' => 1], (object)['content' => '!other=Something else', 'value' => 2]];
+        $questionnaire = $generator->create_test_questionnaire(
+            $this->getDataGenerator()->create_course(),
+            QUESRADIO,
+            ['content' => 'Select one'],
+            $choicedata
+        );
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $cid = array_key_last($question->choices);
+        $vals = ['q' . $question->id() => $cid,
+            'q' . $question->id() . \mod_questionnaire\local\question\choice::id_other_choice_name($cid) =>
+                '<b>Forty</b><script>alert(1)</script>'];
+
+        $response = $generator->create_question_response($questionnaire, $question, $vals, 2);
+
+        $other = $DB->get_field('questionnaire_response_other', 'response', ['responseid' => $response->id], MUST_EXIST);
+        $this->assertSame('<b>Forty</b>', $other);
+    }
+
+    /**
+     * Rate "other" text is cleaned like every other response, and a lone '<' no longer fails validation.
+     *
+     * @covers \mod_questionnaire\local\response\rank::insert_response
+     */
+    public function test_rate_other_response_is_cleaned(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $choicedata = [(object)['content' => 'Speed', 'value' => 1], (object)['content' => '!other=Else', 'value' => 2]];
+        $questionnaire = $generator->create_test_questionnaire(
+            $this->getDataGenerator()->create_course(),
+            QUESRATE,
+            ['content' => 'Rate these', 'length' => 5, 'precise' => 0],
+            $choicedata
+        );
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        $cid = array_key_last($question->choices);
+        $rid = \mod_questionnaire\local\response\response::create($questionnaire->id(), 2)->id();
+
+        $question->insert_response((object)[
+            'rid' => $rid,
+            'q' . $question->id() . '_' . $cid => '3',
+            $cid . '_qother' => 'a<b <script>alert(1)</script>',
+        ]);
+
+        $other = $DB->get_field('questionnaire_response_other', 'response', ['responseid' => $rid], MUST_EXIST);
+        $this->assertSame(clean_text('a<b <script>alert(1)</script>'), $other);
+        $this->assertStringNotContainsString('<script', $other);
+    }
+
+    /**
+     * Rating values the form does not offer are dropped, from the web form and from the app.
+     *
+     * @covers \mod_questionnaire\local\response\rank::answers_from_webform
+     * @covers \mod_questionnaire\local\response\rank::answers_from_appdata
+     */
+    public function test_rate_out_of_range_values_are_dropped(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $choicedata = [(object)['content' => 'Speed', 'value' => 1], (object)['content' => 'Price', 'value' => 2]];
+        $questionnaire = $generator->create_test_questionnaire(
+            $this->getDataGenerator()->create_course(),
+            QUESRATE,
+            ['content' => 'Rate these', 'length' => 5, 'precise' => 0],
+            $choicedata
+        );
+        $questions = $questionnaire->questions();
+        $question = reset($questions);
+        [$cid1, $cid2] = array_keys($question->choices);
+        $rid = \mod_questionnaire\local\response\response::create($questionnaire->id(), 2)->id();
+
+        $question->insert_response((object)[
+            'rid' => $rid,
+            'q' . $question->id() . '_' . $cid1 => '99999',
+            'q' . $question->id() . '_' . $cid2 => '3',
+        ]);
+
+        $ranks = $DB->get_records_menu('questionnaire_response_rank', ['responseid' => $rid], '', 'choiceid, rankvalue');
+        $this->assertEquals([$cid2 => 3], $ranks);
+
+        $answers = \mod_questionnaire\local\response\rank::answers_from_appdata(
+            (object)['rid' => $rid, 'q' . $question->id() => [$cid1 => 0, $cid2 => 4]],
+            $question
+        );
+        $this->assertCount(1, $answers);
+        $this->assertEquals($cid2, $answers[0]->choiceid);
+        $this->assertEquals(4, $answers[0]->value);
+    }
+}

@@ -1,0 +1,130 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Manage customcert templates.
+ *
+ * @package    mod_customcert
+ * @copyright  2016 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+use mod_customcert\manage_templates_table;
+use mod_customcert\page_helper;
+use mod_customcert\service\template_duplication_service;
+use mod_customcert\service\template_repository;
+use mod_customcert\service\template_service;
+use mod_customcert\template;
+
+require_once('../../config.php');
+
+$contextid = optional_param('contextid', context_system::instance()->id, PARAM_INT);
+$action = optional_param('action', '', PARAM_ALPHA);
+$confirm = optional_param('confirm', 0, PARAM_INT);
+$page = optional_param('page', 0, PARAM_INT);
+$perpage = optional_param('perpage', 10, PARAM_INT);
+
+if ($action) {
+    $tid = required_param('tid', PARAM_INT);
+} else {
+    $tid = optional_param('tid', 0, PARAM_INT);
+}
+
+if ($tid) {
+    $template = template::from_record((new template_repository())->get_by_id_or_fail((int)$tid));
+}
+
+$context = context::instance_by_id($contextid);
+
+require_login();
+if ($tid) {
+    // Check capability against the template's own context, not the caller-supplied $contextid.
+    $template->require_manage();
+} else {
+    require_capability('mod/customcert:manage', $context);
+}
+
+$title = $SITE->fullname;
+
+$pageurl = new moodle_url('/mod/customcert/manage_templates.php');
+page_helper::page_setup($pageurl, $context, $title);
+
+if ($tid && $action && confirm_sesskey()) {
+    $PAGE->navbar->add(
+        get_string('managetemplates', 'customcert'),
+        new moodle_url('/mod/customcert/manage_templates.php')
+    );
+} else {
+    $PAGE->navbar->add(get_string('managetemplates', 'customcert'));
+}
+
+if ($tid) {
+    if ($action && confirm_sesskey()) {
+        $nourl = new moodle_url('/mod/customcert/manage_templates.php');
+        $yesurl = new moodle_url(
+            '/mod/customcert/manage_templates.php',
+            [
+                'tid' => $tid,
+                'action' => $action,
+                'confirm' => 1,
+                'sesskey' => sesskey(),
+            ]
+        );
+
+        if ($action == 'delete') {
+            if (!$confirm) {
+                $PAGE->navbar->add(get_string('deleteconfirm', 'customcert'));
+                $message = get_string('deletetemplateconfirm', 'customcert');
+                echo $OUTPUT->header();
+                echo $OUTPUT->confirm($message, $yesurl, $nourl);
+                echo $OUTPUT->footer();
+                exit();
+            }
+
+            $templateservice = template_service::create();
+            $templateservice->delete($template);
+
+            redirect(new moodle_url('/mod/customcert/manage_templates.php'));
+        } else if ($action == 'duplicate') {
+            if (!$confirm) {
+                $PAGE->navbar->add(get_string('duplicateconfirm', 'customcert'));
+                $message = get_string('duplicatetemplateconfirm', 'customcert');
+                echo $OUTPUT->header();
+                echo $OUTPUT->confirm($message, $yesurl, $nourl);
+                echo $OUTPUT->footer();
+                exit();
+            }
+
+            // Duplicate via the service to copy template, pages, and elements transactionally.
+            $service = template_duplication_service::create();
+            $name = $template->get_name() . ' (' . strtolower(get_string('duplicate', 'customcert')) . ')';
+            $service->duplicate($template->get_id(), $name);
+
+            redirect(new moodle_url('/mod/customcert/manage_templates.php'));
+        }
+    }
+}
+
+$table = new manage_templates_table($context);
+$table->define_baseurl($pageurl);
+
+echo $OUTPUT->header();
+$table->out($perpage, false);
+$url = new moodle_url('/mod/customcert/edit.php?contextid=' . $contextid);
+echo $OUTPUT->single_button($url, get_string('createtemplate', 'customcert'), 'get');
+$importurl = new moodle_url('/mod/customcert/import_template.php', ['context_id' => $contextid]);
+echo $OUTPUT->single_button($importurl, get_string('importtemplate', 'customcert'), 'get');
+echo $OUTPUT->footer();

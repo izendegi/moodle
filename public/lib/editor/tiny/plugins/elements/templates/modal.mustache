@@ -1,0 +1,186 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template tiny_elements/modal
+
+    Modal to manage components within the Tiny Editor.
+
+    Classes required for JS:
+    * none
+
+    Data attributes required for JS:
+    * none
+
+    Context variables required for this template:
+
+    Example context (json):
+    {
+    "buttons": [
+        {
+        "id": 1,
+        "name": "tip",
+        "type": 4,
+        "imageClass": "elements-teachpals-tip-icon",
+        "htmlcode": "<div></div>",
+        "variants": [
+            {
+            "id": 8,
+            "displayname": "Avatar 2",
+            "name": "avatar2",
+            "state": "off",
+            "imageClass": "avatar2-variant-off",
+            "variantclass": "elements-avatar2-variant",
+            "content": ""
+            }
+        ],
+        "flavorlist": "robi-bot,horst-cloud",
+        "category": 4
+        },
+        {
+        "id": 2,
+        "name": "scenario",
+        "type": 4,
+        "imageClass": "elements-teachpals-scenario-icon",
+        "htmlcode": "<div></div>",
+        "variants": [
+            {
+            "id": 8,
+            "displayname": "Avatar 2",
+            "name": "avatar2",
+            "state": "off",
+            "imageClass": "avatar2-variant-off",
+            "variantclass": "elements-avatar2-variant",
+            "content": ""
+            }
+        ],
+        "flavorlist": "robi-bot,horst-cloud",
+        "category": 4
+        }
+    ],
+    "categories": [
+        {
+        "categoryid": 4,
+        "name": "Teach Pals",
+        "type": 4,
+        "displayorder": 1,
+        "flavors": [
+            {
+            "id": 1,
+            "name": "horst-cloud",
+            "displayname": "Horst und Woelkchen",
+            "factive": "active"
+            },
+            {
+            "id": 12,
+            "name": "robi-bot",
+            "displayname": "Robi und Bot"
+            }
+        ],
+        "hasFlavors": 2,
+        "active": "active"
+        }
+    ],
+    "preview": true,
+    "elementid": "elements-plugin-container",
+    "canmanage": true
+    }
+
+}}
+{{< core/modal }}
+    {{$header}}
+        <h5 id="{{uniqid}}-modal-title" class="modal-title" data-region="title">{{#str}} pluginname, tiny_elements {{/str}}</h5>
+        {{#canmanage}}
+        <a href="{{global.config.wwwroot}}/lib/editor/tiny/plugins/elements/management.php" class="btn btn-sm" target="_blank">
+            {{#pix}} i/settings, core, {{#str}} manage, tiny_elements {{/str}}{{/pix}}
+        </a>
+        {{/canmanage}}
+    {{/header}}
+    {{$body}}
+        <div id="{{elementid}}" class="elements-plugin-container">
+            <ul class="nav nav-tabs">
+                {{#categories}}
+                    {{#hasFlavors}}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {{active}}" data-bs-toggle="dropdown" data-toggle="dropdown" data-categoryid="{{categoryid}}" data-categoryname="{{categoryname}}" href="#" role="button" aria-expanded="false">{{name}}</a>
+                        <div class="dropdown-menu">
+                            {{#flavors}}
+                                <a class="dropdown-item elements-category-flavor {{flavorClass}} {{factive}}" data-id="{{id}}" data-categoryname="{{categoryname}}" data-categoryid="{{categoryid}}" data-flavor="{{name}}" aria-controls="elements-buttons-grid"  href="#">{{displayname}}</a>
+                            {{/flavors}}
+                        </div>
+                    </li>
+                    {{/hasFlavors}}
+                    {{^hasFlavors}}
+                    <li class="nav-item">
+                        <a class="nav-link {{active}} elements-category no-flavors" href="#" data-id="{{id}}" data-categoryname="{{categoryname}}" data-categoryid="{{categoryid}}" data-filter="{{type}}" aria-controls="elements-buttons-grid">{{name}}</a>
+                    </li>
+                    {{/hasFlavors}}
+                {{/categories}}
+            </ul>
+            <div class="elements-buttons-preview {{^preview}}elements-no-preview{{/preview}}">
+                <div id="elements-buttons-grid" class="elements-buttons-grid">
+                    {{#buttons}}
+                        <button
+                            class="elementst-dialog-button {{imageClass}}"
+                            data-id="{{id}}"
+                            data-type="{{type}}"
+                            data-classcomponent="{{imageClass}}"
+                            data-flavorlist = "{{flavorlist}}"
+                            data-category="{{category}}"
+                        >
+                            <span class="elements-button-text">
+                                {{#icon}}
+                                    <i class="icon" style="background-image: url({{icon}});"></i>
+                                {{/icon}}
+                                {{{name}}}
+                            </span>
+                            <span class="elements-button-variants">
+                            {{#variants}}
+                                <span
+                                    class="elements-button-variant {{imageClass}} {{state}}"
+                                    data-id="{{id}}"
+                                    data-variant="{{name}}"
+                                    data-variantclass="{{variantclass}}"
+                                    data-state="{{state}}"
+                                    data-toggle="tooltip"
+                                    data-placement="top"
+                                    title="{{displayname}}"
+                                ></span>
+                            {{/variants}}
+                            </span>
+                        </button>
+                    {{/buttons}}
+                </div>
+                {{#preview}}
+                    <div class="elements-code-preview">
+                        <div class="elements-text-preview">{{#str}} preview, tiny_elements {{/str}}</div>
+                        <div data-id="code-preview-default">
+                            <div class="elements-preview-default">{{#str}} previewdefault, tiny_elements {{/str}}</div>
+                        </div>
+                        {{#buttons}}
+                            <div data-id="code-preview-{{id}}" class="elements-component-code {{#css}}elements-component-custom-code{{/css}} elements-hidden" role="presentation" style="{{css}}">{{{htmlcode}}}</div>
+                        {{/buttons}}
+                    </div>
+                {{/preview}}
+            </div>
+        </div>
+    {{/body}}
+{{/ core/modal }}
+{{#js}}
+    require(['jquery'], function($) {
+      $('[data-toggle="tooltip"]').tooltip();
+    });
+{{/js}}
