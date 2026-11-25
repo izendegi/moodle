@@ -183,7 +183,7 @@ final class edit_element_test extends advanced_testcase {
             $data = (object)($fields + ['name' => 'E', 'id' => $element->id, 'element' => $element->element]);
             $record = clone $data;
             $record->data = $element->data;
-            $instance = $factory->create_from_legacy_record($record);
+            $instance = $factory->create_from_record($record);
             return json_decode(\mod_customcert\service\persistence_helper::to_json_data($instance, $data), true);
         };
 

@@ -26,8 +26,9 @@ namespace customcertelement_text;
 
 use mod_customcert\element\persistable_element_interface;
 use mod_customcert\element as base_element;
-use mod_customcert\element\preparable_form_interface;
 use mod_customcert\element\renderable_element_interface;
+use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\stylable_payload;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
 use MoodleQuickForm;
@@ -80,13 +81,10 @@ class element extends base_element implements
      * @return array
      */
     public function normalise_data(stdClass $formdata): array {
-        return [
-            'text' => (string)($formdata->text ?? ''),
-            'font' => (string)($formdata->font ?? ''),
-            'fontsize' => (int)($formdata->fontsize ?? 0),
-            'colour' => (string)($formdata->colour ?? ''),
-            'width' => (int)($formdata->width ?? 0),
-        ];
+        return array_merge(
+            ['text' => (string)($formdata->text ?? '')],
+            stylable_payload::from_form($formdata)->to_array(),
+        );
     }
 
     /**

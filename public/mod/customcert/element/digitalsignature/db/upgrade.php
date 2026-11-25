@@ -31,7 +31,7 @@
 function xmldb_customcertelement_digitalsignature_upgrade($oldversion) {
     global $DB;
 
-    if ($oldversion < 2026042002) {
+    if ($oldversion < 2026060501) {
         // Encrypt any existing plaintext signaturepassword values stored in customcert_elements.
         // Values that have already been encrypted (from a previous run of this upgrade step or
         // from the new save_unique_data() code) are left untouched, making this step idempotent.
@@ -65,7 +65,7 @@ function xmldb_customcertelement_digitalsignature_upgrade($oldversion) {
             }
         }
 
-        upgrade_plugin_savepoint(true, 2026042002, 'customcertelement', 'digitalsignature');
+        upgrade_plugin_savepoint(true, 2026060501, 'customcertelement', 'digitalsignature');
     }
 
     return true;

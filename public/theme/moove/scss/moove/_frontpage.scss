@@ -1,6 +1,8 @@
 .pagelayout-frontpage,
 .pagelayout-coursecategory {
-    .frontpage-course-list-all.card-grid {
+    .frontpage-course-list-all.card-grid,
+    .frontpage-course-list-enrolled.card-grid,
+    .course_category_tree .courses.card-grid{
         gap: 0 1rem;
     }
 
@@ -24,69 +26,55 @@
         background-color: var(--moove-bg-white) !important;
     }
 
-    #mooveslideshow {
-        margin-top: 2rem;
-        margin-bottom: 2rem;
-        padding: 0;
+    #logos {
+        padding: 4rem 0;
 
-        .carousel-inner {
-            border-radius: .5rem;
+        .logos-title {
+            font-size: 2rem;
+            font-weight: 600;
         }
 
-        .caption {
-            text-align: center;
+        .logos-subtitle {
+            color: var(--bs-secondary-color);
+            max-width: 40rem;
         }
 
-        .carousel-indicators {
-            background-color: rgba(0, 0, 0, .6);
-            margin-bottom: 15px;
-            height: 20px;
-            border-bottom-left-radius: .5rem;
-            border-bottom-right-radius: .5rem;
+        img {
+            max-height: 6rem;
+            max-width: 100%;
+            width: auto;
+            filter: grayscale(100%);
+            opacity: .6;
+            transition: opacity .2s ease, filter .2s ease;
+
+            &:hover {
+                filter: grayscale(0%);
+                opacity: 1;
+            }
         }
 
-        .carousel-caption {
-            background-color: rgba(0, 0, 0, .6);
-            margin: 0;
-            bottom: 35px;
-            padding: 15px;
-            border-top-left-radius: .5rem;
-            border-top-right-radius: .5rem;
+        // Simple with heading: centered heading and subtitle, logos spaced
+        // evenly in a row below.
+        &.logos-layout-simple {
+            .logos-title,
+            .logos-subtitle {
+                text-align: center;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .logos-simple-list {
+                gap: 2.5rem 3rem;
+                margin-top: 2.5rem;
+            }
         }
 
-        .carousel-fade .carousel-item {
-            opacity: 0;
-            transition-duration: .6s;
-            transition-property: opacity;
-        }
-
-        .carousel-fade  .carousel-item.active,
-        .carousel-fade  .carousel-item-next.carousel-item-left,
-        .carousel-fade  .carousel-item-prev.carousel-item-right {
-            opacity: 1;
-        }
-
-        .carousel-fade .active.carousel-item-left,
-        .carousel-fade  .active.carousel-item-right {
-            opacity: 0;
-        }
-
-        .carousel-fade  .carousel-item-next,
-        .carousel-fade .carousel-item-prev,
-        .carousel-fade .carousel-item.active,
-        .carousel-fade .active.carousel-item-left,
-        .carousel-fade  .active.carousel-item-prev {
-            transform: translateX(0);
-            transform: translate3d(0, 0, 0);
-        }
-
-        .carousel-item .title,
-        .carousel-item .caption {
-            color: #fff;
-        }
-
-        .carousel-item .caption .text_to_html p:last-of-type {
-            margin-bottom: 0;
+        // Split with logos on right: heading and subtitle in a left column,
+        // logos in a grid on the right column.
+        &.logos-layout-split {
+            .logos-split-item {
+                text-align: center;
+            }
         }
     }
 
@@ -108,9 +96,90 @@
             align-items: center;
             justify-content: center;
             text-align: center;
+            background: linear-gradient(135deg, $brand-primary, darken($brand-primary, 15%));
+            box-shadow: 0 .5rem 1.5rem rgba($brand-primary, .35);
 
             img {
-                max-width: 100%;
+                max-width: 45%;
+            }
+        }
+
+        // Centered grid: heading on top, boxes centered below in a single row.
+        &.feature-layout-centered {
+            text-align: center;
+
+            .marketing-content {
+                max-width: 40rem;
+            }
+        }
+
+        // Simple three-column: centered intro, a badge icon sitting beside each
+        // heading, description wrapping below it.
+        &.feature-layout-icons {
+            .feature-icons-list {
+                margin-top: 1rem;
+            }
+
+            .feature-icons-item {
+                position: relative;
+                text-align: left;
+                padding-left: 4.5rem;
+                min-height: 3.5rem;
+            }
+
+            .icon-lg {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 3.5rem;
+                height: 3.5rem;
+
+                img {
+                    max-width: 50%;
+                }
+            }
+        }
+
+        // Offset 2x2 grid: boxes in two columns, the right column shifted down on
+        // larger screens so the grid reads as staggered rather than perfectly aligned.
+        &.feature-layout-offset {
+            .feature-offset-item {
+                .icon-lg {
+                    width: 3.5rem;
+                    height: 3.5rem;
+                    margin-bottom: 1rem;
+
+                    img {
+                        max-width: 50%;
+                    }
+                }
+            }
+
+            @include media-breakpoint-up(md) {
+                .feature-offset-item--shifted {
+                    margin-top: 3.5rem;
+                }
+            }
+        }
+
+        // Highlighted banner: heading sits on a colored strip, boxes overlap its bottom edge.
+        &.feature-layout-banner {
+            padding: 0 0 2rem;
+
+            .feature-banner-heading {
+                background-color: var(--bs-primary);
+                color: #fff;
+                padding: 4rem 0 6rem;
+
+                .marketing-content {
+                    max-width: 40rem;
+                    margin-left: auto;
+                    margin-right: auto;
+                }
+            }
+
+            .feature-banner-boxes {
+                margin-top: -4rem;
             }
         }
     }
@@ -118,48 +187,117 @@
     #numbers {
         padding: 5.625rem 0;
 
-        .sectionheading p {
-            line-height: 1;
-        }
-
-        .user-rating-box-area {
-            .rate-box {
-                box-shadow: 0 6px 0 rgb(23 135 252 / 65%);
-                border-radius: 25px;
-                padding: 30px 40px 35px 40px;
-
-                &.bg-primary {
-                    background-color: #1787fc !important;
-                }
-
-                &.bg-cloudburst {
-                    background-color: #213053;
-                }
-
-                h3 {
-                    color: #fff;
-                    font-size: 60px;
-                    font-weight: 600;
-                    font-style: normal;
-                    letter-spacing: -1px;
-                    line-height: 66px;
-                    margin-bottom: 30px;
-                }
-
-                p {
-                    color: #fff;
-                    font-size: 17px;
-                    font-weight: 400;
-                    font-style: normal;
-                    letter-spacing: normal;
-                    line-height: 30px;
-                    margin-bottom: 0;
-                }
+        // Default: content beside two colored rate boxes.
+        &.numbers-layout-default {
+            .sectionheading p {
+                line-height: 1;
             }
 
-            .rate-box-2 {
-                margin-top: 0;
-                box-shadow: 0 6px 0 rgb(33 48 83 / 65%);
+            .user-rating-box-area {
+                .rate-box {
+                    box-shadow: 0 6px 0 rgb(23 135 252 / 65%);
+                    border-radius: 25px;
+                    padding: 30px 40px 35px 40px;
+
+                    &.bg-primary {
+                        background-color: #1787fc !important;
+                    }
+
+                    &.bg-cloudburst {
+                        background-color: #213053;
+                    }
+
+                    h3 {
+                        color: #fff;
+                        font-size: 60px;
+                        font-weight: 600;
+                        font-style: normal;
+                        letter-spacing: -1px;
+                        line-height: 66px;
+                        margin-bottom: 30px;
+                    }
+
+                    p {
+                        color: #fff;
+                        font-size: 17px;
+                        font-weight: 400;
+                        font-style: normal;
+                        letter-spacing: normal;
+                        line-height: 30px;
+                        margin-bottom: 0;
+                    }
+                }
+
+                .rate-box-2 {
+                    margin-top: 0;
+                    box-shadow: 0 6px 0 rgb(33 48 83 / 65%);
+                }
+            }
+        }
+
+        // Simple grid: centered heading on top, stats below with the big number
+        // shown above its label.
+        &.numbers-layout-simplegrid {
+            .sectionheading {
+                max-width: 40rem;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .numbers-simplegrid-item {
+                max-width: 20rem;
+            }
+
+            .numbers-simplegrid-value {
+                display: block;
+                font-size: 3rem;
+                font-weight: 700;
+                line-height: 1.1;
+                color: $brand-primary;
+            }
+
+            .numbers-simplegrid-label {
+                margin-top: .5rem;
+                color: var(--bs-secondary-color);
+            }
+        }
+
+        // With background image: full-bleed photo with a dark overlay, left-aligned
+        // heading, and stats with the big number shown above its label, all in white.
+        &.numbers-layout-backgroundimage {
+            position: relative;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            color: #fff;
+            margin-left: -15px;
+            margin-right: -15px;
+
+            .numbers-backgroundimage-overlay {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(135deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, .55));
+            }
+
+            .container {
+                position: relative;
+                z-index: 1;
+            }
+
+            .numbers-backgroundimage-heading {
+                max-width: 40rem;
+            }
+
+            .numbers-backgroundimage-value {
+                display: block;
+                font-size: 2.5rem;
+                font-weight: 700;
+                margin-bottom: .25rem;
+            }
+
+            .numbers-backgroundimage-label {
+                margin-bottom: 0;
+                color: rgba(255, 255, 255, .75);
             }
         }
     }
@@ -190,24 +328,70 @@
     #faq {
         padding: 4rem 0;
 
-        h2 {
-            text-align: center;
+        dt {
+            font-weight: 600;
         }
 
-        .accordion {
-            width: 100%;
+        dd {
+            color: var(--bs-secondary-color);
+            margin-top: .5rem;
+        }
 
-            .accordion-button:not(.collapsed) {
-                background-color: $brand-primary;
-                color: #fff;
+        // Default: centered heading, collapsible accordion.
+        &.faq-layout-default {
+            h2 {
+                text-align: center;
             }
 
-            .accordion-item {
-                border: var(--bs-accordion-border-width) solid $brand-primary;
+            .accordion {
+                width: 100%;
+
+                .accordion-button:not(.collapsed) {
+                    background-color: $brand-primary;
+                    color: #fff;
+                }
+
+                .accordion-item {
+                    border: var(--bs-accordion-border-width) solid $brand-primary;
+                }
+
+                .accordion-button:not(.collapsed)::after {
+                    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M2 5L8 11L14 5'/%3e%3c/svg%3e");
+                }
+            }
+        }
+
+        // Offset with supporting text: narrow heading column, wider offset list
+        // column, questions and answers always visible.
+        &.faq-layout-offset {
+            .faq-offset-item {
+                padding-top: 1.5rem;
+                padding-bottom: 1.5rem;
+                border-top: 1px solid var(--bs-border-color);
+
+                &:first-child {
+                    border-top: 0;
+                    padding-top: 0;
+                }
+            }
+        }
+
+        // Two columns with centered introduction: centered heading on top,
+        // questions and answers split evenly between two columns.
+        &.faq-layout-twocolumns {
+            .faq-twocolumns-heading {
+                max-width: 40rem;
             }
 
-            .accordion-button:not(.collapsed)::after {
-                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M2 5L8 11L14 5'/%3e%3c/svg%3e");
+            .faq-twocolumns-item {
+                padding-top: 1.5rem;
+                padding-bottom: 1.5rem;
+                border-top: 1px solid var(--bs-border-color);
+
+                &:first-child {
+                    border-top: 0;
+                    padding-top: 0;
+                }
             }
         }
     }

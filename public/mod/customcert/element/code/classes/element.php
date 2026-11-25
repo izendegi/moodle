@@ -32,6 +32,7 @@ use mod_customcert\element\renderable_element_interface;
 use mod_customcert\service\certificate_issue_service;
 use mod_customcert\service\certificate_repository;
 use MoodleQuickForm;
+use mod_customcert\element\stylable_payload;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_renderer;
 use pdf;
@@ -112,11 +113,6 @@ class element extends base_element implements
      * @return array
      */
     public function normalise_data(stdClass $formdata): array {
-        return [
-            'font' => (string)($formdata->font ?? ''),
-            'fontsize' => (int)($formdata->fontsize ?? 0),
-            'colour' => (string)($formdata->colour ?? ''),
-            'width' => (int)($formdata->width ?? 0),
-        ];
+        return stylable_payload::from_form($formdata)->to_array();
     }
 }

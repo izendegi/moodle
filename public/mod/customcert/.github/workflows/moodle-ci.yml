@@ -8,13 +8,27 @@ permissions:
   contents: read
 
 jobs:
+  blueprint:
+    name: Blueprint policy checks
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v5
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Validate blueprint.json
+        run: php tools/validate_blueprint.php
+
   test:
     name: PHP ${{ matrix.php }} / ${{ matrix.moodle-branch }} / ${{ matrix.database }}
     runs-on: ubuntu-22.04
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_USER: 'postgres'
           POSTGRES_HOST_AUTH_METHOD: 'trust'
@@ -27,40 +41,39 @@ jobs:
           --health-retries 3
 
       mariadb:
-        image: mariadb:10.11
+        image: mariadb:11.4
         env:
-          MYSQL_USER: 'root'
-          MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
-          MYSQL_CHARACTER_SET_SERVER: 'utf8mb4'
-          MYSQL_COLLATION_SERVER: 'utf8mb4_unicode_ci'
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1'
+          MARIADB_CHARACTER_SET_SERVER: 'utf8mb4'
+          MARIADB_COLLATION_SERVER: 'utf8mb4_unicode_ci'
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - php: '8.4'
-            moodle-branch: 'MOODLE_502_STABLE'
+            moodle-branch: 'MOODLE_503_STABLE'
             database: pgsql
           - php: '8.4'
-            moodle-branch: 'MOODLE_502_STABLE'
+            moodle-branch: 'MOODLE_503_STABLE'
             database: mariadb
           - php: '8.3'
-            moodle-branch: 'MOODLE_502_STABLE'
+            moodle-branch: 'MOODLE_503_STABLE'
             database: pgsql
           - php: '8.3'
-            moodle-branch: 'MOODLE_502_STABLE'
+            moodle-branch: 'MOODLE_503_STABLE'
             database: mariadb
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: plugin
 
@@ -129,6 +142,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: moodle-plugin-ci grunt --max-lint-warnings 0
 
+      # Run Jest once (not for every matrix leg). Moodle 5.x installs the plugin under
+      # public/mod/customcert inside the checked-out moodle tree.
+      - name: Jest tests
+        if: ${{ !cancelled() && matrix.php == '8.4' && matrix.database == 'pgsql' }}
+        run: |
+          cd moodle
+          npm test -- --testPathPatterns=public/mod/customcert/js/esm/tests
+
       - name: PHPUnit tests
         if: ${{ !cancelled() }}
         run: |
@@ -171,7 +192,7 @@ jobs:
 
       - name: Upload Behat faildump
         if: ${{ failure() && steps.behat.outcome == 'failure' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Behat faildump (${{ matrix.php }}, ${{ matrix.moodle-branch }}, ${{ matrix.database }})
           path: ${{ github.workspace }}/moodledata/behat_dump

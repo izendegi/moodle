@@ -190,13 +190,13 @@ final class save_element_security_test extends advanced_testcase {
         $student = $this->getDataGenerator()->create_user(['password' => 'Secret-1234!', 'city' => 'Perth']);
         $student = \core_user::get_user($student->id);
 
-        $instance = element_factory::build_with_defaults()->create_from_legacy_record($element);
+        $instance = element_factory::build_with_defaults()->create_from_record($element);
         $this->assertInstanceOf(userfield_element::class, $instance);
         $method = new ReflectionMethod($instance, 'get_user_field_value');
         $this->assertSame('', $method->invoke($instance, $student, false));
 
         $element = $this->create_element('userfield', ['userfield' => 'city']);
-        $instance = element_factory::build_with_defaults()->create_from_legacy_record($element);
+        $instance = element_factory::build_with_defaults()->create_from_record($element);
         $this->assertSame('Perth', $method->invoke($instance, $student, false));
     }
 
@@ -309,12 +309,12 @@ final class save_element_security_test extends advanced_testcase {
 
         foreach (['gradeitem:' . $foreignitem->id, (string)$foreigncmid] as $reference) {
             $instance = element_factory::build_with_defaults()
-                ->create_from_legacy_record($this->create_element('gradeitemname', ['gradeitem' => $reference]));
+                ->create_from_record($this->create_element('gradeitemname', ['gradeitem' => $reference]));
             $this->assertSame('', $method->invoke($instance));
         }
 
         $instance = element_factory::build_with_defaults()
-            ->create_from_legacy_record($this->create_element('gradeitemname', ['gradeitem' => (string)$localcmid]));
+            ->create_from_record($this->create_element('gradeitemname', ['gradeitem' => (string)$localcmid]));
         $this->assertNotSame('', $method->invoke($instance));
     }
 
@@ -332,11 +332,11 @@ final class save_element_security_test extends advanced_testcase {
 
         $payload = $this->save($element, ['fileid' => $foreign]);
         $this->assertNotSame('foreign.png', $payload['filename'] ?? null);
-        $this->assertNotEquals(context_course::instance($this->courseb->id)->id, $payload['contextid'] ?? null);
+        $this->assertNotSame(context_course::instance($this->courseb->id)->id, $payload['contextid'] ?? null);
 
         $payload = $this->save($element, ['fileid' => $local]);
         $this->assertSame('local.png', $payload['filename']);
-        $this->assertEquals(context_course::instance($this->coursea->id)->id, $payload['contextid']);
+        $this->assertSame(context_course::instance($this->coursea->id)->id, $payload['contextid']);
     }
 
     /**
@@ -444,7 +444,7 @@ final class save_element_security_test extends advanced_testcase {
 
         $COURSE = $this->coursea;
         $foreign = $this->create_file($this->courseb, 'image', 'foreign.png');
-        $instance = element_factory::build_with_defaults()->create_from_legacy_record($this->create_element('image'));
+        $instance = element_factory::build_with_defaults()->create_from_record($this->create_element('image'));
 
         $payload = $instance->normalise_data((object)['fileid' => $foreign]);
 

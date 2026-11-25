@@ -25,12 +25,10 @@
 namespace theme_moove\output;
 
 use theme_config;
-use core\context\course as context_course;
 use moodle_url;
 use html_writer;
-use theme_moove\output\core_course\activity_navigation;
+use theme_moove\colour_mode;
 use theme_moove\util\license;
-use theme_moove\util\settings;
 
 /**
  * Renderers to align Moodle's HTML with that expected by Bootstrap
@@ -114,20 +112,25 @@ class core_renderer extends \theme_boost\output\core_renderer {
             $additionalclasses[] = $fonttype;
         }
 
-        $blackorlightmode = 'light';
-
-        $settings = new settings();
-        $darkmode = get_user_preferences('dark-mode-on', '');
-        if ($settings->enabledarkmode && $darkmode) {
-            $additionalclasses[] = 'moove-darkmode';
-            $blackorlightmode = 'dark';
+        $enablewhatsappbutton = (bool) get_config('theme_moove', 'enablewhatsappbutton');
+        if ($enablewhatsappbutton) {
+            $additionalclasses[] = 'haswhatsappbutton';
         }
 
         if (!is_array($additionalclasses)) {
             $additionalclasses = explode(' ', $additionalclasses);
         }
 
-        return ' id="' . $this->body_id() . '" class="'.$this->body_css_classes($additionalclasses) . '" data-bs-theme="' . $blackorlightmode . '"';
+        return ' id="' . $this->body_id() . '" class="' . $this->body_css_classes($additionalclasses) . '"';
+    }
+
+    /**
+     * Returns the navbar menu for switching between the light and dark colour modes.
+     *
+     * @return string HTML for the colour mode menu, or an empty string.
+     */
+    public function colour_mode_menu(): string {
+        return colour_mode::render_menu($this);
     }
 
     /**
@@ -213,96 +216,6 @@ class core_renderer extends \theme_boost\output\core_renderer {
     }
 
     /**
-     * Renders the login form.
-     *
-     * @param \core_auth\output\login $form The renderable.
-     * @return string
-     */
-    public function render_login(\core_auth\output\login $form) {
-        global $SITE, $CFG;
-
-        $context = $form->export_for_template($this);
-
-        $context->errorformatted = $this->error_text($context->error);
-        $context->logourl = $this->get_logo();
-        $context->sitename = format_string($SITE->fullname, true,
-            ['context' => context_course::instance(SITEID), "escape" => false]);
-
-        if (!empty($CFG->auth_instructions)) {
-            // The custom auth instructions are rendered in the left panel of the split login layout,
-            // so they must not be duplicated in the right-hand login form.
-            $context->instructions = null;
-            $context->hasinstructions = false;
-            $context->hasauthinstructions = false;
-        } else {
-            $context->instructions = null;
-            $context->hasinstructions = false;
-        }
-
-        $mode = (string) get_config('theme_moove', 'identityprovidersmode');
-        if ($mode === '') {
-            $mode = 'all';
-        }
-
-        if ($mode === 'none') {
-            $context->identityproviders = [];
-        } else if ($mode === 'single') {
-            $selected = trim((string) get_config('theme_moove', 'identityproviderssingle'));
-            if ($selected === '') {
-                $context->identityproviders = [];
-            } else if (!empty($context->identityproviders)) {
-                $context->identityproviders = array_values(array_filter(
-                    $context->identityproviders,
-                    function($provider) use ($selected) {
-                        $providername = (string)($provider['name'] ?? '');
-                        $providerurl = (string)($provider['url'] ?? '');
-
-                        // New format for OAuth2 selections: oauth2:<issuerid>.
-                        if (strpos($selected, 'oauth2:') === 0) {
-                            $issuerid = (int)substr($selected, 7);
-                            if ($issuerid > 0 && $providerurl !== '') {
-                                $pattern = '/[?&]id=' . preg_quote((string)$issuerid, '/') . '([&#]|$)/';
-                                return (bool)preg_match($pattern, $providerurl)
-                                    && strpos($providerurl, '/auth/oauth2/login.php') !== false;
-                            }
-                        }
-
-                        // Backward compatibility with previous stored values.
-                        return $providername === $selected || $providerurl === $selected;
-                    }
-                ));
-            }
-        }
-
-        $context->hasidentityproviders = !empty($context->identityproviders);
-        $context->showproviderschooser = $context->hasidentityproviders && ($mode === 'all');
-        $context->showprovidersdirect = $context->hasidentityproviders && ($mode === 'single');
-        $context->hastwocolumns = $context->hasidentityproviders || $CFG->auth_instructions;
-
-        if ($context->identityproviders) {
-            foreach ($context->identityproviders as $key => $provider) {
-                $isfacebook = false;
-
-                if (!empty($provider['iconurl']) && strpos($provider['iconurl'], 'facebook') !== false) {
-                    $isfacebook = true;
-                }
-
-                $context->identityproviders[$key]['isfacebook'] = $isfacebook;
-            }
-        }
-
-        $context->identityproviders_first = array_slice($context->identityproviders, 0, 1);
-        $context->identityproviders_rest = array_slice($context->identityproviders, 1);
-
-        $loginlayout = (string) get_config('theme_moove', 'loginlayout');
-        if ($loginlayout === 'base') {
-            return $this->render_from_template('theme_moove/loginform_base', $context);
-        }
-
-        return $this->render_from_template('core/loginform', $context);
-    }
-
-    /**
      * Returns the HTML for the site support email link
      *
      * @param array $customattribs Array of custom attributes for the support email anchor tag.
@@ -365,87 +278,6 @@ class core_renderer extends \theme_boost\output\core_renderer {
         }
 
         return parent::favicon();
-    }
-
-    /**
-     * Returns standard navigation between activities in a course.
-     *
-     * @return string the navigation HTML.
-     */
-    public function activity_navigation() {
-        // First we should check if we want to add navigation.
-        $context = $this->page->context;
-        if (($this->page->pagelayout !== 'incourse' && $this->page->pagelayout !== 'frametop')
-            || $context->contextlevel != CONTEXT_MODULE) {
-            return '';
-        }
-
-        // If the activity is in stealth mode, show no links.
-        if ($this->page->cm->is_stealth()) {
-            return '';
-        }
-
-        $course = $this->page->cm->get_course();
-        $courseformat = course_get_format($course);
-
-        // Get a list of all the activities in the course.
-        $modules = get_fast_modinfo($course->id)->get_cms();
-
-        // Put the modules into an array in order by the position they are shown in the course.
-        $mods = [];
-        $activitylist = [];
-        foreach ($modules as $module) {
-            // Only add activities the user can access, aren't in stealth mode and have a url (eg. mod_label does not).
-            if (!$module->uservisible || $module->is_stealth() || empty($module->url)) {
-                continue;
-            }
-            $mods[$module->id] = $module;
-
-            // No need to add the current module to the list for the activity dropdown menu.
-            if ($module->id == $this->page->cm->id) {
-                continue;
-            }
-            // Module name.
-            $modname = $module->get_formatted_name();
-            // Display the hidden text if necessary.
-            if (!$module->visible) {
-                $modname .= ' ' . get_string('hiddenwithbrackets');
-            }
-            // Module URL.
-            $linkurl = new moodle_url($module->url, ['forceview' => 1]);
-            // Add module URL (as key) and name (as value) to the activity list array.
-            $activitylist[$linkurl->out(false)] = $modname;
-        }
-
-        $nummods = count($mods);
-
-        // If there is only one mod then do nothing.
-        if ($nummods == 1) {
-            return '';
-        }
-
-        // Get an array of just the course module ids used to get the cmid value based on their position in the course.
-        $modids = array_keys($mods);
-
-        // Get the position in the array of the course module we are viewing.
-        $position = array_search($this->page->cm->id, $modids);
-
-        $prevmod = null;
-        $nextmod = null;
-
-        // Check if we have a previous mod to show.
-        if ($position > 0) {
-            $prevmod = $mods[$modids[$position - 1]];
-        }
-
-        // Check if we have a next mod to show.
-        if ($position < ($nummods - 1)) {
-            $nextmod = $mods[$modids[$position + 1]];
-        }
-
-        $activitynav = new activity_navigation($prevmod, $nextmod, $activitylist);
-        $renderer = $this->page->get_renderer('core', 'course');
-        return $renderer->render($activitynav);
     }
 
     /**
@@ -617,21 +449,132 @@ class core_renderer extends \theme_boost\output\core_renderer {
     }
 
     /**
-     * Render darkmode controls
+     * Render the frontpage slideshow, using the layout chosen in the theme settings.
      *
-     * @return string Dark mode controls html content.
+     * @return string Slideshow html content, or an empty string if no slides are configured.
      */
-    public function render_darkmode_controls() {
-        if (!isloggedin() || isguestuser()) {
+    public function slideshow(): string {
+        $themesettings = new \theme_moove\util\settings();
+
+        $templatecontext = $themesettings->frontpage_slideshow();
+
+        if (empty($templatecontext['slidercount'])) {
             return '';
         }
 
-        $settings = new settings();
+        $layouttemplates = [
+            'classic' => 'theme_moove/moove/slideshow/classic',
+            'centered' => 'theme_moove/moove/slideshow/centered',
+            'editorial' => 'theme_moove/moove/slideshow/editorial',
+            'imageright' => 'theme_moove/moove/slideshow/imageright',
+            'colorblock' => 'theme_moove/moove/slideshow/colorblock',
+        ];
 
-        if (!$settings->enabledarkmode) {
+        $template = $layouttemplates[$templatecontext['slideshowlayout']] ?? $layouttemplates['classic'];
+
+        return $this->render_from_template($template, $templatecontext);
+    }
+
+    /**
+     * Render the frontpage logos (clients/supporters) section, using the layout chosen in the theme settings.
+     *
+     * @return string Logos section html content, or an empty string if there are no logos configured.
+     */
+    public function logos(): string {
+        $themesettings = new \theme_moove\util\settings();
+
+        $templatecontext = $themesettings->logos();
+
+        if (empty($templatecontext['logosenabled'])) {
             return '';
         }
 
-        return $this->render_from_template('theme_moove/moove/darkmode', []);
+        $layouttemplates = [
+            'simple' => 'theme_moove/moove/logos/simple',
+            'split' => 'theme_moove/moove/logos/split',
+        ];
+
+        $template = $layouttemplates[$templatecontext['logoslayout']] ?? $layouttemplates['simple'];
+
+        return $this->render_from_template($template, $templatecontext);
+    }
+
+    /**
+     * Render the frontpage feature section, using the layout chosen in the theme settings.
+     *
+     * @return string Feature section html content, or an empty string if the section is disabled.
+     */
+    public function marketingboxes(): string {
+        $themesettings = new \theme_moove\util\settings();
+
+        $templatecontext = $themesettings->frontpage_marketingboxes();
+
+        if (empty($templatecontext['displaymarketingbox'])) {
+            return '';
+        }
+
+        $layouttemplates = [
+            'default' => 'theme_moove/moove/feature/default',
+            'centered' => 'theme_moove/moove/feature/centered',
+            'icons' => 'theme_moove/moove/feature/icons',
+            'offset' => 'theme_moove/moove/feature/offset',
+            'banner' => 'theme_moove/moove/feature/banner',
+        ];
+
+        $template = $layouttemplates[$templatecontext['featuresectionlayout']] ?? $layouttemplates['default'];
+
+        return $this->render_from_template($template, $templatecontext);
+    }
+
+    /**
+     * Render the frontpage numbers section, using the layout chosen in the theme settings.
+     *
+     * @return string Numbers section html content, or an empty string if the section is disabled.
+     */
+    public function numbers(): string {
+        $themesettings = new \theme_moove\util\settings();
+
+        $templatecontext = $themesettings->frontpage_numbers();
+
+        if (empty($templatecontext['numbersfrontpage'])) {
+            return '';
+        }
+
+        $layouttemplates = [
+            'default' => 'theme_moove/moove/numbers/default',
+            'simplegrid' => 'theme_moove/moove/numbers/simplegrid',
+            'backgroundimage' => 'theme_moove/moove/numbers/backgroundimage',
+        ];
+
+        $template = $layouttemplates[$templatecontext['numberslayout']] ?? $layouttemplates['default'];
+
+        return $this->render_from_template($template, $templatecontext);
+    }
+
+    /**
+     * Render the frontpage FAQ section, using the layout chosen in the theme settings.
+     *
+     * @return string FAQ section html content, or an empty string if there are no questions configured.
+     */
+    public function faq(): string {
+        $themesettings = new \theme_moove\util\settings();
+
+        $templatecontext = $themesettings->faq();
+
+        if (empty($templatecontext['faqenabled'])) {
+            return '';
+        }
+
+        $templatecontext['supportemaillink'] = $this->supportemail([], true);
+
+        $layouttemplates = [
+            'default' => 'theme_moove/moove/faq/default',
+            'offset' => 'theme_moove/moove/faq/offset',
+            'twocolumns' => 'theme_moove/moove/faq/twocolumns',
+        ];
+
+        $template = $layouttemplates[$templatecontext['faqlayout']] ?? $layouttemplates['default'];
+
+        return $this->render_from_template($template, $templatecontext);
     }
 }

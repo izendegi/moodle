@@ -4,11 +4,11 @@ moodle-local_navbarplus
 Changes
 -------
 
-### v5.2-r4
+### v5.3-r3
 
 * 2026-11-14 - Improvement: Set the aria-label attribute on the navbar links instead of on the icons, hide the decorative icons from assistive technology and remove the invalid alt attribute from the reset user tour link.
 
-### v5.2-r3
+### v5.3-r2
 
 * 2026-10-31 - Tests: Combine the Behat scenarios for valid and invalid mandatory attributes of the icons with links into scenario outlines.
 * 2026-10-31 - Bugfix: Also hide the icon with link if the URL has no scheme but a host, as a value like javascript:1/alert(1) bypassed the URL scheme check otherwise.
@@ -19,6 +19,10 @@ Changes
 * 2026-10-30 - Improvement: Only allow URLs with the http, https or mailto scheme or relative URLs for the icons with links.
 * 2026-10-30 - Bugfix: Escape the icon title in the aria-label attribute of the icons with links.
 * 2026-10-30 - Improvement: Use the logical AND operator instead of the bitwise AND assignment operator for the language check to keep the item visibility a boolean.
+
+### v5.3-r1
+
+* 2026-10-05 - Prepare compatibility for Moodle 5.3.
 
 ### v5.2-r2
 

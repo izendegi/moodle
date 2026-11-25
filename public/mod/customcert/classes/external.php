@@ -33,6 +33,7 @@ use core_external\external_single_structure;
 use core_external\external_multiple_structure;
 use core_external\external_function_parameters;
 use core_user\fields;
+use mod_customcert\element\stylable_element_interface;
 use mod_customcert\event\issue_deleted;
 use mod_customcert\service\certificate_repository;
 use mod_customcert\service\element_factory;
@@ -78,10 +79,14 @@ class external extends external_api {
     /**
      * Handles saving element data.
      *
+     * Returns the generic layout properties that the rearranger keeps in React state so the
+     * interactive editor can refresh without a full page reload. Values are read from the
+     * saved element/layout (not from element-type-specific fields).
+     *
      * @param int $templateid The template id.
      * @param int $elementid The element id.
      * @param array $values The values to save
-     * @return bool
+     * @return array{id: int, posx: int, posy: int, width: ?int, refpoint: int, alignment: string, html: string}
      */
     public static function save_element($templateid, $elementid, $values) {
         global $USER;
@@ -170,7 +175,7 @@ class external extends external_api {
 
         $record = clone $data;
         $record->data = $element->data;
-        $instance = $factory->create_from_legacy_record($record);
+        $instance = $factory->create_from_record($record);
         if (!$instance) {
             throw new moodle_exception('invalidelementtype', 'customcert');
         }
@@ -190,7 +195,7 @@ class external extends external_api {
         ];
         $record->data = persistence_helper::to_json_data($instance, $data);
 
-        $instance = $factory->create_from_legacy_record($record);
+        $instance = $factory->create_from_record($record);
         $layout = element_layout::from_record($record);
 
         // Defence in depth: the instance about to be persisted must still match the
@@ -205,8 +210,16 @@ class external extends external_api {
 
         $elementrepo->save($instance, $layout);
 
-        // For compatibility keep a simple truthy result.
-        return true;
+        // Return generic layout + preview HTML for the rearranger (element-type agnostic).
+        return [
+            'id' => $instance->get_id(),
+            'posx' => (int)($layout->posx ?? 0),
+            'posy' => (int)($layout->posy ?? 0),
+            'width' => $instance instanceof stylable_element_interface ? $instance->get_width() : null,
+            'refpoint' => (int)($layout->refpoint ?? 0),
+            'alignment' => $layout->alignment,
+            'html' => $instance->render_html(),
+        ];
     }
 
     /**
@@ -242,10 +255,21 @@ class external extends external_api {
     /**
      * Returns the save_element result value.
      *
-     * @return external_value
+     * @return external_single_structure
      */
     public static function save_element_returns() {
-        return new external_value(PARAM_BOOL, 'True if successful, false otherwise');
+        return new external_single_structure(
+            [
+                'id' => new external_value(PARAM_INT, 'The element id'),
+                'posx' => new external_value(PARAM_INT, 'X position in mm'),
+                'posy' => new external_value(PARAM_INT, 'Y position in mm'),
+                'width' => new external_value(PARAM_INT, 'Optional max width in mm', VALUE_REQUIRED, null, NULL_ALLOWED),
+                'refpoint' => new external_value(PARAM_INT, 'Reference point'),
+                'alignment' => new external_value(PARAM_ALPHA, 'Text alignment L, C, or R'),
+                'html' => new external_value(PARAM_RAW, 'Server-rendered preview HTML'),
+            ],
+            'Updated generic layout properties for the saved element'
+        );
     }
 
     /**
@@ -293,7 +317,7 @@ class external extends external_api {
         $element = $elementrepo->get_for_template_or_fail((int)$templateid, (int)$elementid);
 
         $factory = element_factory::build_with_defaults();
-        if ($e = $factory->create_from_legacy_record($element)) {
+        if ($e = $factory->create_from_record($element)) {
             return $e->render_html();
         }
 

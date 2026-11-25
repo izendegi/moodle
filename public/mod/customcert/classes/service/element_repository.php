@@ -30,12 +30,12 @@ declare(strict_types=1);
 
 namespace mod_customcert\service;
 
-use mod_customcert\element;
+use mod_customcert\element as legacy_base;
 use mod_customcert\element\element_interface;
 use mod_customcert\element\copyable_element_interface;
+use mod_customcert\element\legacy_element_adapter;
 use mod_customcert\element\raw_data_element_interface;
 use mod_customcert\element\unknown_element;
-use mod_customcert\element\legacy_element_adapter;
 use mod_customcert\element_helper;
 use mod_customcert\service\element_layout;
 use mod_customcert\local\ordering;
@@ -43,7 +43,6 @@ use mod_customcert\event\element_created;
 use mod_customcert\service\element_factory;
 use mod_customcert\event\element_deleted;
 use mod_customcert\event\element_updated;
-use ReflectionMethod;
 use stdClass;
 
 /**
@@ -98,27 +97,6 @@ final class element_repository {
 
         $templateid = $DB->get_field_sql($sql, ['elementid' => $elementid]);
         return $templateid !== false ? (int)$templateid : null;
-    }
-
-    /**
-     * Return the template contextid that owns the given element, or null if the chain is broken.
-     *
-     * Traverses customcert_elements → customcert_pages → customcert_templates.
-     *
-     * @param int $elementid
-     * @return int|null
-     */
-    public function get_template_context_id_for_element(int $elementid): ?int {
-        global $DB;
-
-        $sql = 'SELECT t.contextid
-                  FROM {customcert_elements} e
-                  JOIN {customcert_pages} p ON p.id = e.pageid
-                  JOIN {customcert_templates} t ON t.id = p.templateid
-                 WHERE e.id = :elementid';
-
-        $contextid = $DB->get_field_sql($sql, ['elementid' => $elementid]);
-        return $contextid !== false ? (int)$contextid : null;
     }
 
     /**
@@ -227,9 +205,9 @@ final class element_repository {
         $record->alignment = $layout->alignment;
         $record->timemodified = time();
 
-        // Persist the raw payload. get_data() unwraps generic migration wrappers for legacy
-        // elements; writing that back would lose migrated metadata (font, colour, width, etc.).
-        // Elements without raw_data_element_interface fall back to get_data().
+        // Persist the raw payload, not get_data(): legacy elements may unwrap a migrated JSON
+        // object into a bare scalar there, which would drop the other migrated fields.
+        // Third-party elements without raw_data_element_interface fall back to get_data().
         $record->data = $element instanceof raw_data_element_interface
             ? $element->get_raw_data()
             : $element->get_data();
@@ -276,38 +254,44 @@ final class element_repository {
             // The caller's transaction is responsible for rollback.
             $instance = $this->factory->create((string)$newrecord->element, $newrecord);
         } else {
-            $instance = $this->factory->create_from_legacy_record($newrecord);
+            $instance = $this->factory->create_from_record($newrecord);
             if (!$instance) {
                 return null;
             }
         }
 
-        $inner = $instance;
-        if ($instance instanceof legacy_element_adapter) {
-            $inner = $instance->get_inner();
-        }
+        // Check copy capabilities on the wrapped element.
+        $target = $instance instanceof legacy_element_adapter ? $instance->get_inner() : $instance;
 
-        // Give the element a chance to handle any unique data copying.
-        if ($inner instanceof copyable_element_interface) {
-            if (!$inner->copy_from($sourceelement)) {
+        if ($target instanceof copyable_element_interface) {
+            if (!$target->copy_from($sourceelement)) {
                 $this->delete($instance);
                 return null;
             }
-        } else if (self::has_legacy_copy_override($inner)) {
-            // Back-compat: only call the legacy hook when the concrete class actually overrides it.
+        } else if ($target instanceof legacy_base && self::has_legacy_copy_override($target)) {
             debugging(
-                'copy_element() is deprecated since Moodle 5.2. '
+                'element::copy_element() is deprecated since Moodle 5.2. '
                 . 'Implement mod_customcert\\element\\copyable_element_interface::copy_from() instead.',
                 DEBUG_DEVELOPER
             );
-            $copyresult = $inner->copy_element($sourceelement);
-            if ($copyresult === false) {
+            if ($target->copy_element($sourceelement) === false) {
                 $this->delete($instance);
                 return null;
             }
         }
 
         return $instance;
+    }
+
+    /**
+     * Whether the legacy class overrides copy_element().
+     *
+     * @param legacy_base $legacy
+     * @return bool
+     */
+    private static function has_legacy_copy_override(legacy_base $legacy): bool {
+        $ref = new \ReflectionMethod($legacy, 'copy_element');
+        return $ref->getDeclaringClass()->getName() !== legacy_base::class;
     }
 
     /**
@@ -401,6 +385,27 @@ final class element_repository {
     }
 
     /**
+     * Resequence remaining elements on a page after one has been deleted.
+     *
+     * Decrements the sequence of every element that came after the deleted element's former
+     * sequence position, closing the gap it left behind.
+     *
+     * @param int $pageid
+     * @param int $deletedsequence The sequence value the deleted element used to have.
+     * @return void
+     * @throws \dml_exception For database errors.
+     */
+    public function resequence_after_delete(int $pageid, int $deletedsequence): void {
+        global $DB;
+
+        $sql = "UPDATE {customcert_elements}
+                   SET sequence = sequence - 1
+                 WHERE pageid = :pageid
+                   AND sequence > :sequence";
+        $DB->execute($sql, ['pageid' => $pageid, 'sequence' => $deletedsequence]);
+    }
+
+    /**
      * Delete an element record and fire the deleted event.
      *
      * @param element_interface $element
@@ -437,7 +442,7 @@ final class element_repository {
         // Width is stored inside the JSON data; no DB column write.
         $record->refpoint = $layout->refpoint;
         $record->alignment = $layout->alignment;
-        // See save() for why get_raw_data() is used instead of get_data() here.
+        // See save() for why get_raw_data() is preferred over get_data() when available.
         $record->data = $element instanceof raw_data_element_interface
             ? $element->get_raw_data()
             : $element->get_data();
@@ -452,20 +457,5 @@ final class element_repository {
         element_created::create_from_element($created)->trigger();
 
         return $record->id;
-    }
-
-    /**
-     * Returns true only when the given element instance has a concrete override of copy_element()
-     * that is not merely the no-op base implementation on mod_customcert\element.
-     *
-     * @param object $element Element instance to inspect.
-     * @return bool
-     */
-    private static function has_legacy_copy_override(object $element): bool {
-        if (!method_exists($element, 'copy_element')) {
-            return false;
-        }
-        $ref = new ReflectionMethod($element, 'copy_element');
-        return $ref->getDeclaringClass()->getName() !== element::class;
     }
 }

@@ -15,10 +15,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contract for elements that expose a raw, untouched persistence representation of their data.
+ * Optional contract for elements that expose the raw, untouched persistence representation.
  *
  * @package    mod_customcert
- * @copyright  2026 Mark Nelson <mdjnelson@gmail.com>
+ * @copyright  2025 Mark Nelson <mdjnelson@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -27,17 +27,22 @@ declare(strict_types=1);
 namespace mod_customcert\element;
 
 /**
- * Optional interface exposing an element's untouched persistence data, as opposed to the legacy
- * compatibility view returned by get_data().
+ * Interface raw_data_element_interface
  *
- * Not part of the minimal element_interface contract. It only matters for elements whose
- * get_data() may unwrap a generic migration wrapper that must never be written back to the database.
+ * Optional interface letting the persistence layer store an element's untouched data instead of
+ * get_data(), which may apply legacy compatibility unwrapping and lose migrated fields.
+ *
+ * Kept separate from {@see element_interface} so third-party plugins implementing that stable,
+ * minimal contract are not broken by a new required method.
  */
 interface raw_data_element_interface {
     /**
      * Returns the raw, untouched persistence representation of the element data.
      *
-     * Unlike get_data(), this never applies a legacy compatibility transformation.
+     * Unlike {@see element_interface::get_data()}, this never applies legacy compatibility
+     * unwrapping: it returns exactly what is stored in `customcert_elements.data`, so migrated
+     * fields hidden by a legacy scalar view are not lost.
+     *
      * For the persistence layer only; rendering and form code must use get_data().
      *
      * @return mixed

@@ -15,9 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Dummy element_interface implementation fixture exposing a real element id, for tests
- * that need to exercise element_repository::save() (which uses get_id() directly and
- * does not require factory/registry reconstruction, unlike create()).
+ * Dummy element_interface implementation fixture exposing a real, caller-supplied id.
  *
  * @package    mod_customcert
  * @category   test
@@ -32,7 +30,12 @@ namespace mod_customcert\tests\fixtures;
 use mod_customcert\element\element_interface;
 
 /**
- * A minimal element implementing element_interface for use in tests, with a real id.
+ * A minimal direct element_interface implementation (does not implement the optional
+ * raw_data_element_interface) exposing a real, caller-supplied id.
+ *
+ * Unlike {@see dummy_element_interface_element}, whose get_id() always returns 0, this
+ * fixture accepts a real existing id so it can be used to test element_repository::save()
+ * against a pre-inserted row.
  */
 final class dummy_element_interface_with_id_element implements element_interface {
     /** @var int Element ID. */
@@ -47,11 +50,11 @@ final class dummy_element_interface_with_id_element implements element_interface
     /**
      * Constructor.
      *
-     * @param int $id The element id.
+     * @param int $id The (real, existing) element id.
      * @param int $pageid The page id.
      * @param string $type The element type.
      */
-    public function __construct(int $id, int $pageid, string $type = 'text') {
+    public function __construct(int $id, int $pageid, string $type) {
         $this->id = $id;
         $this->pageid = $pageid;
         $this->type = $type;

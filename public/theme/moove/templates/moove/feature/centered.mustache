@@ -1,0 +1,54 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template theme_moove/moove/feature/centered
+
+    Centered frontpage feature section: heading on top, centered boxes in a single row.
+
+    Context variables required for this template:
+    * marketingheading - The section heading html
+    * marketingcontent - The section content html
+    * marketingboxes - Array of box objects (icon, heading, content)
+
+    Example context (json):
+    {
+        "marketingheading": "<p>Awesome App Features</p>",
+        "marketingcontent": "<p>Moove is a Moodle template.</p>",
+        "marketingboxes": [
+            {"icon": "https://example.com/icon.svg", "heading": "<p>Lorem</p>", "content": "<p>Lorem ipsum</p>"}
+        ]
+    }
+}}
+<section id="feature" class="feature-layout-centered">
+    <div class="container text-center">
+        <h3 class="h1 mt-3 mb-3">{{{marketingheading}}}</h3>
+        <div class="marketing-content mx-auto">{{{marketingcontent}}}</div>
+        <div class="row mt-4 justify-content-center">
+            {{#marketingboxes}}
+                <div class="col-sm-6 col-lg-3 mt-4">
+                    <div class="card card-body shadow h-100 text-center">
+                        <div class="icon-lg text-white rounded-circle mx-auto mb-3">
+                            <img src="{{{icon}}}">
+                        </div>
+                        <h5>{{{heading}}}</h5>
+                        <div class="box-content">{{{content}}}</div>
+                    </div>
+                </div>
+            {{/marketingboxes}}
+        </div>
+    </div>
+</section>

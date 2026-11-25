@@ -1,0 +1,52 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template theme_moove/moove/numbers/simplegrid
+
+    Simple grid frontpage numbers section: centered heading on top, stats below
+    in a simple grid with the big number shown above its label.
+
+    Context variables required for this template:
+    * numberscontent - The section content html
+    * numbersusers - The active users count
+    * numberscourses - The active courses count
+
+    Example context (json):
+    {
+        "numberscontent": "<h2>Trusted by 25,000+ happy customers.</h2>",
+        "numbersusers": 2500,
+        "numberscourses": 120
+    }
+}}
+<section id="numbers" class="numbers-layout-simplegrid">
+    <div class="container text-center">
+        <div class="sectionheading mx-auto">
+            {{{numberscontent}}}
+        </div>
+
+        <dl class="row row-cols-1 row-cols-sm-2 g-4 g-sm-5 mt-4 justify-content-center numbers-simplegrid-list">
+            <div class="col d-flex flex-column mx-auto numbers-simplegrid-item">
+                <dt class="numbers-simplegrid-label">{{#str}}numbersusers, theme_moove{{/str}}</dt>
+                <dd class="order-first numbers-simplegrid-value">{{{numbersusers}}}</dd>
+            </div>
+            <div class="col d-flex flex-column mx-auto numbers-simplegrid-item">
+                <dt class="numbers-simplegrid-label">{{#str}}numberscourses, theme_moove{{/str}}</dt>
+                <dd class="order-first numbers-simplegrid-value">{{{numberscourses}}}</dd>
+            </div>
+        </dl>
+    </div>
+</section>

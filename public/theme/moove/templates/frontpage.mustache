@@ -60,114 +60,13 @@
     {{> theme_moove/navbar }}
 
     <div id="page" data-region="mainpage" data-usertour="scroller" class="drawers drag-container bg-white">
-        {{#slidercount}}
-            <div id="mooveslideshow" class="container-fluid">
-                <div id="moove-carousel" class="carousel slide">
-                    {{^slidersingleslide}}
-                        <div class="carousel-indicators">
-                            {{#slides}}
-                                <button type="button" data-bs-target="#moove-carousel" data-bs-slide-to="{{{ key }}}" {{#active}}class="active" aria-current="true"{{/active}}  aria-label="{{slidertitle}}"></button>
-                            {{/slides}}
-                        </div>
-                    {{/slidersingleslide}}
-                    <div class="carousel-inner">
-                        {{#slides}}
-                            <div class="carousel-item {{#active}}active{{/active}}">
-                                <img src="{{image}}" alt="{{slidertitle}}" class="d-block w-100">
-                                {{#hascaption}}
-                                    <div class="carousel-caption d-none d-md-block">
-                                        {{#title}}
-                                            <h5 class="title">{{.}}</h5>
-                                        {{/title}}
-                                        {{#caption}}
-                                            <div class="caption">
-                                                {{{.}}}
-                                            </div>
-                                        {{/caption}}
-                                    </div>
-                                {{/hascaption}}
-                            </div>
-                        {{/slides}}
-                    </div>
-                    {{^slidersingleslide}}
-                        <button class="carousel-control-prev" type="button" data-bs-target="#moove-carousel" data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">{{#str}}previous{{/str}}</span>
-                        </button>
-                        <button class="carousel-control-next" type="button" data-bs-target="#moove-carousel" data-bs-slide="next">
-                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">{{#str}}next{{/str}}</span>
-                        </button>
-                    {{/slidersingleslide}}
-                </div>
-            </div>
-        {{/slidercount}}
+        {{{ output.slideshow }}}
 
-        {{#displaymarketingbox}}
-            <section id="feature">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-4 my-3">
-                            <h3 class="h1 mt-3 mb-3">{{{marketingheading}}}</h3>
-                            <div class="marketing-content">{{{marketingcontent}}}</div>
-                        </div>
-                        <div class="col-lg-8 ps-xl-8">
-                            <div class="row">
-                                {{#marketingboxes}}
-                                    <div class="col-sm-6 mt-4">
-                                        <div class="card card-body shadow">
-                                            <div class="d-flex">
-                                                <div class="icon-lg text-white rounded-circle">
-                                                    <img src="{{{icon}}}">
-                                                </div>
-                                                <div class="col ps-3">
-                                                    <h5>{{{heading}}}</h5>
-                                                    <div class="box-content">{{{content}}}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                {{/marketingboxes}}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        {{/displaymarketingbox}}
+        {{{ output.logos }}}
 
-        {{#numbersfrontpage}}
-            <section id="numbers">
-                <div class="moove-container-fluid">
-                    <div class="row customer-area-l1 justify-content-center align-items-center ">
-                        <div class="col-xl-5 col-lg-5 col-md-10">
-                            <div class="sectionheading">
-                                {{{numberscontent}}}
-                            </div>
-                        </div>
-                        <div class="col-xl-6 col-lg-7 col-md-10 offset-xl-1">
-                            <div class="row user-rating-box-area">
-                                <div class="col-sm-6 col-xs-8">
-                                    <div class="h-100 rate-box bg-primary">
-                                        <h3>
-                                            {{{numbersusers}}}
-                                        </h3>
-                                        <p>{{#str}}numbersusers, theme_moove{{/str}}</p>
-                                    </div>
-                                </div>
-                                <div class="col-sm-6 col-xs-8">
-                                    <div class="h-100 rate-box rate-box-2 bg-cloudburst">
-                                        <h3>
-                                            {{{numberscourses}}}
-                                        </h3>
-                                        <p>{{#str}}numberscourses, theme_moove{{/str}}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        {{/numbersfrontpage}}
+        {{{ output.marketingboxes }}}
+
+        {{{ output.numbers }}}
 
         <div id="topofscroll">
             <div id="page-content" class="d-print-block main-inner">
@@ -181,32 +80,10 @@
             </div>
         </div>
 
-        {{#faqenabled}}
-            <section id="faq" class="scale-up scale-up-show">
-                <div class="moove-container-fluid">
-                    <h2>{{#str}}faq, theme_moove{{/str}}</h2>
-
-                    <div class="accordion" id="accordion-faq">
-                        {{#faq}}
-                            <div class="accordion-item mb-1">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button {{^active}}collapsed{{/active}}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{{id}}}" aria-expanded="true" aria-controls="collapse-{{{id}}}">
-                                        {{{question}}}
-                                    </button>
-                                </h2>
-                                <div id="collapse-{{{id}}}" class="accordion-collapse collapse {{#active}}show{{/active}}" data-bs-parent="#accordion-faq">
-                                    <div class="accordion-body">
-                                        {{{answer}}}
-                                    </div>
-                                </div>
-                            </div>
-                        {{/faq}}
-                    </div>
-                </div>
-            </section>
-        {{/faqenabled}}
+        {{{ output.faq }}}
     </div>
     {{> theme_moove/footer }}
+    {{> theme_moove/whatsapp_button }}
 
     {{{ output.standard_after_main_region_html }}}
 </div>
@@ -219,20 +96,5 @@
     require(['theme_boost/loader', 'theme_boost/drawer'], function(Loader, Drawer) {
         Drawer.init();
         M.util.js_complete('theme_boost/loader');
-    });
-    require(['jquery'], function($) {
-        $('.carousel').carousel({
-            interval: 5000
-        });
-
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.body.setAttribute('data-bs-theme', 'dark');
-        }
-
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-            const newColorScheme = event.matches ? "dark" : "light";
-
-            document.body.setAttribute('data-bs-theme', newColorScheme);
-        });
     });
 {{/js}}

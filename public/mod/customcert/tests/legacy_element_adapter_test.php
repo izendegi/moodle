@@ -15,11 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Unit tests for legacy_element_adapter.
+ * Focused tests for the Moodle 5.3 legacy element compatibility adapter (#954).
  *
  * @package    mod_customcert
  * @category   test
- * @copyright  2025 Mark Nelson <mdjnelson@gmail.com>
+ * @copyright  2026 Mark Nelson <mdjnelson@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -27,667 +27,293 @@ declare(strict_types=1);
 
 namespace mod_customcert;
 
-use advanced_testcase;
-use customcertelement_text\element as text_element;
-use mod_customcert\element\legacy_element_adapter;
-use mod_customcert\service\element_factory;
-use mod_customcert\service\element_registry;
-use mod_customcert\service\element_repository;
-use mod_customcert\service\template_repository;
-use mod_customcert\service\template_service;
-use mod_customcert\tests\fixtures\legacy_save_unique_data_element;
-use mod_customcert\tests\fixtures\legacy_definition_after_data_element;
-use mod_customcert\tests\fixtures\legacy_after_restore_element;
-use mod_customcert\tests\fixtures\legacy_invokable_test_element;
-use mod_customcert\tests\fixtures\legacy_validate_form_elements_element;
-use mod_customcert\tests\fixtures\legacy_void_copy_element;
-use mod_customcert\tests\fixtures\new_restorable_element;
-use MoodleQuickForm;
-use customcertelement_qrcode\element as customcertelement_qrcode_element;
-use mod_customcert\edit_element_form;
-use mod_customcert\element;
-use mod_customcert\element\element_bootstrap;
-use mod_customcert\tests\fixtures\legacy_old_signature_element;
-use restore_customcert_activity_task;
-use stdClass;
-
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/fixtures/legacy_save_unique_data_element.php');
-require_once(__DIR__ . '/fixtures/legacy_definition_after_data_element.php');
-require_once(__DIR__ . '/fixtures/legacy_after_restore_element.php');
-require_once(__DIR__ . '/fixtures/legacy_invokable_test_element.php');
-require_once(__DIR__ . '/fixtures/legacy_validate_form_elements_element.php');
-require_once(__DIR__ . '/fixtures/legacy_void_copy_element.php');
-require_once(__DIR__ . '/fixtures/new_restorable_element.php');
+require_once(__DIR__ . '/fixtures/legacy_genuine_45_element.php');
+require_once(__DIR__ . '/fixtures/legacy_52_adapter_element.php');
+require_once(__DIR__ . '/fixtures/native_v2_control_element.php');
+require_once(__DIR__ . '/legacy_compatibility_diagnostic_test_trait.php');
+
+use advanced_testcase;
+use mod_customcert\element\legacy_element_adapter;
+use mod_customcert\element\renderable_element_interface;
+use mod_customcert\service\element_factory;
+use mod_customcert\service\element_registry;
+use mod_customcert\service\form_service;
+use mod_customcert\service\persistence_helper;
+use mod_customcert\service\validation_service;
+use mod_customcert\tests\fixtures\legacy_52_adapter_element;
+use mod_customcert\tests\fixtures\legacy_genuine_45_element;
+use mod_customcert\tests\fixtures\native_v2_control_element;
+use MoodleQuickForm;
+use stdClass;
 
 /**
- * Tests for the legacy adapter mapping of getters.
+ * Focused tests for the Moodle 5.3 legacy element compatibility adapter.
+ *
+ * @covers \mod_customcert\element\legacy_element_adapter
+ * @covers \mod_customcert\service\element_factory
+ * @covers \mod_customcert\element
  */
 final class legacy_element_adapter_test extends advanced_testcase {
+    use \mod_customcert\tests\legacy_compatibility_diagnostic_test_trait;
+
+    protected function setUp(): void {
+        parent::setUp();
+        // Each test starts with a clean per-component de-duplication state for the
+        // general legacy compatibility diagnostic, independent of test execution order.
+        $this->reset_legacy_compatibility_diagnostic_state();
+    }
+
     /**
-     * Ensure adapter delegates all getters to the wrapped legacy element.
+     * Build a minimal element DB-shaped record.
      *
-     * @covers \mod_customcert\element\legacy_element_adapter::get_inner
-     * @covers \mod_customcert\element\legacy_element_adapter::get_id
-     * @covers \mod_customcert\element\legacy_element_adapter::get_pageid
-     * @covers \mod_customcert\element\legacy_element_adapter::get_name
-     * @covers \mod_customcert\element\legacy_element_adapter::get_data
-     * @covers \mod_customcert\element\legacy_element_adapter::get_font
-     * @covers \mod_customcert\element\legacy_element_adapter::get_fontsize
-     * @covers \mod_customcert\element\legacy_element_adapter::get_colour
-     * @covers \mod_customcert\element\legacy_element_adapter::get_width
+     * @param array $overrides
+     * @return stdClass
      */
-    public function test_adapter_mirrors_legacy_getters(): void {
+    private function make_record(array $overrides = []): stdClass {
+        $record = (object) [
+            'id' => 10,
+            'pageid' => 20,
+            'name' => 'Legacy element',
+            'data' => json_encode([
+                'font' => 'Helvetica',
+                'fontsize' => 12,
+                'colour' => '#000000',
+                'width' => 50,
+                'value' => 'hello',
+            ]),
+            'posx' => 5,
+            'posy' => 6,
+            'refpoint' => 1,
+            'alignment' => 'L',
+            'element' => 'legacytest',
+        ];
+        foreach ($overrides as $k => $v) {
+            $record->$k = $v;
+        }
+        return $record;
+    }
+
+    /**
+     * Genuine 4.5-era class with untyped render() must load and instantiate without a PHP fatal.
+     */
+    public function test_genuine_45_element_loads_and_exposes_legacy_properties(): void {
         $this->resetAfterTest();
 
-        $record = (object) [
-            'id' => 42,
-            'pageid' => 7,
-            'name' => 'Legacy Text',
-            // New source of truth is JSON data; include expected values here.
+        $record = $this->make_record();
+        $inner = new legacy_genuine_45_element($record);
+
+        $this->assertSame(10, $inner->get_id());
+        $this->assertSame('Helvetica', $this->get_protected_property($inner, 'font'));
+        $this->assertSame(12, $this->get_protected_property($inner, 'fontsize'));
+        $this->assertSame('#000000', $this->get_protected_property($inner, 'colour'));
+        $this->assertSame(50, $this->get_protected_property($inner, 'width'));
+        $this->assertSame(10, $this->get_protected_property($inner, 'element')->id);
+        $this->assertSame('legacy45:Helvetica', $inner->render_html());
+    }
+
+    /**
+     * Factory must wrap genuine 4.5-era elements in the legacy adapter and expose the v2 surface.
+     */
+    public function test_factory_wraps_genuine_45_element_with_adapter(): void {
+        $this->resetAfterTest();
+
+        $registry = new element_registry();
+        $registry->register('legacy45', legacy_genuine_45_element::class);
+        $factory = new element_factory($registry);
+
+        $instance = $factory->create('legacy45', $this->make_record());
+        // The factory emits the single general legacy-compatibility diagnostic when
+        // wrapping the element in the adapter.
+        $this->assertDebuggingCalled();
+
+        $this->assertInstanceOf(legacy_element_adapter::class, $instance);
+        $this->assertInstanceOf(renderable_element_interface::class, $instance);
+        $this->assertInstanceOf(legacy_genuine_45_element::class, $instance->get_inner());
+        $this->assertSame('legacy45:Helvetica', $instance->render_html());
+        $this->assertSame(10, $instance->get_id());
+        $this->assertSame('Helvetica', $instance->get_font());
+    }
+
+    /**
+     * 5.2-adapter-style element (typed render + legacy hooks) must keep working via the adapter.
+     */
+    public function test_factory_wraps_52_adapter_style_element_and_persists_via_save_unique_data(): void {
+        $this->resetAfterTest();
+
+        $registry = new element_registry();
+        $registry->register('legacy52', legacy_52_adapter_element::class);
+        $factory = new element_factory($registry);
+
+        $instance = $factory->create('legacy52', $this->make_record());
+        // The factory emits the general legacy-compatibility diagnostic when wrapping.
+        $this->assertDebuggingCalled();
+        $this->assertInstanceOf(legacy_element_adapter::class, $instance);
+        $this->assertSame('legacy52', $instance->render_html());
+
+        // Form bridge: build_form -> render_form_elements on inner.
+        $mform = $this->create_stub_mform();
+        $instance->build_form($mform);
+        $this->assertTrue($instance->get_inner()->formcalled);
+
+        // Persistence via save_unique_data through the helper.
+        $formdata = (object) ['name' => 'X', 'legacyvalue' => 'payload52'];
+        $json = persistence_helper::to_json_data($instance, $formdata);
+        // The method-specific save_unique_data() deprecation is emitted separately.
+        $this->assertDebuggingCalled();
+        $decoded = json_decode($json, true);
+        $this->assertIsArray($decoded);
+        $this->assertSame('payload52', $instance->get_inner()->lastsaved);
+        // JSON must be object-shaped; scalar return is wrapped as {"value": ...}.
+        $this->assertArrayHasKey('value', $decoded);
+
+        // Validation legacy fallback.
+        $errors = (new validation_service())->validate($instance, ['name' => 'ok', 'colour' => '#ffffff']);
+        // The method-specific validate_form_elements() deprecation is emitted separately.
+        $this->assertDebuggingCalled();
+        $this->assertIsArray($errors);
+    }
+
+    /**
+     * Genuine 4.5 element validation and form preparation go through the adapter + services.
+     */
+    public function test_services_dispatch_legacy_form_and_validation_hooks(): void {
+        $this->resetAfterTest();
+
+        $registry = new element_registry();
+        $registry->register('legacy45', legacy_genuine_45_element::class);
+        $factory = new element_factory($registry);
+        $instance = $factory->create('legacy45', $this->make_record());
+        // The factory emits the general legacy-compatibility diagnostic when wrapping.
+        $this->assertDebuggingCalled();
+
+        $mform = $this->create_stub_mform();
+        (new form_service())->prepare_after_data($mform, $instance);
+        $this->assertTrue($instance->get_inner()->definitioncalled);
+        // The method-specific definition_after_data() deprecation is emitted separately.
+        $this->assertDebuggingCalled();
+
+        $errors = (new validation_service())->validate($instance, ['name' => 'bad', 'colour' => '#ffffff']);
+        $this->assertArrayHasKey('name', $errors);
+        $this->assertDebuggingCalled();
+
+        $json = persistence_helper::to_json_data($instance, (object) ['legacyvalue' => 'from45']);
+        $decoded = json_decode($json, true);
+        $this->assertSame('from45', $instance->get_inner()->lastsaved);
+        $this->assertSame('from45', $decoded['value']);
+        $this->assertDebuggingCalled();
+    }
+
+    /**
+     * Native v2 elements must remain on the direct path (no adapter wrap).
+     */
+    public function test_native_v2_element_is_not_wrapped(): void {
+        $this->resetAfterTest();
+
+        $registry = new element_registry();
+        $registry->register('nativev2', native_v2_control_element::class);
+        $factory = new element_factory($registry);
+
+        $instance = $factory->create('nativev2', $this->make_record());
+        // Native v2 elements are never wrapped, so no legacy compatibility diagnostic
+        // is emitted for them.
+        $this->assertDebuggingNotCalled();
+        $this->assertInstanceOf(native_v2_control_element::class, $instance);
+        $this->assertNotInstanceOf(legacy_element_adapter::class, $instance);
+        $this->assertSame('native-v2', $instance->render_html());
+
+        $json = persistence_helper::to_json_data($instance, (object) ['value' => 'direct']);
+        $this->assertSame(['value' => 'direct'], json_decode($json, true));
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Bundled text element still constructs as the concrete class (v2 path unchanged).
+     */
+    public function test_bundled_text_element_remains_unwrapped(): void {
+        $this->resetAfterTest();
+
+        $factory = element_factory::build_with_defaults();
+        $instance = $factory->create('text', $this->make_record(['element' => 'text']));
+        $this->assertInstanceOf(\customcertelement_text\element::class, $instance);
+        $this->assertNotInstanceOf(legacy_element_adapter::class, $instance);
+    }
+
+    /**
+     * A genuine 4.5-era third-party element must see the original scalar via get_data(),
+     * even after the upgrade migration wrapped it as {"value": ..., style keys...}.
+     */
+    public function test_genuine_45_element_get_data_unwraps_generic_migration_wrapper(): void {
+        $this->resetAfterTest();
+
+        $record = $this->make_record([
             'data' => json_encode([
                 'value' => 'hello',
-                'font' => 'helvetica',
+                'font' => 'Helvetica',
                 'fontsize' => 12,
-                'colour' => '#112233',
-                'width' => 100,
+                'colour' => '#000000',
+                'width' => 50,
             ]),
-            'font' => 'helvetica', // Ignored by getters now; kept for legacy shape only.
-            'fontsize' => 12, // Ignored by getters.
-            'colour' => '#112233', // Ignored by getters.
-            'posx' => 10,
-            'posy' => 20,
-            'width' => 100, // Ignored by getters; width comes from JSON.
-            'refpoint' => 0,
-            'alignment' => 'L',
-        ];
-
-        $legacy = new text_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        $this->assertSame(42, $adapter->get_id());
-        $this->assertSame(7, $adapter->get_pageid());
-        $this->assertSame('Legacy Text', $adapter->get_name());
-        // Get_data() on the legacy adapter delegates to the legacy element, whose
-        // data now stores JSON; extract the value to compare with the original scalar.
-        $decoded = json_decode((string)$adapter->get_data(), true);
-        $this->assertIsArray($decoded);
-        $this->assertSame('hello', (string)$decoded['value']);
-        $this->assertSame('helvetica', $adapter->get_font());
-        $this->assertSame(12, $adapter->get_fontsize());
-        $this->assertSame('#112233', $adapter->get_colour());
-        $this->assertSame(100, $adapter->get_width());
-
-        // Ensure get_inner returns the original instance.
-        $this->assertSame($legacy, $adapter->get_inner());
-    }
-
-    /**
-     * Ensure factory's helper wraps a legacy element in the adapter.
-     *
-     * @covers \mod_customcert\service\element_factory::wrap_legacy
-     */
-    public function test_factory_wraps_legacy(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'X',
-            'data' => '',
-            'font' => null,
-            'fontsize' => null,
-            'colour' => null,
-            'posx' => null,
-            'posy' => null,
-            'width' => null,
-            'refpoint' => null,
-            'alignment' => 'L',
-        ];
-
-        $legacy = new text_element($record);
-        $factory = new element_factory(new element_registry());
-        $adapter = $factory->wrap_legacy($legacy);
-        $this->assertInstanceOf(legacy_element_adapter::class, $adapter);
-        $this->assertSame($legacy, $adapter->get_inner());
-    }
-
-    /**
-     * Ensure adapter delegates set_edit_element_form to inner element.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::set_edit_element_form
-     */
-    public function test_adapter_delegates_set_edit_element_form(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => '',
-        ];
-
-        $legacy = new text_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        // Create a mock form.
-        $form = $this->createMock(edit_element_form::class);
-
-        // Should not throw; delegates to inner element.
-        $adapter->set_edit_element_form($form);
-
-        // Verify the form was set on the inner element.
-        $this->expectNotToPerformAssertions();
-    }
-
-    /**
-     * Ensure adapter build_form() bridges to inner element's render_form_elements().
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::build_form
-     */
-    public function test_adapter_build_form_delegates_to_render_form_elements(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => '',
-        ];
-
-        // Use a legacy fixture that only has render_form_elements(), not build_form().
-        $legacy = new legacy_invokable_test_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        // Create a mock MoodleQuickForm.
-        $mform = $this->getMockBuilder(MoodleQuickForm::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        // Build_form() should bridge to the inner element's render_form_elements().
-        $adapter->build_form($mform);
-        // The legacy fixture sets a flag when render_form_elements is called.
-        $this->assertTrue($legacy->called);
-    }
-
-    /**
-     * Ensure adapter delegates has_save_and_continue to inner element when method exists.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::has_save_and_continue
-     */
-    public function test_adapter_delegates_has_save_and_continue(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => '',
-        ];
-
-        // Text element doesn't have has_save_and_continue, so should return false.
-        $legacy = new text_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        $this->assertFalse($adapter->has_save_and_continue());
-    }
-
-    /**
-     * Adapter must NOT call validate_form_elements() or emit a deprecation when the inner
-     * element only inherits the base no-op (i.e. does not override the method).
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::validate_form_elements
-     */
-    public function test_adapter_skips_validate_form_elements_when_not_overridden(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => '',
-        ];
-
-        // Text_element does not override validate_form_elements — only inherits the base no-op.
-        $legacy = new text_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        $errors = $adapter->validate_form_elements(['name' => 'Test'], []);
-
-        // No deprecation notice should be emitted — the base no-op must not be called.
-        $this->assertDebuggingNotCalled();
-        $this->assertIsArray($errors);
-        $this->assertEmpty($errors);
-    }
-
-    /**
-     * Adapter must delegate to validate_form_elements() when the inner element actually overrides it.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::validate_form_elements
-     */
-    public function test_adapter_delegates_validate_form_elements_when_overridden(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => '',
-        ];
-
-        $legacy = new legacy_validate_form_elements_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        $errors = $adapter->validate_form_elements(['name' => 'Test'], []);
-
-        // The inner element's override was called.
-        $this->assertTrue($legacy->called);
-        $this->assertIsArray($errors);
-        $this->assertEmpty($errors);
-    }
-
-    /**
-     * Ensure adapter delegates render_html to inner element.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::render_html
-     */
-    public function test_adapter_delegates_render_html(): void {
-        global $DB;
-        $this->resetAfterTest();
-
-        // Create necessary database records for render_html to work.
-        $course = $this->getDataGenerator()->create_course();
-        $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-        $templatedata = $DB->get_record('customcert_templates', ['id' => $customcert->templateid]);
-        $template = template::from_record((new template_repository())->get_by_id_or_fail((int)$templatedata->id));
-        $templateservice = template_service::create();
-        $pageid = $templateservice->add_page($template);
-
-        // Insert element record to get valid ID.
-        $elementid = $DB->insert_record('customcert_elements', (object) [
-            'pageid' => $pageid,
-            'name' => 'Test',
-            'element' => 'text',
-            'data' => json_encode(['text' => 'Hello World']),
-            'sequence' => 1,
-            'timecreated' => time(),
-            'timemodified' => time(),
         ]);
+        $inner = new legacy_genuine_45_element($record);
 
-        $record = (object) [
-            'id' => $elementid,
-            'pageid' => $pageid,
-            'name' => 'Test',
-            'data' => json_encode(['text' => 'Hello World']),
-        ];
-
-        $legacy = new text_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        // Should delegate to inner element's render_html.
-        $html = $adapter->render_html();
-
-        // Should return non-empty HTML string.
-        $this->assertIsString($html);
-        $this->assertNotEmpty($html);
+        $this->assertSame('hello', $inner->get_data());
+        $this->assertSame('hello', $this->get_protected_property($inner, 'element')->data);
     }
 
     /**
-     * Ensure adapter delegates save_unique_data to inner element when method exists.
+     * Read a protected/private property value via reflection for assertions.
      *
-     * @covers \mod_customcert\element\legacy_element_adapter::save_unique_data
+     * @param object $object
+     * @param string $property
+     * @return mixed
      */
-    public function test_adapter_delegates_save_unique_data(): void {
+    private function get_protected_property(object $object, string $property): mixed {
+        $ref = new \ReflectionProperty($object, $property);
+        $ref->setAccessible(true);
+        return $ref->getValue($object);
+    }
+
+    /**
+     * The adapter's strict v2 render() must safely reach the historical untyped
+     * render($pdf, $preview, $user) signature without a declaration/runtime failure.
+     */
+    public function test_adapter_render_delegates_to_historical_pdf_signature(): void {
+        global $CFG;
         $this->resetAfterTest();
+        require_once($CFG->libdir . '/pdflib.php');
 
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => '',
-        ];
-
-        // Create a legacy element with save_unique_data.
-        $legacy = new legacy_save_unique_data_element($record);
-
-        $adapter = new legacy_element_adapter($legacy);
-
-        // Create form data.
-        $formdata = (object) [
-            'testfield' => 'Test content',
-        ];
-
-        // Should delegate to inner element's save_unique_data (deprecation notice fires at the call site, not the adapter).
-        $result = $adapter->save_unique_data($formdata);
-        // Should return the value from the inner element's save_unique_data.
-        $this->assertIsString($result);
-        $this->assertSame('Test content', $result);
-    }
-
-    /**
-     * Ensure adapter delegates definition_after_data to inner element when method exists.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::definition_after_data
-     */
-    public function test_adapter_delegates_definition_after_data(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => json_encode(['dateitem' => '-1', 'fallbackstring' => 'Test']),
-        ];
-
-        // Create a legacy element with definition_after_data.
-        $legacy = new legacy_definition_after_data_element($record);
-
-        $adapter = new legacy_element_adapter($legacy);
-
-        // Create a mock MoodleQuickForm.
-        $mform = $this->getMockBuilder(MoodleQuickForm::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        // Should delegate to inner element's deprecated definition_after_data.
-        $adapter->definition_after_data($mform);
-        $this->assertDebuggingCalled();
-
-        // Verify the inner element's method was called.
-        $this->assertTrue($legacy->called);
-    }
-
-    /**
-     * Ensure adapter delegates after_restore to inner element when method exists.
-     *
-     * The adapter implements restorable_element_interface so the restore task hits the
-     * instanceof branch and never emits a deprecation warning. The inner legacy element's
-     * after_restore() is called silently by the adapter as the designated compatibility bridge.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::after_restore_from_backup
-     */
-    public function test_adapter_delegates_after_restore(): void {
-        $this->resetAfterTest();
-
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => json_encode(['dateitem' => '-1']),
-        ];
-
-        // Create a legacy element with after_restore.
-        $legacy = new legacy_after_restore_element($record);
-
-        $adapter = new legacy_element_adapter($legacy);
-
-        // Mock the restore task — only the type hint matters for delegation.
-        $restore = $this->getMockBuilder(restore_customcert_activity_task::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        // Delegates to the inner element's after_restore() and emits a deprecation notice.
-        $adapter->after_restore_from_backup($restore);
-        $this->assertDebuggingCalled();
-        // Verify the inner element's method was called.
-        $this->assertTrue($legacy->called);
-    }
-
-    /**
-     * When the inner element already implements restorable_element_interface, the adapter
-     * must delegate to after_restore_from_backup() directly without emitting any deprecation.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::after_restore_from_backup
-     */
-    public function test_adapter_delegates_to_new_restorable_interface_without_deprecation(): void {
-        $this->resetAfterTest();
-        $record = (object) [
-            'id' => 1,
-            'pageid' => 1,
-            'name' => 'Test',
-            'data' => json_encode([]),
-        ];
-        $inner = new new_restorable_element($record);
-        $adapter = new legacy_element_adapter($inner);
-        $restore = $this->getMockBuilder(restore_customcert_activity_task::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-        // No deprecation notice should be emitted — inner uses the new interface.
-        $adapter->after_restore_from_backup($restore);
-        $this->assertDebuggingNotCalled();
-        $this->assertTrue($inner->called);
-    }
-
-    /**
-     * Ensure element::delete() emits deprecation notice and still removes the record.
-     *
-     * @covers \mod_customcert\element::delete
-     */
-    public function test_element_delete_emits_deprecation_and_removes_record(): void {
-        global $DB;
-        $this->resetAfterTest();
-
-        $course = $this->getDataGenerator()->create_course();
-        $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-        $templatedata = $DB->get_record('customcert_templates', ['id' => $customcert->templateid]);
-        $template = template::from_record((new template_repository())->get_by_id_or_fail((int)$templatedata->id));
-        $templateservice = template_service::create();
-        $pageid = $templateservice->add_page($template);
-
-        $elementid = $DB->insert_record('customcert_elements', (object) [
-            'pageid' => $pageid,
-            'name' => 'Test',
-            'element' => 'text',
-            'data' => json_encode(['value' => 'Test']),
-            'sequence' => 1,
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ]);
-
-        $record = (object) [
-            'id' => $elementid,
-            'pageid' => $pageid,
-            'name' => 'Test',
-            'data' => json_encode(['value' => 'Test']),
-        ];
-
-        $legacy = new text_element($record);
-
-        $this->assertTrue($DB->record_exists('customcert_elements', ['id' => $elementid]));
-
-        $result = $legacy->delete();
-
-        $this->assertDebuggingCalled(
-            'element::delete() is deprecated since Moodle 5.2. Use element_repository::delete() instead.',
-            DEBUG_DEVELOPER
-        );
-        $this->assertTrue($result);
-        $this->assertFalse($DB->record_exists('customcert_elements', ['id' => $elementid]));
-    }
-
-    /**
-     * Ensure adapter delegates delete to inner element.
-     *
-     * @covers \mod_customcert\element\legacy_element_adapter::delete
-     */
-    public function test_adapter_delegates_delete(): void {
-        global $DB;
-        $this->resetAfterTest();
-
-        // Create necessary database records.
-        $course = $this->getDataGenerator()->create_course();
-        $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-        $templatedata = $DB->get_record('customcert_templates', ['id' => $customcert->templateid]);
-        $template = template::from_record((new template_repository())->get_by_id_or_fail((int)$templatedata->id));
-        $templateservice = template_service::create();
-        $pageid = $templateservice->add_page($template);
-
-        // Insert element record.
-        $elementid = $DB->insert_record('customcert_elements', (object) [
-            'pageid' => $pageid,
-            'name' => 'Test',
-            'element' => 'text',
-            'data' => json_encode(['value' => 'Test']),
-            'sequence' => 1,
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ]);
-
-        $record = (object) [
-            'id' => $elementid,
-            'pageid' => $pageid,
-            'name' => 'Test',
-            'data' => json_encode(['value' => 'Test']),
-        ];
-
-        $legacy = new text_element($record);
-        $adapter = new legacy_element_adapter($legacy);
-
-        // Verify element exists.
-        $this->assertTrue($DB->record_exists('customcert_elements', ['id' => $elementid]));
-
-        // Adapter calls element_repository::delete() directly (no deprecation notice).
-        $result = $adapter->delete();
-
-        // Should return true and delete the record.
-        $this->assertTrue($result);
-        $this->assertFalse($DB->record_exists('customcert_elements', ['id' => $elementid]));
-    }
-
-    /**
-     * Deprecated legacy hooks listed in CHANGES must still exist on the base element class.
-     *
-     * @covers \mod_customcert\element
-     */
-    public function test_deprecated_legacy_hooks_still_exist_on_base_class(): void {
-        $this->assertTrue(method_exists(element::class, 'save_unique_data'));
-        $this->assertTrue(method_exists(element::class, 'after_restore'));
-        $this->assertTrue(method_exists(element::class, 'copy_element'));
-        $this->assertTrue(method_exists(element::class, 'delete'));
-        $this->assertTrue(method_exists(element::class, 'render_form_elements'));
-        $this->assertTrue(method_exists(element::class, 'validate_form_elements'));
-        $this->assertTrue(method_exists(element::class, 'definition_after_data'));
-        $this->assertTrue(method_exists(element::class, 'save_form_elements'));
-    }
-
-    /**
-     * copy_element() on the base class emits a deprecation notice.
-     *
-     * @covers \mod_customcert\element::copy_element
-     */
-    public function test_copy_element_emits_deprecation_notice(): void {
-        $record = (object) ['id' => 1, 'pageid' => 1, 'name' => 'Test', 'data' => null];
-        $element = new text_element($record);
-
-        $result = $element->copy_element(new stdClass());
-
-        $this->assertDebuggingCalled(
-            'element::copy_element() is deprecated since Moodle 5.2. '
-            . 'Implement mod_customcert\\element\\copyable_element_interface::copy_from() instead.',
-            DEBUG_DEVELOPER
-        );
-        $this->assertTrue($result);
-    }
-
-    /**
-     * can_add() returns true by default.
-     *
-     * @covers \mod_customcert\element::can_add
-     */
-    public function test_can_add_returns_true(): void {
-        $this->assertTrue(text_element::can_add());
-    }
-
-    /**
-     * form_buildable_interface must not exist — it was never released and has been fully deleted.
-     *
-     * @covers \mod_customcert\element
-     */
-    public function test_form_buildable_interface_does_not_exist(): void {
-        $this->assertFalse(
-            interface_exists('mod_customcert\\element\\form_buildable_interface', true),
-            'form_buildable_interface was never released and must not exist'
-        );
-    }
-
-    /**
-     * A legacy element whose copy_element() returns void/null is treated as copy success, not failure.
-     *
-     * Old third-party copy_element() implementations may have no return statement (void-returning).
-     * Only an explicit false return should abort the copy; null/void must be treated as success.
-     *
-     * @covers \mod_customcert\service\element_repository::copy_page
-     */
-    public function test_legacy_void_copy_element_treated_as_success(): void {
-        global $DB;
-        $this->resetAfterTest();
-
-        require_once(__DIR__ . '/fixtures/legacy_void_copy_element.php');
-
-        // Set up a course, customcert, template and page.
-        $course = $this->getDataGenerator()->create_course();
-        $customcert = $this->getDataGenerator()->create_module('customcert', ['course' => $course->id]);
-        $templatedata = $DB->get_record('customcert_templates', ['id' => $customcert->templateid]);
-        $templateservice = template_service::create();
-        $template = template::from_record((new template_repository())->get_by_id_or_fail((int)$templatedata->id));
-        $sourcepageid = $templateservice->add_page($template);
-
-        // Insert an element record whose type maps to the void-returning fixture.
-        $elementid = $DB->insert_record('customcert_elements', (object) [
-            'pageid'       => $sourcepageid,
-            'name'         => 'Void copy element',
-            'element'      => 'legacy_void_copy',
-            'data'         => null,
-            'sequence'     => 1,
-            'timecreated'  => time(),
-            'timemodified' => time(),
-        ]);
-
-        // Create a destination page.
-        $destpageid = $templateservice->add_page($template);
-
-        // Build a repository whose factory knows about the fixture type.
         $registry = new element_registry();
-        element_bootstrap::register_defaults($registry);
-        $registry->register('legacy_void_copy', legacy_void_copy_element::class);
+        $registry->register('legacy45', legacy_genuine_45_element::class);
         $factory = new element_factory($registry);
-        $repo = new element_repository($factory);
+        $instance = $factory->create('legacy45', $this->make_record());
+        // The factory emits the general legacy-compatibility diagnostic when wrapping.
+        $this->assertDebuggingCalled();
 
-        // Copy the page — the void-returning copy_element() must not cause the element to be deleted.
-        $count = $repo->copy_page($sourcepageid, $destpageid);
+        $pdf = $this->getMockBuilder(\pdf::class)->disableOriginalConstructor()->getMock();
+        $user = new stdClass();
 
-        $this->assertDebuggingCalled(
-            'copy_element() is deprecated since Moodle 5.2. '
-            . 'Implement mod_customcert\\element\\copyable_element_interface::copy_from() instead.',
-            DEBUG_DEVELOPER
-        );
-
-        // One element should have been copied successfully.
-        $this->assertSame(1, $count);
-        // The copied element must exist in the destination page.
-        $this->assertTrue(
-            $DB->record_exists('customcert_elements', ['pageid' => $destpageid, 'element' => 'legacy_void_copy']),
-            'Copied element was incorrectly deleted because copy_element() returned null instead of false'
-        );
+        // Must not throw a declaration/runtime error when delegating to the historical signature.
+        $instance->render($pdf, false, $user);
+        $this->addToAssertionCount(1);
     }
 
     /**
-     * A legacy element with old untyped non-render hook signatures can still class-load without a PHP fatal.
+     * Create a minimal MoodleQuickForm stub for form lifecycle tests.
      *
-     * @covers \mod_customcert\element
+     * @return MoodleQuickForm
      */
-    public function test_legacy_untyped_non_render_hooks_class_loads(): void {
-        require_once(__DIR__ . '/fixtures/legacy_old_signature_element.php');
-        $this->assertTrue(class_exists(legacy_old_signature_element::class));
-    }
+    private function create_stub_mform(): MoodleQuickForm {
+        global $CFG;
+        require_once($CFG->libdir . '/formslib.php');
 
-    /**
-     * The QR code element class loads successfully, confirming the context import is present.
-     *
-     * @covers \customcertelement_qrcode\element
-     */
-    public function test_qrcode_element_class_loads_with_context_import(): void {
-        $this->assertTrue(class_exists(customcertelement_qrcode_element::class));
+        /** @var MoodleQuickForm \$mform */
+        $mform = $this->getMockBuilder(MoodleQuickForm::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['elementExists', 'getElement'])
+            ->getMock();
+        $mform->method('elementExists')->willReturn(false);
+        return $mform;
     }
 }

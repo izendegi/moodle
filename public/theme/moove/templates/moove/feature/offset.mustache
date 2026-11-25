@@ -1,0 +1,57 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template theme_moove/moove/feature/offset
+
+    Offset 2x2 grid frontpage feature section: centered heading on top, boxes
+    laid out in two columns where the right column is shifted down on larger
+    screens so the grid reads as staggered rather than perfectly aligned.
+
+    Context variables required for this template:
+    * marketingheading - The section heading html
+    * marketingcontent - The section content html
+    * marketingboxes - Array of box objects (icon, heading, content, offset)
+
+    Example context (json):
+    {
+        "marketingheading": "<p>Awesome App Features</p>",
+        "marketingcontent": "<p>Moove is a Moodle template.</p>",
+        "marketingboxes": [
+            {"icon": "https://example.com/icon.svg", "heading": "<p>Lorem</p>", "content": "<p>Lorem ipsum</p>", "offset": false}
+        ]
+    }
+}}
+<section id="feature" class="feature-layout-offset">
+    <div class="container">
+        <div class="text-center">
+            <h3 class="h1 mt-3 mb-3">{{{marketingheading}}}</h3>
+            <div class="marketing-content mx-auto">{{{marketingcontent}}}</div>
+        </div>
+
+        <div class="row g-4 g-md-5 mt-4">
+            {{#marketingboxes}}
+                <div class="col-md-6 feature-offset-item {{#offset}}feature-offset-item--shifted{{/offset}}">
+                    <div class="icon-lg text-white rounded-3">
+                        <img src="{{{icon}}}">
+                    </div>
+                    <h5>{{{heading}}}</h5>
+                    <div class="box-content">{{{content}}}</div>
+                </div>
+            {{/marketingboxes}}
+        </div>
+    </div>
+</section>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+    <defs>
+        <linearGradient id="base" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#050b1a"/>
+            <stop offset="55%" stop-color="#0b1a3a"/>
+            <stop offset="100%" stop-color="#0f47ad"/>
+        </linearGradient>
+        <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="90"/>
+        </filter>
+        <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1.4" fill="#ffffff" opacity="0.08"/>
+        </pattern>
+        <clipPath id="canvas">
+            <rect width="1600" height="900"/>
+        </clipPath>
+    </defs>
+
+    <g clip-path="url(#canvas)">
+        <rect width="1600" height="900" fill="url(#base)"/>
+
+        <g filter="url(#blur)">
+            <ellipse cx="260" cy="180" rx="340" ry="260" fill="#7c3aed" opacity="0.55"/>
+            <ellipse cx="1360" cy="150" rx="300" ry="240" fill="#06b6d4" opacity="0.45"/>
+            <ellipse cx="820" cy="760" rx="420" ry="280" fill="#2f6fed" opacity="0.5"/>
+            <ellipse cx="1420" cy="760" rx="260" ry="220" fill="#ec4899" opacity="0.35"/>
+        </g>
+
+        <rect width="1600" height="900" fill="url(#dots)"/>
+    </g>
+</svg>

@@ -37,7 +37,7 @@ use stdClass;
 /**
  * Class certificate.
  *
- * Helper functionality for certificates.
+ * Deprecated compatibility facade over the current certificate services/repositories.
  *
  * @package    mod_customcert
  * @copyright  2016 Mark Nelson <mdjnelson@gmail.com>
@@ -90,14 +90,15 @@ class certificate {
     /**
      * Handles setting the protection field for the customcert.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see form_service::set_protection()} instead.
      * @param stdClass $data
      * @return string the value to insert into the protection field
      */
     public static function set_protection(stdClass $data): string {
         debugging(
-            'certificate::set_protection() is deprecated since Moodle 5.2. '
-            . 'Use form_service::set_protection() instead.',
+            'certificate::set_protection() is deprecated since Moodle 5.2. Use form_service::set_protection() '
+            . 'instead. This compatibility shim is retained through Moodle 5.3; removal is planned no earlier '
+            . 'than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -107,15 +108,16 @@ class certificate {
     /**
      * Handles uploading an image for the customcert module.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see form_service::upload_files()} instead.
      * @param int $draftitemid the draft area containing the files
      * @param int $contextid the context we are storing this image in
      * @param string $filearea identifies the file area.
      */
     public static function upload_files(int $draftitemid, int $contextid, string $filearea = 'image'): void {
         debugging(
-            'certificate::upload_files() is deprecated since Moodle 5.2. '
-            . 'Use form_service::upload_files() instead.',
+            'certificate::upload_files() is deprecated since Moodle 5.2. Use form_service::upload_files() '
+            . 'instead. This compatibility shim is retained through Moodle 5.3; removal is planned no earlier '
+            . 'than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -125,13 +127,14 @@ class certificate {
     /**
      * Return the list of possible fonts to use.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see element_helper::get_fonts()} instead.
      * @return array
      */
     public static function get_fonts(): array {
         debugging(
-            'certificate::get_fonts() is deprecated since Moodle 5.2. '
-            . 'Use element_helper::get_fonts() instead.',
+            'certificate::get_fonts() is deprecated since Moodle 5.2. Use element_helper::get_fonts() instead. '
+            . 'This compatibility shim is retained through Moodle 5.3; removal is planned no earlier than '
+            . 'the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -141,13 +144,14 @@ class certificate {
     /**
      * Return the list of possible font sizes to use.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see element_helper::get_font_sizes()} instead.
      * @return array
      */
     public static function get_font_sizes(): array {
         debugging(
-            'certificate::get_font_sizes() is deprecated since Moodle 5.2. '
-            . 'Use element_helper::get_font_sizes() instead.',
+            'certificate::get_font_sizes() is deprecated since Moodle 5.2. Use element_helper::get_font_sizes() '
+            . 'instead. This compatibility shim is retained through Moodle 5.3; removal is planned no earlier '
+            . 'than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -157,15 +161,16 @@ class certificate {
     /**
      * Get the time the user has spent in the course.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see certificate_time_service::get_course_time()} instead.
      * @param int $courseid
      * @param int $userid
      * @return int the total time spent in seconds
      */
     public static function get_course_time(int $courseid, int $userid = 0): int {
         debugging(
-            'certificate::get_course_time() is deprecated since Moodle 5.2. '
-            . 'Use certificate_time_service::get_course_time() instead.',
+            'certificate::get_course_time() is deprecated since Moodle 5.2. Use '
+            . 'certificate_time_service::get_course_time() instead. This compatibility shim is retained through '
+            . 'Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -176,7 +181,8 @@ class certificate {
     /**
      * Download all certificate issues.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see certificate_download_service::download_all_issues_for_instance()}
+     *     instead.
      * @param template $template
      * @param array $issues
      * @return void
@@ -184,8 +190,10 @@ class certificate {
      */
     public static function download_all_issues_for_instance(template $template, array $issues): void {
         debugging(
-            'certificate::download_all_issues_for_instance() is deprecated since Moodle 5.2. '
-            . 'Use certificate_download_service::download_all_issues_for_instance() instead.',
+            'certificate::download_all_issues_for_instance() is deprecated since Moodle 5.2. Use '
+            . 'certificate_download_service::download_all_issues_for_instance() instead. This compatibility shim '
+            . 'is retained through Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible '
+            . 'release.',
             DEBUG_DEVELOPER
         );
 
@@ -196,13 +204,14 @@ class certificate {
     /**
      * Download all certificates on the site.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see certificate_download_service::download_all_for_site()} instead.
      * @return void
      */
     public static function download_all_for_site(): void {
         debugging(
-            'certificate::download_all_for_site() is deprecated since Moodle 5.2. '
-            . 'Use certificate_download_service::download_all_for_site() instead.',
+            'certificate::download_all_for_site() is deprecated since Moodle 5.2. Use '
+            . 'certificate_download_service::download_all_for_site() instead. This compatibility shim is '
+            . 'retained through Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -213,9 +222,11 @@ class certificate {
     /**
      * Returns a list of issued customcerts.
      *
-     * @deprecated since Moodle 5.2
+     * The historical argument remains in the signature, but restrictions come from the current CM.
+     *
+     * @deprecated since Moodle 5.2. Use {@see issue_repository::get_issues()} instead.
      * @param int $customcertid
-     * @param int $groupmode the group mode
+     * @param int $groupmode retained for signature compatibility
      * @param stdClass $cm the course module
      * @param int $limitfrom
      * @param int $limitnum
@@ -231,64 +242,79 @@ class certificate {
         string $sort = ''
     ): array {
         debugging(
-            'certificate::get_issues() is deprecated since Moodle 5.2. '
-            . 'Use issue_repository::get_issues() instead.',
+            'certificate::get_issues() is deprecated since Moodle 5.2. Use issue_repository::get_issues() '
+            . 'instead. This compatibility shim is retained through Moodle 5.3; removal is planned no earlier '
+            . 'than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
         $repo = new issue_repository();
+
+        // Keep the compatibility argument, but derive restrictions from the current CM.
         return $repo->get_issues($customcertid, $cm, $limitfrom, $limitnum, $sort);
     }
 
     /**
      * Returns the total number of issues for a given customcert.
      *
-     * @deprecated since Moodle 5.2
+     * The historical argument remains in the signature, but restrictions come from the current CM.
+     *
+     * @deprecated since Moodle 5.2. Use {@see issue_repository::get_number_of_issues()} instead.
      * @param int $customcertid
      * @param stdClass $cm the course module
-     * @param int $groupmode the group mode
+     * @param int $groupmode retained for signature compatibility
      */
     public static function get_number_of_issues(int $customcertid, stdClass $cm, int $groupmode): int {
         debugging(
-            'certificate::get_number_of_issues() is deprecated since Moodle 5.2. '
-            . 'Use issue_repository::get_number_of_issues() instead.',
+            'certificate::get_number_of_issues() is deprecated since Moodle 5.2. Use '
+            . 'issue_repository::get_number_of_issues() instead. This compatibility shim is retained through '
+            . 'Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
         $repo = new issue_repository();
+
+        // Keep the compatibility argument, but derive restrictions from the current CM.
         return $repo->get_number_of_issues($customcertid, $cm);
     }
 
     /**
      * Returns an array of the conditional variables to use in the get_issues SQL query.
      *
-     * @deprecated since Moodle 5.2
+     * The historical argument remains in the signature, but restrictions come from the current CM.
+     *
+     * @deprecated since Moodle 5.2. Use {@see issue_repository::get_conditional_issues_sql()} instead.
      * @param stdClass $cm the course module
-     * @param int $groupmode the group mode
+     * @param int $groupmode retained for signature compatibility
      * @return array the conditional variables
      */
     public static function get_conditional_issues_sql(stdClass $cm, int $groupmode): array {
         debugging(
-            'certificate::get_conditional_issues_sql() is deprecated since Moodle 5.2. '
-            . 'Use issue_repository::get_conditional_issues_sql() instead.',
+            'certificate::get_conditional_issues_sql() is deprecated since Moodle 5.2. Use '
+            . 'issue_repository::get_conditional_issues_sql() instead. This compatibility shim is retained '
+            . 'through Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
         $repo = new issue_repository();
+
+        // Keep the compatibility argument, but derive restrictions from the current CM.
         return $repo->get_conditional_issues_sql($cm);
     }
 
     /**
      * Get number of certificates for a user.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see certificate_repository::get_number_of_certificates_for_user()}
+     *     instead.
      * @param int $userid
      * @return int
      */
     public static function get_number_of_certificates_for_user(int $userid): int {
         debugging(
-            'certificate::get_number_of_certificates_for_user() is deprecated since Moodle 5.2. '
-            . 'Use certificate_repository::get_number_of_certificates_for_user() instead.',
+            'certificate::get_number_of_certificates_for_user() is deprecated since Moodle 5.2. Use '
+            . 'certificate_repository::get_number_of_certificates_for_user() instead. This compatibility shim is '
+            . 'retained through Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -299,7 +325,7 @@ class certificate {
     /**
      * Gets the certificates for the user.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see certificate_repository::get_certificates_for_user()} instead.
      * @param int $userid
      * @param int $limitfrom
      * @param int $limitnum
@@ -308,8 +334,9 @@ class certificate {
      */
     public static function get_certificates_for_user(int $userid, int $limitfrom, int $limitnum, string $sort = ''): array {
         debugging(
-            'certificate::get_certificates_for_user() is deprecated since Moodle 5.2. '
-            . 'Use certificate_repository::get_certificates_for_user() instead.',
+            'certificate::get_certificates_for_user() is deprecated since Moodle 5.2. Use '
+            . 'certificate_repository::get_certificates_for_user() instead. This compatibility shim is retained '
+            . 'through Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -320,15 +347,16 @@ class certificate {
     /**
      * Issues a certificate to a user.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see certificate_issue_service::issue_certificate()} instead.
      * @param int $certificateid The ID of the certificate
      * @param int $userid The ID of the user to issue the certificate to
      * @return int The ID of the issue
      */
     public static function issue_certificate(int $certificateid, int $userid): int {
         debugging(
-            'certificate::issue_certificate() is deprecated since Moodle 5.2. '
-            . 'Use certificate_issue_service::issue_certificate() instead.',
+            'certificate::issue_certificate() is deprecated since Moodle 5.2. Use '
+            . 'certificate_issue_service::issue_certificate() instead. This compatibility shim is retained '
+            . 'through Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
@@ -339,12 +367,14 @@ class certificate {
     /**
      * Generates an unused code of random letters and numbers.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see certificate_issue_service::generate_code()} instead.
      * @return string
      */
     public static function generate_code(): string {
         debugging(
-            'certificate::generate_code() is deprecated since Moodle 5.2. Use certificate_issue_service::generate_code() instead.',
+            'certificate::generate_code() is deprecated since Moodle 5.2. Use '
+            . 'certificate_issue_service::generate_code() instead. This compatibility shim is retained through '
+            . 'Moodle 5.3; removal is planned no earlier than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 

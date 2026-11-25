@@ -106,8 +106,15 @@ final class external_test extends advanced_testcase {
 
         $result = external::save_element($template->id, $element->id, $values);
         // Simulate WS return value cleaning.
-        external_api::clean_returnvalue(external::save_element_returns(), $result);
-        $this->assertTrue($result);
+        $cleaned = external_api::clean_returnvalue(external::save_element_returns(), $result);
+        $this->assertIsArray($cleaned);
+        $this->assertSame((int)$element->id, (int)$cleaned['id']);
+        $this->assertArrayHasKey('posx', $cleaned);
+        $this->assertArrayHasKey('posy', $cleaned);
+        $this->assertArrayHasKey('width', $cleaned);
+        $this->assertArrayHasKey('refpoint', $cleaned);
+        $this->assertArrayHasKey('alignment', $cleaned);
+        $this->assertArrayHasKey('html', $cleaned);
 
         // Verify the submitted value was normalised and saved.
         $row = $DB->get_record('customcert_elements', ['id' => $element->id], '*', MUST_EXIST);
@@ -115,61 +122,6 @@ final class external_test extends advanced_testcase {
         $decoded = json_decode($row->data, true);
         $this->assertIsArray($decoded);
         $this->assertSame('new text', $decoded['text'] ?? null, 'Submitted text value should be saved');
-    }
-
-    /**
-     * A teacher with mod/customcert:manage in Course A must not be able to overwrite
-     * an element belonging to Course B by supplying a foreign elementid.
-     *
-     * @covers \mod_customcert\external::save_element
-     */
-    public function test_save_element_rejects_foreign_elementid(): void {
-        global $DB;
-
-        // Set up Course A with a customcert and a teacher.
-        $coursea = $this->getDataGenerator()->create_course();
-        $courseb = $this->getDataGenerator()->create_course();
-
-        $teacher = $this->getDataGenerator()->create_user();
-        $this->getDataGenerator()->enrol_user($teacher->id, $coursea->id, 'editingteacher');
-
-        // Course A certificate — teacher has manage capability here.
-        $customcerta = $this->getDataGenerator()->create_module('customcert', ['course' => $coursea->id]);
-        $templateida = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcerta->id], MUST_EXIST);
-
-        // Course B certificate — teacher has no access.
-        $customcertb = $this->getDataGenerator()->create_module('customcert', ['course' => $courseb->id]);
-        $templateidb = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcertb->id], MUST_EXIST);
-
-        // Insert an element into Course B's template.
-        $pageb = (object)[
-            'templateid' => $templateidb,
-            'width' => 210, 'height' => 297,
-            'leftmargin' => 0, 'rightmargin' => 0,
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $pageb->id = (int)$DB->insert_record('customcert_pages', $pageb, true);
-
-        $elementb = (object)[
-            'pageid' => $pageb->id,
-            'element' => 'text',
-            'name' => 'Secret element',
-            'posx' => 0, 'posy' => 0,
-            'refpoint' => 0, 'alignment' => 'L',
-            'data' => json_encode(['text' => 'secret']),
-            'sequence' => 1,
-            'timecreated' => time(), 'timemodified' => time(),
-        ];
-        $elementb->id = (int)$DB->insert_record('customcert_elements', $elementb, true);
-
-        // Authenticate as the Course A teacher and attempt to overwrite Course B's element.
-        $this->setUser($teacher);
-
-        $this->expectException(moodle_exception::class);
-        external::save_element($templateida, $elementb->id, [
-            ['name' => 'name', 'value' => 'Modified by attacker'],
-        ]);
     }
 
     /**
@@ -229,14 +181,72 @@ final class external_test extends advanced_testcase {
         ];
 
         $result = external::save_element($template->id, $element->id, $values);
-        external_api::clean_returnvalue(external::save_element_returns(), $result);
-        $this->assertTrue($result);
+        $cleaned = external_api::clean_returnvalue(external::save_element_returns(), $result);
+        $this->assertSame(15, $cleaned['posx']);
+        $this->assertSame(25, $cleaned['posy']);
+        $this->assertSame(2, $cleaned['refpoint']);
+        $this->assertSame('C', $cleaned['alignment']);
 
         $row = $DB->get_record('customcert_elements', ['id' => $element->id], '*', MUST_EXIST);
         $this->assertSame(15, (int)$row->posx);
         $this->assertSame(25, (int)$row->posy);
         $this->assertSame(2, (int)$row->refpoint);
         $this->assertSame('C', $row->alignment);
+    }
+
+    /**
+     * A teacher with mod/customcert:manage in Course A must not be able to overwrite
+     * an element belonging to Course B by supplying a foreign elementid.
+     *
+     * @covers \mod_customcert\external::save_element
+     */
+    public function test_save_element_rejects_foreign_elementid(): void {
+        global $DB;
+
+        // Set up Course A with a customcert and a teacher.
+        $coursea = $this->getDataGenerator()->create_course();
+        $courseb = $this->getDataGenerator()->create_course();
+
+        $teacher = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($teacher->id, $coursea->id, 'editingteacher');
+
+        // Course A certificate — teacher has manage capability here.
+        $customcerta = $this->getDataGenerator()->create_module('customcert', ['course' => $coursea->id]);
+        $templateida = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcerta->id], MUST_EXIST);
+
+        // Course B certificate — teacher has no access.
+        $customcertb = $this->getDataGenerator()->create_module('customcert', ['course' => $courseb->id]);
+        $templateidb = (int)$DB->get_field('customcert', 'templateid', ['id' => $customcertb->id], MUST_EXIST);
+
+        // Insert an element into Course B's template.
+        $pageb = (object)[
+            'templateid' => $templateidb,
+            'width' => 210, 'height' => 297,
+            'leftmargin' => 0, 'rightmargin' => 0,
+            'sequence' => 1,
+            'timecreated' => time(), 'timemodified' => time(),
+        ];
+        $pageb->id = (int)$DB->insert_record('customcert_pages', $pageb, true);
+
+        $elementb = (object)[
+            'pageid' => $pageb->id,
+            'element' => 'text',
+            'name' => 'Secret element',
+            'posx' => 0, 'posy' => 0,
+            'refpoint' => 0, 'alignment' => 'L',
+            'data' => json_encode(['text' => 'secret']),
+            'sequence' => 1,
+            'timecreated' => time(), 'timemodified' => time(),
+        ];
+        $elementb->id = (int)$DB->insert_record('customcert_elements', $elementb, true);
+
+        // Authenticate as the Course A teacher and attempt to overwrite Course B's element.
+        $this->setUser($teacher);
+
+        $this->expectException(moodle_exception::class);
+        external::save_element($templateida, $elementb->id, [
+            ['name' => 'name', 'value' => 'Modified by attacker'],
+        ]);
     }
 
     /**
@@ -875,7 +885,10 @@ final class external_test extends advanced_testcase {
                 ['name' => 'text', 'value' => 'Updated text'],
             ]
         );
-        $this->assertTrue($result);
+        $cleaned = external_api::clean_returnvalue(external::save_element_returns(), $result);
+        $this->assertIsArray($cleaned);
+        $this->assertSame((int)$elementid, (int)$cleaned['id']);
+        $this->assertArrayHasKey('html', $cleaned);
     }
 
     /**
@@ -948,7 +961,7 @@ final class external_test extends advanced_testcase {
         for ($i = 0; $i < 25; $i++) {
             $user = $this->getDataGenerator()->create_user();
             $this->getDataGenerator()->enrol_user($user->id, $course->id);
-            $this->issue_certificate((int)$customcert->id, (int)$user->id);
+            $this->issue_certificate((int) $customcert->id, (int) $user->id);
         }
 
         // Call the external function with includepdf=true and limit=500.

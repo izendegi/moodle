@@ -4,7 +4,7 @@ moodle-tool_redis
 Changes
 -------
 
-### v5.2-r3
+### v5.3-r2
 
 * 2026-11-09 - Improvement: Show the Redis server which is configured as Moodle session store on the Redis management page as well, re-using the connection code of the Redis session handler from Moodle core, and tell which database of a Redis server is used by the Moodle cache store or by the Moodle session handler, including Behat tests.
 * 2026-11-08 - Improvement: Replace the third-party Valkey Stats management GUI with an own lightweight implementation of the Redis management page, resolves #5.
@@ -12,6 +12,12 @@ Changes
                The auto refresh feature, the async flush option and the possibility to flush the whole Redis instance have been dropped.
 * 2026-11-08 - Improvement: Redirect to the cache store configuration with a notification instead of throwing an exception if the Redis management page is called and there isn't any Redis cache store instance configured, including a Behat test.
 * 2026-11-08 - Tests: Add Behat tests for the flush operation, covering flushing a Redis database as well as rejecting flush requests with an invalid sesskey, without a database, for an invalid database, for an invalid server and of non-admin users. The Behat tests are split into general tests of the plugin, tests for Redis cache stores and tests for the Redis session store.
+
+### v5.3-r1
+
+* 2026-10-20 - Upgrade: Adapt the Valkey-stats GUI colours to the Boost dark colour mode.
+* 2026-10-20 - Upgrade: Adopt changes from MDL-81935 and use new \core_admin\setting\tree\externalpage class.
+* 2026-10-05 - Prepare compatibility for Moodle 5.3.
 
 ### v5.2-r2
 

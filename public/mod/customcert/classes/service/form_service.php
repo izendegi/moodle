@@ -30,8 +30,8 @@ use context_course;
 use context_system;
 use stdClass;
 use mod_customcert\element\element_interface;
-use mod_customcert\element\form_element_interface;
 use mod_customcert\element\legacy_element_adapter;
+use mod_customcert\element\form_element_interface;
 use mod_customcert\element\preparable_form_interface;
 use MoodleQuickForm;
 
@@ -53,6 +53,11 @@ final class form_service {
      * @var string the copy protection variable
      */
     public const string PROTECTION_COPY = 'copy';
+
+    /**
+     * @var string the separator used to encode/decode customcert.protection as a single string
+     */
+    public const string PROTECTION_SEPARATOR = ', ';
 
     /**
      * Build the form for an element.
@@ -110,7 +115,7 @@ final class form_service {
             }
         }
 
-        // Map known select fields to canonical file metadata so save_unique_data() can simply encode.
+        // Map known select fields to canonical file metadata so normalise_data() can encode them.
         if (!empty($data['fileid'])) {
             $fs = get_file_storage();
             if ($file = $fs->get_file_by_id((int)$data['fileid'])) {
@@ -142,7 +147,7 @@ final class form_service {
             $protection[] = self::PROTECTION_COPY;
         }
 
-        return implode(', ', $protection);
+        return implode(self::PROTECTION_SEPARATOR, $protection);
     }
 
     /**

@@ -42,23 +42,31 @@ final class element_registry {
     /**
      * Register a class for a given element type key.
      *
+     * Accepted classes:
+     * - Native v2 elements implementing form_element_interface and renderable_element_interface
+     * - Supported historical subclasses of mod_customcert\element (wrapped by the factory)
+     *
      * @param string $type
-     * @param string $class A native v2 element implementing form_element_interface and
-     *                      renderable_element_interface, or a historical mod_customcert\element subclass
+     * @param string $class
      * @return void
      */
     public function register(string $type, string $class): void {
         if (!class_exists($class)) {
             throw new coding_exception("Cannot register element type '{$type}': class '{$class}' does not exist.");
         }
+
         $isnative = is_a($class, form_element_interface::class, true)
             && is_a($class, renderable_element_interface::class, true);
-        if (!$isnative && !is_a($class, legacy_base::class, true)) {
+        $islegacy = is_a($class, legacy_base::class, true);
+
+        if (!$isnative && !$islegacy) {
             throw new coding_exception(
-                "Cannot register element type '{$type}': '{$class}' must implement"
-                . ' form_element_interface and renderable_element_interface, or extend mod_customcert\\element.'
+                "Cannot register element type '{$type}': '{$class}' must implement "
+                . 'form_element_interface and renderable_element_interface, '
+                . 'or extend mod_customcert\element.'
             );
         }
+
         $this->map[$type] = $class;
     }
 

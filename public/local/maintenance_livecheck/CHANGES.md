@@ -4,7 +4,7 @@ moodle-local_maintenance_livecheck
 Changes
 -------
 
-### v5.2-r4
+### v5.3-r3
 
 * 2026-11-18 - Bugfix: Support live check time slots which span midnight (i.e. where the end time is earlier than the start time). Up to now, the live check was silently never performed with such a configuration. Such a time slot belongs to the weekday on which it starts.
 * 2026-11-18 - Bugfix: Evaluate the configured live check weekdays and the live check time slot in the server timezone as documented, instead of in the timezone of the current user.
@@ -13,11 +13,15 @@ Changes
 * 2026-11-17 - Bugfix: The live check polling does not keep the user's session alive anymore. Up to now, the user's session did not time out as long as a Moodle page with a running live check was open in the browser, regardless of the configured session timeout.
 * 2026-11-17 - Improvement: Fall back to the default back off time if the back off setting is not set yet, instead of triggering a PHP warning.
 
-### v5.2-r3
+### v5.3-r2
 
 * 2026-10-30 - Improvement: Insert the live check JavaScript code with Moodle core's before_footer_html_generation output hook instead of abusing the *_extend_navigation() callback, so the maintenance announcement is also shown on pages which do not build the navigation, like the login page.
 * 2026-10-30 - Improvement: Do not run the live check a second time within an iframe if the parent Moodle page already runs it.
 * 2026-10-30 - Tests: Add Behat scenarios which verify that the maintenance announcement is shown on the login page and on pages with a popup layout.
+
+### v5.3-r1
+
+* 2026-10-05 - Prepare compatibility for Moodle 5.3.
 
 ### v5.2-r2
 

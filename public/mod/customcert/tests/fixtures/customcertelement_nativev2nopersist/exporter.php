@@ -16,7 +16,7 @@
 
 /**
  * Exporter fixture whose field named 'value' collides with the generic migration
- * wrapper shape.
+ * wrapper shape, to prove template import is unaffected by that collision.
  *
  * @package    mod_customcert
  * @category   test

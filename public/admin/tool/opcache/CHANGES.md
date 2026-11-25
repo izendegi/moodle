@@ -4,7 +4,7 @@ moodle-tool_opcache
 Changes
 -------
 
-### v5.2-r4
+### v5.3-r3
 
 * 2026-11-22 - Improvement: Deny direct requests to the Opcache GUI library file with a .htaccess file on Apache webservers which process .htaccess files, credits to Mark Sharp.
 * 2026-11-22 - Improvement: Let the Opcache GUI library file refuse to run if it is not included by Moodle. Until now, on webservers which are configured to interpret *.inc files as PHP, an anonymous user could have run the Opcache GUI by requesting the library file directly, circumventing Moodle's access control and sesskey check. This is prevented now regardless of the webserver configuration, including a PHPUnit test.
@@ -16,7 +16,7 @@ Changes
 * 2026-11-14 - Improvement: Let the Nagios check and the CLI tool to reset PHP opcache verify the TLS certificate of the webserver when they call their web parts with a https URL. Until now, the certificate was not verified (which is the default of Moodle core's curl class) and the secret key could have been captured by an attacker who is able to intercept the connection.\
                Please note: If the URL which you pass to the CLI tools points to a webserver with a self-signed certificate or with a certificate from a private CA, the CLI tools will fail with a curl error after upgrading the plugin. In this case, either add your CA to the CA bundle which is used by PHP (curl.cainfo in php.ini) or call the CLI tools with the new --insecure option to switch the verification off again. Please see README.md for details.
 
-### v5.2-r3
+### v5.3-r2
 
 * 2026-11-06 - Improvement: Let the Nagios check report an UNKNOWN status if the threshold for warning is greater than the threshold for critical.
 * 2026-11-06 - Improvement: Let the web parts of the Nagios check and the CLI tool to reset PHP opcache run without a Moodle session (NO_MOODLE_COOKIES). Until now, each call of a web part created a new Moodle session as its CLI part does not send any cookies.
@@ -30,6 +30,11 @@ Changes
 * 2026-11-04 - Bugfix: Compare the secret keys of the web parts of the Nagios check and the CLI tool to reset PHP opcache with hash_equals(). Until now, a numeric secret key could be matched by a different numeric string (like '1e3' for '1000').
 * 2026-11-04 - Bugfix: Fix the file name of the web part of the Nagios check in README.md.
 * 2026-11-03 - Improvement: Protect the write operations of the Opcache GUI (resetting the cache and invalidating files) against cross-site request forgery with a sesskey check, including PHPUnit and Behat tests.
+
+### v5.3-r1
+
+* 2026-10-20 - Upgrade: Adapt the OPcache GUI colours to the Boost dark colour mode.
+* 2026-10-05 - Prepare compatibility for Moodle 5.3.
 
 ### v5.2-r2
 

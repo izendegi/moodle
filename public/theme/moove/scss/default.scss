@@ -1,7 +1,7 @@
 @import "moove/transitions";
 @import "moove/variables";
-@import "moove/variables_darkandlight";
 @import "../../boost/scss/preset/default";
+@import "moove/variables_darkandlight";
 @import "moove/general";
 @import "moove/cards";
 @import "moove/pages";
@@ -9,6 +9,7 @@
 @import "moove/drawers";
 @import "moove/navbar";
 @import "moove/footer";
+@import "moove/whatsapp-button";
 @import "moove/breadcrumb";
 @import "moove/course";
 @import "moove/mixins/accessibilityfontsize";
@@ -17,6 +18,7 @@
 @import "moove/login";
 @import "moove/mydashboard";
 @import "moove/frontpage";
+@import "moove/frontpage-slideshow";
 @import "moove/profile";
 @import "moove/enrol";
 @import "moove/quiz";

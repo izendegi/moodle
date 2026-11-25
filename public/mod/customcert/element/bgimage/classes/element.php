@@ -32,6 +32,7 @@ use moodle_url;
 use MoodleQuickForm;
 use pdf;
 use stdClass;
+use customcertelement_bgimage\bgimage_payload;
 
 /**
  * The customcert element background image's core interaction API.
@@ -147,7 +148,7 @@ class element extends \customcertelement_image\element {
             }
         }
 
-        return $arrtostore;
+        return bgimage_payload::from_array($arrtostore)->to_array();
     }
 
     /**

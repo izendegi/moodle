@@ -508,11 +508,11 @@ final class repository_test extends advanced_testcase {
         // Upgrade_mod_savepoint() refuses to "advance" to a version that isn't strictly greater
         // than what's on record, so roll the stored plugin version back to simulate a site that
         // is genuinely upgrading from before this field existed.
-        set_config('version', 2026042007, 'mod_customcert');
+        set_config('version', 2026060501, 'mod_customcert');
 
         require_once($CFG->libdir . '/upgradelib.php');
         require_once($CFG->dirroot . '/mod/customcert/db/upgrade.php');
-        xmldb_customcert_upgrade(2026042007);
+        xmldb_customcert_upgrade(2026060501);
 
         $this->assertTrue($dbman->field_exists($table, new \xmldb_field('studentemailed')));
         $this->assertNull($DB->get_field('customcert_issues', 'studentemailed', ['id' => $issueid]));
@@ -540,11 +540,11 @@ final class repository_test extends advanced_testcase {
         // Upgrade_mod_savepoint() refuses to "advance" to a version that isn't strictly greater
         // than what's on record, so roll the stored plugin version back to simulate a site that
         // is genuinely upgrading from before this field existed.
-        set_config('version', 2026042008, 'mod_customcert');
+        set_config('version', 2026060502, 'mod_customcert');
 
         require_once($CFG->libdir . '/upgradelib.php');
         require_once($CFG->dirroot . '/mod/customcert/db/upgrade.php');
-        xmldb_customcert_upgrade(2026042008);
+        xmldb_customcert_upgrade(2026060502);
 
         $this->assertTrue($dbman->field_exists($table, new \xmldb_field('issueautomatically')));
         $this->assertEquals(0, (int)$DB->get_field('customcert', 'issueautomatically', ['id' => $customcert->id]));

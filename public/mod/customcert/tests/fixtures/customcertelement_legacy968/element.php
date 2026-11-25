@@ -15,9 +15,12 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * A realistic legacy element fixture, namespaced like a real customcertelement_* plugin,
- * used to exercise element_repository::create() so that the inherited get_type() naturally
- * derives the 'legacy968' type from its own top-level namespace segment.
+ * Fixture: realistically-namespaced genuine Moodle 4.5-era third-party element.
+ *
+ * Namespaced as customcertelement_legacy968 so that the inherited
+ * mod_customcert\element::get_type() naturally returns 'legacy968', matching how a real
+ * third-party plugin's element type is derived, unlike a synthetic type key registered
+ * under an arbitrary namespace.
  *
  * @package    mod_customcert
  * @category   test
@@ -25,66 +28,67 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-declare(strict_types=1);
-
 namespace customcertelement_legacy968;
 
-use mod_customcert\element as legacy_base_element;
-use mod_customcert\service\element_renderer;
-use stdClass;
-
 /**
- * A minimal legacy element that exposes whatever get_data() returns, placed in a realistic
- * customcertelement_legacy968 namespace so that get_type() (inherited from the base class)
- * naturally resolves to 'legacy968'.
+ * Genuine 4.5-era legacy element with untyped render()/render_html() and legacy hooks.
+ *
+ * Does not override get_type(): the type is derived from the namespace by the base class.
  */
-final class element extends legacy_base_element {
+class element extends \mod_customcert\element {
+    /** @var string|null Last saved unique data (for assertions). */
+    public $lastsaved = null;
+
     /**
-     * Return whatever get_data() returns, for assertion in tests.
+     * Historical untyped PDF render signature.
      *
-     * @return mixed
+     * @param mixed $pdf
+     * @param mixed $preview
+     * @param mixed $user
      */
-    public function read_data(): mixed {
-        return $this->get_data();
+    public function render($pdf, $preview, $user) {
+        // No-op render body for tests.
+        unset($pdf, $preview, $user);
     }
 
     /**
-     * Legacy save_unique_data implementation, used to exercise the real production
-     * persistence_helper::to_json_data() pipeline in tests.
+     * Historical parameterless render_html signature.
      *
-     * Historically, a genuine third-party plugin's save_unique_data() returns ONLY its
-     * own plugin-specific scalar value. Common visual fields (font, fontsize, colour,
-     * width) were historically separate DB columns persisted by the base class, not
-     * part of what save_unique_data() returns. This fixture must preserve that
-     * historical contract so that the persistence layer (not the plugin) is responsible
-     * for merging in the visual fields.
-     *
-     * @param stdClass $data The form data.
      * @return string
      */
-    public function save_unique_data($data): string {
-        return (string) ($data->value ?? '');
+    public function render_html() {
+        $label = $this->font ?? 'n/a';
+        return 'legacy968:' . $label;
     }
 
     /**
-     * Render into TCPDF (unused in these tests).
+     * Legacy form hook.
      *
-     * @param \pdf $pdf The PDF instance.
-     * @param bool $preview Preview flag.
-     * @param stdClass $user User record.
-     * @param element_renderer|null $renderer Optional renderer.
-     * @return void
+     * @param mixed $mform
      */
-    public function render(\pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+    public function render_form_elements($mform) {
+        // Do not call parent — element_helper form renderers need a real MoodleQuickForm.
+        unset($mform);
     }
 
     /**
-     * Render HTML (unused in these tests).
+     * Legacy persistence hook.
      *
-     * @param element_renderer|null $renderer Optional renderer.
+     * @param mixed $data
      * @return string
      */
-    public function render_html(?element_renderer $renderer = null): string {
-        return '';
+    public function save_unique_data($data) {
+        $value = isset($data->legacyvalue) ? (string) $data->legacyvalue : 'saved';
+        $this->lastsaved = $value;
+        return $value;
+    }
+
+    /**
+     * Whether this element type can be added.
+     *
+     * @return bool
+     */
+    public static function can_add(): bool {
+        return true;
     }
 }

@@ -15,7 +15,12 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Fixture: genuine Moodle 4.5-5.1 third-party element with untyped historical signatures.
+ * Fixture: realistically-namespaced genuine Moodle 4.5-era third-party element (#958).
+ *
+ * Namespaced as customcertelement_legacy45 so that the inherited
+ * mod_customcert\element::get_type() naturally returns 'legacy45', matching how a real
+ * third-party plugin's element type is derived, unlike a synthetic type key registered
+ * under an arbitrary namespace.
  *
  * @package    mod_customcert
  * @category   test
@@ -26,110 +31,151 @@
 namespace customcertelement_legacy45;
 
 /**
- * Historical element: untyped render($pdf, $preview, $user) and render_html() without arguments.
+ * Genuine 4.5-era legacy element with untyped render()/render_html() and legacy hooks.
+ *
+ * Does not override get_type(): the type is derived from the namespace by the base class.
  */
 class element extends \mod_customcert\element {
-    /** @var array Arguments received by the last render() call. */
-    public $renderargs = [];
+    /**
+     * @var self|null The most recently constructed instance.
+     *
+     * The production factory always constructs a fresh instance internally, so callers have
+     * no other way to obtain a direct reference to the exact instance a restore dispatched to.
+     */
+    public static $lastconstructed = null;
 
-    /** @var bool Whether after_restore() was called. */
-    public $restored = false;
+    /** @var string|null Last saved unique data (for assertions). */
+    public $lastsaved = null;
+
+    /** @var bool Whether definition_after_data was called. */
+    public $definitioncalled = false;
+
+    /** @var bool Whether render_form_elements was called. */
+    public $formcalled = false;
+
+    /** @var bool Whether the legacy after_restore() hook was called. */
+    public $restorecalled = false;
+
+    /** @var mixed|null Last restore task passed to after_restore(). */
+    public $lastrestore = null;
+
+    /** @var bool Whether the historical render() method was actually invoked. */
+    public $rendercalled = false;
+
+    /** @var array|null Captured [$pdf, $preview, $user] arguments from the last render() call. */
+    public $lastrenderargs = null;
+
+    /** @var int|null Number of arguments actually received by the last render() call. */
+    public $lastrenderargcount = null;
+
+    /** @var int|null Number of arguments actually received by the last render_html() call. */
+    public $lasthtmlargcount = null;
 
     /**
-     * Expose the historical protected properties, as a 4.5-era plugin would read them.
+     * Constructor override recording this instance as the most recently constructed one.
      *
-     * @return array
+     * @param \stdClass $element
      */
-    public function get_legacy_state() {
-        return [
-            'element' => $this->element,
-            'font' => $this->font,
-            'fontsize' => $this->fontsize,
-            'colour' => $this->colour,
-            'width' => $this->width,
-        ];
+    public function __construct($element) {
+        parent::__construct($element);
+        self::$lastconstructed = $this;
     }
 
     /**
-     * Render the form elements.
+     * Historical untyped PDF render signature.
      *
-     * @param \MoodleQuickForm $mform
+     * @param mixed $pdf
+     * @param mixed $preview
+     * @param mixed $user
+     */
+    public function render($pdf, $preview, $user) {
+        $this->rendercalled = true;
+        $this->lastrenderargs = [$pdf, $preview, $user];
+        $this->lastrenderargcount = func_num_args();
+        // Touch legacy properties to prove they are accessible.
+        $font = $this->font;
+        $colour = $this->colour;
+        $width = $this->width;
+        $id = isset($this->element->id) ? $this->element->id : null;
+        // No-op render body for tests.
+        unset($font, $colour, $width, $id);
+    }
+
+    /**
+     * Historical parameterless render_html signature.
+     *
+     * @return string
+     */
+    public function render_html() {
+        $this->lasthtmlargcount = func_num_args();
+        $label = $this->font ?? 'n/a';
+        return 'legacy45:' . $label;
+    }
+
+    /**
+     * Legacy form hook.
+     *
+     * @param mixed $mform
      */
     public function render_form_elements($mform) {
-        $mform->addElement('text', 'legacyvalue', 'Legacy value');
-        $mform->setType('legacyvalue', PARAM_TEXT);
+        $this->formcalled = true;
+        // Do not call parent — element_helper form renderers need a real MoodleQuickForm.
+        unset($mform);
     }
 
     /**
-     * Set the form data when editing.
+     * Legacy definition-after-data hook.
      *
-     * @param \MoodleQuickForm $mform
+     * @param mixed $mform
      */
     public function definition_after_data($mform) {
-        parent::definition_after_data($mform);
-        $stored = json_decode((string) $this->get_data());
-        if ($stored && $mform->elementExists('legacyvalue')) {
-            $mform->getElement('legacyvalue')->setValue($stored->legacyvalue);
-        }
+        $this->definitioncalled = true;
+        unset($mform);
     }
 
     /**
-     * Validate the submitted data.
+     * Legacy validation hook.
      *
-     * @param array $data
-     * @param array $files
+     * @param mixed $data
+     * @param mixed $files
      * @return array
      */
     public function validate_form_elements($data, $files) {
         $errors = [];
-        if (isset($data['legacyvalue']) && $data['legacyvalue'] === 'bad') {
-            $errors['legacyvalue'] = 'Invalid value';
+        if (isset($data['name']) && $data['name'] === 'bad') {
+            $errors['name'] = 'invalid';
         }
         return $errors;
     }
 
     /**
-     * Save the unique data.
+     * Legacy persistence hook.
      *
-     * @param \stdClass $data
+     * @param mixed $data
      * @return string
      */
     public function save_unique_data($data) {
-        return json_encode(['legacyvalue' => (string) ($data->legacyvalue ?? '')]);
+        $value = isset($data->legacyvalue) ? (string) $data->legacyvalue : 'saved';
+        $this->lastsaved = $value;
+        return $value;
     }
 
     /**
-     * Render the element on the PDF.
+     * Legacy restore hook used by genuine 4.5-era third-party elements.
      *
-     * @param \pdf $pdf
-     * @param bool $preview
-     * @param \stdClass $user
-     */
-    public function render($pdf, $preview, $user) {
-        $this->renderargs = func_get_args();
-        $stored = json_decode((string) $this->get_data());
-        \mod_customcert\element_helper::render_content($pdf, $this, (string) ($stored->legacyvalue ?? ''));
-    }
-
-    /**
-     * Render the element as HTML; like historical plugins, returns null when there is no data.
-     *
-     * @return string
-     */
-    public function render_html() {
-        if (empty($this->get_data())) {
-            return;
-        }
-        $stored = json_decode((string) $this->get_data());
-        return \mod_customcert\element_helper::render_html_content($this, (string) $stored->legacyvalue);
-    }
-
-    /**
-     * Handle restoration.
-     *
-     * @param \restore_customcert_activity_task $restore
+     * @param mixed $restore
      */
     public function after_restore($restore) {
-        $this->restored = true;
+        $this->restorecalled = true;
+        $this->lastrestore = $restore;
+    }
+
+    /**
+     * Whether this element type can be added.
+     *
+     * @return bool
+     */
+    public static function can_add(): bool {
+        return true;
     }
 }

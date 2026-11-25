@@ -16,7 +16,7 @@
 
 /**
  * Regression tests for issue #999: structured third-party payloads must not be unwrapped
- * into a legacy scalar based on plugin identity.
+ * into a legacy scalar based on plugin identity or an unrelated optional capability.
  *
  * @package    mod_customcert
  * @category   test
@@ -55,7 +55,7 @@ use stdClass;
 
 /**
  * Tests proving that structured-payload classification is based on the current
- * persistence contract, not plugin identity.
+ * persistence or rendering contract, not plugin identity.
  */
 final class issue_999_structured_third_party_payload_test extends advanced_testcase {
     /**
@@ -147,7 +147,7 @@ final class issue_999_structured_third_party_payload_test extends advanced_testc
 
     /**
      * Bundled elements keep their full JSON payload, proving the distinction is the
-     * persistence contract, not a bundled-name allowlist.
+     * persistence/render contract, not a bundled-name allowlist.
      *
      * @covers \mod_customcert\element::get_data
      */
@@ -221,7 +221,8 @@ final class issue_999_structured_third_party_payload_test extends advanced_testc
     }
 
     /**
-     * A persistable third-party element's imported payload must stay structured.
+     * Template import bypasses persistence_helper entirely: a persistable third-party
+     * element's imported payload must stay structured.
      *
      * @covers \mod_customcert\element::get_data
      * @covers \mod_customcert\export\element::import
@@ -347,7 +348,7 @@ final class issue_999_structured_third_party_payload_test extends advanced_testc
         $newid = $repo->create($instance, new element_layout(5, 6, 0, 'L'));
 
         $dbrecord = $DB->get_record('customcert_elements', ['id' => $newid], '*', MUST_EXIST);
-        $reloaded = $factory->create_from_legacy_record($dbrecord);
+        $reloaded = $factory->create_from_record($dbrecord);
 
         $raw = $reloaded->get_data();
         $this->assertIsString($raw);

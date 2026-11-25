@@ -1,7 +1,7 @@
 moodle-tool_redis
 =================
 
-[![Moodle Plugin CI](https://github.com/moodle-an-hochschulen/moodle-tool_redis/actions/workflows/moodle-plugin-ci.yml/badge.svg?branch=MOODLE_502_STABLE)](https://github.com/moodle-an-hochschulen/moodle-tool_redis/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3AMOODLE_502_STABLE)
+[![Moodle Plugin CI](https://github.com/moodle-an-hochschulen/moodle-tool_redis/actions/workflows/moodle-plugin-ci.yml/badge.svg?branch=MOODLE_503_STABLE)](https://github.com/moodle-an-hochschulen/moodle-tool_redis/actions?query=workflow%3A%22Moodle+Plugin+CI%22+branch%3AMOODLE_503_STABLE)
 
 Moodle plugin which adds a Redis management GUI to Moodle site administration.
 
@@ -9,7 +9,7 @@ Moodle plugin which adds a Redis management GUI to Moodle site administration.
 Requirements
 ------------
 
-This plugin requires Moodle 5.2+
+This plugin requires Moodle 5.3+
 
 
 Motivation for this plugin
@@ -175,4 +175,4 @@ It was contributed to the Moodle an Hochschulen e.V. plugin catalogue in 2022.
 Credits
 -------
 
-Until version v5.2-r2, this plugin was a simple wrapper for the Valkey Stats management GUI by Helmut K. C. Tessarek (https://github.com/tessus/valkey-stats). The current implementation does not use any third-party code anymore, but its feature set is still inspired by Valkey Stats.
+Until version v5.3-r1, this plugin was a simple wrapper for the Valkey Stats management GUI by Helmut K. C. Tessarek (https://github.com/tessus/valkey-stats). The current implementation does not use any third-party code anymore, but its feature set is still inspired by Valkey Stats.

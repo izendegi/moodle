@@ -27,15 +27,22 @@ declare(strict_types=1);
 namespace mod_customcert\service;
 
 use coding_exception;
-use mod_customcert\element\element_interface;
-use mod_customcert\element\legacy_element_adapter;
-use mod_customcert\element\element_bootstrap;
-use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element as legacy_base;
+use mod_customcert\element\element_bootstrap;
+use mod_customcert\element\element_interface;
+use mod_customcert\element\legacy_compatibility_diagnostic;
+use mod_customcert\element\legacy_element_adapter;
+use mod_customcert\element\renderable_element_interface;
 use stdClass;
 
 /**
  * Registry-based factory for creating elements by type.
+ *
+ * Creation path for Moodle 5.3:
+ * - Instantiate the registered class
+ * - If it implements renderable_element_interface (native v2), return it directly
+ * - If it is a supported legacy mod_customcert\element subclass, wrap via legacy_element_adapter
+ * - Otherwise fail clearly
  */
 final class element_factory {
     /**
@@ -56,7 +63,7 @@ final class element_factory {
      * Register an element class for a given type key.
      *
      * @param string $type
-     * @param string $class Class-string of a native v2 element or a historical mod_customcert\element subclass
+     * @param string $class Class-string of a native v2 element or legacy mod_customcert\element subclass
      * @return void
      */
     public function register(string $type, string $class): void {
@@ -94,54 +101,43 @@ final class element_factory {
             throw $e;
         }
 
-        $element = self::native_or_adapted($instance);
-        if ($element === null) {
-            throw new coding_exception(
-                "Element factory cannot use class '{$class}' for type '{$type}': "
-                . 'it must implement renderable_element_interface or extend mod_customcert\\element.'
-            );
-        }
-        return $element;
-    }
-
-    /**
-     * Return native v2 elements as-is and wrap historical mod_customcert\element subclasses in the adapter.
-     *
-     * @param object $instance
-     * @return element_interface|null Null when the instance is neither supported shape.
-     */
-    private static function native_or_adapted(object $instance): ?element_interface {
+        // Native v2 path: already satisfies the renderable contract (and usually element_interface).
         if ($instance instanceof renderable_element_interface && $instance instanceof element_interface) {
             return $instance;
         }
+
+        // Legacy path: wrap supported historical subclasses. Emit the single general
+        // compatibility diagnostic here, at the narrowest coherent boundary where a
+        // legacy element is detected and wrapped, deduplicated per component/type.
         if ($instance instanceof legacy_base) {
+            legacy_compatibility_diagnostic::notify($type, $class);
             return new legacy_element_adapter($instance);
         }
-        return null;
+
+        throw new coding_exception(
+            "Element factory cannot use class '{$class}' for type '{$type}': "
+            . 'it must implement renderable_element_interface (native v2) or extend mod_customcert\element.'
+        );
     }
 
     /**
-     * Create an element from a legacy record structure, falling back to the shim when required.
+     * Create an element from a record, returning null when the type is unknown.
      *
      * @param stdClass $record
      * @return element_interface|null
      */
-    public function create_from_legacy_record(stdClass $record): ?element_interface {
+    public function create_from_record(stdClass $record): ?element_interface {
         $type = (string)($record->element ?? '');
         if ($type === '') {
             return null;
         }
-
         if (!$this->registry->has($type)) {
             return null;
         }
-
-        // Preserve legacy behaviour: default the name when not provided so forms/tests relying on
-        // legacy construction still see a sensible value (pluginname).
+        // Default the name when not provided so forms/tests see a sensible value.
         if (!property_exists($record, 'name') || $record->name === null || $record->name === '') {
             $record->name = get_string('pluginname', 'customcertelement_' . $type);
         }
-
         try {
             return $this->create($type, $record);
         } catch (\Throwable $e) {
@@ -151,60 +147,19 @@ final class element_factory {
                     DEBUG_DEVELOPER
                 );
             }
-        }
-
-        try {
-            $legacy = self::get_legacy_element_instance($record);
-        } catch (\Throwable $unused) {
             return null;
         }
-
-        return $legacy ? self::native_or_adapted($legacy) : null;
     }
 
     /**
-     * Wrap a legacy element instance with the v2 adapter.
+     * Create an element from a legacy-shaped record.
      *
-     * @param legacy_base $legacy
-     * @return legacy_element_adapter
+     * Compatibility alias retained for the Moodle 5.2 public API.
+     *
+     * @param stdClass $record
+     * @return element_interface|null
      */
-    public function wrap_legacy(legacy_base $legacy): legacy_element_adapter {
-        return new legacy_element_adapter($legacy);
-    }
-
-    /**
-     * Internal helper: return legacy element instance for given record.
-     *
-     * Used by create_from_legacy_record() to instantiate old-style element classes.
-     * Do not call this from new code; use create() or create_from_legacy_record() instead.
-     *
-     * @param stdClass $element DB record or structure with at least the `element` type and optional fields.
-     * @return object|false Legacy element instance (customcertelement_*\element) or false if not found.
-     */
-    private static function get_legacy_element_instance(stdClass $element) {
-
-        // Compose legacy class name like: \customcertelement_{type}\element.
-        $classname = '\\customcertelement_' . ($element->element ?? '') . '\\element';
-
-        $data = new stdClass();
-        $data->id = $element->id ?? null;
-        $data->pageid = $element->pageid ?? null;
-        $data->name = $element->name ?? get_string('pluginname', 'customcertelement_' . ($element->element ?? ''));
-        $data->element = $element->element ?? null;
-        $data->data = $element->data ?? null;
-        $data->font = $element->font ?? null;
-        $data->fontsize = $element->fontsize ?? null;
-        $data->colour = $element->colour ?? null;
-        $data->posx = $element->posx ?? null;
-        $data->posy = $element->posy ?? null;
-        $data->width = $element->width ?? null;
-        $data->refpoint = $element->refpoint ?? null;
-        $data->alignment = $element->alignment ?? null;
-
-        if (class_exists($classname)) {
-            return new $classname($data);
-        }
-
-        return false;
+    public function create_from_legacy_record(stdClass $record): ?element_interface {
+        return $this->create_from_record($record);
     }
 }

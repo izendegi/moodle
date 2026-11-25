@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Fixture: third-party element without custom form persistence.
+ * Fixture: native third-party element with no custom form persistence.
  *
  * @package    mod_customcert
  * @category   test
@@ -28,33 +28,50 @@ declare(strict_types=1);
 namespace customcertelement_nativev2nopersist;
 
 use mod_customcert\element as base_element;
+use mod_customcert\element\form_element_interface;
 use mod_customcert\element\renderable_element_interface;
 use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use pdf;
 use stdClass;
 
 /**
- * Third-party fixture without custom form persistence.
+ * Native third-party fixture without custom form persistence.
  */
-final class element extends base_element implements renderable_element_interface {
+final class element extends base_element implements
+    form_element_interface,
+    renderable_element_interface {
     /**
-     * Render into TCPDF (unused in these tests).
+     * Build the configuration form for this element.
      *
-     * @param \pdf $pdf The PDF instance.
-     * @param bool $preview Preview flag.
-     * @param stdClass $user User record.
-     * @param element_renderer|null $renderer Optional renderer.
+     * @param MoodleQuickForm $mform
      * @return void
      */
-    public function render(\pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+    public function build_form(MoodleQuickForm $mform): void {
+        unset($mform);
     }
 
     /**
-     * Render HTML (unused in these tests).
+     * Render the element into a PDF context.
      *
-     * @param element_renderer|null $renderer Optional renderer.
+     * @param pdf $pdf
+     * @param bool $preview
+     * @param stdClass $user
+     * @param element_renderer|null $renderer
+     * @return void
+     */
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+        unset($pdf, $preview, $user, $renderer);
+    }
+
+    /**
+     * Render the element in HTML for the designer.
+     *
+     * @param element_renderer|null $renderer
      * @return string
      */
     public function render_html(?element_renderer $renderer = null): string {
+        unset($renderer);
         return '';
     }
 }

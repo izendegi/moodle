@@ -80,12 +80,6 @@ abstract class defaults {
     const SHOWPERCENTAGE = 0;
 
     /**
-     * Default display, to users who can view the overview, of the bar of the
-     * course's only student on the course page.
-     */
-    const SHOWSINGLESTUDENTBAR = 0;
-
-    /**
      * Default choice of activites included: activitycompletion or selectedactivities.
      */
     const ACTIVITIESINCLUDED = 'activitycompletion';

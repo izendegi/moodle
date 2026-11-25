@@ -33,11 +33,11 @@ use html_writer;
 use mod_customcert\service\form_service;
 use mod_customcert\element\persistable_element_interface;
 use mod_customcert\element as base_element;
+use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element_helper;
 use mod_customcert\element\preparable_form_interface;
 use mod_customcert\element\copyable_element_interface;
 use mod_customcert\element\restorable_element_interface;
-use mod_customcert\element\renderable_element_interface;
 use mod_customcert\service\element_renderer;
 use MoodleQuickForm;
 use moodle_url;
@@ -45,6 +45,7 @@ use pdf;
 use restore_customcert_activity_task;
 use stdClass;
 use stored_file;
+use customcertelement_image\image_payload;
 
 /**
  * The customcert element image's core interaction API.
@@ -221,7 +222,7 @@ class element extends base_element implements
             }
         }
 
-        return $arrtostore;
+        return image_payload::from_array($arrtostore)->to_array();
     }
 
     /**

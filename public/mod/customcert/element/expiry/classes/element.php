@@ -28,7 +28,9 @@ namespace customcertelement_expiry;
 
 use mod_customcert\element as base_element;
 use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element\renderable_element_interface;
 use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element\stylable_payload;
 use mod_customcert\element_helper;
 use mod_customcert\service\certificate_repository;
 use mod_customcert\service\element_renderer;
@@ -37,7 +39,6 @@ use pdf;
 use restore_customcert_activity_task;
 use stdClass;
 use mod_customcert\element\restorable_element_interface;
-use mod_customcert\element\renderable_element_interface;
 
 /**
  * The customcert element expiry's core interaction API.
@@ -130,15 +131,14 @@ class element extends base_element implements
      * @return array JSON-serialisable payload
      */
     public function normalise_data(stdClass $formdata): array {
-        return [
-            'dateitem' => $formdata->dateitem ?? '',
-            'dateformat' => $formdata->dateformat ?? '',
-            'startfrom' => $formdata->startfrom ?? '',
-            'font' => (string)($formdata->font ?? ''),
-            'fontsize' => (int)($formdata->fontsize ?? 0),
-            'colour' => (string)($formdata->colour ?? ''),
-            'width' => (int)($formdata->width ?? 0),
-        ];
+        return array_merge(
+            [
+                'dateitem' => (string)($formdata->dateitem ?? ''),
+                'dateformat' => (string)($formdata->dateformat ?? ''),
+                'startfrom' => (string)($formdata->startfrom ?? ''),
+            ],
+            stylable_payload::from_form($formdata)->to_array(),
+        );
     }
 
     /**

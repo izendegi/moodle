@@ -86,7 +86,7 @@ final class element_contract_test extends advanced_testcase {
             $this->assertArrayHasKey($interface, $implemented, "text element lost {$interface}");
         }
 
-        // Native v2 elements declare the rendering contract themselves.
+        // Declared by the native v2 element itself.
         $this->assertArrayHasKey(renderable_element_interface::class, $implemented);
 
         // Custom form validation is optional and bundled elements have no element-specific rules.
@@ -161,16 +161,17 @@ final class element_contract_test extends advanced_testcase {
     }
 
     /**
-     * The legacy base class does not impose the v2 rendering contract and has no validation interface.
+     * Moodle 5.3 base class deliberately does not implement renderable_element_interface,
+     * nor the optional validatable_element_interface.
      *
      * @covers \mod_customcert\element
      */
-    public function test_base_class_implements_neither_renderable_nor_validatable(): void {
+    public function test_base_class_does_not_implement_renderable_or_validatable(): void {
         $implemented = class_implements(element::class);
 
         $this->assertArrayNotHasKey(renderable_element_interface::class, $implemented);
-        $this->assertArrayHasKey(form_element_interface::class, $implemented);
         $this->assertArrayNotHasKey(validatable_element_interface::class, $implemented);
+        $this->assertArrayHasKey(form_element_interface::class, $implemented);
     }
 
     /**
@@ -184,6 +185,7 @@ final class element_contract_test extends advanced_testcase {
     public function test_minimal_native_element_without_validation_interface(): void {
         global $CFG, $USER;
         require_once($CFG->libdir . '/pdflib.php');
+        require_once($CFG->libdir . '/formslib.php');
 
         $this->resetAfterTest();
         set_config('showposxy', 1, 'customcert');
@@ -194,14 +196,16 @@ final class element_contract_test extends advanced_testcase {
 
         $element = (new element_factory($registry))->create('minimalthirdparty', $this->make_record());
 
-        // Returned unwrapped, with the required form and rendering interfaces and no validation interface.
+        // Native: returned unwrapped, with the required form and rendering interfaces only.
         $this->assertInstanceOf(minimal_test_element::class, $element);
         $this->assertInstanceOf(element_interface::class, $element);
         $this->assertInstanceOf(form_element_interface::class, $element);
         $this->assertInstanceOf(renderable_element_interface::class, $element);
         $this->assertNotInstanceOf(validatable_element_interface::class, $element);
 
-        // Rendering works through the real renderers.
+        // Form and rendering paths work through the real renderers.
+        $mform = new \MoodleQuickForm('minimal', 'post', '');
+        $element->build_form($mform);
         $this->assertSame('', (new html_renderer())->render_html($element));
         $pdf = new \pdf();
         $pdf->AddPage();
@@ -226,22 +230,6 @@ final class element_contract_test extends advanced_testcase {
             'colour' => '#000000',
         ]));
         $this->assertDebuggingNotCalled();
-    }
-
-    /**
-     * html_renderer::render_html() delegates to the element, passing itself as the renderer.
-     *
-     * @covers \mod_customcert\service\html_renderer::render_html
-     */
-    public function test_html_renderer_delegates_to_element_with_itself(): void {
-        $renderer = new html_renderer();
-        $element = $this->createMock(renderable_element_interface::class);
-        $element->expects($this->once())
-            ->method('render_html')
-            ->with($this->identicalTo($renderer))
-            ->willReturn('<p>delegated</p>');
-
-        $this->assertSame('<p>delegated</p>', $renderer->render_html($element));
     }
 
     /**

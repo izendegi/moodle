@@ -29,6 +29,7 @@ namespace mod_customcert;
 
 use advanced_testcase;
 use context_course;
+use mod_customcert\callback\instance_callbacks;
 use MoodleQuickForm;
 use ReflectionClass;
 
@@ -36,7 +37,6 @@ defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->dirroot . '/mod/customcert/mod_form.php');
-require_once($CFG->dirroot . '/mod/customcert/lib.php');
 require_once($CFG->libdir . '/formslib.php');
 
 /**
@@ -168,7 +168,7 @@ final class mod_form_automatic_issuance_test extends advanced_testcase {
      * issueautomatically: since the field was never in their submitted data, update_instance()
      * only ever writes the columns actually present on $data, leaving the stored value alone.
      *
-     * @covers ::customcert_update_instance
+     * @covers \mod_customcert\callback\instance_callbacks::update_instance
      */
     public function test_update_instance_preserves_issueautomatically_when_absent_from_submission(): void {
         global $DB;
@@ -189,7 +189,7 @@ final class mod_form_automatic_issuance_test extends advanced_testcase {
             'name' => 'Renamed by a user without manageautomaticissuance',
         ];
 
-        customcert_update_instance($data, null);
+        instance_callbacks::update_instance($data, null);
 
         $this->assertEquals(1, (int)$DB->get_field('customcert', 'issueautomatically', ['id' => $customcert->id]));
         $this->assertEquals(
@@ -202,7 +202,7 @@ final class mod_form_automatic_issuance_test extends advanced_testcase {
      * A user with manageautomaticissuance submits a real change to the setting, and
      * update_instance() applies it.
      *
-     * @covers ::customcert_update_instance
+     * @covers \mod_customcert\callback\instance_callbacks::update_instance
      */
     public function test_update_instance_applies_issueautomatically_when_submitted(): void {
         global $DB;
@@ -216,7 +216,7 @@ final class mod_form_automatic_issuance_test extends advanced_testcase {
         ]);
 
         $data = (object)['instance' => $customcert->id, 'issueautomatically' => 0];
-        customcert_update_instance($data, null);
+        instance_callbacks::update_instance($data, null);
 
         $this->assertEquals(0, (int)$DB->get_field('customcert', 'issueautomatically', ['id' => $customcert->id]));
     }

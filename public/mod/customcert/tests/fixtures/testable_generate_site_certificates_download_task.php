@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Testable generate_site_certificates_download_task fixture for tests.
+ * Testable generate_site_certificates_download_task fixture.
  *
  * @package    mod_customcert
  * @category   test
@@ -31,19 +31,31 @@ use mod_customcert\service\certificate_download_service;
 use mod_customcert\task\generate_site_certificates_download_task;
 
 /**
- * A testable generate_site_certificates_download_task that allows injecting a stubbed
- * certificate_download_service so failure paths can be exercised without touching production code.
+ * A testable subclass allowing a stubbed download service to be injected.
+ *
+ * Used to simulate download-service failures (zip open, entry, and finalisation failures)
+ * without relying on an anonymous class.
  */
 final class testable_generate_site_certificates_download_task extends generate_site_certificates_download_task {
-    /** @var certificate_download_service The stubbed service to return for this test. */
-    public certificate_download_service $service;
+    /** @var certificate_download_service Download service supplied by the test. */
+    private certificate_download_service $downloadservice;
 
     /**
-     * Return the stubbed download service injected for this test.
+     * Set the download service used by the task.
+     *
+     * @param certificate_download_service $downloadservice Download service.
+     * @return void
+     */
+    public function set_download_service(certificate_download_service $downloadservice): void {
+        $this->downloadservice = $downloadservice;
+    }
+
+    /**
+     * Create the certificate download service.
      *
      * @return certificate_download_service
      */
     protected function create_download_service(): certificate_download_service {
-        return $this->service;
+        return $this->downloadservice;
     }
 }

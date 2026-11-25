@@ -274,7 +274,9 @@ final class issue_repository {
     }
 
     /**
-     * Returns an array of the conditional variables to use in the get_issues SQL query.
+     * Build issue-report filters for the current viewer, excluding managers/admins
+     * and restricting separate-group results to the viewer's group.
+     * These are visibility rules, not the issuance eligibility rules in certificate_issuer_service.
      *
      * @param stdClass $cm the course module
      * @return array the conditional variables

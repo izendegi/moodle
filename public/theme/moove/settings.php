@@ -95,72 +95,6 @@ if ($ADMIN->fulltree) {
     $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
-    // Login layout style.
-    $name = 'theme_moove/loginlayout';
-    $title = get_string('loginlayout', 'theme_moove');
-    $description = get_string('loginlayout_desc', 'theme_moove');
-    $layoutchoices = [
-        'custom' => get_string('loginlayout_modified', 'theme_moove'),
-        'base' => get_string('loginlayout_base', 'theme_moove'),
-    ];
-    $setting = new admin_setting_configselect($name, $title, $description, 'custom', $layoutchoices);
-    $page->add($setting);
-
-    // Identity providers visibility.
-    $providerchoices = [];
-    if (class_exists('auth_plugin_base')) {
-        $authsequence = get_enabled_auth_plugins();
-        $identityproviders = \auth_plugin_base::get_identity_providers($authsequence);
-        foreach ($identityproviders as $provider) {
-            $providername = (string)($provider['name'] ?? '');
-            if ($providername === '') {
-                continue;
-            }
-
-            // Use provider URL when available because it is unique and stable.
-            $providerkey = (string)($provider['url'] ?? $providername);
-            $providerchoices[$providerkey] = $providername;
-        }
-    }
-
-    // Fallback for OAuth2 issuers so they are available in selector even when
-    // they are not returned by auth_plugin_base provider list at this point.
-    if (class_exists('\\core\\oauth2\\api')) {
-        foreach (\core\oauth2\api::get_all_issuers() as $issuer) {
-            if (method_exists($issuer, 'is_login_allowed') && !$issuer->is_login_allowed()) {
-                continue;
-            }
-
-            $issuername = (string)$issuer->get('name');
-            if ($issuername === '') {
-                continue;
-            }
-
-            // Use a stable key so renderer can match issuer even when login URL
-            // contains dynamic query parameters (wantsurl, etc).
-            $issuerid = (int)$issuer->get('id');
-            $providerchoices['oauth2:' . $issuerid] = $issuername;
-        }
-    }
-
-    $name = 'theme_moove/identityprovidersmode';
-    $title = get_string('identityprovidersmode', 'theme_moove');
-    $description = get_string('identityprovidersmode_desc', 'theme_moove');
-    $modechoices = [
-        'none' => get_string('identityprovidersmode_none', 'theme_moove'),
-        'single' => get_string('identityprovidersmode_single', 'theme_moove'),
-        'all' => get_string('identityprovidersmode_all', 'theme_moove')
-    ];
-    $setting = new admin_setting_configselect($name, $title, $description, 'all', $modechoices);
-    $page->add($setting);
-
-    $name = 'theme_moove/identityproviderssingle';
-    $title = get_string('identityproviderssingle', 'theme_moove');
-    $description = get_string('identityproviderssingle_desc', 'theme_moove');
-    $singlechoices = ['' => get_string('identityproviderschoose', 'theme_moove')] + $providerchoices;
-    $setting = new admin_setting_configselect($name, $title, $description, '', $singlechoices);
-    $page->add($setting);
-
     // Variable $brand-color.
     // We use an empty default value because the default colour should come from the preset.
     $name = 'theme_moove/brandcolor';
@@ -277,6 +211,40 @@ if ($ADMIN->fulltree) {
     $page->add($setting);
 
     // Slideshow.
+    $name = 'theme_moove/slideshowlayout';
+    $title = get_string('slideshowlayout', 'theme_moove');
+    $description = get_string('slideshowlayoutdesc', 'theme_moove');
+    $default = 'classic';
+    $options = [
+        'classic' => get_string('slideshowlayoutclassic', 'theme_moove'),
+        'centered' => get_string('slideshowlayoutcentered', 'theme_moove'),
+        'editorial' => get_string('slideshowlayouteditorial', 'theme_moove'),
+        'imageright' => get_string('slideshowlayoutimageright', 'theme_moove'),
+        'colorblock' => get_string('slideshowlayoutcolorblock', 'theme_moove'),
+    ];
+    $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
+    $page->add($setting);
+
+    // Colorblock slideshow layout background colors.
+    // These are only shown in the form when the "colorblock" slideshow layout is selected.
+    $name = 'theme_moove/slideshowcolorblockcolor1';
+    $title = get_string('slideshowcolorblockcolor1', 'theme_moove');
+    $description = get_string('slideshowcolorblockcolor1desc', 'theme_moove');
+    $setting = new admin_setting_configcolourpicker($name, $title, $description, '#0f47ad');
+    $setting->set_updatedcallback('theme_reset_all_caches');
+    $page->add($setting);
+
+    $name = 'theme_moove/slideshowcolorblockcolor2';
+    $title = get_string('slideshowcolorblockcolor2', 'theme_moove');
+    $description = get_string('slideshowcolorblockcolor2desc', 'theme_moove');
+    $setting = new admin_setting_configcolourpicker($name, $title, $description, '#17a2b8');
+    $setting->set_updatedcallback('theme_reset_all_caches');
+    $page->add($setting);
+
+    $settings->hide_if('theme_moove/slideshowcolorblockcolor1', 'theme_moove/slideshowlayout', 'neq', 'colorblock');
+    $settings->hide_if('theme_moove/slideshowcolorblockcolor2', 'theme_moove/slideshowlayout', 'neq', 'colorblock');
+
+    // Slideshow.
     $name = 'theme_moove/slidercount';
     $title = get_string('slidercount', 'theme_moove');
     $description = get_string('slidercountdesc', 'theme_moove');
@@ -286,7 +254,6 @@ if ($ADMIN->fulltree) {
         $options[$i] = $i;
     }
     $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
-    $setting->set_updatedcallback('theme_reset_all_caches');
     $page->add($setting);
 
     // If we don't have an slide yet, default to the preset.
@@ -324,6 +291,68 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_heading('slidercountseparator', '', '<hr>');
     $page->add($setting);
 
+    // Enable or disable Logos (clients/supporters) section settings.
+    $name = 'theme_moove/logoscount';
+    $title = get_string('logoscount', 'theme_moove');
+    $description = get_string('logoscountdesc', 'theme_moove');
+    $default = 0;
+    $options = [];
+    for ($i = 0; $i < 13; $i++) {
+        $options[$i] = $i;
+    }
+    $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
+    $page->add($setting);
+
+    $logoscount = get_config('theme_moove', 'logoscount');
+
+    if ($logoscount > 0) {
+        $name = 'theme_moove/logostitle';
+        $title = get_string('logostitle', 'theme_moove');
+        $description = get_string('logostitledesc', 'theme_moove');
+        $default = get_string('logostitledefault', 'theme_moove');
+        $setting = new admin_setting_configtext($name, $title, $description, $default, PARAM_TEXT);
+        $page->add($setting);
+
+        $name = 'theme_moove/logossubtitle';
+        $title = get_string('logossubtitle', 'theme_moove');
+        $description = get_string('logossubtitledesc', 'theme_moove');
+        $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_TEXT);
+        $page->add($setting);
+
+        $name = 'theme_moove/logoslayout';
+        $title = get_string('logoslayout', 'theme_moove');
+        $description = get_string('logoslayoutdesc', 'theme_moove');
+        $default = 'simple';
+        $options = [
+            'simple' => get_string('logoslayoutsimple', 'theme_moove'),
+            'split' => get_string('logoslayoutsplit', 'theme_moove'),
+        ];
+        $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
+        $page->add($setting);
+
+        for ($i = 1; $i <= $logoscount; $i++) {
+            $filearea = "logo{$i}image";
+            $name = "theme_moove/$filearea";
+            $title = get_string('logoimage', 'theme_moove', $i . '');
+            $description = get_string('logoimagedesc', 'theme_moove', $i . '');
+            $opts = ['accepted_types' => ['.png', '.jpg', '.gif', '.webp', '.svg'], 'maxfiles' => 1];
+            $setting = new admin_setting_configstoredfile($name, $title, $description, $filearea, 0, $opts);
+            $page->add($setting);
+
+            $name = "theme_moove/logo{$i}url";
+            $title = get_string('logourl', 'theme_moove', $i . '');
+            $description = get_string('logourldesc', 'theme_moove', $i . '');
+            $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_URL);
+            $page->add($setting);
+        }
+
+        $setting = new admin_setting_heading('logoscountseparator', '', '<hr>');
+        $page->add($setting);
+    }
+
+    $setting = new admin_setting_heading('displaymarketingboxseparator', '', '<hr>');
+    $page->add($setting);
+
     $name = 'theme_moove/displaymarketingbox';
     $title = get_string('displaymarketingboxes', 'theme_moove');
     $description = get_string('displaymarketingboxesdesc', 'theme_moove');
@@ -335,6 +364,21 @@ if ($ADMIN->fulltree) {
     $displaymarketingbox = get_config('theme_moove', 'displaymarketingbox');
 
     if ($displaymarketingbox) {
+        // Feature section layout.
+        $name = 'theme_moove/featuresectionlayout';
+        $title = get_string('featuresectionlayout', 'theme_moove');
+        $description = get_string('featuresectionlayoutdesc', 'theme_moove');
+        $default = 'default';
+        $options = [
+            'default' => get_string('featuresectionlayoutdefault', 'theme_moove'),
+            'centered' => get_string('featuresectionlayoutcentered', 'theme_moove'),
+            'icons' => get_string('featuresectionlayouticons', 'theme_moove'),
+            'offset' => get_string('featuresectionlayoutoffset', 'theme_moove'),
+            'banner' => get_string('featuresectionlayoutbanner', 'theme_moove'),
+        ];
+        $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
+        $page->add($setting);
+
         // Marketingheading.
         $name = 'theme_moove/marketingheading';
         $title = get_string('marketingsectionheading', 'theme_moove');
@@ -392,6 +436,28 @@ if ($ADMIN->fulltree) {
         $default = get_string('numbersfrontpagecontentdefault', 'theme_moove');
         $setting = new admin_setting_confightmleditor($name, $title, $description, $default);
         $page->add($setting);
+
+        // Numbers section layout.
+        $name = 'theme_moove/numberslayout';
+        $title = get_string('numberslayout', 'theme_moove');
+        $description = get_string('numberslayoutdesc', 'theme_moove');
+        $default = 'default';
+        $options = [
+            'default' => get_string('numberslayoutdefault', 'theme_moove'),
+            'simplegrid' => get_string('numberslayoutsimplegrid', 'theme_moove'),
+            'backgroundimage' => get_string('numberslayoutbackgroundimage', 'theme_moove'),
+        ];
+        $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
+        $page->add($setting);
+
+        $name = 'theme_moove/numbersbackgroundimage';
+        $title = get_string('numbersbackgroundimage', 'theme_moove');
+        $description = get_string('numbersbackgroundimagedesc', 'theme_moove');
+        $opts = ['accepted_types' => ['.png', '.jpg', '.gif', '.webp', '.tiff'], 'maxfiles' => 1];
+        $setting = new admin_setting_configstoredfile($name, $title, $description, 'numbersbackgroundimage', 0, $opts);
+        $page->add($setting);
+
+        $settings->hide_if('theme_moove/numbersbackgroundimage', 'theme_moove/numberslayout', 'neq', 'backgroundimage');
     }
 
     // Enable FAQ.
@@ -409,6 +475,19 @@ if ($ADMIN->fulltree) {
     $faqcount = get_config('theme_moove', 'faqcount');
 
     if ($faqcount > 0) {
+        // FAQ section layout.
+        $name = 'theme_moove/faqlayout';
+        $title = get_string('faqlayout', 'theme_moove');
+        $description = get_string('faqlayoutdesc', 'theme_moove');
+        $default = 'default';
+        $options = [
+            'default' => get_string('faqlayoutdefault', 'theme_moove'),
+            'offset' => get_string('faqlayoutoffset', 'theme_moove'),
+            'twocolumns' => get_string('faqlayouttwocolumns', 'theme_moove'),
+        ];
+        $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
+        $page->add($setting);
+
         for ($i = 1; $i <= $faqcount; $i++) {
             $name = "theme_moove/faqquestion{$i}";
             $title = get_string('faqquestion', 'theme_moove', $i . '');
@@ -433,6 +512,30 @@ if ($ADMIN->fulltree) {
     * --------------------
     */
     $page = new admin_settingpage('theme_moove_footer', get_string('footersettings', 'theme_moove'));
+
+    // Footer layout.
+    $name = 'theme_moove/footerlayout';
+    $title = get_string('footerlayout', 'theme_moove');
+    $description = get_string('footerlayoutdesc', 'theme_moove');
+    $default = 'default';
+    $options = [
+        'default' => get_string('footerlayoutdefault', 'theme_moove'),
+        'simple' => get_string('footerlayoutsimple', 'theme_moove'),
+    ];
+    $setting = new admin_setting_configselect($name, $title, $description, $default, $options);
+    $page->add($setting);
+
+    // Footer navigation links, only used by the simple with social links layout.
+    $name = 'theme_moove/footernavlinks';
+    $title = get_string('footernavlinks', 'theme_moove');
+    $description = get_string('footernavlinksdesc', 'theme_moove');
+    $setting = new admin_setting_configtextarea($name, $title, $description, '');
+    $page->add($setting);
+
+    $settings->hide_if('theme_moove/footernavlinks', 'theme_moove/footerlayout', 'neq', 'simple');
+
+    $setting = new admin_setting_heading('footerlayoutseparator', '', '<hr>');
+    $page->add($setting);
 
     // Website.
     $name = 'theme_moove/website';
@@ -511,6 +614,20 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_configtext($name, $title, $description, '');
     $page->add($setting);
 
+    // Enable whatsapp floating button.
+    $name = 'theme_moove/enablewhatsappbutton';
+    $title = get_string('enablewhatsappbutton', 'theme_moove');
+    $description = get_string('enablewhatsappbutton_desc', 'theme_moove');
+    $setting = new admin_setting_configcheckbox($name, $title, $description, 0);
+    $page->add($setting);
+
+    // Whatsapp floating button message.
+    $name = 'theme_moove/whatsappbuttonmessage';
+    $title = get_string('whatsappbuttonmessage', 'theme_moove');
+    $description = get_string('whatsappbuttonmessagedesc', 'theme_moove');
+    $setting = new admin_setting_configtext($name, $title, $description, '', PARAM_TEXT);
+    $page->add($setting);
+
     // Telegram url setting.
     $name = 'theme_moove/telegram';
     $title = get_string('telegram', 'theme_moove');
@@ -522,18 +639,35 @@ if ($ADMIN->fulltree) {
 
     /*
     * --------------------
-    * Dark mode settings tab
+    * Colour mode settings tab
     * --------------------
     */
-    $page = new admin_settingpage('theme_moove_darkmode', get_string('darkmodesettings', 'theme_moove'));
+    $page = new admin_settingpage('theme_moove_colourmode', get_string('colourmodesettings', 'theme_moove'));
 
-    // Enable dark mode footer.
-    $name = 'theme_moove/enabledarkmode';
-    $title = get_string('darkmode_enable', 'theme_moove');
-    $default = 1;
-    $choices = [0 => get_string('no'), 1 => get_string('yes')];
-    $setting = new admin_setting_configselect($name, $title, '', $default, $choices);
+    // Colour modes. Off until a site opts in, because a plugin which has not been checked in dark mode can still
+    // draw its pages in light colours.
+    $name = 'theme_moove/enablecolourmodes';
+    $title = get_string('enablecolourmodes', 'theme_moove');
+    $description = get_string('enablecolourmodes_desc', 'theme_moove');
+    $setting = new admin_setting_configcheckbox($name, $title, $description, 0);
     $page->add($setting);
+
+    // Light while colour modes are experimental. Following the device would put everyone whose device asks for dark
+    // into dark mode the moment a site ticks the setting above, including the guests and users who are not logged in
+    // who never get the switcher to change it back.
+    $name = 'theme_moove/defaultcolourmode';
+    $title = get_string('defaultcolourmode', 'theme_moove');
+    $description = get_string('defaultcolourmode_desc', 'theme_moove');
+    $choices = [];
+    foreach (\theme_moove\colour_mode::get_modes() as $mode) {
+        $choices[$mode] = get_string('colourmode:' . $mode, 'theme_moove');
+    }
+    $setting = new admin_setting_configselect($name, $title, $description, \theme_moove\colour_mode::LIGHT, $choices);
+    $page->add($setting);
+    // The dependency goes on the tabs page rather than the tab: admin/settings.php reads the dependencies from the
+    // top level page, and theme_moove_admin_settingspage_tabs::add_tab() copies a tab's settings up but not its
+    // dependencies, so one recorded on the tab never reaches the JavaScript.
+    $settings->hide_if('theme_moove/defaultcolourmode', 'theme_moove/enablecolourmodes', 'notchecked');
 
     // Logo file setting.
     $name = 'theme_moove/logodark';
@@ -542,6 +676,8 @@ if ($ADMIN->fulltree) {
     $opts = ['accepted_types' => ['.png', '.jpg', '.gif', '.webp', '.tiff', '.svg'], 'maxfiles' => 1];
     $setting = new admin_setting_configstoredfile($name, $title, $description, 'logodark', 0, $opts);
     $page->add($setting);
+
+    $settings->hide_if('theme_moove/logodark', 'theme_moove/enablecolourmodes', 'notchecked');
 
     $settings->add($page);
 

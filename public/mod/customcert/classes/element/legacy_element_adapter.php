@@ -37,11 +37,9 @@ use mod_customcert\service\element_factory;
 use restore_customcert_activity_task;
 
 /**
- * Adapter that exposes legacy elements through the new element interfaces.
- *
- * Part of the compatibility layer that lets legacy plugins extending mod_customcert\element
- * work with the v2 element system unmodified. Not public API: plugin authors should migrate
- * to implementing element_interface directly.
+ * Exposes legacy element plugins (extending mod_customcert\element) through the v2 element
+ * interfaces, delegating to historical hooks such as render_form_elements() and
+ * save_unique_data(). Native v2 elements implement the interfaces directly and are never wrapped.
  */
 final class legacy_element_adapter implements
     form_element_interface,
@@ -53,14 +51,17 @@ final class legacy_element_adapter implements
     /** @var legacy_base The wrapped legacy element instance. */
     private legacy_base $inner;
 
-    /** @var bool Whether the wrapped render() declares a renderer parameter. */
+    /** @var bool Whether the wrapped render() declares a renderer parameter (released 5.2 shape). */
     private bool $innerrenderacceptsrenderer;
 
-    /** @var bool Whether the wrapped render_html() declares a renderer parameter. */
+    /** @var bool Whether the wrapped render_html() declares a renderer parameter (released 5.2 shape). */
     private bool $innerrenderhtmlacceptsrenderer;
 
     /**
      * Constructor.
+     *
+     * Reflects once on render()/render_html() so both the 4.5-era signatures and the released
+     * 5.2 renderer argument are honoured without reflecting on every render call.
      *
      * @param legacy_base $legacy Legacy element instance to wrap.
      */
@@ -72,10 +73,11 @@ final class legacy_element_adapter implements
     }
 
     /**
-     * Whether a method accepts an argument at the given zero-based position, directly or through a variadic.
+     * Whether a method's declaration accepts a positional argument at the given index,
+     * either through enough declared parameters or a variadic parameter at or before it.
      *
      * @param \ReflectionMethod $method
-     * @param int $position
+     * @param int $position Zero-based argument position.
      * @return bool
      */
     private static function accepts_argument_at(\ReflectionMethod $method, int $position): bool {
@@ -133,7 +135,7 @@ final class legacy_element_adapter implements
     }
 
     /**
-     * Get the raw, untouched persistence representation of the element data.
+     * Get the raw, untouched persistence representation of the wrapped element's data.
      *
      * @return mixed
      */
@@ -266,8 +268,9 @@ final class legacy_element_adapter implements
     /**
      * Render the element into a PDF context.
      *
-     * The wrapped element is called with the arguments its own signature declares, so a historical
-     * render($pdf, $preview, $user) receives three arguments and a v2-style render() also gets the renderer.
+     * Preserves the wrapped element's own call shape: a genuine 4.5-era historical
+     * render($pdf, $preview, $user) is called with exactly those three arguments, while a
+     * released 5.2-compatible render() that declares the renderer parameter also receives it.
      *
      * @param \pdf $pdf
      * @param bool $preview
@@ -286,7 +289,9 @@ final class legacy_element_adapter implements
     /**
      * Render the element in HTML for the drag and drop interface.
      *
-     * Historical render_html() takes no renderer and may return null, which is returned as an empty string.
+     * Preserves the wrapped element's own call shape: a genuine 4.5-era historical
+     * render_html() is called with no arguments, while a released 5.2-compatible
+     * render_html() that declares the renderer parameter also receives it.
      *
      * @param element_renderer|null $renderer
      * @return string
@@ -337,27 +342,24 @@ final class legacy_element_adapter implements
     /**
      * Sets the data on the form when editing an element (legacy fallback).
      *
-     * Only invokes the legacy hook when the wrapped element actually overrides it. If the override
-     * calls parent::definition_after_data(), the base class has already emitted the deprecation
-     * notice (detected via its warning count); otherwise it is emitted here, so it appears once.
+     * Always delegates, including to the inherited mod_customcert\element implementation,
+     * which populates the common form fields. A legacy override calling
+     * parent::definition_after_data() triggers that implementation's own deprecation notice;
+     * the warning count before/after detects that, so this only emits a fallback notice when
+     * the override did not call the parent at all.
      *
      * @param \MoodleQuickForm $mform
      * @return void
      */
     public function definition_after_data(MoodleQuickForm $mform): void {
-        if (method_exists($this->inner, 'definition_after_data')) {
-            $ref = new \ReflectionMethod($this->inner, 'definition_after_data');
-            if ($ref->getDeclaringClass()->getName() !== \mod_customcert\element::class) {
-                $warningsbefore = $this->inner->get_definition_after_data_warning_count();
-                $this->inner->definition_after_data($mform);
-                if ($this->inner->get_definition_after_data_warning_count() === $warningsbefore) {
-                    debugging(
-                        'definition_after_data() is deprecated since Moodle 5.2. '
-                        . 'Implement mod_customcert\\element\\preparable_form_interface::prepare_form() instead.',
-                        DEBUG_DEVELOPER
-                    );
-                }
-            }
+        $warningsbefore = $this->inner->get_definition_after_data_warning_count();
+        $this->inner->definition_after_data($mform);
+        if ($this->inner->get_definition_after_data_warning_count() === $warningsbefore) {
+            debugging(
+                'definition_after_data() is deprecated since Moodle 5.2. '
+                . 'Implement mod_customcert\\element\\preparable_form_interface::prepare_form() instead.',
+                DEBUG_DEVELOPER
+            );
         }
     }
 

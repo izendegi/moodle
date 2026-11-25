@@ -28,8 +28,8 @@ namespace mod_customcert;
 
 use context;
 use mod_customcert\event\template_created;
-use mod_customcert\service\template_repository;
 use mod_customcert\service\pdf_generation_service;
+use mod_customcert\service\template_repository;
 use mod_customcert\service\template_service;
 use pdf;
 use stdClass;
@@ -58,16 +58,12 @@ class template {
     protected int $contextid;
 
     /**
-     * Cached template service instance for deprecated shims.
-     *
-     * @var template_service|null
+     * @var template_service|null Lazily cached service used by the deprecated shim methods below.
      */
     private ?template_service $service = null;
 
     /**
-     * Cached PDF generation service for deprecated shims.
-     *
-     * @var pdf_generation_service|null
+     * @var pdf_generation_service|null Lazily cached service used by the deprecated {@see self::generate_pdf()} shim.
      */
     private ?pdf_generation_service $pdfs = null;
 
@@ -97,24 +93,31 @@ class template {
     /**
      * Handles saving data.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::update()} instead.
      * @param stdClass $data the template data
      */
     public function save(stdClass $data): void {
-        debugging('template::save() is deprecated since Moodle 5.2. Use template_service::update() instead.', DEBUG_DEVELOPER);
+        debugging(
+            'template::save() is deprecated since Moodle 5.2. Use template_service::update() instead. '
+            . 'This compatibility shim is retained through Moodle 5.3; removal is planned no earlier than '
+            . 'the Moodle 6.0-compatible release.',
+            DEBUG_DEVELOPER
+        );
         $this->get_service()->update($this, $data);
     }
 
     /**
      * Handles adding another page to the template.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::add_page()} instead.
      * @param bool $triggertemplateupdatedevent
      * @return int the id of the page
      */
     public function add_page(bool $triggertemplateupdatedevent = true): int {
         debugging(
-            'template::add_page() is deprecated since Moodle 5.2. Use template_service::add_page() instead.',
+            'template::add_page() is deprecated since Moodle 5.2. Use template_service::add_page() instead. '
+            . 'This compatibility shim is retained through Moodle 5.3; removal is planned no earlier than '
+            . 'the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
         return $this->get_service()->add_page($this, $triggertemplateupdatedevent);
@@ -123,12 +126,14 @@ class template {
     /**
      * Handles saving page data.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::save_pages()} instead.
      * @param stdClass $data the template data
      */
     public function save_page(stdClass $data): void {
         debugging(
-            'template::save_page() is deprecated since Moodle 5.2. Use template_service::save_pages() instead.',
+            'template::save_page() is deprecated since Moodle 5.2. Use template_service::save_pages() instead. '
+            . 'This compatibility shim is retained through Moodle 5.3; removal is planned no earlier than '
+            . 'the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
         $this->get_service()->save_pages($this, $data);
@@ -137,25 +142,32 @@ class template {
     /**
      * Handles deleting the template.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::delete()} instead.
      * @return bool return true if the deletion was successful, false otherwise
      */
     public function delete(): bool {
-        debugging('template::delete() is deprecated since Moodle 5.2. Use template_service::delete() instead.', DEBUG_DEVELOPER);
+        debugging(
+            'template::delete() is deprecated since Moodle 5.2. Use template_service::delete() instead. '
+            . 'This compatibility shim is retained through Moodle 5.3; removal is planned no earlier than '
+            . 'the Moodle 6.0-compatible release.',
+            DEBUG_DEVELOPER
+        );
         return $this->get_service()->delete($this);
     }
 
     /**
      * Handles deleting a page from the template.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::delete_page()} instead.
      * @param int $pageid the template page
      * @param bool $triggertemplateupdatedevent False if page is being deleted
      * during deletion of template.
      */
     public function delete_page(int $pageid, bool $triggertemplateupdatedevent = true): void {
         debugging(
-            'template::delete_page() is deprecated since Moodle 5.2. Use template_service::delete_page() instead.',
+            'template::delete_page() is deprecated since Moodle 5.2. Use template_service::delete_page() instead. '
+            . 'This compatibility shim is retained through Moodle 5.3; removal is planned no earlier than '
+            . 'the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
         $this->get_service()->delete_page($this, $pageid, $triggertemplateupdatedevent);
@@ -164,13 +176,14 @@ class template {
     /**
      * Handles deleting an element from the template.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::delete_element()} instead.
      * @param int $elementid the template page
      */
     public function delete_element(int $elementid): void {
         debugging(
-            'template::delete_element() is deprecated since Moodle 5.2. '
-            . 'Use template_service::delete_element() instead.',
+            'template::delete_element() is deprecated since Moodle 5.2. Use template_service::delete_element() '
+            . 'instead. This compatibility shim is retained through Moodle 5.3; removal is planned no earlier '
+            . 'than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
         $this->get_service()->delete_element($this, $elementid);
@@ -179,7 +192,7 @@ class template {
     /**
      * Generate the PDF for the template.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see pdf_generation_service::generate_pdf()} instead.
      * @param bool $preview true if it is a preview, false otherwise
      * @param int|null $userid the id of the user whose certificate we want to view
      * @param bool $return Do we want to return the contents of the PDF?
@@ -187,8 +200,9 @@ class template {
      */
     public function generate_pdf(bool $preview = false, ?int $userid = null, bool $return = false) {
         debugging(
-            'template::generate_pdf() is deprecated since Moodle 5.2. '
-            . 'Use pdf_generation_service::generate_pdf() instead.',
+            'template::generate_pdf() is deprecated since Moodle 5.2. Use pdf_generation_service::generate_pdf() '
+            . 'instead. This compatibility shim is retained through Moodle 5.3; removal is planned no earlier '
+            . 'than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
         return $this->get_pdf_service()->generate_pdf($this, $preview, $userid, $return);
@@ -197,13 +211,14 @@ class template {
     /**
      * Handles copying this template into another.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::copy_to_template()} instead.
      * @param template $copytotemplate The template instance to copy to
      */
     public function copy_to_template(template $copytotemplate): void {
         debugging(
-            'template::copy_to_template() is deprecated since Moodle 5.2. '
-            . 'Use template_service::copy_to_template() instead.',
+            'template::copy_to_template() is deprecated since Moodle 5.2. Use template_service::copy_to_template() '
+            . 'instead. This compatibility shim is retained through Moodle 5.3; removal is planned no earlier '
+            . 'than the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
         $this->get_service()->copy_to_template($this, $copytotemplate);
@@ -212,14 +227,16 @@ class template {
     /**
      * Handles moving an item on a template.
      *
-     * @deprecated since Moodle 5.2
+     * @deprecated since Moodle 5.2. Use {@see template_service::move_item()} instead.
      * @param string $itemname the item we are moving
      * @param int $itemid the id of the item
      * @param string $direction the direction
      */
     public function move_item(string $itemname, int $itemid, string $direction): void {
         debugging(
-            'template::move_item() is deprecated since Moodle 5.2. Use template_service::move_item() instead.',
+            'template::move_item() is deprecated since Moodle 5.2. Use template_service::move_item() instead. '
+            . 'This compatibility shim is retained through Moodle 5.3; removal is planned no earlier than '
+            . 'the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
         $this->get_service()->move_item($this, $itemname, $itemid, $direction);
@@ -327,7 +344,7 @@ class template {
     }
 
     /**
-     * Lazily build a template_service instance.
+     * Lazily build a template_service instance for the deprecated shim methods.
      *
      * @return template_service
      */
@@ -336,7 +353,7 @@ class template {
     }
 
     /**
-     * Lazily build a pdf_generation_service instance.
+     * Lazily build a pdf_generation_service instance for the deprecated {@see self::generate_pdf()} shim.
      *
      * @return pdf_generation_service
      */

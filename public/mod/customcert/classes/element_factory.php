@@ -31,31 +31,37 @@ namespace mod_customcert;
  *
  * @deprecated since Moodle 5.2 — use mod_customcert\service\element_factory instead.
  *   This class exists solely to avoid hard BC breaks for third-party code that calls
- *   \mod_customcert\element_factory::get_element_instance(). It will be removed in a
- *   future major release.
+ *   \mod_customcert\element_factory::get_element_instance() directly and relies on the
+ *   raw plugin object it returns. It will be removed in the Moodle 6.0-compatible release.
  */
 class element_factory {
     /**
      * Returns an element instance for the given record.
      *
-     * @deprecated since Moodle 5.2 — use mod_customcert\service\element_factory::build_with_defaults()->create_from_legacy_record()
-     *   or inject mod_customcert\service\element_factory and call create() / create_from_legacy_record() instead.
+     * Returns the raw plugin object, never wrapped, so historical instanceof checks and
+     * plugin-specific members keep working. No return type: historically this returned
+     * either an object or the boolean `false`.
+     *
+     * @deprecated since Moodle 5.2 — use
+     *   \mod_customcert\service\element_factory::build_with_defaults()->create_from_record() instead.
      * @param mixed $element A record from customcert_elements.
      * @return mixed Element instance or false if the element class does not exist.
      */
     public static function get_element_instance($element) {
         debugging(
-            '\mod_customcert\element_factory::get_element_instance() is deprecated since Moodle 5.2. '
-            . 'Use \mod_customcert\service\element_factory::build_with_defaults()->create_from_legacy_record() '
-            . 'or inject \mod_customcert\service\element_factory and call create() / create_from_legacy_record().',
+            '\mod_customcert\element_factory::get_element_instance() is deprecated. Use '
+            . '\mod_customcert\service\element_factory::build_with_defaults()->create_from_record() instead. '
+            . 'This compatibility shim will be removed in the Moodle 6.0-compatible release.',
             DEBUG_DEVELOPER
         );
 
         $elementtype = $element->element ?? '';
         $classname = '\\customcertelement_' . $elementtype . '\\element';
+        // Check existence first, so a missing plugin never triggers a get_string() lookup.
         if (!class_exists($classname)) {
             return false;
         }
+
         $data = new \stdClass();
         $data->id = $element->id ?? null;
         $data->pageid = $element->pageid ?? null;

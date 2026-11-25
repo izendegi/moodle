@@ -17,7 +17,6 @@
 namespace mod_customcert\service;
 
 use core\task\manager;
-use mod_customcert\certificate;
 use mod_customcert\task\email_certificate_task;
 use context_module;
 use core_availability\info_module;
@@ -266,7 +265,8 @@ final class certificate_issuer_service {
     }
 
     /**
-     * Build the list of eligible users for a certificate within a CM context.
+     * Find issuance candidates using capability, availability, suspension, completion and required time.
+     * Report visibility rules in issue_repository do not determine issuance eligibility.
      *
      * @param object $customcert
      * @param object $cm

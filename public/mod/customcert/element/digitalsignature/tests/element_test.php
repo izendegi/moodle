@@ -186,7 +186,7 @@ final class element_test extends advanced_testcase {
     }
 
     /**
-     * Test that normalise_data() stores the password when provided on first save.
+     * Test that normalise_data() does not store the plaintext password on first save.
      *
      * @covers \customcertelement_digitalsignature\element::normalise_data
      */

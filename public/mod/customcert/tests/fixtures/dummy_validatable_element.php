@@ -28,6 +28,8 @@ declare(strict_types=1);
 namespace mod_customcert\tests\fixtures;
 
 use mod_customcert\element;
+use mod_customcert\element\renderable_element_interface;
+use MoodleQuickForm;
 use mod_customcert\element\element_interface;
 use RuntimeException;
 use mod_customcert\element\validatable_element_interface;
@@ -38,7 +40,19 @@ use stdClass;
 /**
  * Dummy validatable element used only for PHPUnit tests.
  */
-final class dummy_validatable_element extends element implements element_interface, validatable_element_interface {
+final class dummy_validatable_element extends element implements
+    element_interface,
+    renderable_element_interface,
+    validatable_element_interface {
+    /**
+     * Add element-specific fields to the edit form (no-op in fixture).
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function build_form(MoodleQuickForm $mform): void {
+    }
+
     /** @var array<string,string> */
     private array $customerrors = [];
 
