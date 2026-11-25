@@ -15,7 +15,7 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template core/loginform
+    @template theme_moove/loginform
 
     Moodle template for the login page.
 
@@ -92,8 +92,46 @@
     {{#info}}
         <div class="alert alert-info" id="logininfomessage" role="status">{{info}}</div>
     {{/info}}
+    <!-- Botones principales de selección -->
+    <div class="login-method-selection mb-4">
+        {{#showprovidersdirect}}
+            {{#identityproviders_first}}
+                <a href="{{url}}" class="btn btn-primary login-identityprovider-btn mb-3">
+                    {{#iconurl}}
+                        <img src="{{iconurl}}" alt="" width="24" height="24" class="me-2"/>
+                    {{/iconurl}}
+                    {{#str}}loginwith, core, {{name}}{{/str}}
+                </a>
+            {{/identityproviders_first}}
+        {{/showprovidersdirect}}
+
+        {{#showproviderschooser}}
+            {{#identityproviders_first}}
+                <a href="{{url}}" class="btn btn-primary login-identityprovider-btn mb-3">
+                    {{#iconurl}}
+                        <img src="{{iconurl}}" alt="" width="24" height="24" class="me-2"/>
+                    {{/iconurl}}
+                    {{#str}}loginwith, core, {{name}}{{/str}}
+                </a>
+            {{/identityproviders_first}}
+            {{#identityproviders_rest}}
+                <a class="btn login-identityprovider-btn btn-primary mb-3" href="{{url}}">
+                    {{#iconurl}}
+                        <img src="{{iconurl}}" alt="" width="24" height="24" class="me-2"/>
+                    {{/iconurl}}
+                    {{#str}}loginwith, core, {{name}}{{/str}}
+                </a>
+            {{/identityproviders_rest}}
+        {{/showproviderschooser}}
+
+        <button type="button" class="btn btn-outline-secondary w-100 login-manual-btn" id="moodle-login-btn">
+            <i class="fa fa-user me-2" aria-hidden="true"></i>{{#str}} loginmoodle, theme_moove {{/str}}
+        </button>
+    </div>
+
     {{#showloginform}}
-        <form class="login-form" action="{{loginurl}}" method="post" id="login">
+        <!-- Formulario de login tradicional (inicialmente oculto) -->
+        <form class="login-form" action="{{loginurl}}" method="post" id="login" style="display: none;">
             <input id="anchor" type="hidden" name="anchor" value="">
             <script>document.getElementById('anchor').value = location.hash;</script>
             <input type="hidden" name="logintoken" value="{{logintoken}}">
@@ -131,6 +169,13 @@
             <div class="login-form-submit mb-3">
                 <button class="btn btn-primary w-100" type="submit" id="loginbtn">{{#str}}login{{/str}}</button>
             </div>
+
+            <!-- Botón para volver a la selección -->
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-link" id="back-to-selection">
+                    <i class="fa fa-arrow-left me-1" aria-hidden="true"></i>{{#str}}backtoselection, theme_moove{{/str}}
+                </button>
+            </div>
         </form>
     {{/showloginform}}
     {{#hasauthinstructions}}
@@ -160,26 +205,6 @@
             </div>
         {{/cansignup}}
     {{/hasauthinstructions}}
-    {{#hasidentityproviders}}
-        <div class="login-separator my-5">{{#str}}loginseparatoror{{/str}}</div>
-    {{/hasidentityproviders}}
-    {{^hasidentityproviders}}
-        {{#canloginasguest}}
-            <div class="login-separator my-5">{{#str}}loginseparatoror{{/str}}</div>
-        {{/canloginasguest}}
-    {{/hasidentityproviders}}
-    {{#hasidentityproviders}}
-        <div class="login-identityproviders">
-            {{#identityproviders}}
-                <a class="btn login-identityprovider-btn btn-outline-secondary mb-3" href="{{url}}">
-                    {{#iconurl}}
-                        <img src="{{iconurl}}" alt="" width="24" height="24"/>
-                    {{/iconurl}}
-                    {{#str}}loginwith, core, {{name}}{{/str}}
-                </a>
-            {{/identityproviders}}
-        </div>
-    {{/hasidentityproviders}}
     {{#canloginasguest}}
         <form action="{{loginurl}}" method="post" id="guestlogin" class="mb-4">
             <input type="hidden" name="logintoken" value="{{logintoken}}">
@@ -254,5 +279,37 @@
         {{#canloginasguest}}
             Submit.init("loginguestbtn");
         {{/canloginasguest}}
+    });
+
+    require(['jquery'], function($) {
+        $(document).ready(function() {
+            // Elementos del DOM.
+            var $moodleLoginBtn = $('#moodle-login-btn');
+            var $loginForm = $('#login');
+            var $methodSelection = $('.login-method-selection');
+            var $backToSelectionBtn = $('#back-to-selection');
+
+            // Mostrar formulario de Moodle al hacer clic en "Usuario de Moodle".
+            $moodleLoginBtn.on('click', function(e) {
+                e.preventDefault();
+                $methodSelection.hide();
+                $loginForm.show();
+
+                // Auto-focus en el campo de usuario.
+                setTimeout(function() {
+                    var $userNameField = $('#username');
+                    if ($userNameField.length && $userNameField.val().length == 0) {
+                        $userNameField.focus();
+                    }
+                }, 100);
+            });
+
+            // Volver a la selección desde formulario de Moodle.
+            $backToSelectionBtn.on('click', function(e) {
+                e.preventDefault();
+                $loginForm.hide();
+                $methodSelection.show();
+            });
+        });
     });
 {{/js}}
