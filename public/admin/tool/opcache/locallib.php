@@ -1,0 +1,441 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Admin tool "Opcache management" - Local library
+ *
+ * @package    tool_opcache
+ * @copyright  2026 Alexander Bias <bias@alexanderbias.de>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/**
+ * Helper function to get the request parameters which trigger write operations in the Opcache GUI.
+ *
+ * These write operations are protected with a sesskey check by this plugin.
+ * With each update of the Opcache GUI library, check if there are new write operations which have to be added here.
+ *
+ * @return array
+ */
+function tool_opcache_get_write_params() {
+    // The request parameters of the Opcache GUI which trigger write operations.
+    return [
+        'reset', // Reset the whole cache.
+        'invalidate', // Invalidate a particular file.
+        'invalidate_searched', // Invalidate all files which match a search term.
+    ];
+}
+
+/**
+ * Helper function to check if the given request parameters request a write operation of the Opcache GUI.
+ *
+ * @param array $request The request parameters, e.g. $_GET.
+ *
+ * @return bool
+ */
+function tool_opcache_is_write_request($request) {
+    // Iterate over all request parameters which trigger write operations.
+    foreach (tool_opcache_get_write_params() as $param) {
+        // If the parameter is given at all, a write operation is requested.
+        // The Opcache GUI checks the parameters with isset() and does not care about their values (like reset=0),
+        // so we must not care about the values either.
+        if (array_key_exists($param, $request)) {
+            return true;
+        }
+    }
+
+    // If we have reached this point, no write operation is requested.
+    return false;
+}
+
+/**
+ * Helper function to add the sesskey to all URLs in the given Opcache GUI output which trigger write operations.
+ *
+ * The Opcache GUI builds these URLs in its JavaScript code as relative URLs which start with the write operation
+ * parameter (like '?reset=1' or '?invalidate=' + path). The sesskey is inserted in front of the write operation parameter,
+ * so that the rest of the JavaScript expression which builds the URL remains untouched.
+ *
+ * @param string $output The buffered Opcache GUI output.
+ *
+ * @return string
+ */
+function tool_opcache_add_sesskey_to_write_links($output) {
+    // Iterate over all request parameters which trigger write operations.
+    foreach (tool_opcache_get_write_params() as $param) {
+        // Insert the sesskey in front of the write operation parameter.
+        // The trailing '=' makes sure that 'invalidate' does not match 'invalidate_searched'.
+        $output = str_replace('?' . $param . '=', '?sesskey=' . sesskey() . '&' . $param . '=', $output);
+    }
+
+    return $output;
+}
+
+/**
+ * Helper function to add the sesskey to all AJAX requests of the given Opcache GUI output which trigger write operations.
+ *
+ * In real-time mode, the Opcache GUI sends its write operations as AJAX requests with axios.
+ * For these requests, an axios request interceptor is added to the head of the Opcache GUI output.
+ * The interceptor adds the sesskey to all requests which contain a write operation parameter.
+ *
+ * @param string $output The buffered Opcache GUI output.
+ *
+ * @return string
+ */
+function tool_opcache_add_sesskey_to_write_requests($output) {
+    // Compose the interceptor script.
+    $script = '<script>' .
+            'axios.interceptors.request.use(function(config) {' .
+                'var writeparams = ' . json_encode(tool_opcache_get_write_params()) . ';' .
+                'if (config.params && writeparams.some(function(param) {' .
+                    'return Object.prototype.hasOwnProperty.call(config.params, param);' .
+                '})) {' .
+                    'config.params = Object.assign({}, config.params, {sesskey: ' . json_encode(sesskey()) . '});' .
+                '}' .
+                'return config;' .
+            '});' .
+            '</script>';
+
+    // Add the interceptor script at the end of the head, i.e. after the axios library has been loaded.
+    // If there isn't any head end tag, the output is not the Opcache GUI which we expect and we leave it as it is.
+    // In this case, the write operations will just fail the sesskey check.
+    $pos = strpos($output, '</head>');
+    if ($pos === false) {
+        return $output;
+    }
+
+    return substr_replace($output, $script, $pos, 0);
+}
+
+/**
+ * Helper function to get the secret key which is set for the given CLI tool in the Moodle configuration.
+ *
+ * @param string $tool The CLI tool, i.e. 'check' (Nagios check) or 'reset' (CLI tool to reset PHP opcache).
+ *
+ * @return string The secret key or an empty string if no secret key is set.
+ */
+function tool_opcache_get_cfg_secretkey($tool) {
+    global $CFG;
+
+    // Get the secret key from the Moodle configuration.
+    $setting = 'tool_opcache_' . $tool . '_secretkey';
+    if (!isset($CFG->$setting) || !is_scalar($CFG->$setting)) {
+        return '';
+    }
+
+    return (string) $CFG->$setting;
+}
+
+/**
+ * Helper function to check if the given CLI tool is enabled in the Moodle configuration.
+ *
+ * The CLI tools are disabled by default. They are enabled with a setting in config.php or in the Moodle database.
+ * For backwards compatibility, they are also enabled if a secret key is set.
+ *
+ * @param string $tool The CLI tool, i.e. 'check' (Nagios check) or 'reset' (CLI tool to reset PHP opcache).
+ *
+ * @return bool
+ */
+function tool_opcache_is_cli_tool_enabled($tool) {
+    global $CFG;
+
+    // Check if the CLI tool is enabled explicitly.
+    $setting = 'tool_opcache_' . $tool . '_enabled';
+    if (!empty($CFG->$setting)) {
+        return true;
+    }
+
+    // Check if the CLI tool is enabled implicitly by a secret key.
+    return tool_opcache_get_cfg_secretkey($tool) !== '';
+}
+
+/**
+ * Helper function to get the secret key which is used by the given CLI tool to call its web part.
+ *
+ * If a secret key is set in the Moodle configuration (config.php or Moodle database), this secret key is used.
+ * Otherwise, the secret key which has been generated automatically and which is stored in the plugin config is used.
+ *
+ * @param string $tool The CLI tool, i.e. 'check' (Nagios check) or 'reset' (CLI tool to reset PHP opcache).
+ * @param bool $generate Generate and store a secret key if there isn't any secret key yet.
+ *                       This should only be done by the CLI part of the CLI tool and not by the web part which can be called
+ *                       by anybody.
+ *
+ * @return string The secret key or an empty string if there isn't any secret key (yet).
+ */
+function tool_opcache_get_secretkey($tool, $generate = false) {
+    // If a secret key is set in the Moodle configuration, use it.
+    $secretkey = tool_opcache_get_cfg_secretkey($tool);
+    if ($secretkey !== '') {
+        return $secretkey;
+    }
+
+    // Otherwise, get the secret key from the plugin config.
+    $secretkey = (string) get_config('tool_opcache', $tool . 'secretkey');
+
+    // If there isn't any secret key yet and if requested, generate and store a secret key.
+    // The secret key is alphanumeric as the web part cleans the submitted secret key with PARAM_ALPHANUM.
+    if ($secretkey === '' && $generate) {
+        $secretkey = random_string(64);
+        set_config($tool . 'secretkey', $secretkey, 'tool_opcache');
+    }
+
+    return $secretkey;
+}
+
+/**
+ * Helper function to check if the given submitted secret key matches the secret key of the given CLI tool.
+ *
+ * @param string $tool The CLI tool, i.e. 'check' (Nagios check) or 'reset' (CLI tool to reset PHP opcache).
+ * @param string $submittedsecretkey The submitted secret key.
+ *
+ * @return bool
+ */
+function tool_opcache_check_secretkey($tool, $submittedsecretkey) {
+    // If there isn't any secret key, no submitted secret key can match.
+    $secretkey = tool_opcache_get_secretkey($tool);
+    if ($secretkey === '') {
+        return false;
+    }
+
+    // Compare the secret keys with hash_equals() as it compares the strings in constant time and as it does not compare
+    // numeric strings as numbers (as '!=' does, where '1e3' would match '1000').
+    return hash_equals($secretkey, (string) $submittedsecretkey);
+}
+
+/**
+ * Helper function to get the curl options which are used by the CLI tools to call their web parts.
+ *
+ * The TLS certificate of the webserver is verified by default as the secret key is submitted with the request.
+ * Moodle core's curl class does not verify the TLS certificate unless this is requested explicitly.
+ *
+ * @param bool $insecure If true, the TLS certificate of the webserver is not verified at all, i.e. neither its trust chain
+ *                       nor its hostname (for example for webservers with a self-signed certificate or for webservers
+ *                       which are called with their IP address).
+ * @param bool $verbose If true, curl writes verbose information about the request to STDERR.
+ *
+ * @return array The curl options.
+ */
+function tool_opcache_get_curl_options($insecure = false, $verbose = false) {
+    $curloptions = [
+        'FRESH_CONNECT' => true,
+        'RETURNTRANSFER' => true,
+        'FORBID_REUSE' => true,
+        'HEADER' => false,
+        'CONNECTTIMEOUT' => 5,
+        // Redirects must not be followed. Moodle core's curl class follows redirects by default and repeats a POST request
+        // including its POST fields (i.e. the secret key) on the redirect target for all redirects but HTTP 303.
+        // With this option, the request ends at the first redirect, which is then reported as an error.
+        'FOLLOWLOCATION' => false,
+        'SSL_VERIFYPEER' => !$insecure,
+        // The hostname of the certificate is checked by curl independently from the trust chain of the certificate.
+        // Thus, it has to be switched off separately (2 means that the hostname must match, 0 means that it is not checked).
+        'SSL_VERIFYHOST' => $insecure ? 0 : 2,
+    ];
+
+    // The verbose option of curl is used here instead of the debug setting of Moodle core's curl class as the latter would
+    // dump the POST fields and thus the secret key. The verbose output of curl does not contain the request body.
+    if ($verbose) {
+        $curloptions['VERBOSE'] = true;
+    }
+
+    return $curloptions;
+}
+
+/**
+ * Helper function to get the Host header which the CLI tools send to their web parts if a domain was given.
+ *
+ * This is needed if the URL of the web part does not contain the hostname of $CFG->wwwroot, for example if the webserver
+ * is called directly with its IP address on a server which runs behind a reverse proxy. Without the Host header, Moodle
+ * would redirect such a request to the wwwroot URL.
+ *
+ * @param string|null $domain The domain which was given to the CLI tool (a hostname or an IP address,
+ *                            optionally followed by a colon and a port if $CFG->wwwroot contains a port).
+ *
+ * @return string|bool The Host header, an empty string if no domain was given or false if the given domain is invalid.
+ */
+function tool_opcache_get_host_header($domain) {
+    // If no domain was given, no Host header has to be sent.
+    $domain = trim((string) $domain);
+    if ($domain === '') {
+        return '';
+    }
+
+    // Let PHP split the domain into hostname and optional port. parse_url() fails for non-numeric ports and for ports
+    // above 65535. Refuse the domain as well if it contains anything else than a hostname and a port (like a path).
+    $parts = parse_url('//' . $domain);
+    if ($parts === false || empty($parts['host']) || array_diff_key($parts, ['host' => true, 'port' => true])) {
+        return false;
+    }
+
+    // Refuse anything which is not a plain hostname or IP address.
+    if (clean_param($parts['host'], PARAM_HOST) !== $parts['host']) {
+        return false;
+    }
+
+    // Compose the Host header and refuse the domain if it was not given in its plain form
+    // (which covers port 0, an empty port and a port with leading zeros).
+    $host = $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : '');
+    if ($host !== $domain || (isset($parts['port']) && $parts['port'] < 1)) {
+        return false;
+    }
+
+    return 'Host: ' . $host;
+}
+
+/**
+ * Helper function to get an error message if the webserver has redirected the request of a CLI tool to its web part.
+ *
+ * The CLI tools submit the secret key as POST parameter and do not follow any redirects (see tool_opcache_get_curl_options())
+ * as the secret key must not be sent to another URL than the given one. The most common reason for a redirect is that
+ * the given URL does not match $CFG->wwwroot, in which case Moodle redirects the request to the wwwroot URL.
+ *
+ * @param array $curlinfo The curl info of the request to the web part (as returned by curl::get_info()).
+ *
+ * @return string The error message or an empty string if the request was not redirected.
+ */
+function tool_opcache_get_redirect_error($curlinfo) {
+    // If the webserver did not answer with a redirect, there is nothing to complain about.
+    $httpcode = (int) ($curlinfo['http_code'] ?? 0);
+    if ($httpcode < 300 || $httpcode >= 400) {
+        return '';
+    }
+
+    // Compose the error message, including the redirect target if it is known.
+    $target = '';
+    if (!empty($curlinfo['redirect_url'])) {
+        $target = ' to ' . $curlinfo['redirect_url'];
+    }
+    return 'The webserver redirected the request' . $target . ' (HTTP ' . $httpcode . ') instead of answering it. ' .
+            'Please provide the URL of the web part exactly as it is served by Moodle, i.e. matching $CFG->wwwroot, ' .
+            'or provide the hostname of $CFG->wwwroot with the --domain option.';
+}
+
+/**
+ * Helper function to let the given CLI tool call its web part.
+ *
+ * The secret key is submitted as POST parameter to keep it out of the URL and thus out of the webserver and proxy logs.
+ *
+ * @param string $tool The CLI tool, i.e. 'check' (Nagios check) or 'reset' (CLI tool to reset PHP opcache).
+ * @param string $url The URL of the web part of the CLI tool.
+ * @param bool $insecure If true, the TLS certificate of the webserver is not verified.
+ * @param string $domain The domain which is sent as Host header with the request (an empty string to not set the header).
+ *                       The domain must have been validated with tool_opcache_get_host_header() by the caller.
+ * @param bool $verbose If true, curl writes verbose information about the request to STDERR.
+ * @param curl|null $curl The curl object to be used for the request (only to be set by unit tests).
+ *
+ * @return array An array with the response of the web part, the curl error number (0 if there wasn't any error),
+ *               the curl error message and the redirect error message (an empty string if the request was not redirected).
+ */
+function tool_opcache_call_web_part($tool, $url, $insecure = false, $domain = '', $verbose = false, $curl = null) {
+    global $CFG;
+
+    require_once($CFG->libdir . '/filelib.php');
+
+    // The ignoresecurity option means that $CFG->curlsecurityblockedhosts is ignored by purpose.
+    // Otherwise, $CFG->curlsecurityblockedhosts might prevent that the web part of the CLI tool is fetched.
+    if ($curl === null) {
+        $curl = new curl(['ignoresecurity' => true]);
+    }
+
+    // Send the given domain as Host header, if any.
+    $hostheader = tool_opcache_get_host_header($domain);
+    if (!empty($hostheader)) {
+        $curl->setHeader($hostheader);
+    }
+
+    // Call the web part.
+    $params = ['secret' => tool_opcache_get_secretkey($tool, true)];
+    $response = $curl->post($url, $params, tool_opcache_get_curl_options($insecure, $verbose));
+
+    return [
+        $response,
+        (int) $curl->get_errno(),
+        (string) $curl->error,
+        tool_opcache_get_redirect_error((array) $curl->get_info()),
+    ];
+}
+
+/**
+ * Helper function to evaluate the response of the web part of the Nagios check.
+ *
+ * @param string|bool $response The response of the web part of the Nagios check.
+ * @param int $curlerrno The curl error number of the request to the web part (0 if there wasn't any error).
+ * @param string $curlerror The curl error message of the request to the web part.
+ * @param int $warning The threshold for warning (used cache in percent).
+ * @param int $critical The threshold for critical (used cache in percent).
+ *
+ * @return array An array with the Nagios return status (0 = OK, 1 = WARNING, 2 = CRITICAL, 3 = UNKNOWN) and the output.
+ */
+function tool_opcache_evaluate_check_response($response, $curlerrno, $curlerror, $warning, $critical) {
+    // Die if the Nagios check is not enabled on the webserver (basically, this should not happen).
+    if ($response === 'DISABLED') {
+        return [3, 'UNKNOWN - The Nagios check is not enabled on the webserver. See README.md for details.'];
+    }
+
+    // Die if the secret key is not correct (basically, this should not happen).
+    if ($response === 'FORBIDDEN') {
+        return [2, 'CRITICAL - Secret key is required but is not correct.'];
+    }
+
+    // Die if Opcache is not available on the webserver.
+    if ($response === 'UNAVAILABLE') {
+        return [3, 'UNKNOWN - Opcache is not available on the webserver (extension not loaded, disabled or API access ' .
+                'restricted).'];
+    }
+
+    // Die if the webserver could not be reached.
+    if ($curlerrno) {
+        return [3, 'UNKNOWN - The Opcache figures could not be fetched from the webserver: ' . $curlerror];
+    }
+
+    // Die if the webserver did not return the four Opcache figures (for example an error page or an empty response).
+    // The web part separates the figures with "\r\n", so do not split by PHP_EOL here.
+    $figures = preg_split('/\r?\n/', trim((string) $response));
+    if (count($figures) != 4 || count(array_filter($figures, 'is_numeric')) != 4) {
+        return [3, 'UNKNOWN - The webserver did not return valid Opcache figures. Opcache may be disabled on the webserver.'];
+    }
+
+    // Pick Opcache figures.
+    $used = clean_param($figures[0], PARAM_INT);
+    $free = clean_param($figures[1], PARAM_INT);
+    $hitspct = clean_param($figures[2], PARAM_FLOAT);
+    $misspct = clean_param($figures[3], PARAM_FLOAT);
+
+    // Die if the Opcache memory figures are empty (basically, this should not happen).
+    if ($used + $free <= 0) {
+        return [3, 'UNKNOWN - The webserver returned empty Opcache memory figures.'];
+    }
+
+    // Calculate used percentage value.
+    $usedpct = round($used / ($used + $free) * 100, 1);
+    // Calculate return status.
+    if ($usedpct >= $critical) {
+        $returnstatus = 2;
+        $prefix = 'CRITICAL';
+    } else if ($usedpct >= $warning) {
+        $returnstatus = 1;
+        $prefix = 'WARNING';
+    } else {
+        $returnstatus = 0;
+        $prefix = 'OK';
+    }
+
+    // Concatenate return string including performance data.
+    $out = $prefix . ' - ' . $usedpct . "% cache used | " .
+            "used_pct=" . $usedpct . "%;" . $warning . ";" . $critical . " hit_pct=" . $hitspct .
+                    "%; miss_pct=" . $misspct . "%;";
+
+    return [$returnstatus, $out];
+}

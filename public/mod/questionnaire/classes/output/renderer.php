@@ -1,0 +1,382 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace mod_questionnaire\output;
+
+use mod_questionnaire\local\question\question;
+
+/**
+ * Contains class mod_questionnaire\output\renderer
+ *
+ * @package    mod_questionnaire
+ * @copyright  2016 Mike Churchward (mike.churchward@poetgroup.org)
+ * @author     Mike Churchward
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class renderer extends \plugin_renderer_base {
+    /**
+     * Main view page.
+     * @param \templateable $page
+     * @return string | boolean
+     */
+    public function render_viewpage($page) {
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('mod_questionnaire/viewpage', $data);
+    }
+
+    /**
+     * Render the report tertiary action bar.
+     * @param report_action_bar $actionbar
+     * @return string
+     */
+    public function render_report_action_bar(report_action_bar $actionbar): string {
+        $data = $actionbar->export_for_template($this);
+        return $this->render_from_template('mod_questionnaire/report_action_bar', $data);
+    }
+
+    /**
+     * Render the manage-questions list, add bar, and recycle bin.
+     * @param \mod_questionnaire\output\question_manager $manager
+     * @return string
+     */
+    public function render_question_manager(\mod_questionnaire\output\question_manager $manager) {
+        $data = $manager->export_for_template($this);
+        return $this->render_from_template('mod_questionnaire/question_manager', $data);
+    }
+
+    /**
+     * Fill out the non-respondents page.
+     * @param \templateable $page
+     * @return string | boolean
+     */
+    public function render_nonrespondentspage($page) {
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('mod_questionnaire/nonrespondentspage', $data);
+    }
+
+    /**
+     * Calculate the progress and return it.
+     * @param int $section
+     * @param array $questionsbysec
+     * @return float
+     */
+    private function calculate_progress($section, $questionsbysec) {
+        $done = 0;
+        $todo = 0;
+        for ($i = 1; $i <= count($questionsbysec); $i++) {
+            if ($i < $section) {
+                $done += count($questionsbysec[$i]);
+            } else {
+                $todo += count($questionsbysec[$i]);
+            }
+        }
+
+        return round($done / ($done + $todo) * 100);
+    }
+
+    /**
+     * Render the progress bar and return it.
+     * @param int $section
+     * @param array $questionsbysec
+     * @return bool|string
+     */
+    public function render_progress_bar($section, $questionsbysec) {
+        $templatecontext['percent'] = $this->calculate_progress($section, $questionsbysec);
+        $helpicon = new \help_icon('progresshelp', 'mod_questionnaire');
+        $templatecontext['progresshelp'] = $helpicon->export_for_template($this);
+        return $this->render_from_template('mod_questionnaire/progressbar', $templatecontext);
+    }
+
+    /**
+     * Render a question for a survey.
+     * @param \mod_questionnaire\local\question\question $question The question object.
+     * @param \mod_questionnaire\local\response\response $response Any current response data.
+     * @param int $qnum The question number.
+     * @param boolean $blankquestionnaire Used for printing a blank one.
+     * @param array $dependants Array of all questions/choices depending on $question.
+     * @param \questionnaire|null $questionnaire The parent questionnaire object.
+     * @param bool $individualresponse True when rendering a single individual response (mybyresponse / individualresp).
+     * @return string The output for the page.
+     */
+    public function question_output(
+        $question,
+        $response,
+        $qnum,
+        $blankquestionnaire,
+        $dependants = [],
+        $questionnaire = null,
+        bool $individualresponse = false
+    ) {
+
+        $pagetags = $question->question_output(
+            $response,
+            $blankquestionnaire,
+            $dependants,
+            $qnum,
+            $questionnaire,
+            $individualresponse
+        );
+
+        // If the question has a template, then render it from the 'qformelement' context. If no template, then 'qformelement'
+        // already contains HTML.
+        if (($template = $question->question_template())) {
+            $pagetags->qformelement = $this->render_from_template($template, $pagetags->qformelement);
+        }
+
+        // Calling "question_output" may generate per question notifications. If present, add them to the question output.
+        if (($notifications = $question->get_notifications()) !== false) {
+            foreach ($notifications as $notification) {
+                $pagetags->notifications = $this->notification($notification, \core\output\notification::NOTIFY_ERROR);
+            }
+        }
+        $pagetags->questionname = $question->name();
+
+        return $this->render_from_template('mod_questionnaire/question_container', $pagetags);
+    }
+
+    /**
+     * Render a question response.
+     * @param \mod_questionnaire\local\question\question $question The question object.
+     * @param \mod_questionnaire\local\response\response $response The response object.
+     * @param int $qnum The question number.
+     * @param bool $pdf
+     * @param \questionnaire|null $questionnaire The parent questionnaire object.
+     * @param bool $individualresponse True when rendering a single individual response (mybyresponse / individualresp).
+     * @return string The output for the page.
+     * @throws \moodle_exception
+     */
+    public function response_output(
+        $question,
+        $response,
+        $qnum = null,
+        $pdf = false,
+        $questionnaire = null,
+        bool $individualresponse = false
+    ) {
+        $pagetags = $question->response_output($response, $qnum, $questionnaire, $individualresponse);
+
+        // If the response has a template, then render it from the 'qformelement' context. If no template, then 'qformelement'
+        // already contains HTML.
+        if (($template = $question->response_template())) {
+            if ($pdf) {
+                $pagetags->qformelement->pdf = 1;
+            }
+            $pagetags->qformelement = $this->render_from_template($template, $pagetags->qformelement);
+        }
+
+        // Calling "question_output" may generate per question notifications. If present, add them to the question output.
+        if (($notifications = $question->get_notifications()) !== false) {
+            foreach ($notifications as $notification) {
+                $pagetags->notifications = $this->notification($notification, \core\output\notification::NOTIFY_ERROR);
+            }
+        }
+        if (!$pdf) {
+            return $this->render_from_template('mod_questionnaire/question_container', $pagetags);
+        } else {
+            return $this->render_from_template('mod_questionnaire/questionpdf_container', $pagetags);
+        }
+    }
+
+    /**
+     * Render all responses for a question.
+     * @param array|string $responses
+     * @param array $questions
+     * @param \questionnaire|null $questionnaire The parent questionnaire object.
+     * @param bool $individualresponse True when rendering a single individual response (mybyresponse / individualresp).
+     * @return string The output for the page.
+     */
+    public function all_response_output($responses, $questions = null, $questionnaire = null, bool $individualresponse = false) {
+        $output = '';
+        if (is_string($responses)) {
+            $output .= $responses;
+        } else {
+            $qnum = 1;
+            foreach ($questions as $question) {
+                $pagetags = $question->questionstart_survey_display($qnum, null, $questionnaire, $individualresponse, true);
+                if (empty($pagetags)) {
+                    continue;
+                }
+                foreach ($responses as $response) {
+                    $resptags = $question->response_output($response, '', $questionnaire, $individualresponse);
+                    // If the response has a template, then render it from the 'qformelement' context.
+                    // If no template, then 'qformelement' already contains HTML.
+                    if (($template = $question->response_template())) {
+                        $resptags->qformelement = $this->render_from_template($template, $resptags->qformelement);
+                    }
+                    $resptags->respdate = userdate($response->submitted_at());
+                    $pagetags->responses[] = $resptags;
+                }
+                $qnum++;
+                $output .= $this->render_from_template('mod_questionnaire/response_container', $pagetags);
+            }
+        }
+        return $output;
+    }
+
+    /**
+     * Render a question results summary.
+     * @param question $question The question object.
+     * @param array $rids The response ids.
+     * @param string $sort The sort order being used.
+     * @param string $anonymous The value of the anonymous setting.
+     * @param bool $pdf
+     * @param int|null $currentgroupid Active group filter id for staff respondent-link URLs.
+     * @return string The output for the page.
+     */
+    public function results_output($question, $rids, $sort, $anonymous, $pdf = false, ?int $currentgroupid = null) {
+        $pagetags = $question->display_results($rids, $sort, $anonymous, $currentgroupid);
+
+        // If the response has a template, then render it from $pagetags. If no template, then $pagetags already contains HTML.
+        if (($template = $question->results_template($pdf))) {
+            return $this->render_from_template($template, $pagetags);
+        } else {
+            return $pagetags;
+        }
+    }
+
+    /**
+     * Render the reporting navigation bar.
+     * @param array $navbar All of the data needed for the template.
+     * @return string The rendered HTML.
+     */
+    public function navigationbar($navbar) {
+        return $this->render_from_template('mod_questionnaire/navbaralpha', $navbar);
+    }
+
+    /**
+     * Render the reporting navigation bar for one user.
+     * @param array $navbar All of the data needed for the template.
+     * @return string The rendered HTML.
+     */
+    public function usernavigationbar($navbar) {
+        return $this->render_from_template('mod_questionnaire/navbaruser', $navbar);
+    }
+
+    /**
+     * Render the response list for a number of users.
+     * @param array $navbar All of the data needed for the template.
+     * @return string The rendered HTML.
+     */
+    public function responselist($navbar) {
+        return $this->render_from_template('mod_questionnaire/responselist', $navbar);
+    }
+
+    /**
+     * Get displayable list of parents for the question in the manage-questions list.
+     * @param int $qid The question id.
+     * @param array $dependencies Array of dependency records for a question.
+     * @return string
+     */
+    public function get_dependency_html($qid, $dependencies) {
+        $context = ['dependencies' => []];
+        foreach ($dependencies as $dependency) {
+            switch ($dependency->dependlogic) {
+                case 0:
+                    $logic = get_string('notset', 'questionnaire');
+                    break;
+                case 1:
+                    $logic = get_string('set', 'questionnaire');
+                    break;
+                default:
+                    $logic = '';
+            }
+            if ($dependency->dependandor == 'and') {
+                $divid = 'qdepend_' . $qid . '_' . $dependency->dependquestionid . '_' . $dependency->dependchoiceid;
+                $divclass = 'qdepend';
+            } else {
+                $divid = 'qdepend_or_' . $qid . '_' . $dependency->dependquestionid . '_' . $dependency->dependchoiceid;
+                $divclass = 'qdepend-or';
+            }
+            $context['dependencies'][] = [
+                'divid' => $divid,
+                'divclass' => $divclass,
+                'dependquestion' => get_string('dependquestion', 'questionnaire'),
+                'position' => get_string('position', 'questionnaire'),
+                'parentposition' => $dependency->parentposition,
+                'parent' => $dependency->parent,
+                'logicstr' => $logic,
+            ];
+        }
+        return $this->output->render_from_template('mod_questionnaire/dependencylist', $context);
+    }
+
+    /**
+     * Returns a dataformat selection and download form
+     *
+     * @param string $label A text label
+     * @param moodle_url|string $base The download page url
+     * @param string $name The query param which will hold the type of the download
+     * @param array $params Extra params sent to the download page
+     * @param string $extrafields HTML for extra form fields
+     * @return string HTML fragment
+     */
+    public function download_dataformat_selector($label, $base, $name = 'dataformat', $params = [], $extrafields = '') {
+
+        $formats = \core_plugin_manager::instance()->get_plugins_of_type('dataformat');
+        $options = [];
+        foreach ($formats as $format) {
+            if ($format->is_enabled()) {
+                $options[] = [
+                    'value' => $format->name,
+                    'label' => get_string('dataformat', $format->component),
+                ];
+            }
+        }
+        $hiddenparams = [];
+        foreach ($params as $key => $value) {
+            $hiddenparams[] = [
+                'name' => $key,
+                'value' => $value,
+            ];
+        }
+        $data = [
+            'label' => $label,
+            'base' => $base,
+            'name' => $name,
+            'params' => $hiddenparams,
+            'options' => $options,
+            'extrafields' => $extrafields,
+            'sesskey' => sesskey(),
+            'submit' => get_string('download'),
+            'emailroleshelp' => $this->help_icon('emailroles', 'questionnaire'),
+            'emailextrahelp' => $this->help_icon('emailextra', 'questionnaire'),
+            'allowemailreporting' => get_config('questionnaire', 'allowemailreporting'),
+        ];
+
+        return $this->render_from_template('mod_questionnaire/dataformat_selector', $data);
+    }
+
+    /**
+     * Render the print menu.
+     *
+     * @param moodle_url $urlroot
+     * @param array $options
+     * @param string $userview
+     * @return string
+     * @throws \coding_exception
+     * @throws \moodle_exception
+     */
+    public function viewresponse_print_menu($urlroot, $options, $userview) {
+        if (!$urlroot instanceof \moodle_url) {
+            $urlroot = new \moodle_url($urlroot);
+        }
+        $select = new \single_select($urlroot, 'responsestats', $options, $userview, null);
+        $select->label = get_string('view');
+        $select->class = 'm-1';
+        $output = $this->render($select);
+        return $output;
+    }
+}

@@ -1,0 +1,233 @@
+/**
+ * Local plugin "Maintenance mode (live check)" - JS Code
+ *
+ * @module   local_maintenance_livecheck/livecheck
+ * @copyright 2017 Alexander Bias, University of Ulm <alexander.bias@uni-ulm.de>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+define(['jquery', 'core/str', 'core/log', 'core/config'], function($, str, log, config) {
+    "use strict";
+
+    // Global variable for left time.
+    var timeleftinsec = null;
+
+    // Global variable for countdown interval.
+    var countdownInterval = null;
+
+    // Global variable for maintenance announcement box content.
+    var boxContent = null;
+
+    /**
+     * Function which shows the maintenance announcement box.
+     */
+    function showBox() {
+        // If maintenance announcement box does not have content already.
+        if (boxContent === null) {
+            // Create the maintenance announcement box content and save it globally.
+            $('#maintenance_announcement').append('<div class="box py-3 moodle-has-zindex maintenancewarning alert"' +
+                    'aria-live="polite">');
+            boxContent = $('.box.maintenancewarning');
+        }
+    }
+
+    /**
+     * Function which hides the maintenance announcement box.
+     */
+    function hideBox() {
+        // If maintenance announcement box still has content.
+        if (boxContent !== null) {
+            // Remove the content and reset the box content's global variable.
+            $('#maintenance_announcement').empty();
+            boxContent = null;
+        }
+    }
+
+    /**
+     * Function to update the countdown in the maintenance announcement box.
+     *
+     * The strings which are used here are shipped with the page by the before_footer_html_generation hook callback.
+     * Thus, they do not have to be fetched from the server, which would not be possible anymore as soon as
+     * CLI maintenance mode has started.
+     */
+    function updateCountdown() {
+        // Reduce left time globally.
+        timeleftinsec -= 1;
+
+        // Maintenance mode has started.
+        if (timeleftinsec <= 0) {
+            str.get_string('sitemaintenance', 'admin').done(function(s) {
+                boxContent.html(s);
+            });
+
+            // Maintenance mode is still scheduled.
+        } else {
+            var a = {};
+            a.sec = Math.floor(timeleftinsec % 60);
+            a.min = Math.floor(timeleftinsec / 60) % 60;
+            a.hour = Math.floor(timeleftinsec / 3600);
+            if (a.hour > 0) {
+                str.get_string('maintenancemodeisscheduledlong', 'admin', a).done(function(s) {
+                    boxContent.html(s);
+                });
+            } else {
+                str.get_string('maintenancemodeisscheduled', 'admin', a).done(function(s) {
+                    boxContent.html(s);
+                });
+            }
+        }
+
+        // Set maintenance announcement box class to highlight the importance.
+        if (timeleftinsec < 30) {
+            boxContent.addClass('alert-error').addClass('alert-danger').removeClass('alert-warning');
+        } else {
+            boxContent.addClass('alert-warning').removeClass('alert-error').removeClass('alert-danger');
+        }
+    }
+
+    /**
+     * Function which performs the continuous live check.
+     */
+    function checkStatus() {
+        // Fetch maintenance mode status by AJAX.
+        // We know about the benefits of the core/ajax module (https://docs.moodle.org/dev/AJAX),
+        // but for this very lightweight check we only use a simple jQuery AJAX call.
+        $.ajax({
+            url: config.wwwroot + '/local/maintenance_livecheck/ajax.php',
+            dataType: 'json',
+            type: 'POST',
+            data: {
+                // Add a query string to prevent older versions of IE from using the cache.
+                'time': Date.now()
+            },
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Expires': '-1'
+            },
+            success: function(result) {
+                // If CLI maintenance mode is not scheduled or active.
+                if (result.timeleftinsec === null) {
+                    // Hide the maintenance announcement box.
+                    hideBox();
+
+                    // Clear the left time globally.
+                    timeleftinsec = null;
+
+                    // Stop the countdown interval.
+                    clearInterval(countdownInterval);
+
+                    // Otherwise, if CLI maintenance mode is scheduled.
+                } else if (result.timeleftinsec !== null && result.timeleftinsec > 0) {
+                    // Show the maintenance announcement box.
+                    showBox();
+
+                    // Store the left time globally.
+                    timeleftinsec = result.timeleftinsec;
+
+                    // Re-Start the countdown interval.
+                    clearInterval(countdownInterval);
+                    countdownInterval = setInterval(updateCountdown, 1000);
+
+                    // Otherwise, if legacy maintenance mode is active.
+                } else if (result.timeleftinsec !== null && result.timeleftinsec === 0) {
+                    // Show the maintenance announcement box.
+                    showBox();
+
+                    // Store the left time globally.
+                    timeleftinsec = 0;
+
+                    // Stop the countdown and run it once to show the sitemaintenance message.
+                    clearInterval(countdownInterval);
+                    updateCountdown();
+                }
+            },
+            error: function(request) {
+                // If CLI maintenance mode is active.
+                // Moodle core announces this in lib/setup.php with a HTTP 503 status, the reason phrase
+                // 'Moodle under maintenance' and a 'Retry-After: 300' header.
+                // The reason phrase is only transmitted over HTTP/1.x as HTTP/2 and HTTP/3 do not have reason phrases anymore.
+                // Thus, we accept the Retry-After header as alternative indicator.
+                if (request.status == 503 && (request.statusText == 'Moodle under maintenance' ||
+                        request.getResponseHeader('Retry-After') == '300')) {
+                    // Show the maintenance announcement box.
+                    showBox();
+
+                    // Store the left time globally.
+                    timeleftinsec = 0;
+
+                    // Stop the countdown and run it once to show the sitemaintenance message.
+                    clearInterval(countdownInterval);
+                    updateCountdown();
+
+                    // The AJAX call was cached somewhere.
+                } else if (request.status >= 300 && request.status <= 399) {
+                    // Warn the developer.
+                    log.debug('moodle-local_maintenance_livecheck-livecheck: ' +
+                            'A cached copy of the live check answer was returned so it\'s reliablity cannot be guaranteed. ' +
+                            'Hiding the maintenance announcement box now.');
+
+                    // Hide the maintenance announcement box.
+                    hideBox();
+
+                    // Clear the left time globally.
+                    timeleftinsec = null;
+
+                    // Stop the countdown interval.
+                    clearInterval(countdownInterval);
+                }
+            }
+        });
+    }
+
+    /**
+     * Function which checks if this page is shown within an iframe on another page of this Moodle site,
+     * for example H5P content embedded into an activity page. In this case, the outer page runs the live check itself.
+     * Parent windows from another origin (for example an external LTI platform) can't be accessed and are ignored.
+     *
+     * @returns {boolean}
+     */
+    function isEmbeddedInMoodlePage() {
+        var currentWindow = window;
+        try {
+            while (currentWindow !== currentWindow.parent) {
+                currentWindow = currentWindow.parent;
+                if (currentWindow.M && currentWindow.M.cfg && currentWindow.M.cfg.wwwroot === config.wwwroot) {
+                    return true;
+                }
+            }
+        } catch (e) {
+            // The parent window is from another origin.
+            return false;
+        }
+        return false;
+    }
+
+    return {
+        init: function(params) {
+            // Do not run the live check within an iframe on another page of this Moodle site.
+            // Otherwise, the maintenance announcement box would be shown twice and the server would be polled twice.
+            if (isEmbeddedInMoodlePage()) {
+                return;
+            }
+
+            // Initialize continuous live check.
+            if (params.checkinterval !== null && params.checkinterval > 0) {
+                // Add maintenance announcement box to page.
+                $('body').append('<div id="maintenance_announcement">');
+
+                // If a back off time is set.
+                if (params.backoff !== null && params.backoff > 0) {
+                    // Wait params.backoff seconds and then check status every params.checkinterval seconds.
+                    setTimeout(function() {
+                        setInterval(checkStatus, params.checkinterval * 1000);
+                    }, params.backoff * 1000);
+
+                    // Otherwise if no back off time is set.
+                } else {
+                    // Check status every params.checkinterval seconds.
+                    setInterval(checkStatus, params.checkinterval * 1000);
+                }
+            }
+        }
+    };
+});

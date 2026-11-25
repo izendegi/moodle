@@ -1,0 +1,53 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * A scheduled task for issuing certificates that have requested someone get emailed.
+ *
+ * @package    mod_customcert
+ * @copyright  2024 Oscar Nadjar <oscar.nadjar@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+namespace mod_customcert\task;
+
+use core\task\scheduled_task;
+use mod_customcert\service\certificate_issuer_service;
+
+/**
+ * A scheduled task for issuing certificates that have requested someone get emailed.
+ *
+ * @package    mod_customcert
+ * @copyright  2024 Oscar Nadjar <oscar.nadjar@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class issue_certificates_task extends scheduled_task {
+    /**
+     * Get a descriptive name for this task (shown to admins).
+     *
+     * @return string
+     */
+    public function get_name(): string {
+        return get_string('taskissuecertificate', 'customcert');
+    }
+
+    /**
+     * Execute.
+     */
+    public function execute(): void {
+        $issuer = certificate_issuer_service::create();
+        $issuer->process_email_issuance_run();
+    }
+}

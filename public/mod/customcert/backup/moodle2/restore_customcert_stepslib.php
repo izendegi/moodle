@@ -1,0 +1,248 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Define all the restore steps that will be used by the restore_customcert_activity_task.
+ *
+ * @package    mod_customcert
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+use mod_customcert\local\upgrade\row_migrator;
+
+/**
+ * Define the complete customcert structure for restore, with file and id annotations.
+ *
+ * @package    mod_customcert
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class restore_customcert_activity_structure_step extends restore_activity_structure_step {
+    /**
+     * Define the different items to restore.
+     *
+     * @return array the restore paths
+     */
+    protected function define_structure() {
+        $paths = [];
+
+        $paths[] = new restore_path_element('customcert', '/activity/customcert');
+
+        $paths[] = new restore_path_element('customcert_template', '/activity/customcert/template');
+
+        $paths[] = new restore_path_element('customcert_page', '/activity/customcert/template/pages/page');
+
+        $paths[] = new restore_path_element('customcert_element', '/activity/customcert/template/pages/page/element');
+
+        if ($this->get_setting_value('userinfo')) {
+            $paths[] = new restore_path_element('customcert_issue', '/activity/customcert/issues/issue');
+        }
+
+        return $this->prepare_activity_structure($paths);
+    }
+
+    /**
+     * Handles restoring the customcert activity.
+     *
+     * @param stdClass $data the customcert data
+     */
+    protected function process_customcert($data) {
+        global $DB;
+
+        $data = (object) $data;
+        $data->course = $this->get_courseid();
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        $newitemid = $DB->insert_record('customcert', $data);
+
+        // Immediately after inserting record call this.
+        $this->apply_activity_instance($newitemid);
+    }
+
+    /**
+     * Handles restoring a customcert page.
+     *
+     * @param stdClass $data the customcert data
+     */
+    protected function process_customcert_template($data) {
+        global $DB;
+
+        $data = (object) $data;
+        $oldid = $data->id;
+
+        $data->contextid = $this->task->get_contextid();
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        $newitemid = $DB->insert_record('customcert_templates', $data);
+        $this->set_mapping('customcert_template', $oldid, $newitemid);
+
+        $customcert = new stdClass();
+        $customcert->id = $this->get_new_parentid('customcert');
+        $customcert->templateid = $newitemid;
+        $DB->update_record('customcert', $customcert);
+    }
+
+    /**
+     * Handles restoring a customcert template.
+     *
+     * @param stdClass $data the customcert data
+     */
+    protected function process_customcert_page($data) {
+        global $DB;
+
+        $data = (object) $data;
+        $oldid = $data->id;
+
+        $data->templateid = $this->get_new_parentid('customcert_template');
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        $newitemid = $DB->insert_record('customcert_pages', $data);
+        $this->set_mapping('customcert_page', $oldid, $newitemid);
+    }
+
+    /**
+     * Handles restoring a customcert element.
+     *
+     * @param stdclass $data the customcert data
+     */
+    protected function process_customcert_element($data) {
+        global $DB;
+
+        $data = (object) $data;
+        $oldid = $data->id;
+
+        $data->pageid = $this->get_new_parentid('customcert_page');
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        // Legacy backups may contain a separate 'width' field. Since width is now
+        // stored inside the JSON 'data', merge it here before inserting.
+        $haslegacyvisualfields = property_exists($data, 'width') || property_exists($data, 'font')
+            || property_exists($data, 'fontsize') || property_exists($data, 'colour');
+        $legacywidth = null;
+        if (property_exists($data, 'width')) {
+            // Note: width can legitimately be 0 (auto). Only treat NULL as no-op.
+            if ($data->width !== null && $data->width !== '') {
+                $legacywidth = (int) $data->width;
+            }
+            // Do not try to insert an unknown field into DB.
+            unset($data->width);
+        }
+
+        // Merge legacy visual fields into JSON data when present in older backups.
+        $legacyfont = property_exists($data, 'font') ? $data->font : null;
+        $legacyfontsize = property_exists($data, 'fontsize') ? $data->fontsize : null;
+        $legacycolour = property_exists($data, 'colour') ? $data->colour : null;
+
+        // Determine whether the stored data is already a valid JSON object payload.
+        // Non-JSON legacy data (plain strings, scalars, null) must always be migrated
+        // even when no legacy visual fields are present in the backup row.
+        $rawdata = $data->data ?? null;
+        $decoded = null;
+        $isjson = false;
+        if ($rawdata !== null && $rawdata !== '') {
+            $decoded = json_decode((string) $rawdata, true);
+            $isjson = json_last_error() === JSON_ERROR_NONE;
+        }
+        // Legacy data is anything that is not a valid JSON object.
+        // Arrays, scalars, invalid JSON, null, and empty strings are all legacy.
+        // {} and {"x":1} are valid JSON objects and are not legacy.
+        $trimmed = ($rawdata !== null) ? trim((string) $rawdata) : '';
+        $isjsonobject = $isjson && $trimmed !== '' && $trimmed[0] === '{' && is_array($decoded);
+        $dataislegacy = !$isjsonobject;
+
+        if (($data->element ?? null) === 'text' && $haslegacyvisualfields) {
+            $data->data = row_migrator::migrate_text_row($rawdata, $legacywidth, $legacyfont, $legacyfontsize, $legacycolour);
+        } else if (
+            $legacywidth !== null || $legacyfont !== null || $legacyfontsize !== null || $legacycolour !== null
+            || $dataislegacy
+        ) {
+            // Use the border-specific migration path for border elements, mirroring
+            // the logic in db/upgrade.php so that legacy border thickness is preserved.
+            $data->data = (($data->element ?? null) === 'border')
+                ? row_migrator::migrate_border_row(
+                    $rawdata,
+                    $legacywidth,
+                    $legacyfont,
+                    $legacyfontsize,
+                    $legacycolour
+                )
+                : row_migrator::migrate_row(
+                    $rawdata,
+                    $legacywidth,
+                    $legacyfont,
+                    $legacyfontsize,
+                    $legacycolour,
+                    $data->element ?? null
+                );
+        }
+
+        // Unset legacy fields so they are not inserted as separate columns.
+        unset($data->font, $data->fontsize, $data->colour);
+
+        // Normalise the signaturepassword for digitalsignature elements.
+        // Passwords are site-specific encrypted values; a plaintext legacy password must be
+        // encrypted, a valid same-site ciphertext is preserved, and a foreign-site ciphertext
+        // (which cannot be decrypted here) is cleared so the admin can re-enter it.
+        if (($data->element ?? null) === 'digitalsignature' && !empty($data->data)) {
+            $elementdata = json_decode($data->data, true);
+            if (is_array($elementdata) && array_key_exists('signaturepassword', $elementdata)) {
+                $elementdata['signaturepassword'] = \customcertelement_digitalsignature\element::normalise_restore_password(
+                    (string)($elementdata['signaturepassword'] ?? '')
+                );
+                $data->data = json_encode($elementdata);
+            }
+        }
+
+        $newitemid = $DB->insert_record('customcert_elements', $data);
+        $this->set_mapping('customcert_element', $oldid, $newitemid);
+    }
+
+    /**
+     * Handles restoring a customcert issue.
+     *
+     * @param stdClass $data the customcert data
+     */
+    protected function process_customcert_issue($data) {
+        global $DB;
+
+        $data = (object) $data;
+        $oldid = $data->id;
+
+        $data->customcertid = $this->get_new_parentid('customcert');
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->userid = $this->get_mappingid('user', $data->userid);
+
+        $newitemid = $DB->insert_record('customcert_issues', $data);
+        $this->set_mapping('customcert_issue', $oldid, $newitemid);
+    }
+
+    /**
+     * Called immediately after all the other restore functions.
+     */
+    protected function after_execute() {
+        parent::after_execute();
+
+        $this->add_related_files('mod_customcert', 'intro', null);
+
+        // Note - we can't use get_old_contextid() as it refers to the module context.
+        $this->add_related_files('mod_customcert', 'image', null, $this->get_task()->get_info()->original_course_contextid);
+    }
+}

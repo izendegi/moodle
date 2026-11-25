@@ -1,0 +1,220 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * This file contains the customcert element gradeitemname's core interaction API.
+ *
+ * @package    customcertelement_gradeitemname
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+declare(strict_types=1);
+
+namespace customcertelement_gradeitemname;
+
+use grade_item;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element as base_element;
+use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element_helper;
+use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use pdf;
+use restore_customcert_activity_task;
+use stdClass;
+use mod_customcert\element\restorable_element_interface;
+use mod_customcert\element\renderable_element_interface;
+
+/**
+ * The customcert element gradeitemname's core interaction API.
+ *
+ * @package    customcertelement_gradeitemname
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class element extends base_element implements
+    persistable_element_interface,
+    preparable_form_interface,
+    renderable_element_interface,
+    restorable_element_interface
+{
+    /**
+     * Build the configuration form for this element.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function build_form(MoodleQuickForm $mform): void {
+        global $COURSE;
+
+        $mform->addElement(
+            'select',
+            'gradeitem',
+            get_string('gradeitem', 'customcertelement_gradeitemname'),
+            element_helper::get_grade_items($COURSE)
+        );
+        $mform->addHelpButton('gradeitem', 'gradeitem', 'customcertelement_gradeitemname');
+
+        element_helper::render_common_form_elements($mform, $this->showposxy);
+    }
+
+    /**
+     * Normalise grade item name element data.
+     *
+     * @param stdClass $formdata Form submission data
+     * @return array JSON-serialisable payload
+     */
+    public function normalise_data(stdClass $formdata): array {
+        return [
+            'gradeitem' => (string)($formdata->gradeitem ?? ''),
+            'font' => (string)($formdata->font ?? ''),
+            'fontsize' => (int)($formdata->fontsize ?? 0),
+            'colour' => (string)($formdata->colour ?? ''),
+            'width' => (int)($formdata->width ?? 0),
+        ];
+    }
+
+    /**
+     * Prepare the form by populating the gradeitem field from stored data.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function prepare_form(MoodleQuickForm $mform): void {
+        $payload = $this->get_payload();
+        if (isset($payload['gradeitem'])) {
+            $mform->getElement('gradeitem')->setValue((string)$payload['gradeitem']);
+        }
+    }
+
+    /**
+     * Handles rendering the element on the pdf.
+     *
+     * @param pdf $pdf the pdf object
+     * @param bool $preview true if it is a preview, false otherwise
+     * @param stdClass $user the user we are rendering this for
+     * @param element_renderer|null $renderer the renderer service
+     */
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+        if (!empty($this->get_data())) {
+            $name = $this->get_grade_item_name();
+            if ($renderer) {
+                $renderer->render_content($this, $name);
+            } else {
+                element_helper::render_content($pdf, $this, $name);
+            }
+        }
+    }
+
+    /**
+     * Render the element in html for the drag and drop interface.
+     *
+     * @param element_renderer|null $renderer the renderer service
+     * @return string the html
+     */
+    public function render_html(?element_renderer $renderer = null): string {
+        if (!empty($this->get_data())) {
+            $name = $this->get_grade_item_name();
+            if ($renderer) {
+                return (string) $renderer->render_content($this, $name);
+            }
+
+            return element_helper::render_html_content($this, $name);
+        }
+
+        return '';
+    }
+
+
+    /**
+     * Remap the course module or grade item this element points to, as ids change on restore.
+     *
+     * @param restore_customcert_activity_task $restore
+     */
+    public function after_restore_from_backup(restore_customcert_activity_task $restore): void {
+        global $DB;
+
+        $data = $this->get_payload();
+        if (empty($data)) {
+            return;
+        }
+
+        $gradeitemref = $data['gradeitem'] ?? '';
+        if ($gradeitemref === '' || $gradeitemref === null) {
+            return;
+        }
+
+        $gradeitemref = (string)$gradeitemref;
+        $isgradeitem = str_starts_with($gradeitemref, 'gradeitem:');
+        $oldid = $isgradeitem ? substr($gradeitemref, 10) : $gradeitemref;
+
+        $itemname = $isgradeitem ? 'grade_item' : 'course_module';
+        $newid = $restore->get_mappingid($itemname, (int)$oldid);
+        if ($newid) {
+            $newref = ($isgradeitem ? 'gradeitem:' : '') . $newid;
+            $data['gradeitem'] = $newref;
+            $DB->set_field('customcert_elements', 'data', json_encode($data), ['id' => $this->get_id()]);
+        }
+    }
+
+    /**
+     * Helper function that returns the grade item name.
+     *
+     * @return string
+     */
+    protected function get_grade_item_name(): string {
+        global $DB;
+
+        $data = $this->get_payload();
+        if (empty($data) || empty($data['gradeitem'])) {
+            return '';
+        }
+        $courseid = element_helper::get_courseid($this->get_id());
+
+        $gradeitem = $data['gradeitem'];
+        if (strpos($gradeitem, 'gradeitem:') === 0) {
+            $gradeitemid = substr($gradeitem, 10);
+            $gradeitem = grade_item::fetch(['id' => $gradeitemid, 'courseid' => $courseid]);
+
+            // If the gradeitem was not found, return an empty string.
+            // This will effectively prevent the element from rendering.
+            return $gradeitem ? $gradeitem->get_name() : '';
+        } else {
+            if (!$cm = $DB->get_record('course_modules', ['id' => $gradeitem, 'course' => $courseid])) {
+                return '';
+            }
+
+            if (!$module = $DB->get_record('modules', ['id' => $cm->module])) {
+                return '';
+            }
+
+            $params = [
+                'itemtype' => 'mod',
+                'itemmodule' => $module->name,
+                'iteminstance' => $cm->instance,
+                'courseid' => $cm->course,
+                'itemnumber' => 0,
+            ];
+
+            $gradeitem = grade_item::fetch($params);
+
+            // If the gradeitem was not found, return an empty string.
+            // This will effectively prevent the element from rendering.
+            return $gradeitem ? $gradeitem->get_name() : '';
+        }
+    }
+}

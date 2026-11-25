@@ -1,0 +1,7 @@
+.advancedgrading-main {
+    overflow-x: inherit;
+    width: 100%;
+    display: inline-flex;
+    flex-direction: column;
+    min-width: 200px;
+}

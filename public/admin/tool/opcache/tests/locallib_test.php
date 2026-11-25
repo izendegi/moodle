@@ -1,0 +1,926 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace tool_opcache;
+
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/opcache/locallib.php');
+
+/**
+ * Admin tool "Opcache management" - Local library tests
+ *
+ * @package    tool_opcache
+ * @copyright  2026 Alexander Bias <bias@alexanderbias.de>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+final class locallib_test extends \advanced_testcase {
+    /**
+     * Data provider for test_is_write_request().
+     *
+     * @return array
+     */
+    public static function is_write_request_provider(): array {
+        return [
+            'no parameters' => [
+                'request' => [],
+                'expected' => false,
+            ],
+            'read-only parameters only' => [
+                'request' => ['time' => '1234567890', 'section' => 'files'],
+                'expected' => false,
+            ],
+            'reset' => [
+                'request' => ['reset' => '1'],
+                'expected' => true,
+            ],
+            'reset with zero value' => [
+                'request' => ['reset' => '0'],
+                'expected' => true,
+            ],
+            'reset with empty value' => [
+                'request' => ['reset' => ''],
+                'expected' => true,
+            ],
+            'invalidate' => [
+                'request' => ['invalidate' => '/var/www/moodle/index.php'],
+                'expected' => true,
+            ],
+            'invalidate with array value' => [
+                'request' => ['invalidate' => ['/var/www/moodle/index.php']],
+                'expected' => true,
+            ],
+            'invalidate searched' => [
+                'request' => ['invalidate_searched' => 'moodle'],
+                'expected' => true,
+            ],
+            'similar parameter name' => [
+                'request' => ['resetx' => '1', 'invalidate_foo' => 'moodle'],
+                'expected' => false,
+            ],
+        ];
+    }
+
+    /**
+     * Test that the requested write operations are detected in the request parameters.
+     *
+     * @dataProvider is_write_request_provider
+     * @covers ::tool_opcache_is_write_request
+     * @covers ::tool_opcache_get_write_params
+     *
+     * @param array $request The request parameters.
+     * @param bool $expected The expected result.
+     */
+    public function test_is_write_request(array $request, bool $expected): void {
+        $this->assertSame($expected, tool_opcache_is_write_request($request));
+    }
+
+    /**
+     * Test that the sesskey is added to the URLs which trigger write operations and only to them.
+     *
+     * The JavaScript code in the output is taken from the Opcache GUI library.
+     *
+     * @covers ::tool_opcache_add_sesskey_to_write_links
+     */
+    public function test_add_sesskey_to_write_links(): void {
+        // The backtick of the JavaScript template literal is composed with chr() as backticks in PHP strings are discouraged.
+        $bt = chr(96);
+        $output = "window.location.href = '?reset=1';\n" .
+            "href: {$bt}?invalidate_searched=\${encodeURIComponent(this.state.searchTerm)}{$bt},\n" .
+            "href: '?invalidate=' + this.props.full_path,\n" .
+            "axios.get(window.location.pathname, { time: Date.now() })\n" .
+            "href: '?section=files',\n";
+
+        $result = tool_opcache_add_sesskey_to_write_links($output);
+
+        $sesskey = sesskey();
+        $this->assertStringContainsString("window.location.href = '?sesskey={$sesskey}&reset=1';", $result);
+        $this->assertStringContainsString(
+            "href: {$bt}?sesskey={$sesskey}&invalidate_searched=\${encodeURIComponent(this.state.searchTerm)}{$bt},",
+            $result
+        );
+        $this->assertStringContainsString("href: '?sesskey={$sesskey}&invalidate=' + this.props.full_path,", $result);
+        $this->assertStringContainsString("axios.get(window.location.pathname, { time: Date.now() })", $result);
+        $this->assertStringContainsString("href: '?section=files',", $result);
+
+        // Each write operation URL must have got exactly one sesskey.
+        $this->assertSame(3, substr_count($result, 'sesskey='));
+    }
+
+    /**
+     * Test that the axios request interceptor is added to the head of the Opcache GUI output.
+     *
+     * @covers ::tool_opcache_add_sesskey_to_write_requests
+     */
+    public function test_add_sesskey_to_write_requests(): void {
+        $output = "<html><head><script>/* axios */</script><style></style></head><body></body></html>";
+
+        $result = tool_opcache_add_sesskey_to_write_requests($output);
+
+        // The interceptor must be added after the axios library and before the end of the head.
+        $interceptorpos = strpos($result, 'axios.interceptors.request.use(');
+        $this->assertNotFalse($interceptorpos);
+        $this->assertGreaterThan(strpos($result, '/* axios */'), $interceptorpos);
+        $this->assertLessThan(strpos($result, '</head>'), $interceptorpos);
+
+        // The interceptor must contain the sesskey and all write operation parameters.
+        $this->assertStringContainsString(json_encode(sesskey()), $result);
+        $this->assertStringContainsString(json_encode(tool_opcache_get_write_params()), $result);
+
+        // The rest of the output must remain untouched.
+        $this->assertStringStartsWith('<html><head><script>/* axios */</script><style></style><script>', $result);
+        $this->assertStringEndsWith('</script></head><body></body></html>', $result);
+    }
+
+    /**
+     * Test that the output is left as it is if it does not contain any head end tag.
+     *
+     * @covers ::tool_opcache_add_sesskey_to_write_requests
+     */
+    public function test_add_sesskey_to_write_requests_without_head(): void {
+        $output = 'The Zend OPcache extension is installed but not active';
+
+        $this->assertSame($output, tool_opcache_add_sesskey_to_write_requests($output));
+    }
+
+    /**
+     * Test that the sesskey is added to all write operation URLs and requests of the bundled Opcache GUI library.
+     *
+     * This test makes sure that the output processing still matches the Opcache GUI library after an update of the library.
+     *
+     * @covers ::tool_opcache_add_sesskey_to_write_links
+     * @covers ::tool_opcache_add_sesskey_to_write_requests
+     */
+    public function test_bundled_gui_matches_output_processing(): void {
+        global $CFG;
+
+        // Take the bundled Opcache GUI library as output, as it contains the JavaScript code which is output as it is.
+        $output = file_get_contents($CFG->dirroot . '/' . $CFG->admin . '/tool/opcache/lib/opcache-gui/index.php.inc');
+
+        // Each write operation URL must have got the sesskey.
+        $result = tool_opcache_add_sesskey_to_write_links($output);
+        foreach (tool_opcache_get_write_params() as $param) {
+            $this->assertStringNotContainsString('?' . $param . '=', $result);
+            $this->assertStringContainsString('?sesskey=' . sesskey() . '&' . $param . '=', $result);
+        }
+
+        // The interceptor must have been added.
+        $result = tool_opcache_add_sesskey_to_write_requests($result);
+        $this->assertStringContainsString('axios.interceptors.request.use(', $result);
+    }
+
+    /**
+     * Test that the bundled Opcache GUI library refuses to run if it is not included by Moodle.
+     *
+     * The guard is a local modification of the library file which has to be re-added after each update of the library.
+     * This test makes sure that it is not forgotten and that no other code is run before it.
+     *
+     * @coversNothing
+     */
+    public function test_bundled_gui_is_guarded(): void {
+        global $CFG;
+
+        $librarydir = $CFG->dirroot . '/' . $CFG->admin . '/tool/opcache/lib/opcache-gui';
+
+        // Run the library file directly in a separate PHP process, i.e. without Moodle, like a webserver would do
+        // which interprets *.inc files as PHP. The file must die silently without any output.
+        // Without the guard, it would output the Opcache GUI or at least a message that Opcache is not available.
+        $output = [];
+        $exitcode = null;
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($librarydir . '/index.php.inc') . ' 2>&1', $output, $exitcode);
+        $this->assertSame(0, $exitcode);
+        $this->assertSame('', implode("\n", $output));
+
+        // Additionally, make sure that the guard is the very first statement of the library file so that no other code
+        // (which might not output anything) is run before it. To do this, collect the code of the library file up to
+        // the end of its first statement, skipping the opening tag, whitespace and comments.
+        $firststatement = '';
+        foreach (token_get_all(file_get_contents($librarydir . '/index.php.inc')) as $token) {
+            if (is_array($token) && in_array($token[0], [T_OPEN_TAG, T_WHITESPACE, T_COMMENT, T_DOC_COMMENT])) {
+                continue;
+            }
+            $firststatement .= is_array($token) ? $token[1] : $token;
+            if ($token === ';') {
+                break;
+            }
+        }
+        $this->assertSame("defined('MOODLE_INTERNAL')||die();", $firststatement);
+
+        // As a second line of defence, the .htaccess file must deny direct requests to the library file.
+        $htaccess = file_get_contents($librarydir . '/.htaccess');
+        $this->assertStringContainsString('<Files "index.php.inc">', $htaccess);
+        $this->assertStringContainsString('Require all denied', $htaccess);
+    }
+
+    /**
+     * Data provider for test_is_cli_tool_enabled().
+     *
+     * @return array
+     */
+    public static function is_cli_tool_enabled_provider(): array {
+        return [
+            'nothing set' => [
+                'enabled' => null,
+                'secretkey' => null,
+                'expected' => false,
+            ],
+            'enabled' => [
+                'enabled' => true,
+                'secretkey' => null,
+                'expected' => true,
+            ],
+            'explicitly disabled' => [
+                'enabled' => false,
+                'secretkey' => null,
+                'expected' => false,
+            ],
+            'secret key set (backwards compatibility)' => [
+                'enabled' => null,
+                'secretkey' => 'P3ethed8yCrAYfshzUTsGVKwedwfNZE89o3L6JZqHKMa',
+                'expected' => true,
+            ],
+            'empty secret key set' => [
+                'enabled' => null,
+                'secretkey' => '',
+                'expected' => false,
+            ],
+            'enabled and secret key set' => [
+                'enabled' => true,
+                'secretkey' => 'P3ethed8yCrAYfshzUTsGVKwedwfNZE89o3L6JZqHKMa',
+                'expected' => true,
+            ],
+        ];
+    }
+
+    /**
+     * Test that the CLI tools are disabled by default and that they are enabled by the settings in config.php.
+     *
+     * @dataProvider is_cli_tool_enabled_provider
+     * @covers ::tool_opcache_is_cli_tool_enabled
+     * @covers ::tool_opcache_get_cfg_secretkey
+     *
+     * @param bool|null $enabled The value of the enabled setting in config.php or null if not set.
+     * @param string|null $secretkey The value of the secret key setting in config.php or null if not set.
+     * @param bool $expected The expected result.
+     */
+    public function test_is_cli_tool_enabled(?bool $enabled, ?string $secretkey, bool $expected): void {
+        $this->resetAfterTest();
+
+        foreach (['check', 'reset'] as $tool) {
+            // Set the settings in config.php.
+            if ($enabled !== null) {
+                $this->set_config_php_setting('tool_opcache_' . $tool . '_enabled', $enabled);
+            }
+            if ($secretkey !== null) {
+                $this->set_config_php_setting('tool_opcache_' . $tool . '_secretkey', $secretkey);
+            }
+
+            $this->assertSame($expected, tool_opcache_is_cli_tool_enabled($tool));
+        }
+    }
+
+    /**
+     * Test that the CLI tools are enabled independently from each other.
+     *
+     * @covers ::tool_opcache_is_cli_tool_enabled
+     */
+    public function test_is_cli_tool_enabled_independently(): void {
+        $this->resetAfterTest();
+
+        $this->set_config_php_setting('tool_opcache_check_enabled', true);
+
+        $this->assertTrue(tool_opcache_is_cli_tool_enabled('check'));
+        $this->assertFalse(tool_opcache_is_cli_tool_enabled('reset'));
+    }
+
+    /**
+     * Test that any truthy value in config.php enables the CLI tools and that any falsy value does not.
+     *
+     * @covers ::tool_opcache_is_cli_tool_enabled
+     */
+    public function test_is_cli_tool_enabled_truthy(): void {
+        $this->resetAfterTest();
+
+        foreach ([true, 1, '1', 'yes'] as $value) {
+            $this->set_config_php_setting('tool_opcache_check_enabled', $value);
+            $this->assertTrue(tool_opcache_is_cli_tool_enabled('check'));
+        }
+
+        foreach ([false, 0, '0', ''] as $value) {
+            $this->set_config_php_setting('tool_opcache_check_enabled', $value);
+            $this->assertFalse(tool_opcache_is_cli_tool_enabled('check'));
+        }
+    }
+
+    /**
+     * Test that the CLI tools can also be enabled with a setting in the Moodle database.
+     *
+     * @covers ::tool_opcache_is_cli_tool_enabled
+     */
+    public function test_is_cli_tool_enabled_from_db(): void {
+        $this->resetAfterTest();
+
+        set_config('tool_opcache_check_enabled', 1);
+
+        $this->assertTrue(tool_opcache_is_cli_tool_enabled('check'));
+        $this->assertFalse(tool_opcache_is_cli_tool_enabled('reset'));
+
+        set_config('tool_opcache_check_enabled', 0);
+
+        $this->assertFalse(tool_opcache_is_cli_tool_enabled('check'));
+    }
+
+    /**
+     * Test that the CLI tools can also be enabled with a secret key in the Moodle database and that it is used then.
+     *
+     * @covers ::tool_opcache_is_cli_tool_enabled
+     * @covers ::tool_opcache_get_cfg_secretkey
+     * @covers ::tool_opcache_get_secretkey
+     * @covers ::tool_opcache_check_secretkey
+     */
+    public function test_secretkey_from_db(): void {
+        $this->resetAfterTest();
+
+        set_config('tool_opcache_reset_secretkey', 'dbsecretkey');
+
+        $this->assertTrue(tool_opcache_is_cli_tool_enabled('reset'));
+        $this->assertSame('dbsecretkey', tool_opcache_get_secretkey('reset', true));
+        $this->assertTrue(tool_opcache_check_secretkey('reset', 'dbsecretkey'));
+
+        // No secret key has been generated as the secret key from the Moodle database is used.
+        $this->assertFalse(get_config('tool_opcache', 'resetsecretkey'));
+    }
+
+    /**
+     * Test that the settings in config.php take precedence over the settings in the Moodle database.
+     *
+     * @covers ::tool_opcache_is_cli_tool_enabled
+     * @covers ::tool_opcache_get_cfg_secretkey
+     */
+    public function test_config_php_takes_precedence_over_db(): void {
+        $this->resetAfterTest();
+
+        // A falsy value in config.php disables the CLI tool even if it is enabled in the Moodle database.
+        $this->set_config_php_setting('tool_opcache_check_enabled', false);
+        set_config('tool_opcache_check_enabled', 1);
+
+        $this->assertFalse(tool_opcache_is_cli_tool_enabled('check'));
+
+        // The secret key from config.php is used instead of the secret key from the Moodle database.
+        $this->set_config_php_setting('tool_opcache_reset_secretkey', 'cfgsecretkey');
+        set_config('tool_opcache_reset_secretkey', 'dbsecretkey');
+
+        $this->assertSame('cfgsecretkey', tool_opcache_get_cfg_secretkey('reset'));
+    }
+
+    /**
+     * Helper function to set a setting as if it was set in config.php.
+     *
+     * Moodle keeps the original value in $CFG->config_php_settings, but converts the value in $CFG to a string during
+     * bootstrap (see initialise_cfg() and get_config()). This is mimicked here.
+     *
+     * @param string $name The name of the setting.
+     * @param mixed $value The value of the setting.
+     */
+    private function set_config_php_setting(string $name, $value): void {
+        global $CFG;
+
+        $CFG->config_php_settings[$name] = $value;
+        $CFG->$name = (string) $value;
+    }
+
+    /**
+     * Test that the secret key from config.php takes precedence over the generated secret key.
+     *
+     * @covers ::tool_opcache_get_secretkey
+     * @covers ::tool_opcache_get_cfg_secretkey
+     */
+    public function test_get_secretkey_from_cfg(): void {
+        global $CFG;
+        $this->resetAfterTest();
+
+        set_config('checksecretkey', 'generatedsecretkey', 'tool_opcache');
+        $CFG->tool_opcache_check_secretkey = 'cfgsecretkey';
+
+        $this->assertSame('cfgsecretkey', tool_opcache_get_secretkey('check'));
+        $this->assertSame('cfgsecretkey', tool_opcache_get_secretkey('check', true));
+        $this->assertSame('generatedsecretkey', get_config('tool_opcache', 'checksecretkey'));
+    }
+
+    /**
+     * Test that the secret key is only generated if requested and that it is stored and reused then.
+     *
+     * @covers ::tool_opcache_get_secretkey
+     */
+    public function test_get_secretkey_generated(): void {
+        $this->resetAfterTest();
+
+        // Without generation, there isn't any secret key yet.
+        $this->assertSame('', tool_opcache_get_secretkey('check'));
+        $this->assertFalse(get_config('tool_opcache', 'checksecretkey'));
+
+        // With generation, an alphanumeric secret key is generated and stored.
+        $secretkey = tool_opcache_get_secretkey('check', true);
+        $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{64}$/', $secretkey);
+        $this->assertSame($secretkey, get_config('tool_opcache', 'checksecretkey'));
+
+        // The stored secret key is reused afterwards.
+        $this->assertSame($secretkey, tool_opcache_get_secretkey('check'));
+        $this->assertSame($secretkey, tool_opcache_get_secretkey('check', true));
+
+        // The secret key of the other CLI tool is not affected.
+        $this->assertSame('', tool_opcache_get_secretkey('reset'));
+        $this->assertNotSame($secretkey, tool_opcache_get_secretkey('reset', true));
+    }
+
+    /**
+     * Test that the curl options of the CLI tools verify the TLS certificate of the webserver unless this is switched off.
+     *
+     * @covers ::tool_opcache_get_curl_options
+     */
+    public function test_get_curl_options(): void {
+        // The TLS certificate is verified by default.
+        $this->assertTrue(tool_opcache_get_curl_options()['SSL_VERIFYPEER']);
+        $this->assertTrue(tool_opcache_get_curl_options(false)['SSL_VERIFYPEER']);
+
+        // The hostname of the TLS certificate is verified by default as well.
+        $this->assertSame(2, tool_opcache_get_curl_options()['SSL_VERIFYHOST']);
+        $this->assertSame(2, tool_opcache_get_curl_options(false)['SSL_VERIFYHOST']);
+
+        // Neither the TLS certificate nor its hostname is verified if this is requested explicitly.
+        $this->assertFalse(tool_opcache_get_curl_options(true)['SSL_VERIFYPEER']);
+        $this->assertSame(0, tool_opcache_get_curl_options(true)['SSL_VERIFYHOST']);
+
+        // Redirects are never followed, regardless of the other options, as the secret key would be sent to the redirect target.
+        foreach ([[false, false], [true, false], [false, true], [true, true]] as [$insecure, $verbose]) {
+            $this->assertFalse(tool_opcache_get_curl_options($insecure, $verbose)['FOLLOWLOCATION']);
+        }
+
+        // The verbose option of curl is only set if this is requested explicitly.
+        $this->assertArrayNotHasKey('VERBOSE', tool_opcache_get_curl_options());
+        $this->assertArrayNotHasKey('VERBOSE', tool_opcache_get_curl_options(true, false));
+        $this->assertTrue(tool_opcache_get_curl_options(false, true)['VERBOSE']);
+
+        // The verbose option does not affect the verification of the TLS certificate.
+        $this->assertTrue(tool_opcache_get_curl_options(false, true)['SSL_VERIFYPEER']);
+        $this->assertSame(2, tool_opcache_get_curl_options(false, true)['SSL_VERIFYHOST']);
+    }
+
+    /**
+     * Data provider for test_get_host_header().
+     *
+     * @return array
+     */
+    public static function get_host_header_provider(): array {
+        return [
+            'no domain' => ['domain' => null, 'expected' => ''],
+            'empty domain' => ['domain' => '', 'expected' => ''],
+            'blank domain' => ['domain' => '  ', 'expected' => ''],
+            'hostname' => ['domain' => 'example.com', 'expected' => 'Host: example.com'],
+            'hostname with whitespace' => ['domain' => ' moodle.example.com ', 'expected' => 'Host: moodle.example.com'],
+            'IP address' => ['domain' => '127.0.0.1', 'expected' => 'Host: 127.0.0.1'],
+            'hostname with port' => ['domain' => 'example.com:8443', 'expected' => 'Host: example.com:8443'],
+            'IP address with port' => ['domain' => '127.0.0.1:80', 'expected' => 'Host: 127.0.0.1:80'],
+            'hostname with port out of range' => ['domain' => 'example.com:65536', 'expected' => false],
+            'hostname with port zero' => ['domain' => 'example.com:0', 'expected' => false],
+            'hostname with non-numeric port' => ['domain' => 'example.com:abc', 'expected' => false],
+            'hostname with empty port' => ['domain' => 'example.com:', 'expected' => false],
+            'hostname with port with leading zero' => ['domain' => 'example.com:080', 'expected' => false],
+            'hostname with query string' => ['domain' => 'example.com?x=1', 'expected' => false],
+            'hostname with user' => ['domain' => 'user@example.com', 'expected' => false],
+            'IPv6 address' => ['domain' => '[::1]:80', 'expected' => false],
+            'URL' => ['domain' => 'https://example.com', 'expected' => false],
+            'hostname with path' => ['domain' => 'example.com/moodle', 'expected' => false],
+            'header injection' => ['domain' => "example.com\r\nX-Evil: 1", 'expected' => false],
+        ];
+    }
+
+    /**
+     * Test that the Host header is only composed for valid domains.
+     *
+     * @dataProvider get_host_header_provider
+     * @covers ::tool_opcache_get_host_header
+     *
+     * @param string|null $domain The domain which was given to the CLI tool.
+     * @param string|bool $expected The expected Host header.
+     */
+    public function test_get_host_header($domain, $expected): void {
+        $this->assertSame($expected, tool_opcache_get_host_header($domain));
+    }
+
+    /**
+     * Test that the CLI tools send the given domain as Host header and pass the verbose option when they call their web parts.
+     *
+     * @covers ::tool_opcache_call_web_part
+     */
+    public function test_call_web_part_with_domain_and_verbose(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
+        $this->resetAfterTest();
+
+        $url = 'https://127.0.0.1/admin/tool/opcache/cli/check_opcache_web.php';
+        $this->set_config_php_setting('tool_opcache_check_secretkey', 'checksecretkey');
+
+        // With a domain, the Host header is set and the request still goes to the unchanged URL.
+        $curl = $this->createMock(\curl::class);
+        $curl->error = '';
+        $curl->expects($this->once())->method('setHeader')->with('Host: example.com');
+        $curl->expects($this->once())->method('post')
+            ->with($url, ['secret' => 'checksecretkey'], tool_opcache_get_curl_options(true, true))
+            ->willReturn("1\r\n2\r\n3\r\n4");
+        $curl->method('get_errno')->willReturn(0);
+        $curl->method('get_info')->willReturn(['http_code' => 200]);
+
+        $this->assertSame(
+            ["1\r\n2\r\n3\r\n4", 0, '', ''],
+            tool_opcache_call_web_part('check', $url, true, 'example.com', true, $curl)
+        );
+
+        // Without a domain or with an invalid domain, no Host header is set.
+        foreach (['', 'example.com/moodle'] as $domain) {
+            $curl = $this->createMock(\curl::class);
+            $curl->error = '';
+            $curl->expects($this->never())->method('setHeader');
+            $curl->expects($this->once())->method('post')
+                ->with($url, ['secret' => 'checksecretkey'], tool_opcache_get_curl_options(false, false))
+                ->willReturn("1\r\n2\r\n3\r\n4");
+            $curl->method('get_errno')->willReturn(0);
+            $curl->method('get_info')->willReturn(['http_code' => 200]);
+
+            tool_opcache_call_web_part('check', $url, false, $domain, false, $curl);
+        }
+    }
+
+    /**
+     * Test that the CLI tools submit their secret key as POST parameter and not as part of the URL when they call their web parts.
+     *
+     * @covers ::tool_opcache_call_web_part
+     */
+    public function test_call_web_part_submits_secretkey_with_post(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
+        $this->resetAfterTest();
+
+        $url = 'https://example.com/admin/tool/opcache/cli/check_opcache_web.php';
+        $this->set_config_php_setting('tool_opcache_check_secretkey', 'checksecretkey');
+        $this->set_config_php_setting('tool_opcache_reset_secretkey', 'resetsecretkey');
+
+        // The web part must be called exactly once with a POST request to the unchanged URL, with the secret key of the
+        // given CLI tool as POST parameter and with the curl options of the plugin. It must never be called with a GET request.
+        $curl = $this->createMock(\curl::class);
+        $curl->error = '';
+        $curl->expects($this->never())->method('get');
+        $curl->expects($this->once())->method('post')
+            ->with($url, ['secret' => 'checksecretkey'], tool_opcache_get_curl_options(false))
+            ->willReturn("1\r\n2\r\n3\r\n4");
+        $curl->method('get_errno')->willReturn(0);
+        $curl->method('get_info')->willReturn(['http_code' => 200]);
+
+        $this->assertSame(["1\r\n2\r\n3\r\n4", 0, '', ''], tool_opcache_call_web_part('check', $url, false, '', false, $curl));
+
+        // The same applies to the other CLI tool, to its own secret key and to the --insecure option.
+        $url = 'https://example.com/admin/tool/opcache/cli/reset_opcache_web.php';
+        $curl = $this->createMock(\curl::class);
+        $curl->error = '';
+        $curl->expects($this->never())->method('get');
+        $curl->expects($this->once())->method('post')
+            ->with($url, ['secret' => 'resetsecretkey'], tool_opcache_get_curl_options(true))
+            ->willReturn('0');
+        $curl->method('get_errno')->willReturn(0);
+        $curl->method('get_info')->willReturn(['http_code' => 200]);
+
+        $this->assertSame(['0', 0, '', ''], tool_opcache_call_web_part('reset', $url, true, '', false, $curl));
+    }
+
+    /**
+     * Test that curl errors and redirects are reported when the CLI tools call their web parts.
+     *
+     * @covers ::tool_opcache_call_web_part
+     * @covers ::tool_opcache_get_redirect_error
+     */
+    public function test_call_web_part_reports_errors(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
+        $this->resetAfterTest();
+
+        $url = 'http://localhost/admin/tool/opcache/cli/check_opcache_web.php';
+        $this->set_config_php_setting('tool_opcache_check_secretkey', 'checksecretkey');
+
+        // A curl error is passed through.
+        $curl = $this->createMock(\curl::class);
+        $curl->error = 'Could not resolve host';
+        $curl->method('post')->willReturn('Could not resolve host');
+        $curl->method('get_errno')->willReturn(6);
+        $curl->method('get_info')->willReturn(['http_code' => 0]);
+
+        [, $curlerrno, $curlerror, $redirecterror] = tool_opcache_call_web_part('check', $url, false, '', false, $curl);
+        $this->assertSame(6, $curlerrno);
+        $this->assertSame('Could not resolve host', $curlerror);
+        $this->assertSame('', $redirecterror);
+
+        // A redirect (which is not followed for the POST request) is reported and the request is not repeated.
+        $curl = $this->createMock(\curl::class);
+        $curl->error = '';
+        $curl->expects($this->once())->method('post')->willReturn('');
+        $curl->method('get_errno')->willReturn(0);
+        $curl->method('get_info')->willReturn([
+            'http_code' => 303,
+            'redirect_url' => 'https://example.com/admin/tool/opcache/cli/check_opcache_web.php',
+        ]);
+
+        [, $curlerrno, , $redirecterror] = tool_opcache_call_web_part('check', $url, false, '', false, $curl);
+        $this->assertSame(0, $curlerrno);
+        $this->assertStringContainsString(
+            'redirected the request to https://example.com/admin/tool/opcache/cli/check_opcache_web.php (HTTP 303)',
+            $redirecterror
+        );
+    }
+
+    /**
+     * Data provider for test_get_redirect_error().
+     *
+     * @return array
+     */
+    public static function get_redirect_error_provider(): array {
+        return [
+            'answered request' => [
+                'curlinfo' => ['http_code' => 200, 'redirect_url' => ''],
+                'expected' => null,
+            ],
+            'failed request without any HTTP status' => [
+                'curlinfo' => ['http_code' => 0],
+                'expected' => null,
+            ],
+            'empty curl info' => [
+                'curlinfo' => [],
+                'expected' => null,
+            ],
+            'client error' => [
+                'curlinfo' => ['http_code' => 404],
+                'expected' => null,
+            ],
+            'redirect to the wwwroot URL' => [
+                'curlinfo' => ['http_code' => 303, 'redirect_url' => 'https://example.com/admin/tool/opcache/cli/x.php'],
+                'expected' => 'redirected the request to https://example.com/admin/tool/opcache/cli/x.php (HTTP 303)',
+            ],
+            'redirect without known target' => [
+                'curlinfo' => ['http_code' => 302],
+                'expected' => 'redirected the request (HTTP 302)',
+            ],
+        ];
+    }
+
+    /**
+     * Test that a redirected request of a CLI tool to its web part results in an error message.
+     *
+     * @dataProvider get_redirect_error_provider
+     * @covers ::tool_opcache_get_redirect_error
+     *
+     * @param array $curlinfo The curl info of the request to the web part.
+     * @param string|null $expected The expected part of the error message or null if no error message is expected.
+     */
+    public function test_get_redirect_error(array $curlinfo, ?string $expected): void {
+        $error = tool_opcache_get_redirect_error($curlinfo);
+
+        if ($expected === null) {
+            $this->assertSame('', $error);
+        } else {
+            $this->assertStringContainsString($expected, $error);
+            $this->assertStringContainsString('$CFG->wwwroot', $error);
+        }
+    }
+
+    /**
+     * Data provider for test_check_secretkey().
+     *
+     * @return array
+     */
+    public static function check_secretkey_provider(): array {
+        return [
+            'correct secret key' => [
+                'secretkey' => 'P3ethed8yCrAYfshzUTsGVKwedwfNZE89o3L6JZqHKMa',
+                'submittedsecretkey' => 'P3ethed8yCrAYfshzUTsGVKwedwfNZE89o3L6JZqHKMa',
+                'expected' => true,
+            ],
+            'wrong secret key' => [
+                'secretkey' => 'P3ethed8yCrAYfshzUTsGVKwedwfNZE89o3L6JZqHKMa',
+                'submittedsecretkey' => 'wrongsecretkey',
+                'expected' => false,
+            ],
+            'empty submitted secret key' => [
+                'secretkey' => 'P3ethed8yCrAYfshzUTsGVKwedwfNZE89o3L6JZqHKMa',
+                'submittedsecretkey' => '',
+                'expected' => false,
+            ],
+            'correct numeric secret key' => [
+                'secretkey' => '1000',
+                'submittedsecretkey' => '1000',
+                'expected' => true,
+            ],
+            'numeric string with the same numeric value' => [
+                'secretkey' => '1000',
+                'submittedsecretkey' => '1e3',
+                'expected' => false,
+            ],
+            'numeric string with leading zeros' => [
+                'secretkey' => '1000',
+                'submittedsecretkey' => '01000',
+                'expected' => false,
+            ],
+        ];
+    }
+
+    /**
+     * Test that the submitted secret key is checked strictly against the secret key.
+     *
+     * @dataProvider check_secretkey_provider
+     * @covers ::tool_opcache_check_secretkey
+     *
+     * @param string $secretkey The secret key in config.php.
+     * @param string $submittedsecretkey The submitted secret key.
+     * @param bool $expected The expected result.
+     */
+    public function test_check_secretkey(string $secretkey, string $submittedsecretkey, bool $expected): void {
+        global $CFG;
+        $this->resetAfterTest();
+
+        $CFG->tool_opcache_check_secretkey = $secretkey;
+
+        $this->assertSame($expected, tool_opcache_check_secretkey('check', $submittedsecretkey));
+    }
+
+    /**
+     * Test that no submitted secret key matches if there isn't any secret key and that no secret key is generated then.
+     *
+     * @covers ::tool_opcache_check_secretkey
+     */
+    public function test_check_secretkey_without_secretkey(): void {
+        $this->resetAfterTest();
+
+        $this->assertFalse(tool_opcache_check_secretkey('check', ''));
+        $this->assertFalse(tool_opcache_check_secretkey('check', 'anysecretkey'));
+        $this->assertFalse(get_config('tool_opcache', 'checksecretkey'));
+    }
+
+    /**
+     * Test that the submitted secret key is checked against the generated secret key.
+     *
+     * @covers ::tool_opcache_check_secretkey
+     */
+    public function test_check_secretkey_generated(): void {
+        $this->resetAfterTest();
+
+        $secretkey = tool_opcache_get_secretkey('reset', true);
+
+        $this->assertTrue(tool_opcache_check_secretkey('reset', $secretkey));
+        $this->assertFalse(tool_opcache_check_secretkey('reset', strrev($secretkey)));
+        $this->assertFalse(tool_opcache_check_secretkey('check', $secretkey));
+    }
+
+    /**
+     * Data provider for test_evaluate_check_response().
+     *
+     * @return array
+     */
+    public static function evaluate_check_response_provider(): array {
+        $invalidfigures = 'UNKNOWN - The webserver did not return valid Opcache figures. Opcache may be disabled on the ' .
+                'webserver.';
+        return [
+            'nagios check disabled on the webserver' => [
+                'response' => 'DISABLED',
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 3,
+                'expectedout' => 'UNKNOWN - The Nagios check is not enabled on the webserver. See README.md for details.',
+            ],
+            'wrong secret key' => [
+                'response' => 'FORBIDDEN',
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 2,
+                'expectedout' => 'CRITICAL - Secret key is required but is not correct.',
+            ],
+            'opcache unavailable on the webserver' => [
+                'response' => 'UNAVAILABLE',
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 3,
+                'expectedout' => 'UNKNOWN - Opcache is not available on the webserver (extension not loaded, disabled or ' .
+                        'API access restricted).',
+            ],
+            'webserver not reachable' => [
+                'response' => false,
+                'curlerrno' => 7,
+                'curlerror' => 'Failed to connect to localhost',
+                'expectedstatus' => 3,
+                'expectedout' => 'UNKNOWN - The Opcache figures could not be fetched from the webserver: ' .
+                        'Failed to connect to localhost',
+            ],
+            'empty response' => [
+                'response' => '',
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 3,
+                'expectedout' => $invalidfigures,
+            ],
+            'error page' => [
+                'response' => '<html><body>Internal Server Error</body></html>',
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 3,
+                'expectedout' => $invalidfigures,
+            ],
+            'figures preceded by a php warning' => [
+                'response' => "Warning: Something went wrong\r\n30\r\n70\r\n99.5\r\n0.5",
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 3,
+                'expectedout' => $invalidfigures,
+            ],
+            'too few figures' => [
+                'response' => "30\r\n70\r\n99.5",
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 3,
+                'expectedout' => $invalidfigures,
+            ],
+            'empty memory figures' => [
+                'response' => "0\r\n0\r\n0\r\n0",
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 3,
+                'expectedout' => 'UNKNOWN - The webserver returned empty Opcache memory figures.',
+            ],
+            'below warning threshold' => [
+                'response' => "30\r\n70\r\n99.5\r\n0.5",
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 0,
+                'expectedout' => 'OK - 30% cache used | used_pct=30%;80;90 hit_pct=99.5%; miss_pct=0.5%;',
+            ],
+            'below warning threshold with unix line endings' => [
+                'response' => "30\n70\n99.5\n0.5\n",
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 0,
+                'expectedout' => 'OK - 30% cache used | used_pct=30%;80;90 hit_pct=99.5%; miss_pct=0.5%;',
+            ],
+            'warning threshold reached' => [
+                'response' => "80\r\n20\r\n99.5\r\n0.5",
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 1,
+                'expectedout' => 'WARNING - 80% cache used | used_pct=80%;80;90 hit_pct=99.5%; miss_pct=0.5%;',
+            ],
+            'critical threshold reached' => [
+                'response' => "95\r\n5\r\n99.5\r\n0.5",
+                'curlerrno' => 0,
+                'curlerror' => '',
+                'expectedstatus' => 2,
+                'expectedout' => 'CRITICAL - 95% cache used | used_pct=95%;80;90 hit_pct=99.5%; miss_pct=0.5%;',
+            ],
+        ];
+    }
+
+    /**
+     * Test that the response of the web part of the Nagios check is evaluated to the correct Nagios status and output.
+     *
+     * @dataProvider evaluate_check_response_provider
+     * @covers ::tool_opcache_evaluate_check_response
+     *
+     * @param string|bool $response The response of the web part of the Nagios check.
+     * @param int $curlerrno The curl error number.
+     * @param string $curlerror The curl error message.
+     * @param int $expectedstatus The expected Nagios return status.
+     * @param string $expectedout The expected output.
+     */
+    public function test_evaluate_check_response(
+        $response,
+        int $curlerrno,
+        string $curlerror,
+        int $expectedstatus,
+        string $expectedout
+    ): void {
+        $this->assertSame(
+            [$expectedstatus, $expectedout],
+            tool_opcache_evaluate_check_response($response, $curlerrno, $curlerror, 80, 90)
+        );
+    }
+}

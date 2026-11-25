@@ -1,0 +1,252 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Handles viewing a customcert.
+ *
+ * @package    mod_customcert
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+use core\session\manager;
+use mod_customcert\local\pagination;
+use mod_customcert\download_access;
+use mod_customcert\event\course_module_viewed;
+use mod_customcert\report_table;
+use mod_customcert\service\certificate_download_service;
+use mod_customcert\service\certificate_issue_service;
+use mod_customcert\service\certificate_time_service;
+use mod_customcert\service\issue_repository;
+use mod_customcert\service\pdf_generation_service;
+use mod_customcert\service\template_repository;
+use mod_customcert\template;
+
+require_once('../../config.php');
+
+$id = required_param('id', PARAM_INT);
+$downloadown = optional_param('downloadown', false, PARAM_BOOL);
+$downloadall = optional_param('downloadall', 0, PARAM_INT);
+$downloadtable = optional_param('download', null, PARAM_ALPHA);
+$downloadissue = optional_param('downloadissue', 0, PARAM_INT);
+$deleteissue = optional_param('deleteissue', 0, PARAM_INT);
+$confirm = optional_param('confirm', false, PARAM_BOOL);
+$page = optional_param('page', 0, PARAM_INT);
+$perpage = optional_param('perpage', pagination::CUSTOMCERT_PER_PAGE, PARAM_INT);
+
+$cm = get_coursemodule_from_id('customcert', $id, 0, false, MUST_EXIST);
+$course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+$customcert = $DB->get_record('customcert', ['id' => $cm->instance], '*', MUST_EXIST);
+$template = (new template_repository())->get_by_id_or_fail((int)$customcert->templateid);
+
+// Ensure the user is allowed to view this page.
+require_login($course, false, $cm);
+$context = context_module::instance($cm->id);
+require_capability('mod/customcert:view', $context);
+
+$canreceive = has_capability('mod/customcert:receiveissue', $context);
+$canmanage = has_capability('mod/customcert:manage', $context);
+$canviewreport = has_capability('mod/customcert:viewreport', $context);
+
+$pageurl = new moodle_url('/mod/customcert/view.php', ['id' => $cm->id]);
+\mod_customcert\page_helper::page_setup($pageurl, $context, format_string($customcert->name));
+
+// Check if the user can view the certificate based on time spent in course.
+if ($customcert->requiredtime && !$canmanage) {
+    $timeservice = certificate_time_service::create();
+    if ($timeservice->get_course_time((int)$course->id, (int)$USER->id) < ($customcert->requiredtime * 60)) {
+        $a = new stdClass();
+        $a->requiredtime = $customcert->requiredtime;
+        $url = new moodle_url('/course/view.php', ['id' => $course->id]);
+        notice(get_string('requiredtimenotmet', 'customcert', $a), $url);
+        die;
+    }
+}
+
+if ($deleteissue && $canmanage && confirm_sesskey()) {
+    if (!$confirm) {
+        $nourl = new moodle_url('/mod/customcert/view.php', ['id' => $id]);
+        $yesurl = new moodle_url(
+            '/mod/customcert/view.php',
+            [
+                'id' => $id,
+                'deleteissue' => $deleteissue,
+                'confirm' => 1,
+                'sesskey' => sesskey(),
+            ]
+        );
+
+        $PAGE->navbar->add(get_string('deleteconfirm', 'customcert'));
+        $message = get_string('deleteissueconfirm', 'customcert');
+        echo $OUTPUT->header();
+        echo $OUTPUT->heading(format_string($customcert->name));
+        echo $OUTPUT->confirm($message, $yesurl, $nourl);
+        echo $OUTPUT->footer();
+        exit();
+    }
+
+    $issuerepo = new issue_repository();
+    $issue = $issuerepo->get_by_id_or_fail((int)$deleteissue);
+    $issuerepo->delete_for_certificate((int)$deleteissue, (int)$customcert->id);
+
+    $cm = get_coursemodule_from_instance('customcert', $customcert->id, 0, false, MUST_EXIST);
+    $context = \context_module::instance($cm->id);
+    $event = \mod_customcert\event\issue_deleted::create([
+        'objectid' => $issue->id,
+        'context' => $context,
+        'relateduserid' => $issue->userid,
+    ]);
+    $event->trigger();
+
+    redirect(new moodle_url('/mod/customcert/view.php', ['id' => $id]));
+}
+
+if ($groupmode = groups_get_activity_groupmode($cm)) {
+    groups_get_activity_group($cm, true);
+}
+
+$issuerepo = new issue_repository();
+
+if ($downloadall && $canviewreport && confirm_sesskey()) {
+    $template = template::from_record((new template_repository())->get_by_id_or_fail((int)$template->id));
+    $issues = $issuerepo->get_issues($customcert->id, $cm, 0, 0);
+
+    // The button is not visible if there are no issues, so in this case just redirect back to this page.
+    if (empty($issues)) {
+        redirect(new moodle_url('/mod/customcert/view.php', ['id' => $id]));
+    }
+
+    $downloadservice = certificate_download_service::create();
+    $downloadservice->download_all_issues_for_instance($template, $issues);
+    exit();
+}
+
+$event = course_module_viewed::create([
+    'objectid' => $customcert->id,
+    'context' => $context,
+]);
+$event->add_record_snapshot('course', $course);
+$event->add_record_snapshot('customcert', $customcert);
+$event->trigger();
+
+if (!$downloadown && !$downloadissue) {
+    if ($canviewreport) {
+        $reporttable = new report_table($customcert->id, $cm, $downloadtable);
+        $reporttable->define_baseurl($pageurl);
+
+        if ($reporttable->is_downloading()) {
+            $reporttable->download();
+            exit();
+        }
+    }
+
+    // If the current user has been issued a customcert generate HTML to display the details.
+    $issuehtml = '';
+    $issues = $issuerepo->list_by_user_certificate((int)$customcert->id, (int)$USER->id);
+    if ($issues && !$canmanage) {
+        // Get the most recent issue (there should only be one).
+        $issue = reset($issues);
+        $issuestring = get_string('receiveddate', 'customcert') . ': ' . userdate($issue->timecreated);
+        $issuehtml = $OUTPUT->box($issuestring);
+    }
+
+    $downloadbutton = '';
+    $renderbuttoncourse = '';
+    $displayreturnbutton = get_config('customcert', 'returncourse');
+    if ($canreceive) {
+        $linkname = get_string('getcustomcert', 'customcert');
+        $link = new moodle_url('/mod/customcert/view.php', ['id' => $cm->id, 'downloadown' => true]);
+        $downloadbutton = new single_button($link, $linkname, 'post', single_button::BUTTON_PRIMARY);
+        $downloadbutton->class .= ' m-b-1';  // Seems a bit hackish, ahem.
+        $downloadbutton = $OUTPUT->render($downloadbutton);
+        if ($displayreturnbutton) {
+            $url = new moodle_url('/course/view.php', ['id' => $course->id]);
+            $buttonreturntocourse = new single_button($url, get_string('returncourselabel', 'customcert'), 'get');
+            $renderbuttoncourse = $OUTPUT->render($buttonreturntocourse);
+        }
+    }
+
+    $numissues = $issuerepo->get_number_of_issues($customcert->id, $cm);
+
+    $downloadallbutton = '';
+    if ($canviewreport && $numissues > 0) {
+        $linkname = get_string('downloadallissuedcertificates', 'customcert');
+        $link = new moodle_url(
+            '/mod/customcert/view.php',
+            [
+                'id' => $cm->id,
+                'downloadall' => true,
+                'sesskey' => sesskey(),
+            ]
+        );
+        $downloadallbutton = new single_button($link, $linkname, 'get', single_button::BUTTON_SECONDARY);
+        $downloadallbutton->class .= ' m-b-1';  // Seems a bit hackish, ahem.
+        $downloadallbutton = $OUTPUT->render($downloadallbutton);
+    }
+
+    echo $OUTPUT->header();
+    echo $issuehtml;
+    echo $downloadbutton;
+    echo $downloadallbutton;
+    if ($displayreturnbutton) {
+        echo $renderbuttoncourse;
+    }
+    if (isset($reporttable)) {
+        echo $OUTPUT->heading(get_string('listofissues', 'customcert', $numissues), 3);
+        groups_print_activity_menu($cm, $pageurl);
+        echo $reporttable->out($perpage, false);
+    }
+    echo $OUTPUT->footer($course);
+    exit();
+} else if ($canreceive || $canviewreport) { // Output to pdf.
+    $userid = $USER->id;
+    if ($downloadown) {
+        if (!data_submitted()) {
+            throw new moodle_exception('invalidrequest');
+        }
+
+        require_capability('mod/customcert:receiveissue', $context);
+        require_sesskey();
+
+        if (!(new issue_repository())->exists_for_user((int)$customcert->id, (int)$USER->id)) {
+            $issueservice = certificate_issue_service::create();
+            $issueservice->issue_certificate((int)$customcert->id, (int)$USER->id);
+        }
+
+        $completion = new completion_info($course);
+        $completion->set_module_viewed($cm);
+    } else if ($downloadissue && $canviewreport) {
+        download_access::require_download_for_user($cm, $downloadissue);
+
+        // Only allow downloading a certificate PDF for a user who has actually been issued one.
+        if (!(new issue_repository())->exists_for_user((int)$customcert->id, (int)$downloadissue)) {
+            throw new moodle_exception('You have not been issued a certificate');
+        }
+        $userid = $downloadissue;
+    }
+
+    // Hack alert - don't initiate the download when running Behat.
+    if (defined('BEHAT_SITE_RUNNING')) {
+        redirect(new moodle_url('/mod/customcert/view.php', ['id' => $cm->id]));
+    }
+
+    manager::write_close();
+
+    $template = template::from_record((new template_repository())->get_by_id_or_fail((int)$template->id));
+    $pdfservice = pdf_generation_service::create();
+    $pdfservice->generate_pdf($template, false, (int)$userid);
+    exit();
+}

@@ -1,0 +1,114 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * This page displays a non-completable instance of questionnaire.
+ *
+ * @package    mod_questionnaire
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  2016 onward Mike Churchward (mike.churchward@poetgroup.org)
+ * @author     Mike Churchward
+ */
+
+require_once("../../config.php");
+
+use mod_questionnaire\questionnaire as questionnaire_class;
+
+$id = optional_param('id', 0, PARAM_INT);
+$sid = optional_param('sid', 0, PARAM_INT);
+$popup = optional_param('popup', 0, PARAM_INT);
+$qid = optional_param('qid', 0, PARAM_INT);
+$currentgroupid = optional_param('group', 0, PARAM_INT); // Groupid.
+
+if ($id) {
+    // Normal module instance.
+    $questionnaire = questionnaire_class::from_cmid($id);
+    $course = $questionnaire->course();
+    $cm = $questionnaire->coursemodule();
+    require_login($course, false, $cm);
+    if (!$questionnaire->capabilities()->can_preview()) {
+        throw new \moodle_exception('nopermissions', 'mod_questionnaire');
+    }
+} else {
+    // Survey-only (template/public preview from the "Add questionnaire" form). The survey may be in a course the
+    // user is not enrolled in, so access is checked against the course the questionnaire is being added to.
+    $addcourse = get_course(required_param('courseid', PARAM_INT));
+    require_login($addcourse);
+    require_capability('mod/questionnaire:addinstance', context_course::instance($addcourse->id));
+    $survey = \mod_questionnaire\local\survey\survey::from_sid($sid);
+    if (!$survey->id()) {
+        throw new \moodle_exception('surveynotexists', 'mod_questionnaire');
+    }
+    if (!$survey->can_be_copied_into((int)$addcourse->id)) {
+        throw new \moodle_exception('nopermissions', 'mod_questionnaire');
+    }
+    if (!$course = $DB->get_record('course', ['id' => $survey->owning_courseid()])) {
+        throw new \moodle_exception('coursemisconf', 'mod_questionnaire');
+    }
+    $questionnaire = questionnaire_class::for_survey_preview($sid, $qid, $course);
+    $cm = $questionnaire->coursemodule() ?: false;
+}
+$context = $cm ? context_module::instance($cm->id) : false;
+
+$url = new moodle_url('/mod/questionnaire/preview.php');
+if ($id !== 0) {
+    $url->param('id', $id);
+}
+if ($sid) {
+    $url->params(['sid' => $sid, 'qid' => $qid, 'courseid' => $addcourse->id, 'popup' => $popup]);
+}
+$PAGE->set_url($url);
+$PAGE->set_context($context ?: context_course::instance($course->id));
+if ($cm) {
+    $PAGE->set_cm($cm);
+}
+
+$qp = get_string('preview_questionnaire', 'questionnaire');
+$pq = get_string('previewing', 'questionnaire');
+
+// Print the page header.
+if ($popup) {
+    $PAGE->set_pagelayout('popup');
+}
+$PAGE->set_title(format_string($qp));
+if (!$popup) {
+    $PAGE->set_heading(format_string($course->fullname));
+}
+
+$renderer = $PAGE->get_renderer('mod_questionnaire');
+$page = \mod_questionnaire\output\page::preview();
+
+echo $renderer->header();
+$page->add_to_page('heading', clean_text($pq));
+
+(new \mod_questionnaire\local\report\report_view_builder($renderer, $page))
+    ->build_print_view($questionnaire, $course->id, '', 'preview', 0, $popup);
+if ($popup) {
+    $page->add_to_page('closebutton', $renderer->close_window_button());
+}
+echo $renderer->render($page);
+echo $renderer->footer($course);
+
+// Log this questionnaire preview (skip in survey-only mode — no real module instance).
+if ($questionnaire->id() > 0) {
+    $anonymous = $questionnaire->respondenttype() == 'anonymous';
+    $event = \mod_questionnaire\event\questionnaire_previewed::create([
+        'objectid' => $questionnaire->id(),
+        'anonymous' => $anonymous,
+        'context' => $questionnaire->context(),
+    ]);
+    $event->trigger();
+}

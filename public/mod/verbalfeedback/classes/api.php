@@ -1,0 +1,519 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace mod_verbalfeedback;
+
+use coding_exception;
+use context_module;
+use dml_exception;
+use Exception;
+use moodle_exception;
+use mod_verbalfeedback\model\instance;
+use mod_verbalfeedback\model\response;
+use mod_verbalfeedback\model\submission;
+use mod_verbalfeedback\model\submission_status;
+use mod_verbalfeedback\repository\instance_repository;
+use mod_verbalfeedback\repository\submission_repository;
+use mod_verbalfeedback\repository\tables;
+use mod_verbalfeedback\utils\user_utils;
+
+/**
+ * Class for all api calls that performing DB actions for the verbal feedback activity module.
+ *
+ * @package   mod_verbalfeedback
+ * @copyright 2020 Kevin Tippenhauer <kevin.tippenhauer@bfh.ch>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class api {
+    /** Status when a user has not yet provided feedback to another user. */
+    const STATUS_PENDING = 0;
+    /** Status when a user has begun providing feedback to another user. */
+    const STATUS_IN_PROGRESS = 1;
+    /** Status when a user has completed providing feedback to another user. */
+    const STATUS_COMPLETE = 2;
+    /** Status when a user has declined to provide feedback to another user. */
+    const STATUS_DECLINED = 3;
+
+    /** Move a question item up. */
+    const MOVE_UP = 1;
+    /** Move a question item down. */
+    const MOVE_DOWN = 2;
+
+    /** Indicates all course participants regardless of role are the participants of the verbal feedback activity. */
+    const PARTICIPANT_ROLE_ALL = 0;
+
+    /** Do not allow participants to undo their declined feedback submissions. */
+    const UNDO_DECLINE_DISALLOW = 0;
+    /** Allow participants to undo their declined feedback submissions. */
+    const UNDO_DECLINE_ALLOW = 1;
+
+    /** Activity open event type. */
+    const VERBALFEEDBACK_EVENT_TYPE_OPEN = 'open';
+    /** Activity close event type. */
+    const VERBALFEEDBACK_EVENT_TYPE_CLOSE = 'close';
+
+    /** @var array Cache for verbalfeedback instances. */
+    private static $instances = [];
+
+    /**
+     * Fetches the verbal feedback instance.
+     *
+     * @param int $verbalfeedbackid The verbal feedback ID.
+     * @return mixed
+     * @throws dml_exception
+     */
+    public static function get_instance($verbalfeedbackid) {
+        global $DB;
+
+        $id = (int)$verbalfeedbackid;
+        if (!array_key_exists($id, static::$instances) || PHPUNIT_TEST) {
+            static::$instances[$id] = $DB->get_record(tables::INSTANCE_TABLE, ['id' => $id], '*', MUST_EXIST);
+        }
+        return static::$instances[$id];
+    }
+
+    /**
+     * Check if for a given instance id we actually have an object instance in the database.
+     *
+     * @param int $verbalfeedbackid The verbal feedback ID.
+     * @return bool
+     */
+    public static function is_ready($verbalfeedbackid) {
+        $id = (int)$verbalfeedbackid;
+        return !empty(static::$instances[$id]);
+    }
+
+    /**
+     * Fetches the verbal feedback instance with given itemid.
+     *
+     * @param int $itemid The verbal feedback item ID.
+     * @return mixed
+     * @throws dml_exception
+     */
+    public static function get_instance_by_itemid($itemid) {
+        global $DB;
+        $id = (int)$itemid;
+        static $instances = [];
+        if (isset($instances[$id])) {
+            return $instances[$id];
+        }
+        $instances[$id] = $DB->get_record_sql(
+            sprintf(
+                'SELECT vf.* FROM {%s} vf
+                INNER JOIN {%s} cat ON cat.instanceid = vf.id
+                INNER JOIN {%s} crit ON crit.categoryid = cat.id
+                WHERE crit.id = ?',
+                tables::INSTANCE_TABLE,
+                tables::INSTANCE_CATEGORY_TABLE,
+                tables::INSTANCE_CRITERION_TABLE
+            ),
+            [$id],
+            IGNORE_MISSING
+        );
+        return $instances[$id];
+    }
+
+    /**
+     * Fetches the verbal feedback instance with given categoryid.
+     *
+     * @param int $categoryid The verbal feedback category ID.
+     * @return mixed
+     * @throws dml_exception
+     */
+    public static function get_instance_by_categoryid($categoryid) {
+        global $DB;
+        $id = (int)$categoryid;
+        static $instances = [];
+        if (isset($instances[$id])) {
+            return $instances[$id];
+        }
+        $instances[$id] = $DB->get_record_sql(
+            sprintf(
+                'SELECT vf.* FROM {%s} vf
+                INNER JOIN {%s} cat ON cat.instanceid = vf.id
+                WHERE cat.id = ?',
+                tables::INSTANCE_TABLE,
+                tables::INSTANCE_CATEGORY_TABLE
+            ),
+            [$id],
+            IGNORE_MISSING
+        );
+        return $instances[$id];
+    }
+
+    /**
+     * Check whether only active users in course should be shown.
+     *
+     * @param ?context_module $context context the verbal feedback belongs to.
+     * @return bool true if only active users should be shown.
+     */
+    public static function show_only_active_users(?context_module $context = null) {
+        global $CFG;
+
+        $defaultgradeshowactiveenrol = !empty($CFG->grade_report_showonlyactiveenrol);
+        $showonlyactiveenrol = get_user_preferences('grade_report_showonlyactiveenrol', $defaultgradeshowactiveenrol);
+
+        if (!is_null($context)) {
+            $showonlyactiveenrol = $showonlyactiveenrol || !has_capability('moodle/course:viewsuspendedusers', $context);
+        }
+        return $showonlyactiveenrol;
+    }
+
+    /**
+     * Function that retrieves the fields of the user table for the participants list.
+     *
+     * @return string[] The fields of the user table for the participants list.
+     */
+    public static function get_fields_for_participants(): array {
+        return [
+            'id',
+            'firstname',
+            'lastname',
+            'email',
+            'firstnamephonetic',
+            'lastnamephonetic',
+            'middlename',
+            'alternatename',
+            'picture',
+            'imagealt',
+        ];
+    }
+
+    /**
+     * Function that retrieves the participants for the verbal feedback activity.
+     *
+     * @param int $verbalfeedbackid The verbal feedback instance ID.
+     * @param int $currentuserid The current user ID.
+     * @param array $filter The filter parameters for the participants list.
+     *                      Filter parameters can be groupid, tifirst, tilast, userid, status and usersearch.
+     * @return array
+     * @throws coding_exception
+     * @throws dml_exception
+     * @throws moodle_exception
+     */
+    public static function get_participants($verbalfeedbackid, $currentuserid, $filter = []) {
+        global $DB;
+
+        $cm = get_coursemodule_from_instance('verbalfeedback', $verbalfeedbackid);
+        $context = context_module::instance($cm->id);
+        $groupid = $filter['group'] ?? 0;
+
+        $submissioncandidates =
+            get_enrolled_users(
+                $context,
+                'mod/verbalfeedback:receive_rating', // Capability.
+                $groupid,
+                implode(', ', array_map(fn($field) => "u.$field", self::get_fields_for_participants())), // Fields.
+                'u.lastname, u.firstname', // Order by.
+            );
+
+        $userssql = "SELECT DISTINCT s.touserid AS touserid, s.id AS submissionid, s.status AS submissionstatus
+                     FROM {verbalfeedback_submission} s
+                     WHERE s.instanceid = :instanceid AND s.fromuserid = :currentuserid";
+        $sqlparams = ['instanceid' => $verbalfeedbackid, 'currentuserid' => $currentuserid];
+        $statusrecords = $DB->get_records_sql($userssql, $sqlparams);
+
+        // Combine sql results and drop current user ($includeself) if necessary.
+        $filtermap = function ($v) use ($currentuserid, $statusrecords, $filter) {
+            if ($v->id == $currentuserid) {
+                return false;
+            }
+            if (isset($filter['usersearch']) && !empty($filter['usersearch'])) {
+                $fullnamestring = fullname($v);
+                if (stripos($fullnamestring, $filter['usersearch']) === false) {
+                    return false;
+                }
+            }
+            if (isset($filter['tifirst']) && !empty($filter['tifirst']) && stripos($v->firstname, $filter['tifirst']) !== 0) {
+                return false;
+            }
+            if (isset($filter['tilast']) && !empty($filter['tilast']) && stripos($v->lastname, $filter['tilast']) !== 0) {
+                return false;
+            }
+            if (isset($filter['userid']) && !empty($filter['userid']) && $v->id != $filter['userid']) {
+                return false;
+            }
+            if (isset($statusrecords[$v->id]->submissionid)) {
+                $v->submissionid = $statusrecords[$v->id]->submissionid;
+            }
+            if (isset($statusrecords[$v->id]->submissionstatus)) {
+                $v->submissionstatus = $statusrecords[$v->id]->submissionstatus;
+                if (isset($filter['status']) && $filter['status'] != -1 && $v->submissionstatus != $filter['status']) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        $submissioncandidates = array_filter($submissioncandidates, $filtermap);
+
+        return $submissioncandidates;
+    }
+
+    /**
+     * Generate default records for the table verbalfeedback_submission.
+     *
+     * @param int $verbalfeedbackid The verbal feedback instance ID.
+     * @param int $fromuserid The user ID of the respondent.
+     * @param array $filter The filter parameters for the participants list.
+     * @throws coding_exception
+     * @throws dml_exception
+     */
+    public static function generate_verbalfeedback_feedback_states($verbalfeedbackid, $fromuserid, $filter = []) {
+        global $DB;
+        $submissionrepo = new submission_repository();
+
+        $verbalfeedback = self::get_instance($verbalfeedbackid);
+        $wheres = [
+            'u.id NOT IN (
+                SELECT fs.touserid
+                  FROM {verbalfeedback_submission} fs
+                 WHERE fs.instanceid = f.id
+                       AND fs.fromuserid = :fromuser2
+            )',
+        ];
+        $params = [
+            'verbalfeedbackid' => $verbalfeedbackid,
+            'fromuser2' => $fromuserid,
+        ];
+
+        $wheres[] = 'u.id <> :fromuser';
+        $params['fromuser'] = $fromuserid;
+
+        $groupid = $filter['group'] ?? 0;
+        if ($groupid != 0) {
+            $cm = get_coursemodule_from_instance(
+                'verbalfeedback',
+                $verbalfeedbackid,
+                $verbalfeedback->course
+            );
+            $context = context_module::instance($cm->id);
+
+            $userids = get_enrolled_users($context, '', $groupid, 'u.id', null, 0, 0, self::show_only_active_users($context));
+
+            if ($userids) {
+                $userids = array_map(
+                    function ($user) {
+                        return $user->id;
+                    },
+                    $userids
+                );
+                [$sql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+                $params = array_merge($params, $inparams);
+                $wheres[] = "u.id $sql";
+            }
+        }
+
+        $whereclause = implode(' AND ', $wheres);
+        $usersql = "SELECT DISTINCT u.id
+                               FROM {user} u
+                         INNER JOIN {user_enrolments} ue
+                                 ON u.id = ue.userid
+                         INNER JOIN {enrol} e
+                                 ON e.id = ue.enrolid
+                         INNER JOIN {verbalfeedback} f
+                                 ON f.course = e.courseid AND f.id = :verbalfeedbackid
+                              WHERE {$whereclause}";
+
+        if ($users = $DB->get_records_sql($usersql, $params)) {
+            foreach ($users as $user) {
+                $submission = new submission();
+                $submission->set_instance_id($verbalfeedbackid);
+                $submission->set_from_user_id($fromuserid);
+                $submission->set_to_user_id($user->id);
+                $submissionrepo->save($submission);
+            }
+        }
+    }
+
+    /**
+     * Get scales for rated questions.
+     *
+     * @return array
+     * @throws coding_exception
+     */
+    public static function get_scales() {
+        $wordscale = [
+            'scalestronglydisagree',
+            'scaledisagree',
+            'scalesomewhatdisagree',
+            'scalesomewhatagree',
+            'scaleagree',
+            'scalestronglyagree',
+        ];
+        $scales = [];
+        for ($i = 0; $i <= 5; $i++) {
+            $scales[] = (object)[
+                'scale' => $i,
+                'scalelabel' => '' . $i,
+                'description' => get_string($wordscale[$i], 'mod_verbalfeedback'),
+            ];
+        }
+        $scales[] = (object)[
+            'scale' => null,
+            'scalelabel' => get_string('notapplicableabbr', 'verbalfeedback'),
+            'description' => get_string('scalenotapplicable', 'mod_verbalfeedback'),
+        ];
+
+        return $scales;
+    }
+
+    /**
+     * Save a user's responses to the verbal feedback questions for another user.
+     *
+     * @param int $instanceid The verbal feedback instance ID.
+     * @param int $submissionid The submission ID.
+     * @param int $touser The recipient of the feedback responses.
+     * @param array $responses The responses data.
+     * @return bool|int
+     * @throws dml_exception
+     */
+    public static function save_responses($instanceid, $submissionid, $touser, $responses) {
+        global $USER;
+        $submissionrepo = new submission_repository();
+        $fromuser = (int)$USER->id;
+
+        $inprogress = false;
+
+        $submission = $submissionrepo->get_by_id($submissionid);
+        if (
+            $submission === null ||
+            $submission->instanceid !== $instanceid ||
+            $submission->fromuserid !== $fromuser ||
+            $submission->touserid !== $touser
+        ) {
+            throw new moodle_exception('invalididprovided', 'mod_verbalfeedback');
+        }
+        foreach ($responses as $resp) {
+            $response = new response();
+            foreach ($submission->get_responses() as $savedresponse) {
+                if ($savedresponse->get_criterion_id() == $resp['criterionid']) {
+                    $response = &$savedresponse;
+                    break;
+                }
+            }
+
+            if ($response->get_id() == 0) {
+                $response->set_instance_id($instanceid);
+                $response->set_criterion_id($resp['criterionid']);
+                $response->set_to_user_id($touser);
+                $response->set_from_user_id($fromuser);
+                $response->set_value($resp['value']);
+
+                // Setting an empty string as default value in external.php does not work.
+                if (isset($resp['studentcomment'])) {
+                    $response->set_student_comment($resp['studentcomment']);
+                }
+                if (isset($resp['privatecomment'])) {
+                    $response->set_private_comment($resp['privatecomment']);
+                }
+
+                $submission->add_response($response);
+
+                if (
+                    $response->get_value() != null ||
+                    $response->get_student_comment() != "" ||
+                    $response->get_private_comment() != ""
+                ) {
+                    $inprogress = true;
+                }
+            } else {
+                // There is already a response object on the submission.
+                // $response is here a pointer to this object. Therefore, we dont need to add a response to submission.
+                $response->set_value($resp['value']);
+                // Setting an empty string as default value in external.php does not work.
+                if (isset($resp['studentcomment'])) {
+                    $response->set_student_comment($resp['studentcomment']);
+                }
+                if (isset($resp['privatecomment'])) {
+                    $response->set_private_comment($resp['privatecomment']);
+                }
+                if (
+                    $response->get_value() != null ||
+                    $response->get_student_comment() != "" ||
+                    $response->get_private_comment() != ""
+                ) {
+                    $inprogress = true;
+                }
+            }
+        }
+
+        if ($inprogress) {
+            $submission->set_status(submission_status::IN_PROGRESS);
+        }
+        try {
+            $submissionrepo->save($submission);
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Updates the multiplier of a given item.
+     *
+     * @param int $itemid The item ID.
+     * @param float $multiplier The new value for the multiplier.
+     * @return bool
+     */
+    public static function update_item_multiplier($itemid, $multiplier) {
+        $instancerepository = new instance_repository();
+        return $instancerepository->update_criterion_weight($itemid, $multiplier);
+    }
+
+    /**
+     * Updates the percentage value of a category.
+     *
+     * @param int $categoryid The category id
+     * @param float $percentage The new value for the multiplier.
+     * @return bool
+     */
+    public static function update_category_percentage($categoryid, $percentage) {
+        $instancerepository = new instance_repository();
+        return $instancerepository->update_category_weight($categoryid, $percentage);
+    }
+
+    /**
+     * Counts the number of users awaiting feedback from the given user ID.
+     *
+     * @param int $verbalfeedbackid The verbal feedback instance ID.
+     * @param int $user The user ID.
+     * @return int
+     */
+    public static function count_users_awaiting_feedback($verbalfeedbackid, $user) {
+        global $DB;
+
+        $record = self::get_instance($verbalfeedbackid);
+        $verbalfeedback = instance::from_record($record);
+
+        // Check first if the user can write feedback to other participants.
+        if (user_utils::can_respond($verbalfeedback, $user) === true) {
+            if (!$DB->record_exists(tables::SUBMISSION_TABLE, ['instance' => $verbalfeedback->id, 'fromuser' => $user])) {
+                // Generate submission records if there are no submission records yet.
+                self::generate_verbalfeedback_feedback_states($verbalfeedback->id, $user);
+            }
+
+            // Count participants awaiting feedback from this user.
+            [$insql, $params] = $DB->get_in_or_equal([self::STATUS_PENDING, self::STATUS_IN_PROGRESS], SQL_PARAMS_NAMED);
+            $select = "instance = :verbalfeedback AND fromuser = :fromuser AND status $insql";
+            $params['verbalfeedback'] = $verbalfeedbackid;
+            $params['fromuser'] = $user;
+            return $DB->count_records_select(tables::SUBMISSION_TABLE, $select, $params);
+        }
+
+        return 0;
+    }
+}

@@ -1,0 +1,110 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Contains tests for template's page operations.
+ *
+ * @package   mod_customcert
+ * @copyright 2023 Leon Stringer <leon.stringer@ntlworld.com>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+namespace mod_customcert;
+
+use mod_customcert\service\page_update;
+use mod_customcert\service\template_service;
+use advanced_testcase;
+use context_system;
+use stdClass;
+
+/**
+ * Contains tests for template's page operations.
+ *
+ * @package   mod_customcert
+ * @copyright 2023 Leon Stringer <leon.stringer@ntlworld.com>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+final class page_test extends advanced_testcase {
+    /**
+     * Set the test up.
+     *
+     * @return void
+     */
+    public function setUp(): void {
+        $this->resetAfterTest();
+
+        parent::setUp();
+    }
+
+    /**
+     * Check deleting a non-empty page has no errors.
+     *   1. Create a template.
+     *   2. Add a second page.
+     *   3. Add an element to the second page.
+     *   4. Delete the second page.
+     * Previously the above scenario resulted in an error (#571).
+     *
+     * @covers \mod_customcert\service\template_service::delete_page
+     */
+    public function test_delete_non_empty_page(): void {
+        global $DB;
+
+        $template = template::create('Test name', context_system::instance()->id);
+        $service = template_service::create();
+
+        // Add a second page and add an element to it.
+        $page2id = $service->add_page($template);
+        $element = new stdClass();
+        $element->pageid = $page2id;
+        $element->name = 'Image';
+        $element->element = 'image';
+        $DB->insert_record('customcert_elements', $element);
+
+        $service->delete_page($template, $page2id);
+
+        $records = $DB->count_records('customcert_elements', ['pageid' => $page2id]);
+        $this->assertEquals(0, $records);
+
+        $records = $DB->count_records('customcert_pages', ['id' => $page2id]);
+        $this->assertEquals(0, $records);
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * page_update uses the current time when $timemodified is not provided.
+     *
+     * @covers \mod_customcert\service\page_update::__construct
+     */
+    public function test_page_update_null_timemodified_defaults_to_current_time(): void {
+        $before = time();
+        $update = new page_update(210, 297, 10, 10);
+        $after = time();
+
+        $this->assertGreaterThanOrEqual($before, $update->timemodified);
+        $this->assertLessThanOrEqual($after, $update->timemodified);
+    }
+
+    /**
+     * page_update uses the explicitly provided $timemodified when given.
+     *
+     * @covers \mod_customcert\service\page_update::__construct
+     */
+    public function test_page_update_explicit_timemodified_is_preserved(): void {
+        $update = new page_update(210, 297, 10, 10, 1_000_000);
+
+        $this->assertSame(1_000_000, $update->timemodified);
+    }
+}

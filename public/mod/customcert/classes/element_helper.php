@@ -1,0 +1,924 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Provides useful functions related to elements.
+ *
+ * @package    mod_customcert
+ * @copyright  2016 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+namespace mod_customcert;
+
+use context;
+use context_module;
+use DirectoryIterator;
+use grade_grade;
+use mod_customcert\element\layout_element_interface;
+use mod_customcert\element\stylable_element_interface;
+use MoodleQuickForm;
+use pdf;
+use stdClass;
+use TCPDF_COLORS;
+use TCPDF_FONTS;
+
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+
+require_once($CFG->libdir . '/grade/constants.php');
+require_once($CFG->dirroot . '/grade/lib.php');
+require_once($CFG->dirroot . '/grade/querylib.php');
+
+/**
+ * Class helper.
+ *
+ * Provides useful functions related to elements.
+ *
+ * @package    mod_customcert
+ * @copyright  2016 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class element_helper {
+    /**
+     * @var int the top-left of element
+     */
+    public const int CUSTOMCERT_REF_POINT_TOPLEFT = 0;
+
+    /**
+     * @var int the top-center of element
+     */
+    public const int CUSTOMCERT_REF_POINT_TOPCENTER = 1;
+
+    /**
+     * @var int the top-right of element
+     */
+    public const int CUSTOMCERT_REF_POINT_TOPRIGHT = 2;
+
+    /**
+     * Common behaviour for rendering specified content on the pdf.
+     *
+     * @param pdf $pdf the pdf object
+     * @param stylable_element_interface $element The element. Must also implement layout_element_interface.
+     * @param string $content the content to render
+     * @return void
+     */
+    public static function render_content(
+        pdf $pdf,
+        stylable_element_interface $element,
+        string $content
+    ): void {
+        $layoutelement = self::require_layout_element($element);
+        [$font, $attr] = self::get_font($element);
+        $pdf->setFont($font, $attr, $element->get_fontsize());
+        $colour = $element->get_colour() ?? '#000000';
+        $fontcolour = TCPDF_COLORS::convertHTMLColorToDec($colour, $fontcolour);
+        $pdf->SetTextColor($fontcolour['R'], $fontcolour['G'], $fontcolour['B']);
+
+        $x = $layoutelement->get_posx();
+        $y = $layoutelement->get_posy();
+        $w = $layoutelement->get_width();
+        $refpoint = $layoutelement->get_refpoint();
+        $cleanedcontent = clean_param($content, PARAM_NOTAGS);
+        $actualwidth = $pdf->GetStringWidth($cleanedcontent);
+        $alignment = $layoutelement->get_alignment() ?? 'L';
+
+        if ($w && $w < $actualwidth) {
+            $actualwidth = $w;
+        }
+
+        switch ($refpoint) {
+            case self::CUSTOMCERT_REF_POINT_TOPRIGHT:
+                $x = $layoutelement->get_posx() - $actualwidth;
+                if ($x < 0) {
+                    $x = 0;
+                    $w = $layoutelement->get_posx();
+                } else {
+                    $w = $actualwidth;
+                }
+                break;
+            case self::CUSTOMCERT_REF_POINT_TOPCENTER:
+                $x = $layoutelement->get_posx() - $actualwidth / 2;
+                if ($x < 0) {
+                    $x = 0;
+                    $w = $layoutelement->get_posx() * 2;
+                } else {
+                    $w = $actualwidth;
+                }
+                break;
+        }
+
+        if ($w) {
+            $w += 0.0001;
+        }
+        $pdf->setCellPaddings(0, 0, 0, 0);
+        $pdf->writeHTMLCell($w, 0, $x, $y, $content, 0, 0, false, true, $alignment);
+    }
+
+    /**
+     * Common behaviour for rendering specified content on the drag and drop page.
+     *
+     * @param stylable_element_interface $element The element. Must also implement layout_element_interface.
+     * @param string $content the content to render
+     * @return string the html
+     */
+    public static function render_html_content(
+        stylable_element_interface $element,
+        string $content
+    ): string {
+        $layoutelement = self::require_layout_element($element);
+        [$font, $attr] = self::get_font($element);
+        $fontstyle = 'font-family: ' . $font;
+        if (strpos($attr, 'B') !== false) {
+            $fontstyle .= '; font-weight: bold';
+        }
+        if (strpos($attr, 'I') !== false) {
+            $fontstyle .= '; font-style: italic';
+        }
+
+        $colour = $element->get_colour() ?? '#000000';
+        $fontsize = $element->get_fontsize() ?? 12;
+        $style = $fontstyle . '; color: ' . $colour . '; font-size: ' . $fontsize . 'pt;';
+        if ($layoutelement->get_width()) {
+            $style .= ' width: ' . $layoutelement->get_width() . 'mm';
+        }
+        return \html_writer::div($content, '', ['style' => $style]);
+    }
+
+    /**
+     * Helper function to render the font elements.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public static function render_form_element_font(MoodleQuickForm $mform): void {
+        $mform->addElement('select', 'font', get_string('font', 'customcert'), self::get_fonts());
+        $mform->setType('font', PARAM_TEXT);
+        $mform->setDefault('font', 'times');
+        $mform->addHelpButton('font', 'font', 'customcert');
+        $mform->addElement(
+            'select',
+            'fontsize',
+            get_string('fontsize', 'customcert'),
+            self::get_font_sizes()
+        );
+        $mform->setType('fontsize', PARAM_INT);
+        $mform->setDefault('fontsize', 12);
+        $mform->addHelpButton('fontsize', 'fontsize', 'customcert');
+    }
+
+    /**
+     * Helper function to render the colour elements.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public static function render_form_element_colour(MoodleQuickForm $mform): void {
+        $mform->addElement('customcert_colourpicker', 'colour', get_string('fontcolour', 'customcert'));
+        $mform->setType('colour', PARAM_RAW); // Need to validate that this is a valid colour.
+        $mform->setDefault('colour', '#000000');
+        $mform->addHelpButton('colour', 'fontcolour', 'customcert');
+    }
+
+    /**
+     * Helper function to render the position elements.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public static function render_form_element_position(MoodleQuickForm $mform): void {
+        $mform->addElement('text', 'posx', get_string('posx', 'customcert'), ['size' => 10]);
+        $mform->setType('posx', PARAM_INT);
+        $mform->setDefault('posx', 0);
+        $mform->addHelpButton('posx', 'posx', 'customcert');
+        $mform->addElement('text', 'posy', get_string('posy', 'customcert'), ['size' => 10]);
+        $mform->setType('posy', PARAM_INT);
+        $mform->setDefault('posy', 0);
+        $mform->addHelpButton('posy', 'posy', 'customcert');
+    }
+
+    /**
+     * Helper function to render the width element.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public static function render_form_element_width(MoodleQuickForm $mform): void {
+        $mform->addElement('text', 'width', get_string('elementwidth', 'customcert'), ['size' => 10]);
+        $mform->setType('width', PARAM_INT);
+        $mform->setDefault('width', 0);
+        $mform->addHelpButton('width', 'elementwidth', 'customcert');
+    }
+
+    /**
+     * Helper function to render the height element.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public static function render_form_element_height(MoodleQuickForm $mform): void {
+        $mform->addElement('text', 'height', get_string('elementheight', 'customcert'), ['size' => 10]);
+        $mform->setType('height', PARAM_INT);
+        $mform->setDefault('height', 0);
+        $mform->addHelpButton('height', 'elementheight', 'customcert');
+    }
+
+    /**
+     * Helper function to render the refpoint element.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public static function render_form_element_refpoint(MoodleQuickForm $mform): void {
+        $refpointoptions = [];
+        $refpointoptions[self::CUSTOMCERT_REF_POINT_TOPLEFT] = get_string('topleft', 'customcert');
+        $refpointoptions[self::CUSTOMCERT_REF_POINT_TOPCENTER] = get_string('topcenter', 'customcert');
+        $refpointoptions[self::CUSTOMCERT_REF_POINT_TOPRIGHT] = get_string('topright', 'customcert');
+
+        $mform->addElement('select', 'refpoint', get_string('refpoint', 'customcert'), $refpointoptions);
+        $mform->setType('refpoint', PARAM_INT);
+        $mform->setDefault('refpoint', self::CUSTOMCERT_REF_POINT_TOPCENTER);
+        $mform->addHelpButton('refpoint', 'refpoint', 'customcert');
+    }
+
+    /**
+     * Helper function to render the alignment form element.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     */
+    public static function render_form_element_alignment(MoodleQuickForm $mform): void {
+        $alignmentoptions = [];
+        $alignmentoptions[element::ALIGN_LEFT] = get_string('alignleft', 'customcert');
+        $alignmentoptions[element::ALIGN_CENTER] = get_string('aligncenter', 'customcert');
+        $alignmentoptions[element::ALIGN_RIGHT] = get_string('alignright', 'customcert');
+
+        $mform->addElement('select', 'alignment', get_string('alignment', 'customcert'), $alignmentoptions);
+        $mform->setType('alignment', PARAM_ALPHA);
+        $mform->setDefault('alignment', element::ALIGN_LEFT);
+        $mform->addHelpButton('alignment', 'alignment', 'customcert');
+    }
+
+    /**
+     * Renders all common form elements (font, colour, position, width, refpoint, alignment).
+     *
+     * Elements should call this from build_form() after adding their own fields.
+     *
+     * @param MoodleQuickForm $mform the edit_form instance.
+     * @param bool $showposxy whether to show position fields (default: true).
+     */
+    public static function render_common_form_elements(MoodleQuickForm $mform, bool $showposxy = true): void {
+        self::render_form_element_font($mform);
+        self::render_form_element_colour($mform);
+        if ($showposxy) {
+            self::render_form_element_position($mform);
+        }
+        self::render_form_element_width($mform);
+        self::render_form_element_refpoint($mform);
+        self::render_form_element_alignment($mform);
+    }
+
+    /**
+     * Helper function to perform validation on the colour element.
+     *
+     * @param array $data the submitted data
+     * @return array the validation errors
+     */
+    public static function validate_form_element_colour(array $data): array {
+        $errors = [];
+        if (!self::validate_colour($data['colour'])) {
+            $errors['colour'] = get_string('invalidcolour', 'customcert');
+        }
+        return $errors;
+    }
+
+    /**
+     * Helper function to perform validation on the position elements.
+     *
+     * @param array $data the submitted data
+     * @return array the validation errors
+     */
+    public static function validate_form_element_position(array $data): array {
+        $errors = [];
+
+        if ((!isset($data['posx'])) || (!is_numeric($data['posx'])) || ($data['posx'] < 0)) {
+            $errors['posx'] = get_string('invalidposition', 'customcert', 'X');
+        }
+        if ((!isset($data['posy'])) || (!is_numeric($data['posy'])) || ($data['posy'] < 0)) {
+            $errors['posy'] = get_string('invalidposition', 'customcert', 'Y');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Helper function to perform validation on the width element.
+     *
+     * @param array $data the submitted data
+     * @param bool $allowzero allow zero as a valid value
+     * @return array the validation errors
+     */
+    public static function validate_form_element_width(array $data, bool $allowzero = true): array {
+        $errors = [];
+
+        // If there is no width element no validation is needed.
+        if (!isset($data['width'])) {
+            return [];
+        }
+
+        if (!is_numeric($data['width'])) {
+            $errors['width'] = get_string('invalidelementwidthorheightnotnumber', 'customcert');
+        } else {
+            if ($allowzero) {
+                if ($data['width'] < 0) {
+                    $errors['width'] = get_string('invalidelementwidthorheightzeroallowed', 'customcert');
+                }
+            } else {
+                if ($data['width'] <= 0) {
+                    $errors['width'] = get_string('invalidelementwidthorheightzeronotallowed', 'customcert');
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Helper function to perform validation on the height element.
+     *
+     * @param array $data the submitted data
+     * @param bool $allowzero allow zero as a valid value
+     * @return array the validation errors
+     */
+    public static function validate_form_element_height(array $data, bool $allowzero = true): array {
+        $errors = [];
+
+        // If there is no height element no validation is needed.
+        if (!isset($data['height'])) {
+            return [];
+        }
+
+        if (!is_numeric($data['height'])) {
+            $errors['height'] = get_string('invalidelementwidthorheightnotnumber', 'customcert');
+        } else {
+            if ($allowzero) {
+                if ($data['height'] < 0) {
+                    $errors['height'] = get_string('invalidelementwidthorheightzeroallowed', 'customcert');
+                }
+            } else {
+                if ($data['height'] <= 0) {
+                    $errors['height'] = get_string('invalidelementwidthorheightzeronotallowed', 'customcert');
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Require an element to provide layout behaviour.
+     *
+     * @param stylable_element_interface $element The element.
+     * @return layout_element_interface The same element as a layout-aware element.
+     * @throws \coding_exception If the element cannot provide layout data.
+     */
+    private static function require_layout_element(stylable_element_interface $element): layout_element_interface {
+        if (!$element instanceof layout_element_interface) {
+            throw new \coding_exception('Element must implement layout_element_interface to render common content.');
+        }
+
+        return $element;
+    }
+
+    /**
+     * Returns the font used for this element.
+     *
+     * @param stylable_element_interface $element the customcert element
+     * @return array the font and font attributes
+     */
+    public static function get_font(stylable_element_interface $element): array {
+        $font = $element->get_font();
+        if (empty($font)) {
+            return ['', ''];
+        }
+        // TCPDF core font names encode style as a suffix: 'b', 'i' or 'bi'. Split it into attributes.
+        $fontlength = strlen($font);
+        $lastchar = $font[$fontlength - 1];
+        $secondlastchar = ($fontlength > 1) ? $font[$fontlength - 2] : '';
+        $attr = '';
+        if ($lastchar == 'i') {
+            $font = substr($font, 0, -1);
+            if ($secondlastchar == 'b') {
+                $font = substr($font, 0, -1);
+                $attr .= 'B';
+            }
+            $attr .= 'I';
+        } else if ($lastchar == 'b') {
+            $font = substr($font, 0, -1);
+            $attr .= 'B';
+        }
+        return [$font, $attr];
+    }
+
+    /**
+     * Validates the colour selected.
+     *
+     * @param string $colour
+     * @return bool returns true if the colour is valid, false otherwise
+     */
+    public static function validate_colour(string $colour): bool {
+        // List of valid HTML colour names.
+        $colournames = [
+            'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure',
+            'beige', 'bisque', 'black', 'blanchedalmond', 'blue',
+            'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse',
+            'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson',
+            'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray',
+            'darkgrey', 'darkgreen', 'darkkhaki', 'darkmagenta',
+            'darkolivegreen', 'darkorange', 'darkorchid', 'darkred',
+            'darksalmon', 'darkseagreen', 'darkslateblue', 'darkslategray',
+            'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink',
+            'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick',
+            'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro',
+            'ghostwhite', 'gold', 'goldenrod', 'gray', 'grey', 'green',
+            'greenyellow', 'honeydew', 'hotpink', 'indianred', 'indigo',
+            'ivory', 'khaki', 'lavender', 'lavenderblush', 'lawngreen',
+            'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
+            'lightgoldenrodyellow', 'lightgray', 'lightgrey', 'lightgreen',
+            'lightpink', 'lightsalmon', 'lightseagreen', 'lightskyblue',
+            'lightslategray', 'lightslategrey', 'lightsteelblue', 'lightyellow',
+            'lime', 'limegreen', 'linen', 'magenta', 'maroon',
+            'mediumaquamarine', 'mediumblue', 'mediumorchid', 'mediumpurple',
+            'mediumseagreen', 'mediumslateblue', 'mediumspringgreen',
+            'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream',
+            'mistyrose', 'moccasin', 'navajowhite', 'navy', 'oldlace', 'olive',
+            'olivedrab', 'orange', 'orangered', 'orchid', 'palegoldenrod',
+            'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip',
+            'peachpuff', 'peru', 'pink', 'plum', 'powderblue', 'purple', 'red',
+            'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown',
+            'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue',
+            'slategray', 'slategrey', 'snow', 'springgreen', 'steelblue', 'tan',
+            'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white',
+            'whitesmoke', 'yellow', 'yellowgreen',
+        ];
+
+        if (preg_match('/^#?([[:xdigit:]]{3}){1,2}$/', $colour)) {
+            return true;
+        } else if (in_array(strtolower($colour), $colournames)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Helper function that returns the sequence on a specified customcert page for a
+     * newly created element.
+     *
+     * @param int $pageid the id of the page we are adding this element to
+     * @return int the element number
+     */
+    public static function get_element_sequence(int $pageid): int {
+        global $DB;
+
+        $sequence = 1;
+        $sql = "SELECT MAX(sequence) as maxsequence
+                  FROM {customcert_elements}
+                 WHERE pageid = :id";
+        if ($maxseq = $DB->get_record_sql($sql, ['id' => $pageid])) {
+            $sequence = $maxseq->maxsequence + 1;
+        }
+
+        return $sequence;
+    }
+
+    /**
+     * Helper function that returns the course id for this element.
+     *
+     * @param int $elementid The element id
+     * @return int The course id
+     */
+    public static function get_courseid(int $elementid): int {
+        global $DB, $SITE;
+
+        $sql = "SELECT course
+                  FROM {customcert} c
+            INNER JOIN {customcert_pages} cp
+                    ON c.templateid = cp.templateid
+            INNER JOIN {customcert_elements} ce
+                    ON cp.id = ce.pageid
+                 WHERE ce.id = :elementid";
+
+        if ($course = $DB->get_record_sql($sql, ['elementid' => $elementid])) {
+            return $course->course;
+        } else { // Must be in a site template.
+            return $SITE->id;
+        }
+    }
+
+    /**
+     * Helper function that returns the context for this element.
+     *
+     * @param int $elementid The element id
+     * @return context The context
+     */
+    public static function get_context(int $elementid): context {
+        global $DB;
+
+        $sql = "SELECT ct.contextid
+                  FROM {customcert_templates} ct
+            INNER JOIN {customcert_pages} cp
+                    ON ct.id = cp.templateid
+            INNER JOIN {customcert_elements} ce
+                    ON cp.id = ce.pageid
+                 WHERE ce.id = :elementid";
+        $contextid = $DB->get_field_sql($sql, ['elementid' => $elementid], MUST_EXIST);
+
+        return context::instance_by_id($contextid);
+    }
+
+    /**
+     * Return the list of possible elements to add.
+     *
+     * @return array the list of element types that can be used.
+     */
+    public static function get_available_element_types(): array {
+        global $CFG;
+
+        $options = [];
+
+        $elementdir = "$CFG->dirroot/mod/customcert/element";
+        if (file_exists($elementdir)) {
+            $elementfolders = new DirectoryIterator($elementdir);
+            foreach ($elementfolders as $elementfolder) {
+                if (!$elementfolder->isDir() || $elementfolder->isDot()) {
+                    continue;
+                }
+                $foldername = $elementfolder->getFilename();
+                $classname = '\\customcertelement_' . $foldername . '\\element';
+                // Skip folders without the standard element class, as they would not work.
+                if (class_exists($classname)) {
+                    if (!is_callable([$classname, 'can_add']) || $classname::can_add()) {
+                        $component = "customcertelement_{$foldername}";
+                        $options[$foldername] = get_string('pluginname', $component);
+                    }
+                }
+            }
+        }
+
+        \core_collator::asort($options);
+        return $options;
+    }
+
+    /**
+     * Helper function to return all the grades items for a given course.
+     *
+     * @param stdClass $course The course we want to return the grade items for
+     * @return array the array of gradeable items in the course
+     */
+    public static function get_grade_items(stdClass $course): array {
+        $arrgradeitems = [];
+
+        if ($gradeitems = \grade_item::fetch_all(['courseid' => $course->id])) {
+            foreach ($gradeitems as $gi) {
+                if ($gi->is_course_item()) {
+                    continue; // Skipping for legacy reasons - this was added to individual elements.
+                }
+
+                if ($gi->is_external_item()) {
+                    $cm = get_coursemodule_from_instance($gi->itemmodule, $gi->iteminstance, $course->id);
+                    $modcontext = context_module::instance($cm->id);
+                    $modname = format_string($cm->name, true, ['context' => $modcontext]);
+                }
+
+                if ($gi->is_external_item() && !$gi->is_outcome_item()) {
+                    // Due to legacy reasons we are storing the course module ID here rather than the grade item id.
+                    // If we were to change we would need to provide upgrade steps to convert cm->id to gi->id.
+                    $arrgradeitems[$cm->id] = get_string('activity', 'mod_customcert') . ' : ' . $gi->get_name();
+                } else if ($gi->is_external_item() && $gi->is_outcome_item()) {
+                    $optionname = get_string('gradeoutcome', 'mod_customcert') . ' : '  . $modname . " - " . $gi->get_name();
+                    $arrgradeitems['gradeitem:' . $gi->id] = $optionname;
+                } else {
+                    $arrgradeitems['gradeitem:' . $gi->id] = get_string('gradeitem', 'grades') . ' : ' . $gi->get_name(true);
+                }
+            }
+
+            asort($arrgradeitems);
+        }
+
+        return $arrgradeitems;
+    }
+
+    /**
+     * Helper function to return the grade information for a course for a specified user.
+     *
+     * @param int $courseid
+     * @param int $gradeformat
+     * @param int $userid
+     * @return grade_information|false the grade information, or false if there is none.
+     */
+    public static function get_course_grade_info(int $courseid, int $gradeformat, int $userid): grade_information|false {
+        $courseitem = \grade_item::fetch_course_item($courseid);
+
+        if (!$courseitem) {
+            return false;
+        }
+
+        $grade = new grade_grade(['itemid' => $courseitem->id, 'userid' => $userid]);
+
+        return new grade_information(
+            $courseitem->get_name(),
+            $grade->finalgrade,
+            grade_format_gradevalue($grade->finalgrade, $courseitem, true, $gradeformat),
+            $grade->get_dategraded()
+        );
+    }
+
+    /**
+     * Helper function to return the grade information for a module for a specified user.
+     *
+     * @param int $cmid
+     * @param int $gradeformat
+     * @param int $userid
+     * @param int|null $courseid If set, the module must belong to this course.
+     * @return grade_information|false the grade information, or false if there is none.
+     */
+    public static function get_mod_grade_info(
+        int $cmid,
+        int $gradeformat,
+        int $userid,
+        ?int $courseid = null
+    ): grade_information|false {
+        global $DB;
+
+        if (!$cm = $DB->get_record('course_modules', ['id' => $cmid])) {
+            return false;
+        }
+
+        if ($courseid !== null && (int)$cm->course !== $courseid) {
+            return false;
+        }
+
+        if (!$module = $DB->get_record('modules', ['id' => $cm->module])) {
+            return false;
+        }
+
+        $params = [
+            'itemtype' => 'mod',
+            'itemmodule' => $module->name,
+            'iteminstance' => $cm->instance,
+            'courseid' => $cm->course,
+            'itemnumber' => 0,
+        ];
+        $gradeitem = \grade_item::fetch($params);
+
+        if (empty($gradeitem)) {
+            return false;
+        }
+
+        $grade = grade_get_grades(
+            $cm->course,
+            'mod',
+            $module->name,
+            $cm->instance,
+            $userid
+        );
+
+        if (!isset($grade->items[0]->grades[$userid])) {
+            return false;
+        }
+
+        $gradebookgrade = $grade->items[0]->grades[$userid];
+
+        $dategraded = null;
+        if (!empty($gradebookgrade->dategraded)) {
+            $dategraded = $gradebookgrade->dategraded;
+        }
+
+        $displaygrade = grade_format_gradevalue($gradebookgrade->grade, $gradeitem, true, $gradeformat);
+
+        return new grade_information(
+            $gradeitem->get_name(),
+            $gradebookgrade->grade,
+            $displaygrade,
+            $dategraded
+        );
+    }
+
+    /**
+     * Helper function to return the grade information for a grade item for a specified user.
+     *
+     * @param int $gradeitemid
+     * @param int $gradeformat
+     * @param int $userid
+     * @param int|null $courseid If set, the grade item must belong to this course.
+     * @return grade_information|false the grade information, or false if there is none.
+     */
+    public static function get_grade_item_info(
+        int $gradeitemid,
+        int $gradeformat,
+        int $userid,
+        ?int $courseid = null
+    ): grade_information|false {
+        $params = ['id' => $gradeitemid];
+        if ($courseid !== null) {
+            $params['courseid'] = $courseid;
+        }
+        if (!$gradeitem = \grade_item::fetch($params)) {
+            return false;
+        }
+
+        $grade = new grade_grade(['itemid' => $gradeitem->id, 'userid' => $userid]);
+
+        return new grade_information(
+            $gradeitem->get_name(),
+            $grade->finalgrade,
+            grade_format_gradevalue($grade->finalgrade, $gradeitem, true, $gradeformat),
+            $grade->get_dategraded()
+        );
+    }
+
+    /**
+     * Helper function to return all the date formats.
+     *
+     * @return array the list of date formats
+     */
+    public static function get_date_formats(): array {
+        // Hard-code date so users can see the difference between short dates with and without the leading zero.
+        // Eg. 06/07/18 vs 6/07/18.
+        $date = 1530849658;
+
+        $suffix = self::get_ordinal_number_suffix((int)userdate($date, '%d'));
+
+        $dateformats = [
+            1 => userdate($date, '%B %d, %Y'),
+            2 => userdate($date, '%B %d' . $suffix . ', %Y'),
+            5 => userdate($date, '%Y-%m-%d'),
+        ];
+
+        $strdateformats = [
+            'strftimedate',
+            'strftimedatefullshort',
+            'strftimedatefullshortwleadingzero',
+            'strftimedateshort',
+            'strftimedatetime',
+            'strftimedatetimeshort',
+            'strftimedatetimeshortwleadingzero',
+            'strftimedaydate',
+            'strftimedaydatetime',
+            'strftimedayshort',
+            'strftimedaytime',
+            'strftimemonthyear',
+            'strftimerecent',
+            'strftimerecentfull',
+            'strftimetime',
+        ];
+
+        foreach ($strdateformats as $strdateformat) {
+            if ($strdateformat == 'strftimedatefullshortwleadingzero') {
+                $dateformats[$strdateformat] = userdate($date, get_string('strftimedatefullshort', 'langconfig'), 99, false);
+            } else if ($strdateformat == 'strftimedatetimeshortwleadingzero') {
+                $dateformats[$strdateformat] = userdate($date, get_string('strftimedatetimeshort', 'langconfig'), 99, false);
+            } else {
+                $dateformats[$strdateformat] = userdate($date, get_string($strdateformat, 'langconfig'));
+            }
+        }
+
+        return $dateformats;
+    }
+
+    /**
+     * Returns the date in a readable format.
+     *
+     * @param int $date
+     * @param string $dateformat
+     * @return string
+     */
+    public static function get_date_format_string(int $date, string $dateformat): string {
+        // Keeping for backwards compatibility.
+        if (is_number($dateformat)) {
+            switch ($dateformat) {
+                case 1:
+                    $certificatedate = userdate($date, '%B %d, %Y');
+                    break;
+                case 2:
+                    $suffix = self::get_ordinal_number_suffix((int)userdate($date, '%d'));
+                    $certificatedate = userdate($date, '%B %d' . $suffix . ', %Y');
+                    break;
+                case 3:
+                    $certificatedate = userdate($date, '%d %B %Y');
+                    break;
+                case 4:
+                    $certificatedate = userdate($date, '%B %Y');
+                    break;
+                case 5:
+                    // ISO 8601 date format (YYYY-MM-DD).
+                    $certificatedate = userdate($date, '%Y-%m-%d', 99, false, false);
+                    break;
+                default:
+                    $certificatedate = userdate($date, get_string('strftimedate', 'langconfig'));
+            }
+        }
+
+        // Ok, so we must have been passed the actual format in the lang file.
+        if (!isset($certificatedate)) {
+            if ($dateformat == 'strftimedatefullshortwleadingzero') {
+                $certificatedate = userdate($date, get_string('strftimedatefullshort', 'langconfig'), 99, false);
+            } else if ($dateformat == 'strftimedatetimeshortwleadingzero') {
+                $certificatedate = userdate($date, get_string('strftimedatetimeshort', 'langconfig'), 99, false);
+            } else {
+                $certificatedate = userdate($date, get_string($dateformat, 'langconfig'));
+            }
+        }
+
+        return $certificatedate;
+    }
+
+    /**
+     * Return the list of possible fonts to use.
+     *
+     * @return array
+     */
+    public static function get_fonts(): array {
+        global $CFG;
+
+        require_once($CFG->libdir . '/pdflib.php');
+
+        $arrfonts = [];
+        $pdf = new pdf();
+        $fontfamilies = $pdf->get_font_families();
+        foreach ($fontfamilies as $fontfamily => $fontstyles) {
+            foreach ($fontstyles as $fontstyle) {
+                $fontstyle = strtolower($fontstyle);
+                if ($fontstyle == 'r') {
+                    $filenamewoextension = $fontfamily;
+                } else {
+                    $filenamewoextension = $fontfamily . $fontstyle;
+                }
+                $fullpath = TCPDF_FONTS::_getfontpath() . $filenamewoextension;
+                // The included font definition file sets $name and, for some fonts, $displayname.
+                $name = null;
+                $displayname = null;
+                // Some TCPDF font files include files that are not present, so warnings must be suppressed.
+                @include($fullpath . '.php');
+                if (is_null($name)) {
+                    continue;
+                }
+                if (is_null($displayname)) {
+                    // Format the font name, so "FontName-Style" becomes "Font Name - Style".
+                    $displayname = preg_replace("/([a-z])([A-Z])/", "$1 $2", $name);
+                    $displayname = preg_replace("/([a-zA-Z])-([a-zA-Z])/", "$1 - $2", $displayname);
+                }
+
+                $arrfonts[$filenamewoextension] = $displayname;
+            }
+        }
+        ksort($arrfonts);
+
+        return $arrfonts;
+    }
+
+    /**
+     * Return the list of possible font sizes to use.
+     *
+     * @return array
+     */
+    public static function get_font_sizes(): array {
+        $sizes = [];
+
+        for ($i = 1; $i <= 200; $i++) {
+            $sizes[$i] = $i;
+        }
+
+        return $sizes;
+    }
+
+    /**
+     * Helper function to return the suffix of the day of
+     * the month, eg 'st' if it is the 1st of the month.
+     *
+     * @param int $day the day of the month
+     * @return string the suffix.
+     */
+    private static function get_ordinal_number_suffix(int $day): string {
+        if (!in_array(($day % 100), [11, 12, 13])) {
+            switch ($day % 10) {
+                // Handle 1st, 2nd, 3rd.
+                case 1:
+                    return get_string('numbersuffix_st_as_in_first', 'customcert');
+                case 2:
+                    return get_string('numbersuffix_nd_as_in_second', 'customcert');
+                case 3:
+                    return get_string('numbersuffix_rd_as_in_third', 'customcert');
+            }
+        }
+        return 'th';
+    }
+}

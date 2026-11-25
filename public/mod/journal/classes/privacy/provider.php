@@ -1,0 +1,377 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Data provider.
+ *
+ * @package    mod_journal
+ * @copyright  2018 Frédéric Massart
+ * @author     Frédéric Massart <fred@branchup.tech>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+namespace mod_journal\privacy;
+defined('MOODLE_INTERNAL') || die();
+
+use context;
+use context_module;
+use core_privacy\local\metadata\collection;
+use core_privacy\local\metadata\provider as metadata_provider;
+use core_privacy\local\request\approved_contextlist;
+use core_privacy\local\request\approved_userlist;
+use core_privacy\local\request\contextlist;
+use core_privacy\local\request\core_userlist_provider;
+use core_privacy\local\request\helper;
+use core_privacy\local\request\plugin\provider as plugin_provider;
+use core_privacy\local\request\transform;
+use core_privacy\local\request\userlist;
+use core_privacy\local\request\writer;
+
+require_once($CFG->dirroot . '/mod/journal/lib.php');
+
+/**
+ * The provider class.
+ *
+ * @package    mod_journal
+ * @copyright  2022 Elearning Software SRL http://elearningsoftware.ro
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class provider implements
+    core_userlist_provider,
+    metadata_provider,
+    plugin_provider {
+    /**
+     * Returns metadata.
+     *
+     * @param collection $collection The initialised collection to add items to.
+     * @return collection A listing of user data stored through this system.
+     */
+    public static function get_metadata(collection $collection): collection {
+        $collection->add_database_table(
+            'journal_entries',
+            [
+                'userid' => 'privacy:metadata:journal_entries:userid',
+                'modified' => 'privacy:metadata:journal_entries:modified',
+                'text' => 'privacy:metadata:journal_entries:text',
+                'rating' => 'privacy:metadata:journal_entries:rating',
+                'entrycomment' => 'privacy:metadata:journal_entries:entrycomment',
+                'teacher' => 'privacy:metadata:journal_entries:teacher',
+            ],
+            'privacy:metadata:journal_entries'
+        );
+
+        return $collection;
+    }
+
+    /**
+     * Get the list of contexts that contain user information for the specified user.
+     *
+     * @param int $userid The user to search.
+     * @return contextlist $contextlist The contextlist containing the list of contexts used in this plugin.
+     */
+    public static function get_contexts_for_userid(int $userid): contextlist {
+
+        $sql = "
+            SELECT DISTINCT ctx.id
+              FROM {journal} j
+              JOIN {modules} m
+                ON m.name = :journal
+              JOIN {course_modules} cm
+                ON cm.instance = j.id
+               AND cm.module = m.id
+              JOIN {context} ctx
+                ON ctx.instanceid = cm.id
+               AND ctx.contextlevel = :modulelevel
+              JOIN {journal_entries} je
+                ON je.journal = j.id
+             WHERE je.userid = :userid OR je.teacher = :teacher";
+
+        $params = ['journal' => 'journal', 'modulelevel' => CONTEXT_MODULE, 'userid' => $userid, 'teacher' => $userid];
+        $contextlist = new contextlist();
+        $contextlist->add_from_sql($sql, $params);
+
+        return $contextlist;
+    }
+
+    /**
+     * Get the list of users who have data within a context.
+     *
+     * @param   userlist    $userlist   The userlist containing the list of users who have data in this context/plugin combination.
+     *
+     */
+    public static function get_users_in_context(userlist $userlist) {
+        $context = $userlist->get_context();
+
+        if (!is_a($context, \context_module::class)) {
+            return;
+        }
+
+        // Find users with journal entries and teachers who gave feedback on them.
+        $sql = "
+            SELECT je.userid, je.teacher
+              FROM {journal} j
+              JOIN {journal_entries} je
+                ON je.journal = j.id
+              JOIN {modules} m
+                ON m.name = :journal
+              JOIN {course_modules} cm
+                ON cm.instance = j.id
+               AND cm.module = m.id
+              JOIN {context} ctx
+                ON ctx.instanceid = cm.id
+               AND ctx.contextlevel = :modulelevel
+             WHERE ctx.id = :contextid";
+        $params = ['journal' => 'journal', 'modulelevel' => CONTEXT_MODULE, 'contextid' => $context->id];
+
+        $userlist->add_from_sql('userid', $sql, $params);
+        $userlist->add_from_sql('teacher', $sql, $params);
+    }
+
+    /**
+     * Export all user data for the specified user, in the specified contexts.
+     *
+     * @param approved_contextlist $contextlist The approved contexts to export information for.
+     */
+    public static function export_user_data(approved_contextlist $contextlist) {
+        global $DB;
+
+        $user = $contextlist->get_user();
+        $userid = $user->id;
+        $cmids = array_reduce($contextlist->get_contexts(), function ($carry, $context) {
+            if ($context->contextlevel == CONTEXT_MODULE) {
+                $carry[] = $context->instanceid;
+            }
+            return $carry;
+        }, []);
+        if (empty($cmids)) {
+            return;
+        }
+
+        // If the context export was requested, then let's at least describe the journal.
+        foreach ($cmids as $cmid) {
+            $context = context_module::instance($cmid);
+            $contextdata = helper::get_context_data($context, $user);
+            helper::export_context_files($context, $user);
+            writer::with_context($context)->export_data([], $contextdata);
+        }
+
+        // Find the journal IDs.
+        $journalidstocmids = static::get_journal_ids_to_cmids_from_cmids($cmids);
+
+        // Prepare the common SQL fragments.
+        [$injournalsql, $injournalparams] = $DB->get_in_or_equal(array_keys($journalidstocmids), SQL_PARAMS_NAMED);
+        $sqluserjournal = "(userid = :userid OR teacher = :teacher) AND journal $injournalsql";
+        $paramsuserjournal = array_merge($injournalparams, ['userid' => $userid, 'teacher' => $userid]);
+
+        // Export the entries, sorted by journal to export the entries of each journal at once.
+        $recordset = $DB->get_recordset_select('journal_entries', $sqluserjournal, $paramsuserjournal, 'journal, id');
+        static::recordset_loop_and_export($recordset, 'journal', [], function ($carry, $record) use ($journalidstocmids) {
+            $context = context_module::instance($journalidstocmids[$record->journal]);
+            $writer = writer::with_context($context);
+            $entrysubcontext = ['entries', $record->id, 'entry'];
+            $feedbacksubcontext = ['entries', $record->id, 'feedback'];
+            $writer->export_area_files($entrysubcontext, 'mod_journal', 'entry', $record->id);
+            $writer->export_area_files($feedbacksubcontext, 'mod_journal', 'feedback', $record->id);
+
+            // There might be more than one row per journal if the user is a teacher, so we need to use $carry.
+            $carry[] = [
+                'userid' => $record->userid,
+                'modified' => $record->modified !== null ? transform::datetime($record->modified) : null,
+                'text' => $writer->rewrite_pluginfile_urls(
+                    $entrysubcontext,
+                    'mod_journal',
+                    'entry',
+                    $record->id,
+                    $record->text
+                ),
+                'rating' => $record->rating,
+                'entrycomment' => $writer->rewrite_pluginfile_urls(
+                    $feedbacksubcontext,
+                    'mod_journal',
+                    'feedback',
+                    $record->id,
+                    (string) $record->entrycomment
+                ),
+                'teacher' => $record->teacher,
+                'timemarked' => $record->timemarked !== null ? transform::datetime($record->timemarked) : null,
+            ];
+            return $carry;
+        }, function ($journalid, $data) use ($journalidstocmids) {
+            $context = context_module::instance($journalidstocmids[$journalid]);
+            writer::with_context($context)->export_related_data([], 'entries', $data);
+        });
+    }
+
+    /**
+     * Delete all data for all users in the specified context.
+     *
+     * @param context $context The specific context to delete data for.
+     */
+    public static function delete_data_for_all_users_in_context(\context $context) {
+        if ($context->contextlevel != CONTEXT_MODULE) {
+            return;
+        }
+
+        if (!$journalid = static::get_journal_id_from_context($context)) {
+            return;
+        }
+
+        static::delete_entries($context, $journalid);
+    }
+
+    /**
+     * Delete all user data for the specified user, in the specified contexts.
+     *
+     * @param approved_contextlist $contextlist The approved contexts and user information to delete information for.
+     */
+    public static function delete_data_for_user(approved_contextlist $contextlist) {
+        $userid = $contextlist->get_user()->id;
+        $cmids = array_reduce($contextlist->get_contexts(), function ($carry, $context) {
+            if ($context->contextlevel == CONTEXT_MODULE) {
+                $carry[] = $context->instanceid;
+            }
+            return $carry;
+        }, []);
+        if (empty($cmids)) {
+            return;
+        }
+
+        // Find the journal IDs.
+        $journalidstocmids = static::get_journal_ids_to_cmids_from_cmids($cmids);
+        foreach ($journalidstocmids as $journalid => $cmid) {
+            static::delete_entries(context_module::instance($cmid), $journalid, [$userid]);
+        }
+    }
+
+    /**
+     * Delete multiple users within a single context.
+     *
+     * @param   approved_userlist    $userlist The approved context and user information to delete information for.
+     */
+    public static function delete_data_for_users(approved_userlist $userlist) {
+        $context = $userlist->get_context();
+        $journalid = static::get_journal_id_from_context($context);
+        $userids = $userlist->get_userids();
+
+        if (empty($journalid) || empty($userids)) {
+            return;
+        }
+
+        static::delete_entries($context, $journalid, $userids);
+    }
+
+    /**
+     * Delete journal entries and their files.
+     *
+     * @param context_module $context The module context of the journal.
+     * @param int $journalid The journal ID.
+     * @param int[] $userids The users whose entries are deleted, empty for all users.
+     */
+    protected static function delete_entries(context_module $context, int $journalid, array $userids = []) {
+        global $DB;
+
+        $fs = get_file_storage();
+        $select = 'journal = :journalid';
+        $params = ['journalid' => $journalid];
+
+        if (empty($userids)) {
+            $fs->delete_area_files($context->id, 'mod_journal', 'entry');
+            $fs->delete_area_files($context->id, 'mod_journal', 'feedback');
+        } else {
+            [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+            $select .= " AND userid $insql";
+            $params += $inparams;
+
+            $entryids = $DB->get_fieldset_select('journal_entries', 'id', $select, $params);
+            if ($entryids) {
+                [$insql, $inparams] = $DB->get_in_or_equal($entryids, SQL_PARAMS_NAMED);
+                $fs->delete_area_files_select($context->id, 'mod_journal', 'entry', $insql, $inparams);
+                $fs->delete_area_files_select($context->id, 'mod_journal', 'feedback', $insql, $inparams);
+            }
+        }
+
+        $DB->delete_records_select('journal_entries', $select, $params);
+    }
+
+    /**
+     * Get a journal ID from its context.
+     *
+     * @param context_module $context The module context.
+     * @return int
+     */
+    protected static function get_journal_id_from_context(context_module $context) {
+        $cm = get_coursemodule_from_id('journal', $context->instanceid);
+        return $cm ? (int) $cm->instance : 0;
+    }
+
+    /**
+     * Return a dict of journal IDs mapped to their course module ID.
+     *
+     * @param array $cmids The course module IDs.
+     * @return array In the form of [$journalid => $cmid].
+     */
+    protected static function get_journal_ids_to_cmids_from_cmids(array $cmids) {
+        global $DB;
+        [$insql, $inparams] = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
+        $sql = "
+            SELECT j.id, cm.id AS cmid
+              FROM {journal} j
+              JOIN {modules} m
+                ON m.name = :journal
+              JOIN {course_modules} cm
+                ON cm.instance = j.id
+               AND cm.module = m.id
+             WHERE cm.id $insql";
+        $params = array_merge($inparams, ['journal' => 'journal']);
+        return $DB->get_records_sql_menu($sql, $params);
+    }
+
+    /**
+     * Loop and export from a recordset.
+     *
+     * @param moodle_recordset $recordset The recordset.
+     * @param string $splitkey The record key to determine when to export.
+     * @param mixed $initial The initial data to reduce from.
+     * @param callable $reducer The function to return the dataset, receives current dataset, and the current record.
+     * @param callable $export The function to export the dataset, receives the last value from $splitkey and the dataset.
+     * @return void
+     */
+    protected static function recordset_loop_and_export(
+        \moodle_recordset $recordset,
+        $splitkey,
+        $initial,
+        callable $reducer,
+        callable $export
+    ) {
+
+        $data = $initial;
+        $lastid = null;
+
+        foreach ($recordset as $record) {
+            if ($lastid && $record->{$splitkey} != $lastid) {
+                $export($lastid, $data);
+                $data = $initial;
+            }
+            $data = $reducer($data, $record);
+            $lastid = $record->{$splitkey};
+        }
+        $recordset->close();
+
+        if (!empty($lastid)) {
+            $export($lastid, $data);
+        }
+    }
+}

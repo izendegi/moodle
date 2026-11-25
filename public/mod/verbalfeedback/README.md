@@ -1,0 +1,165 @@
+# <img alt="" src="pix/monologo.svg" width="64" style="max-width: 64px; vertical-align: middle;"> Verbal Feedback
+[![Moodle Plugin CI](https://github.com/bfh/moodle-mod_verbalfeedback/actions/workflows/moodle-plugin-ci.yml/badge.svg?branch=main)](https://github.com/bfh/moodle-mod_verbalfeedback/actions/workflows/moodle-plugin-ci.yml)
+[![GitHub
+Release](https://img.shields.io/github/release/bfh/moodle-mod_verbalfeedback.svg)](https://github.com/bfh/moodle-mod_verbalfeedback/releases)
+[![Moodle Support](https://img.shields.io/badge/Moodle-4.5--5.3-orange)](https://github.com/bfh/moodle-mod_verbalfeedback/actions)
+[![License GPL-3.0](https://img.shields.io/github/license/bfh/moodle-mod_verbalfeedback?color=lightgrey)](https://github.com/bfh/moodle-mod_verbalfeedback/blob/main/LICENSE)
+[![GitHub contributors](https://img.shields.io/github/contributors/bfh/moodle-mod_verbalfeedback)](https://github.com/bfh/moodle-mod_verbalfeedback/graphs/contributors)
+
+Verbal Feedback allows structured feedback of student's presentations by one or several persons.
+
+# Use cases
+## Main use cases
+
+## Teacher rating
+![Teacher rating stundents](./docs/img/core_use_case_teacher_students.png)
+
+1-n Teachers rate n students and teachers can access the rating of all students.
+
+## Peer review
+![Peer review with student groups](./docs/img/core_use_case_peer_review.png)
+
+Students group A evaluates group B which evaluates group C.
+
+## Installing via uploaded ZIP file ##
+
+1. Log in to your Moodle site as an admin and go to _Site administration >
+   Plugins > Install plugins_.
+2. Upload the ZIP file with the plugin code. You should only be prompted to add
+   extra details if your plugin type is not automatically detected.
+3. Check the plugin validation report and finish the installation.
+
+## Installing manually ##
+
+The plugin can be also installed by putting the contents of this directory to
+
+    {your/moodle/dirroot}/mod/verbalfeedback
+
+**Note**: since Moodle 5.1 the installation folder is `{your/moodle/dirroot}/public/mod/verbalfeedback`.
+
+Afterwards, log in to your Moodle site as an admin and go to _Site administration >
+Notifications_ to complete the installation.
+
+Alternatively, you can run
+
+    $ php admin/cli/upgrade.php
+
+to complete the installation from the command line.
+
+## verbalfeedback
+https://github.com/bfh/moodle-mod_verbalfeedback
+
+## Version history
+
+The versioning of this plugin follows roughly the pattern: X.Y-rZ where X.Y is
+the latest suppored Moodle version and Z is an incresing number for newer versions
+of the plugin whithin the same Moodle version.
+
+### v5.3-r2
+
+- Fix [issue #82](https://github.com/bfh/moodle-mod_verbalfeedback/issues/82): Grade calculation - No difference between 0 and N/A.
+- Fix permission check in report download.
+- Add handling for reviewers to view student reports from other peer reviewers.
+- Fix of handling student visibility when using groups.
+- Non editing teachers should not allowed to be able to view all reports and manage templates.
+- Validate weight values before saving in DB.
+- Generalize filter of categories and criteria with weight 0.
+- Add a cancel button at the questionnaire page to abort any changes.
+- Several fixes that where discovered in a MDLShield code check run.
+
+### v5.3-r1
+- Add support for Moodle 5.3.
+- Fix [issue #81](https://github.com/bfh/moodle-mod_verbalfeedback/issues/81): Categories percentage is fixed to 50% not allowing a template to hold a single category
+
+### v5.2-r3
+
+- Major rework of the ajax endpoints. Removed all that have not been in use.
+- Fixed possible vulnerabilities where permissions where not checked sufficient.
+- Templates and criteria can only be changed by the manager. Teacher may use a
+predefined template and may adjust weights.
+- Fix of GUI when percentage was correct but a warning issued (float numbers where incorrect)
+All security releated issues were identified by MDLShield.
+
+
+### v5.2-r2
+
+- The participants list now looks more in the Moodle style. The user contains
+  the user thumbnail or initials. The standard Moodle table styling is used.
+  Furthermore, the participants can be filtered via a custom user search, and
+  the status of the feedback.
+- New setting for the default template that is preselected when a new verbal
+  feedback instance is created.
+
+### v5.2-r1
+
+- Support Moodle 5.2.
+- Add missing privacy strings.
+- Enhance participants list towards a modern look with the new search widgets
+  (see also [issue #48](https://github.com/bfh/moodle-mod_verbalfeedback/issues/48)).
+- Improve handling of subratings in criteria. Addresses also
+  [issue #63](https://github.com/bfh/moodle-mod_verbalfeedback/issues/63).
+- Fix [issue #61](https://github.com/bfh/moodle-mod_verbalfeedback/issues/61),
+  sort order of categories and criteria.
+- Sort templates by name in list.
+- Comptibility with Bootstrap 5.
+
+### v5.1-r3
+
+- Support course overview.
+
+### v5.1-r2
+
+- Fix [issue #52](https://github.com/bfh/moodle-mod_verbalfeedback/issues/52)
+  French translation issue.
+- Fix [issue #53](https://github.com/bfh/moodle-mod_verbalfeedback/issues/53)
+  Problem with the display of questions.
+- Adapt code to new codechecker rules that will come with Moodle 5.2.
+- Remove compatibiliy of PHP < 8.1.14 in vendor dir and update 3rd party libraries.
+- 3rd party lib Dallgoot/YAML: use @dev to get version 1.0.1 that fixes php 8.4 issues.
+
+### v5.1-r1
+
+- Support Moodle 5.1.
+- Allow ratings without subcriteria.
+- Remove backward compatibilty for PHP versions older 8.1.14.
+
+### v5.0-r1
+
+- Support PHP 8.4 and Moodle 5.0.
+
+### v4.5-r3
+
+- Fix [issue #46](https://github.com/bfh/moodle-mod_verbalfeedback/issues/46)
+ non-Latin languages do not work in the PDF report
+- Fix [issue #39](https://github.com/bfh/moodle-mod_verbalfeedback/issues/39)
+  fix privacy provider. Thanks to [Nikolai](https://github.com/NJahreis) for a patch.
+
+### v4.5-r2
+
+- Fix [issue #47](https://github.com/bfh/moodle-mod_verbalfeedback/issues/47)
+error when upgrading to 4.5 while using MySQL/MariaDB.
+
+### v4.5-r1
+
+- Major refactoring to circumvent memory issues with many instances.
+- Adaptions in code for Moodle 4.5
+
+### v4.4-r1
+
+### v4.3-r1
+
+- Support PHP 8.2 and Moodle 4.3.
+
+### v4.1-r1
+
+- Support PHP 8.1 and Moodle 4.1.
+
+### v4.0-r2
+
+-  Add Basque and Spanish to the default template (thanks to Iñigo Zendegi Urzelai)
+
+### v1.0.1
+
+### v1.0.0
+
+- Initial release

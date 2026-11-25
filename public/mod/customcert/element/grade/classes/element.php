@@ -1,0 +1,256 @@
+<?php
+// This file is part of the customcert module for Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * This file contains the customcert element grade's core interaction API.
+ *
+ * @package    customcertelement_grade
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+declare(strict_types=1);
+
+namespace customcertelement_grade;
+
+use grade_item;
+use mod_customcert\element\persistable_element_interface;
+use mod_customcert\element as base_element;
+use mod_customcert\element\preparable_form_interface;
+use mod_customcert\element_helper;
+use mod_customcert\service\element_renderer;
+use MoodleQuickForm;
+use pdf;
+use restore_customcert_activity_task;
+use stdClass;
+use mod_customcert\element\restorable_element_interface;
+use mod_customcert\element\renderable_element_interface;
+
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+require_once($CFG->libdir . '/gradelib.php');
+
+// Legacy grade identifier was a global define; migrate to class constant below.
+
+/**
+ * The customcert element grade's core interaction API.
+ *
+ * @package    customcertelement_grade
+ * @copyright  2013 Mark Nelson <mdjnelson@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class element extends base_element implements
+    persistable_element_interface,
+    preparable_form_interface,
+    renderable_element_interface,
+    restorable_element_interface
+{
+    /** @var string Course grade identifier. */
+    public const string GRADE_COURSE = '0';
+
+    /**
+     * Build the configuration form for this element.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function build_form(MoodleQuickForm $mform): void {
+        global $COURSE;
+
+        $gradeitems = [];
+        $gradeitems[self::GRADE_COURSE] = get_string('coursegrade', 'customcertelement_grade');
+        $gradeitems = $gradeitems + element_helper::get_grade_items($COURSE);
+
+        $mform->addElement('select', 'gradeitem', get_string('gradeitem', 'customcertelement_grade'), $gradeitems);
+        $mform->addHelpButton('gradeitem', 'gradeitem', 'customcertelement_grade');
+
+        $mform->addElement(
+            'select',
+            'gradeformat',
+            get_string('gradeformat', 'customcertelement_grade'),
+            self::get_grade_format_options()
+        );
+        $mform->setType('gradeformat', PARAM_INT);
+        $mform->addHelpButton('gradeformat', 'gradeformat', 'customcertelement_grade');
+
+        element_helper::render_common_form_elements($mform, $this->showposxy);
+    }
+
+    /**
+     * Normalise grade element data.
+     *
+     * @param stdClass $formdata Form submission data
+     * @return array JSON-serialisable payload
+     */
+    public function normalise_data(stdClass $formdata): array {
+        return [
+            'gradeitem' => (string)($formdata->gradeitem ?? ''),
+            'gradeformat' => isset($formdata->gradeformat) ? (string)$formdata->gradeformat : '',
+            'font' => (string)($formdata->font ?? ''),
+            'fontsize' => (int)($formdata->fontsize ?? 0),
+            'colour' => (string)($formdata->colour ?? ''),
+            'width' => (int)($formdata->width ?? 0),
+        ];
+    }
+
+
+
+    /**
+     * Handles rendering the element on the pdf.
+     *
+     * @param pdf $pdf the pdf object
+     * @param bool $preview true if it is a preview, false otherwise
+     * @param stdClass $user the user we are rengdering this for
+     * @param element_renderer|null $renderer the renderer service
+     */
+    public function render(pdf $pdf, bool $preview, stdClass $user, ?element_renderer $renderer = null): void {
+        if (empty($this->get_data())) {
+            return;
+        }
+
+        $courseid = element_helper::get_courseid($this->id);
+
+        $payload = $this->get_payload();
+        if (empty($payload) || !isset($payload['gradeitem'])) {
+            return; // Nothing to render if not configured.
+        }
+        $gradeitem = (string)$payload['gradeitem'];
+        $gradeformat = isset($payload['gradeformat']) ? (int)$payload['gradeformat'] : GRADE_DISPLAY_TYPE_REAL;
+
+        if ($preview) {
+            $courseitem = grade_item::fetch_course_item($courseid);
+            $grade = grade_format_gradevalue(100.0, $courseitem, true, $gradeformat);
+        } else {
+            if ($gradeitem === self::GRADE_COURSE) {
+                $grade = element_helper::get_course_grade_info(
+                    $courseid,
+                    $gradeformat,
+                    (int)$user->id
+                );
+            } else if (strpos($gradeitem, 'gradeitem:') === 0) {
+                $gradeitemid = (int)substr($gradeitem, 10);
+                $grade = element_helper::get_grade_item_info(
+                    $gradeitemid,
+                    $gradeformat,
+                    (int)$user->id,
+                    $courseid
+                );
+            } else {
+                $grade = element_helper::get_mod_grade_info(
+                    (int)$gradeitem,
+                    $gradeformat,
+                    (int)$user->id,
+                    $courseid
+                );
+            }
+
+            $grade = $grade ? $grade->get_displaygrade() : '';
+        }
+
+        if ($renderer) {
+            $renderer->render_content($this, $grade);
+        } else {
+            element_helper::render_content($pdf, $this, $grade);
+        }
+    }
+
+    /**
+     * Render the element in html for the drag and drop interface.
+     *
+     * @param element_renderer|null $renderer the renderer service
+     * @return string the html
+     */
+    public function render_html(?element_renderer $renderer = null): string {
+        global $COURSE;
+
+        if (empty($this->get_data())) {
+            return '';
+        }
+
+        $payload = $this->get_payload();
+        $gradeformat = isset($payload['gradeformat']) ? (int)$payload['gradeformat'] : GRADE_DISPLAY_TYPE_REAL;
+
+        $courseitem = grade_item::fetch_course_item($COURSE->id);
+
+        $grade = grade_format_gradevalue(100.0, $courseitem, true, $gradeformat);
+
+        if ($renderer) {
+            return (string) $renderer->render_content($this, $grade);
+        }
+
+        return element_helper::render_html_content($this, $grade);
+    }
+
+    /**
+     * Prepare the form by populating the gradeitem and gradeformat fields from stored data.
+     *
+     * @param MoodleQuickForm $mform
+     * @return void
+     */
+    public function prepare_form(MoodleQuickForm $mform): void {
+        $payload = $this->get_payload();
+        if (isset($payload['gradeitem'])) {
+            $mform->getElement('gradeitem')->setValue((string)$payload['gradeitem']);
+        }
+        if (isset($payload['gradeformat'])) {
+            $mform->getElement('gradeformat')->setValue((int)$payload['gradeformat']);
+        }
+    }
+
+    /**
+     * Remap the course module or grade item this element points to, as ids change on restore.
+     *
+     * @param restore_customcert_activity_task $restore
+     */
+    public function after_restore_from_backup(restore_customcert_activity_task $restore): void {
+        global $DB;
+
+        $data = $this->get_payload();
+        if (empty($data) || empty($data['gradeitem'])) {
+            return;
+        }
+
+        $isgradeitem = false;
+        $oldid = $data['gradeitem'];
+        if (str_starts_with($data['gradeitem'], 'gradeitem:')) {
+            $isgradeitem = true;
+            $oldid = str_replace('gradeitem:', '', $data['gradeitem']);
+        }
+
+        $itemname = $isgradeitem ? 'grade_item' : 'course_module';
+        // Use the restore task mapping API instead of restore_dbops to allow unit testing without temp tables.
+        $newid = $restore->get_mappingid($itemname, (int)$oldid);
+        if ($newid) {
+            $data['gradeitem'] = ($isgradeitem ? 'gradeitem:' : '') . $newid;
+            $DB->set_field('customcert_elements', 'data', json_encode($data), ['id' => $this->get_id()]);
+        }
+    }
+
+    /**
+     * Helper function to return all the possible grade formats.
+     *
+     * @return array returns an array of grade formats
+     */
+    public static function get_grade_format_options() {
+        $gradeformat = [];
+        $gradeformat[GRADE_DISPLAY_TYPE_REAL] = get_string('gradepoints', 'customcertelement_grade');
+        $gradeformat[GRADE_DISPLAY_TYPE_PERCENTAGE] = get_string('gradepercent', 'customcertelement_grade');
+        $gradeformat[GRADE_DISPLAY_TYPE_LETTER] = get_string('gradeletter', 'customcertelement_grade');
+
+        return $gradeformat;
+    }
+}

@@ -1,0 +1,182 @@
+<?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Starts the LTI flow to launch the Kialo app.
+ *
+ * @package     mod_kialo
+ * @copyright   2023 onwards, Kialo GmbH <support@kialo-edu.com>
+ * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ *
+ * @var moodle_page $PAGE
+ * @var core_renderer $OUTPUT
+ * @var moodle_database $DB
+ * @var stdClass $USER
+ */
+
+require(__DIR__ . '/../../config.php');
+require_once(__DIR__ . '/lib.php');
+require_once('vendor/autoload.php');
+
+global $CFG;
+
+use mod_kialo\kialo_view;
+use mod_kialo\lti_flow;
+use mod_kialo\output\loading_page;
+
+// Course module id.
+$id = optional_param('id', 0, PARAM_INT);
+
+// Activity instance id.
+$k = optional_param('k', 0, PARAM_INT);
+
+// Whether to launch Kialo directly. Only relevant for activities displayed in a new window.
+$launch = optional_param('launch', 0, PARAM_BOOL);
+
+if ($id) {
+    $cm = get_coursemodule_from_id('kialo', $id, 0, false, MUST_EXIST);
+    $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+    $moduleinstance = $DB->get_record('kialo', ['id' => $cm->instance], '*', MUST_EXIST);
+} else {
+    $moduleinstance = $DB->get_record('kialo', ['id' => $k], '*', MUST_EXIST);
+    $course = $DB->get_record('course', ['id' => $moduleinstance->course], '*', MUST_EXIST);
+    $cm = get_coursemodule_from_instance('kialo', $moduleinstance->id, $course->id, false, MUST_EXIST);
+}
+
+$context = context_module::instance($cm->id);
+require_login($course, false, $cm);
+require_capability('mod/kialo:view', $context);
+
+if (isguestuser() || is_guest($context)) {
+    throw new \moodle_exception('errors:noguestaccess', 'kialo');
+}
+
+$groupinfo = kialo_view::get_current_group_info($cm, $course);
+
+$embedded = $moduleinstance->display === MOD_KIALO_DISPLAY_IN_EMBED;
+
+// Activities displayed in a new window are opened via JS on the course page, which adds the launch param.
+// Other entry points (e.g. course index or course navigation) link here directly, so instead of navigating
+// the current window to Kialo, we show a Moodle page with a button that opens Kialo in a new window.
+if (!$embedded && !$launch) {
+    $PAGE->set_url('/mod/kialo/view.php', ['id' => $cm->id]);
+    $PAGE->set_title($moduleinstance->name);
+    $PAGE->set_pagelayout('incourse');
+
+    echo $OUTPUT->header();
+    echo html_writer::tag('p', get_string('opens_in_new_window', 'mod_kialo'));
+    echo html_writer::link(
+        new moodle_url('/mod/kialo/view.php', ['id' => $cm->id, 'launch' => 1]),
+        get_string('open_in_new_window', 'mod_kialo'),
+        ['class' => 'btn btn-primary', 'target' => '_blank'],
+    );
+    echo $OUTPUT->footer();
+    exit;
+}
+
+try {
+    $message = lti_flow::init_resource_link(
+        $course->id,
+        $cm->id,
+        KIALO_LTI_DEPLOYMENT_ID,
+        $USER->id,
+        $moduleinstance->discussion_url,
+        $groupinfo->groupid,
+        $groupinfo->groupname,
+    );
+
+    $output = $PAGE->get_renderer('mod_kialo');
+    $PAGE->set_url('/mod/kialo/view.php', ['id' => $cm->id]);
+    $PAGE->set_title($moduleinstance->name);
+
+    if (!$embedded) {
+        echo $output->render(new loading_page(
+            get_string("redirect_title", "mod_kialo"),
+            get_string("redirect_loading", "mod_kialo"),
+            $message->toHtmlRedirectForm()
+        ));
+    } else {
+        $PAGE->set_pagelayout('incourse');
+        $PAGE->add_body_class('kialo-embedded');
+        $PAGE->requires->css('/mod/kialo/styles.css');
+
+        echo $OUTPUT->header();
+
+        // We can't use html_writer here because it escapes our required query params.
+        echo '<iframe id="kialocontentframe"
+             class="kialo-iframe"
+             src="' . $message->toUrl() . '&embedded"
+             allowfullscreen="true">
+      </iframe>';
+
+        // This resize script is based on moodle's own mod/lti/view.php.
+        // It ensures that our Iframe has as much height as it can get.
+        $resizescript = <<<JS
+        <script type="text/javascript">
+            //<![CDATA[
+            YUI().use("node", "event", function(Y) {
+                var doc = Y.one("body");
+                var frame = Y.one("#kialocontentframe");
+                var padding = 15;
+                var lastHeight;
+
+                // Since Moodle 5.3, activity pages can have a sticky footer (e.g. linear course navigation).
+                // It is fixed to the bottom of the viewport and overlays the page, so we leave room for it.
+                var stickyFooter = null;
+                var stickyFooterEnabled = false;
+                var getStickyFooterHeight = function() {
+                    return stickyFooter && stickyFooterEnabled ? stickyFooter.offsetHeight : 0;
+                };
+
+                var resize = function() {
+                    var height = doc.get("winHeight") - frame.getY() - getStickyFooterHeight() - padding;
+                    if (lastHeight !== height) {
+                        frame.setStyle("height", height + "px");
+                        lastHeight = height;
+                    }
+                };
+
+                // The sticky footer is rendered after this script, so we look for it once the DOM is ready.
+                Y.on("domready", function() {
+                    stickyFooter = document.querySelector(".stickyfooter");
+                    if (stickyFooter) {
+                        stickyFooterEnabled = !stickyFooter.dataset.disable;
+                        document.addEventListener("core/stickyfooter_state_changed", function(e) {
+                            stickyFooterEnabled = e.detail.enabled;
+                            resize();
+                        });
+                        if (window.ResizeObserver) {
+                            new ResizeObserver(resize).observe(stickyFooter);
+                        }
+                    }
+                    resize();
+                });
+
+                resize();
+                Y.on("windowresize", resize);
+            });
+            //]]
+        </script>
+    JS;
+
+        echo $resizescript;
+
+        echo $OUTPUT->footer();
+    }
+} catch (Throwable $e) {
+    // Show Moodle's default error page including some debug info.
+    throw new \moodle_exception('errors:resourcelink', 'kialo', '', null, $e->getMessage());
+}

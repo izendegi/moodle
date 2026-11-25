@@ -1,0 +1,104 @@
+@mod @mod_threesixo @javascript
+Feature: Provide a feedback to a participant
+  In order for me to be able to provide feedback to my peers
+  As a user
+  I need to be able to fill out the 360-degree feedback questionnaire
+
+  Background:
+    Given the following "courses" exist:
+      | fullname | shortname | format |
+      | Course 1 | C1        | topics |
+    And the following "users" exist:
+      | username | firstname | lastname | email                 |
+      | teacher1 | Teacher   | 1        | teacher1@example.com  |
+      | teacher2 | Teacher   | 2        | teacher2@example.com  |
+      | student1 | Student   | 1        | student1@example.com  |
+      | student2 | Student   | 2        | student2@example.com  |
+      | student3 | Student   | 3        | student3@example.com  |
+      | student4 | Student   | 4        | student4@example.com  |
+    And the following "course enrolments" exist:
+      | user      | course  | role            |
+      | teacher1  | C1      | editingteacher  |
+      | teacher2  | C1      | editingteacher  |
+      | student1  | C1      | student         |
+      | student2  | C1      | student         |
+      | student3  | C1      | student         |
+      | student4  | C1      | student         |
+
+  Scenario: Provide a non-anonymous feedback to another participant
+    Given the following "activities" exist:
+      | activity  | name          | intro            | course  | idnumber  | with_self_review | participantrolename | anonymous |
+      | threesixo | Team feedback | Test description | C1      | review1   | 0                | student             | 0         |
+    And I am on the "review1" activity page logged in as "student1"
+    And I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    And I click on "Strongly agree" "radio" in the "Treats co-workers with courtesy and respect" "fieldset"
+    And I click on "Agree" "radio" in the "Has a positive attitude." "fieldset"
+    And I press "Save changes"
+    And I follow "Cancel"
+    And I should see "In progress" in the "Student 2" "table_row"
+    When I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    Then the field "Strongly agree" in the "Treats co-workers with courtesy and respect" "fieldset" matches value "6"
+    And the field "Agree" in the "Has a positive attitude" "fieldset" matches value "5"
+
+  @accessibility
+  Scenario: Finalising a feedback with unanswered rating questions warns the respondent
+    Given the following "activities" exist:
+      | activity  | name          | intro            | course  | idnumber  | with_self_review | participantrolename | anonymous |
+      | threesixo | Team feedback | Test description | C1      | review1   | 0                | student             | 1         |
+    And I am on the "review1" activity page logged in as "student1"
+    And I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    And I click on "Strongly agree" "radio" in the "Treats co-workers with courtesy and respect" "fieldset"
+    When I press "Submit"
+    Then I should see "All rating questions must be answered" in the "Unanswered questions" "dialogue"
+    And the "Unanswered questions" "dialogue" should meet accessibility standards
+    # The unanswered questions are listed by name, and the answered one is not.
+    And I should see "Has a positive attitude." in the "Unanswered questions" "dialogue"
+    And I should not see "Treats co-workers with courtesy and respect" in the "Unanswered questions" "dialogue"
+    # Reviewing the questions keeps the respondent on the questionnaire.
+    And I click on "Review questions" "button" in the "Unanswered questions" "dialogue"
+    And I should see "Provide feedback"
+    And the field "Strongly agree" in the "Treats co-workers with courtesy and respect" "fieldset" matches value "6"
+
+  Scenario: Saving the progress of an incomplete feedback keeps it in progress
+    Given the following "activities" exist:
+      | activity  | name          | intro            | course  | idnumber  | with_self_review | participantrolename | anonymous |
+      | threesixo | Team feedback | Test description | C1      | review1   | 0                | student             | 1         |
+    And I am on the "review1" activity page logged in as "student1"
+    And I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    And I click on "Strongly agree" "radio" in the "Treats co-workers with courtesy and respect" "fieldset"
+    And I press "Submit"
+    When I click on "Save progress and exit" "button" in the "Unanswered questions" "dialogue"
+    Then I should see "In progress" in the "Student 2" "table_row"
+    And I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    And the field "Strongly agree" in the "Treats co-workers with courtesy and respect" "fieldset" matches value "6"
+
+  # The pointer stays where the link was clicked, so whatever sits under it renders in its hover state
+  # while axe measures. Reaching the questionnaire without a click would need a page resolver, which is
+  # plugin code rather than a core step, so the exposure is one element and is accepted knowingly.
+  @accessibility
+  Scenario: The questionnaire meets accessibility standards
+    Given the following "activities" exist:
+      | activity  | name          | intro            | course | idnumber | with_self_review | participantrolename | anonymous |
+      | threesixo | Team feedback | Test description | C1     | review1  | 0                | student             | 1         |
+    And I am on the "review1" activity page logged in as "student1"
+    When I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    Then the page should meet accessibility standards
+    And the "[data-region=questionnaire]" "css_element" should meet accessibility standards with "best-practice" extra tests
+
+  # The highlight is added by JavaScript after a failed finalise rather than rendered with the page, so
+  # it is the one state on the questionnaire that no other scenario leaves axe to look at. Its border
+  # colour is not asserted here: axe has no rule for the non-text contrast of a border, so that is
+  # covered by the measurements recorded in the commit that changed it.
+  @accessibility
+  Scenario: The questionnaire meets accessibility standards with unanswered rating questions highlighted
+    Given the following "activities" exist:
+      | activity  | name          | intro            | course | idnumber | with_self_review | participantrolename | anonymous |
+      | threesixo | Team feedback | Test description | C1     | review1  | 0                | student             | 1         |
+    And I am on the "review1" activity page logged in as "student1"
+    And I click on "Provide feedback" "link" in the "Student 2" "table_row"
+    And I click on "Strongly agree" "radio" in the "Treats co-workers with courtesy and respect" "fieldset"
+    And I press "Submit"
+    When I click on "Review questions" "button" in the "Unanswered questions" "dialogue"
+    Then the "aria-invalid" attribute of "Has a positive attitude." "fieldset" should contain "true"
+    And the "aria-invalid" attribute of "Treats co-workers with courtesy and respect" "fieldset" should not be set
+    And the page should meet accessibility standards

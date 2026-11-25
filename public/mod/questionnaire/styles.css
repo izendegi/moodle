@@ -1,0 +1,632 @@
+/* Styles for mod_questionnaire.
+ *
+ * Colors reference Bootstrap/Boost theme CSS variables (with static fallbacks)
+ * so the plugin follows the active theme, including dark variants.
+ */
+
+/* Question editing (questions.php). */
+
+#page-mod-questionnaire-questions #region-main .mform .fitem .felement {
+    margin-bottom: 0;
+}
+
+.qn-manage-list {
+    margin: 0;
+    padding: 0;
+}
+
+.qn-manage-row,
+.qn-pagebreak-row,
+.qn-recyclebin-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border: 1px dotted var(--bs-border-color, gray);
+    border-radius: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.qn-manage-row.qn-indent {
+    margin-left: 2rem;
+}
+
+.qn-manage-row.restored-question,
+.qn-pagebreak-row.restored-question {
+    border: 1px solid var(--bs-info, #008196);
+    background: var(--bs-warning-bg-subtle, #fff2d8);
+    color: var(--bs-body-color, #343a40);
+}
+
+.qn-position,
+.qn-number {
+    font-weight: bold;
+    color: var(--bs-secondary-color, gray);
+    flex: 0 0 auto;
+}
+
+.qn-manage-row .qn-body,
+.qn-recyclebin-row .qn-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.qn-manage-row .qn-label,
+.qn-recyclebin-row .qn-label {
+    font-weight: bold;
+}
+
+.qn-controls {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.qn-pagebreak-row {
+    align-items: center;
+    background: var(--bs-secondary-bg, #eee);
+}
+
+.qn-pagebreak-row .qn-pagebreak-label {
+    flex: 0 0 auto;
+    font-style: italic;
+    color: var(--bs-secondary-color, gray);
+}
+
+.qn-pagebreak-row .qn-pagebreak-rule {
+    flex: 1 1 auto;
+    margin: 0;
+}
+
+.qn-recyclebin-row .qn-timedeleted .timedeletednext7days {
+    color: var(--bs-danger, #f00);
+}
+
+#page-mod-questionnaire-questions #fitem_id_allchoices #id_allchoices,
+#page-mod-questionnaire-questions #fitem_id_allnameddegrees #id_allnameddegrees {
+    resize: both;
+}
+
+div.qoptcontainer div.ftextarea {
+    clear: both;
+    float: none;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto 10px;
+}
+
+div.qoptcontainer div.ftextarea textarea.qopts {
+    width: 100%;
+    height: 10em;
+}
+
+input[type="image"].mod_questionnaire_recycleq {
+    max-height: 1em;
+}
+
+/* Responses: selected / unselected answer text. */
+
+.response span.selected {
+    font-weight: bold;
+}
+
+td.selected {
+    background-color: var(--bs-primary-bg-subtle, #e4f1fa);
+    border: 1px solid var(--bs-border-color, silver);
+}
+
+.unselected {
+    color: var(--bs-secondary-color, gray);
+}
+
+#page-mod-questionnaire-myreport div.respdate {
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-bottom: 6px;
+    padding-top: 6px;
+    border-bottom: 1px dashed var(--bs-border-color, gray);
+}
+
+/* Completion / preview pages. */
+
+#page-mod-questionnaire-preview fieldset,
+#page-mod-questionnaire-complete fieldset {
+    margin-bottom: 0;
+}
+
+#page-mod-questionnaire-complete .message,
+#page-mod-questionnaire-preview .message,
+#page-mod-questionnaire-complete .thankbody,
+#page-mod-questionnaire-complete .thankhead {
+    background-color: var(--bs-body-bg, #fff);
+    border: 2px solid var(--bs-primary, blue);
+    margin-bottom: 10px;
+    padding: 5px;
+}
+
+.surveyPage {
+    background-color: var(--bs-secondary-bg, #eee);
+    border-bottom: 1px solid var(--bs-border-color, #000);
+    clear: right;
+    padding: 3px;
+    margin-bottom: 5px;
+    margin-top: 0;
+}
+
+/* Alternate row/column shading. */
+
+#page-mod-questionnaire-complete .c0,
+#page-mod-questionnaire-preview .c0,
+#page-mod-questionnaire-print .c0,
+#page-mod-questionnaire-report .individual .c0,
+#page-mod-questionnaire-myreport .individual .c0 {
+    background-color: var(--bs-tertiary-bg, #fafafa);
+    border: 1px solid var(--bs-border-color, silver);
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+#page-mod-questionnaire-complete .c1,
+#page-mod-questionnaire-preview .c1,
+#page-mod-questionnaire-print .c1,
+#page-mod-questionnaire-report .individual .c1,
+#page-mod-questionnaire-myreport .individual .c1 {
+    background-color: var(--bs-secondary-bg, #eee);
+    border: 1px solid var(--bs-border-color, silver);
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+#page-mod-questionnaire-complete .raterow:hover,
+#page-mod-questionnaire-preview .raterow:hover {
+    background-color: var(--bs-primary-bg-subtle, #e4f1fa);
+}
+
+#page-mod-questionnaire-myreport .individualresp,
+#page-mod-questionnaire-preview .individualresp,
+#page-mod-questionnaire-print .individualresp {
+    border: 1px solid var(--bs-border-color, #c0c0c0);
+    padding: 5px 5px 0;
+    margin-bottom: 10px;
+    margin-top: 10px;
+}
+
+/* Print blank page. */
+
+#page-mod-questionnaire-print .printdropdown input:first-child,
+#page-mod-questionnaire-print .printdropdown label:first-of-type,
+#page-mod-questionnaire-print .printdropdown br:first-of-type {
+    display: none;
+}
+
+#page-mod-questionnaire-print .print-text {
+    min-width: 100%;
+    box-sizing: border-box;
+    height: 30px;
+}
+
+@media print {
+    #page-mod-questionnaire-report #print-button {
+        display: none;
+    }
+}
+
+.floatprinticon {
+    margin-top: -30px;
+    float: right;
+}
+
+/* Response-form control buttons: previous at the start, save/next at the end. */
+
+#page-mod-questionnaire-complete .mod_questionnaire_controlbuttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+#page-mod-questionnaire-complete .mod_questionnaire_controlbuttons .control-button-save {
+    margin-left: auto;
+}
+
+#page-mod-questionnaire-complete .mod_questionnaire_controlbuttons .control-button-prev + .control-button-save,
+#page-mod-questionnaire-complete .mod_questionnaire_controlbuttons .control-button-save:first-child {
+    margin-left: auto;
+}
+
+#page-mod-questionnaire-complete .mod_questionnaire_completepage .generalbox .notice {
+    padding: 0.5em 0 0.5em 0;
+}
+
+#page-mod-questionnaire-complete .notice .buttons div,
+#page-mod-questionnaire-complete .notice .buttons form {
+    display: inline;
+}
+
+#page-mod-questionnaire-complete .mod_questionnaire_completepage.generalbox .homelink ~ .homelink {
+    padding-top: 10px;
+}
+
+/* Progress bar (rendered with the Bootstrap progress component). */
+
+#page-mod-questionnaire-complete .questionnaire-progressbar-wrapper {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 15px 0 15px 10px;
+}
+
+#page-mod-questionnaire-complete .questionnaire-progressbar-wrapper .progress {
+    flex: 1;
+}
+
+/* Question container: number gutter and content side by side. */
+
+.qn-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.qn-legend {
+    flex: 0 0 auto;
+    font-size: inherit;
+}
+
+.qn-info {
+    padding: 7px;
+    background: var(--bs-secondary-bg, #eee);
+    font-weight: bold;
+    width: fit-content;
+}
+
+.qn-info h2.qn-number {
+    margin: 0;
+    font-size: 1.25em;
+    line-height: 1.2em;
+}
+
+.qn-content {
+    flex: 1 1 auto;
+    margin-bottom: 10px;
+    min-width: 0;
+}
+
+/* Format paragraph top and bottom margins for better vertical positioning in questions text. */
+.qn-question p {
+    margin-bottom: 0.6em;
+    margin-top: 0.5em;
+}
+
+.qn-question,
+.qn-answer {
+    margin: 0 0 0.5em;
+    overflow: auto;
+}
+
+.qn-question {
+    display: flex;
+    gap: 0.25rem;
+    align-items: baseline;
+}
+
+.qn-question .qn-question-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.qn-required {
+    color: var(--bs-danger, red);
+    font-weight: bold;
+}
+
+.qn-answer input[type="radio"] {
+    margin-left: 0.5em;
+}
+
+.qn-answer > label + input[type="radio"] {
+    margin-left: 0;
+}
+
+.qn-answer > textarea {
+    resize: vertical;
+}
+
+.qn-answer textarea,
+.qn-answer input[type="text"] {
+    box-sizing: border-box;
+    height: auto;
+}
+
+#notice .qn-question {
+    margin: 0;
+}
+
+.qdepend {
+    color: var(--bs-danger, red);
+    padding-left: 5px;
+    margin-bottom: 5px;
+}
+
+.qdepend-or {
+    color: var(--bs-warning-text-emphasis, orange);
+    padding-left: 5px;
+    margin-bottom: 5px;
+}
+
+/* Move horizontal radio buttons closer to their labels. */
+.qn-answer input[type="radio"],
+.qn-answer input[type="checkbox"] {
+    margin-right: 3px;
+}
+
+#page-mod-questionnaire-show_nonrespondents input[type="radio"] {
+    margin-right: 1px;
+}
+
+.qn-answer label,
+#page-mod-questionnaire-show_nonrespondents label {
+    margin-right: 0.6em;
+}
+
+.qn-indent {
+    margin-left: 20px;
+}
+
+/* Respondents list. */
+
+.respondentscolumn {
+    float: left;
+    margin-left: 20px;
+}
+
+.respondentsnavbar {
+    text-align: center;
+    padding-bottom: 5px;
+    padding-top: 5px;
+    margin-bottom: 5px;
+    background-color: var(--bs-secondary-bg, #f2f2f2);
+}
+
+/* Report page. */
+
+#page-mod-questionnaire-report div.chart {
+    overflow: auto;
+    margin-left: -40px;
+}
+
+#page-mod-questionnaire-report .generaltable.questionnairereport td {
+    border: 1px solid var(--bs-border-color, silver);
+}
+
+#page-mod-questionnaire-report .generaltable[id] th.qn-handcursor {
+    cursor: pointer;
+}
+
+#page-mod-questionnaire-report th.c0 a span[class^="icon-container-"],
+#page-mod-questionnaire-report th.c1 a span.icon-container-asc,
+#page-mod-questionnaire-report th.asc a span.icon-container-desc,
+#page-mod-questionnaire-report th.desc a span.icon-container-asc {
+    display: none;
+}
+
+#page-mod-questionnaire-report th.asc a span.icon-container-asc,
+#page-mod-questionnaire-report th.desc a span.icon-container-desc {
+    display: inline-block;
+}
+
+#page-mod-questionnaire-report .frtlst,
+.qn-container .smalltext {
+    font-size: 0.75em;
+}
+
+/* Rate-question averages: proportional bar and its scale-label row. */
+
+.path-mod-questionnaire .questionnaire-avg-bar {
+    height: 0.9rem;
+    margin-top: 0.15rem;
+}
+
+.path-mod-questionnaire .questionnaire-avg-scale td {
+    border: 0;
+    padding: 2px;
+    text-align: center;
+    font-size: 0.75em;
+    color: var(--bs-secondary-color, gray);
+}
+
+/* Rate (scale) question table. */
+
+.path-mod-questionnaire .questionnaire-rate th {
+    font-weight: normal;
+    padding: 0.3em 0.4em;
+}
+
+.path-mod-questionnaire .questionnaire-rate .questionnaire-rate-degree {
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85em;
+    vertical-align: bottom;
+}
+
+.path-mod-questionnaire .questionnaire-rate .questionnaire-rate-item {
+    text-align: left;
+}
+
+.path-mod-questionnaire .questionnaire-rate-osgood .questionnaire-rate-item {
+    text-align: right;
+}
+
+.path-mod-questionnaire .questionnaire-rate-osgood .questionnaire-rate-item-right {
+    text-align: left;
+}
+
+.path-mod-questionnaire .questionnaire-rate td.questionnaire-rate-cell {
+    text-align: center;
+    padding: 0;
+}
+
+.path-mod-questionnaire .questionnaire-rate td.questionnaire-rate-cell label {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.4em 0;
+    cursor: pointer;
+}
+
+.path-mod-questionnaire .questionnaire-rate tr.notcompleted td {
+    border: 2px solid var(--bs-danger, red);
+}
+
+/* Slider question. */
+
+.path-mod-questionnaire .slider {
+    width: 100%;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    float: left;
+    margin-top: 40px;
+}
+
+.path-mod-questionnaire .slider input {
+    width: 100%;
+}
+
+.path-mod-questionnaire .slider:hover {
+    opacity: 1;
+}
+
+.path-mod-questionnaire .slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 100%;
+    height: 25px;
+    background: var(--bs-primary, #0f6cbf);
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.path-mod-questionnaire .slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: var(--bs-primary, #0f6cbf);
+    cursor: pointer;
+}
+
+.path-mod-questionnaire .question-slider {
+    display: flex;
+    align-items: baseline;
+}
+
+.path-mod-questionnaire .left-side-label {
+    text-align: right;
+    padding-right: 20px;
+    margin-top: 40px;
+    flex-grow: 1;
+}
+
+.path-mod-questionnaire .right-side-label {
+    text-align: left;
+    padding-left: 20px;
+    margin-top: 40px;
+    flex-grow: 1;
+}
+
+.path-mod-questionnaire .middle-side-content {
+    flex-grow: 8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.path-mod-questionnaire .middle-side-label {
+    text-align: center;
+}
+
+.path-mod-questionnaire .bubble {
+    background: var(--bs-emphasis-color, #000);
+    color: var(--bs-body-bg, #fff);
+    padding: 3px;
+    border-radius: 10px;
+    left: 50%;
+    transform: translate(-52%, -50px);
+    position: relative;
+    text-align: center;
+    width: 40px;
+}
+
+.path-mod-questionnaire .bubble::after {
+    content: "";
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    left: 50%;
+}
+
+/* Styles for the print blank page. */
+#page-mod-questionnaire-print .slider {
+    position: relative;
+    width: 100%;
+}
+
+#page-mod-questionnaire-print.path-mod-questionnaire .question-slider.print-slider {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+#page-mod-questionnaire-print.path-mod-questionnaire .print-slider .left-side-label,
+#page-mod-questionnaire-print.path-mod-questionnaire .print-slider .right-side-label,
+#page-mod-questionnaire-print.path-mod-questionnaire .print-slider .slider {
+    margin: 0;
+}
+
+#page-mod-questionnaire-print input[type="range"] {
+    appearance: none;
+    height: 10px;
+    border-radius: 5px;
+    background-color: var(--bs-secondary-bg, #ddd);
+}
+
+#page-mod-questionnaire-print input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 0;
+    height: 0;
+}
+
+#page-mod-questionnaire-print input[type="range"]::-moz-range-thumb {
+    appearance: none;
+    width: 0;
+    height: 0;
+}
+
+#page-mod-questionnaire-print input[type="range"]::-ms-thumb {
+    appearance: none;
+    width: 0;
+    height: 0;
+}
+
+#page-mod-questionnaire-print .path-mod-questionnaire .right-side-label,
+#page-mod-questionnaire-print .path-mod-questionnaire .left-side-label {
+    margin: 0;
+}
+
+#page-mod-questionnaire-print .bubble {
+    display: none;
+}
+
+@media print {
+    #page-mod-questionnaire-print .slider {
+        position: relative;
+        width: 100%;
+    }
+
+    #page-mod-questionnaire-print input[type="range"] {
+        appearance: none;
+        width: 100%;
+        border: 1px solid #000;
+        border-radius: 5px;
+    }
+}

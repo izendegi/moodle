@@ -1,0 +1,217 @@
+<?php
+// This file is part of Level Up XP.
+//
+// Level Up XP is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Level Up XP is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Level Up XP.  If not, see <https://www.gnu.org/licenses/>.
+//
+// See <https://levelup.plus>.
+
+namespace block_xp\local\controller;
+
+use block_xp\local\group\group_policy;
+use block_xp\local\utils\user_utils;
+use coding_exception;
+use context_system;
+use core\notification;
+
+/**
+ * Course route controller class.
+ *
+ * @package    block_xp
+ * @copyright  2017 Frédéric Massart
+ * @author     Frédéric Massart <fred@branchup.tech>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+abstract class course_route_controller extends route_controller {
+    /** @var stdClass The course. */
+    protected $course;
+    /** @var int The course ID. */
+    protected $courseid;
+    /** @var bool Requires a wide view. */
+    protected $iswideview = false;
+    /** @var bool Whether the page supports groups. */
+    protected $supportsgroups = false;
+    /** @var \block_xp\local\course_world */
+    protected $world;
+    /** @var \block_xp\local\navigation\navigator The navigator. */
+    protected $navigator;
+
+    /** @var false|int The group ID. */
+    private $groupid;
+    /** @var ?group_policy The group policy. */
+    private $grouppolicy;
+
+    /**
+     * @var \block_xp\local\factory\course_world_navigation_factory The navigation factory.
+     * @deprecated Since XP 21, use self::$navigator instead.
+     */
+    protected $navfactory;
+
+    /**
+     * Authentication.
+     *
+     * @return void
+     */
+    protected function require_login() {
+        $courseid = intval($this->get_param('courseid'));
+        if (!$courseid) {
+            throw new coding_exception('Excepted a course ID parameter but got none.');
+        }
+
+        $this->courseid = $courseid;
+        require_login($courseid);
+    }
+
+    /**
+     * Post authentication.
+     *
+     * Use this to initialise objects which you'll need throughout the request.
+     *
+     * @return void
+     */
+    protected function post_login() {
+        parent::post_login();
+        if ($this->courseid == SITEID) {
+            $this->world = \block_xp\di::get('context_world_factory')->get_world_from_context(context_system::instance());
+            $this->courseid = SITEID;
+        } else {
+            $this->world = \block_xp\di::get('course_world_factory')->get_world($this->get_param('courseid'));
+            $this->courseid = $this->world->get_courseid();
+        }
+        $this->urlresolver = \block_xp\di::get('url_resolver');
+        $this->navfactory = \block_xp\di::get('course_world_navigation_factory');
+        $this->navigator = \block_xp\di::get('world_navigator_factory')->get_navigator_for_world($this->world);
+    }
+
+    /**
+     * Moodle page specifics.
+     *
+     * @return void
+     */
+    protected function page_setup() {
+        global $PAGE;
+
+        // Note that the context was set by require_login().
+        $PAGE->set_url($this->pageurl->get_compatible_url());
+        $PAGE->set_pagelayout($this->get_page_layout());
+        $PAGE->set_title($this->get_page_html_head_title());
+        $PAGE->set_heading($this->get_page_title());
+
+        if (!$this->iswideview) {
+            $PAGE->add_body_class('limitedwidth');
+        }
+    }
+
+    /**
+     * Whether the page supports groups.
+     *
+     * @return bool
+     */
+    protected function is_supporting_groups() {
+        return $this->supportsgroups;
+    }
+
+    /**
+     * Return the group ID.
+     *
+     * @return int|false False if groups are not used used, 0 for all groups, else group ID.
+     */
+    final protected function get_groupid() {
+        if (!$this->is_supporting_groups()) {
+            throw new coding_exception('This page is not marked as supporting groups.');
+        }
+        if ($this->groupid === null) {
+            $groupid = $this->get_group_policy()->get_current_group_id(true);
+            if ($groupid === 0) {
+                $groupid = $this->get_group_policy()->can_select_group($groupid) ? 0 : user_utils::GROUP_ID_WHEN_NONE_RESOLVED;
+            }
+            $this->groupid = $groupid;
+        }
+        return $this->groupid;
+    }
+
+    /**
+     * Get the group policy.
+     *
+     * @return group_policy
+     */
+    final protected function get_group_policy(): group_policy {
+        if (!$this->is_supporting_groups()) {
+            throw new coding_exception('This page is not marked as supporting groups.');
+        }
+        if (!$this->grouppolicy) {
+            $this->grouppolicy = group_policy::from_course_id($this->courseid);
+        }
+        return $this->grouppolicy;
+    }
+
+    /**
+     * The page layout to use.
+     *
+     * @return string
+     */
+    protected function get_page_layout() {
+        return 'course';
+    }
+
+    /**
+     * The page title (in <head>).
+     *
+     * @return string
+     */
+    abstract protected function get_page_html_head_title();
+
+    /**
+     * The page title.
+     *
+     * @return string
+     */
+    protected function get_page_title() {
+        global $COURSE;
+        return format_string($COURSE->fullname);
+    }
+
+    /**
+     * Get the course.
+     *
+     * @return \stdClass
+     */
+    final protected function get_course() {
+        if (!$this->course) {
+            if (!$this->courseid) {
+                throw new coding_exception('Too early to request the course.');
+            }
+            $this->course = get_course($this->courseid, false);
+        }
+        return $this->course;
+    }
+
+    /**
+     * Print the group menu.
+     *
+     * @return string
+     */
+    protected function print_group_menu() {
+        if (!$this->is_supporting_groups()) {
+            throw new coding_exception('This page is not marked as supporting groups.');
+        }
+        if ($this->get_groupid() < 0) {
+            echo $this->get_renderer()->notification_without_close(
+                get_string('notingroupcontactsomeone', 'block_xp'),
+                notification::ERROR
+            );
+        } else {
+            echo $this->get_group_policy()->get_group_menu($this->pageurl->get_compatible_url());
+        }
+    }
+}
