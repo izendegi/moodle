@@ -1,0 +1,44 @@
+name: Verify published release
+
+# Dispara quando uma release é PUBLICADA (a entrega à comunidade) e confere o resultado:
+# tag x version.php, ZIP anexado idêntico ao código da tag, pré-lançamento coerente com a maturidade e CI verde.
+# Em releases imutáveis nada pode ser corrigido depois de publicado; se esta verificação falhar,
+# apague a release, corrija e prepare de novo (a tag de uma release imutável não pode ser reutilizada: use a próxima versão).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag of an already published release to verify again (for example v0.5.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  verify:
+    name: Verify the published release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - name: Check out the tagged code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - name: Use the verification script of the default branch
+        # The code under test is the tagged commit (git archive reads the commit, not the working tree); the
+        # checks themselves come from the default branch, so fixes to them also apply to releases made earlier.
+        run: |
+          git fetch --depth 1 origin "${{ github.event.repository.default_branch }}"
+          git checkout FETCH_HEAD -- .github/scripts/release.sh
+
+      - name: Verify the release
+        run: bash .github/scripts/release.sh verify-asset "$TAG"

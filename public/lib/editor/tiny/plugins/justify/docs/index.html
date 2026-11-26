@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="0; url=en/">
+  <title>Redirecting...</title>
+  <script>
+    (function() {
+      var savedLang = localStorage.getItem('user_lang');
+      var lang = 'en';
+      if (savedLang) {
+        if (savedLang.indexOf('pt') === 0) {
+          lang = 'pt-br';
+        } else {
+          lang = 'en';
+        }
+      } else {
+        var browserLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
+        if (browserLang.indexOf('pt') === 0) {
+          lang = 'pt-br';
+        } else {
+          lang = 'en';
+        }
+      }
+      window.location.replace(lang + '/');
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to <a href="en/">documentation</a>...</p>
+</body>
+</html>

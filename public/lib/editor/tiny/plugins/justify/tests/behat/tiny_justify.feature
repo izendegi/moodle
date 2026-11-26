@@ -29,6 +29,8 @@ Feature: Use the TinyMCE editor justify button
     And I open my profile in edit mode
     And I set the field "Description" to "<p>Hello world</p>"
     And I select the "p" element in position "0" of the "Description" TinyMCE editor
+    # The form column is narrow: the Justify button sits in the "More..." overflow of the toolbar.
+    And I expand all toolbars for the "Description" TinyMCE editor
     When I click on the "Justify" button for the "Description" TinyMCE editor
     Then the field "Description" matches value "<p style=\"text-align: justify;\">Hello world</p>"
 
@@ -38,6 +40,8 @@ Feature: Use the TinyMCE editor justify button
     And I set the field "Description" to "<p>Toggle test</p>"
     And I select the "p" element in position "0" of the "Description" TinyMCE editor
     # Apply justify alignment.
+    # The form column is narrow: the Justify button sits in the "More..." overflow of the toolbar.
+    And I expand all toolbars for the "Description" TinyMCE editor
     When I click on the "Justify" button for the "Description" TinyMCE editor
     Then the "Justify" button of the "Description" TinyMCE editor has state "true"
     # Remove justify alignment.
@@ -60,5 +64,7 @@ Feature: Use the TinyMCE editor justify button
     Then "Justify" button should exist in the "Activity instructions" TinyMCE editor
     And I set the field "Activity instructions" to "<p>Teacher content</p>"
     And I select the "p" element in position "0" of the "Activity instructions" TinyMCE editor
+    # The form column is narrow: the Justify button sits in the "More..." overflow of the toolbar.
+    And I expand all toolbars for the "Activity instructions" TinyMCE editor
     When I click on the "Justify" button for the "Activity instructions" TinyMCE editor
     Then the field "Activity instructions" matches value "<p style=\"text-align: justify;\">Teacher content</p>"

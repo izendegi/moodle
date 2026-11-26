@@ -36,7 +36,9 @@ use editor_tiny\plugin_with_menuitems;
  */
 class plugininfo extends plugin implements plugin_with_buttons, plugin_with_configuration, plugin_with_menuitems {
     /**
-     * Whether the plugin is enabled for this context.
+     * Whether the plugin is enabled for this context: the user needs tiny/justify:use.
+     *
+     * Moodle 5.x checks the capability itself; checking it here keeps Moodle 4.5 consistent.
      *
      * @param context $context The context.
      * @param array $options Editor options.
@@ -50,7 +52,7 @@ class plugininfo extends plugin implements plugin_with_buttons, plugin_with_conf
         array $fpoptions,
         ?editor $editor = null
     ): bool {
-        return true;
+        return has_capability('tiny/justify:use', $context);
     }
 
     /**

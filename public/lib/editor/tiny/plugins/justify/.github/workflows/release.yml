@@ -1,0 +1,59 @@
+name: Prepare release
+
+# Prepara uma release como RASCUNHO (nada é entregue à comunidade ainda):
+# valida a versão, o CHANGELOG e o CI, monta o ZIP e cria o rascunho com as notas.
+# Depois, revise o rascunho no GitHub e clique em "Publish release": é a publicação que cria a tag.
+# O workflow "Verify published release" confere o resultado.
+# Execução com dry-run: só valida e monta o ZIP (fica como artefato), sem criar o rascunho.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Only validate and build the package; do not create the draft release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  checks: read
+
+jobs:
+  prepare:
+    name: Prepare the draft release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v7
+
+      - name: Read plugin metadata
+        id: meta
+        run: bash .github/scripts/release.sh meta | tee -a "$GITHUB_OUTPUT"
+
+      - name: Check that this version was not released yet
+        if: ${{ !inputs.dry-run && !env.ACT }}
+        run: bash .github/scripts/release.sh not-released
+
+      - name: Check the changelog and write the release notes
+        run: bash .github/scripts/release.sh notes
+
+      - name: Build the plugin ZIP
+        run: bash .github/scripts/release.sh package
+
+      - name: Require green CI on this commit
+        if: ${{ !env.ACT }}
+        run: bash .github/scripts/release.sh ci-green "$GITHUB_SHA"
+
+      - name: Create the draft release
+        if: ${{ !inputs.dry-run && !env.ACT }}
+        run: bash .github/scripts/release.sh draft
+
+      - name: Keep the package as a workflow artifact (dry runs)
+        if: ${{ inputs.dry-run && !env.ACT }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.meta.outputs.zip }}
+          path: dist/

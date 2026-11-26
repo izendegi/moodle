@@ -1,0 +1,39 @@
+name: Publish to Moodle Marketplace
+
+# Envia a versão marcada (tag v*) para o Moodle Marketplace pela API oficial.
+# Só roda depois que o plugin foi aprovado no Marketplace e a variável de repositório
+# MARKETPLACE_ENABLED vale 'true' (Settings > Secrets and variables > Actions > Variables).
+# Requer o secret MOODLE_MARKETPLACE_TOKEN (https://marketplace.moodle.com/account/security).
+# O envio espera a aprovação manual do environment "marketplace".
+# O workflow reutilizável está fixado por SHA (moodlehq/moodle-plugin-release, revision 2026091801).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to be released (e.g. v1.4.0)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  approve:
+    name: Approve the Marketplace upload
+    if: ${{ vars.MARKETPLACE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: marketplace
+    steps:
+      - run: echo "Upload of ${{ inputs.tag || github.ref_name }} to Moodle Marketplace approved."
+
+  release-to-marketplace:
+    name: Release to Moodle Marketplace
+    needs: approve
+    uses: moodlehq/moodle-plugin-release/.github/workflows/moodle-release.yml@4467fd51a0e7f4bcda665eb2f8fb00365d10a39d # revision 2026091801
+    with:
+      tag: ${{ inputs.tag }}
+    secrets:
+      MOODLE_MARKETPLACE_TOKEN: ${{ secrets.MOODLE_MARKETPLACE_TOKEN }}

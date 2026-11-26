@@ -1,83 +1,23 @@
+<img src="docs/marketplace/icon.png" alt="tiny_justify logo" width="96" align="right" />
+
 # moodle-tiny_justify
 
-Moodle TinyMCE justify plugin — adds a **Justify** button to the TinyMCE editor toolbar, allowing users to apply full text justification in Moodle content areas.
+[English](#english) · [Português (Brasil)](#português-brasil)
 
-## Requirements
+Documentation / Documentação: <https://moodle-by-kelsoncm.github.io/moodle-tiny_justify/>
 
-- Moodle 4.5 or later (TinyMCE editor)
+## English
 
-## Installation
+TinyMCE plugin for Moodle (`tiny_justify`) that adds a **Justify** button and menu item, for full text justification in any HTML field. Supports Moodle 4.5 and 5.3 (LTS). Users need the capability `tiny/justify:use`, given to every role by default.
 
-**Via Git:**
+Install: copy this repository to `lib/editor/tiny/plugins/justify` (`public/lib/editor/tiny/plugins/justify` on Moodle 5.1+), or install the ZIP from the [releases](https://github.com/moodle-by-kelsoncm/moodle-tiny_justify/releases) or the [Moodle Plugins directory](https://moodle.org/plugins/tiny_justify), and visit *Site administration > Notifications*.
 
-```bash
-git clone https://github.com/cte-zl-ifrn/moodle-tiny_justify.git justify
-```
+## Português (Brasil)
 
-Place the `justify` folder inside `/lib/editor/tiny/plugins/` in your Moodle installation directory.
+Plugin do TinyMCE para o Moodle (`tiny_justify`) que adiciona o botão e o item de menu **Justificar**, para justificar o texto em qualquer campo HTML. Suporta Moodle 4.5 e 5.3 (LTS). Os usuários precisam da permissão `tiny/justify:use`, concedida a todos os papéis por padrão.
 
-**Via ZIP:**
+Instalação: copie este repositório para `lib/editor/tiny/plugins/justify` (`public/lib/editor/tiny/plugins/justify` no Moodle 5.1+), ou instale o ZIP das [releases](https://github.com/moodle-by-kelsoncm/moodle-tiny_justify/releases) ou do [diretório de plugins do Moodle](https://moodle.org/plugins/tiny_justify), e acesse *Administração do site > Notificações*.
 
-1. Download the ZIP file from the [releases page](https://github.com/cte-zl-ifrn/moodle-tiny_justify/releases).
-2. In Moodle, go to **Site Administration** → **Plugins** → **Install plugins** and upload the ZIP file.
-3. Follow the on-screen instructions to complete the installation.
+## License / Licença
 
-## Configuration
-
-After installation, go to **Site Administration** → **Plugins** → **Text editors** → **TinyMCE editor** → **General settings** and ensure the Justify plugin is enabled in the toolbar configuration.
-
-## Usage
-
-Once installed and enabled, a **Justify** button will appear in the TinyMCE toolbar. Click it to apply full text justification to the selected text or current paragraph.
-
-## Build and cache refresh (AVA/Docker)
-
-If you change files in `amd/src/` (for example `plugin.js`, `commands.js`, or `configuration.js`), Moodle will only use the new code after:
-
-1. having compiled files in `amd/build/`;
-2. plugin upgrade (when version changes);
-3. cache purge.
-
-### 1) Bump plugin version
-
-Update `version.php` with a new `$plugin->version` value.
-
-### 2) Ensure `amd/build` exists
-
-In standard Moodle development, compile with Grunt from Moodle root:
-
-```bash
-npx grunt amd --root=lib/editor/tiny/plugins/justify
-```
-
-In this AVA environment, the `moodle` container may not include `node/npx/grunt`. If so, keep the precompiled files in `amd/build/` committed to the plugin repository.
-
-### 3) Run upgrade and purge caches in container
-
-From the AVA workspace root:
-
-```bash
-docker compose exec -T -w /var/www/html moodle php admin/cli/upgrade.php --non-interactive
-docker compose exec -T -w /var/www/html moodle php admin/cli/purge_caches.php
-```
-
-### 4) Browser hard refresh
-
-Reload the editor page with a hard refresh (`Ctrl+F5`).
-
-## Troubleshooting: button does not appear
-
-If **Justify** does not appear in toolbar/menu/quick toolbar:
-
-- Confirm `amd/build/*.min.js` exists for this plugin.
-- Confirm plugin version in `version.php` was increased.
-- Run `upgrade.php` and `purge_caches.php` again.
-- Check TinyMCE settings in Moodle admin and ensure the plugin/button is enabled in the toolbar setup.
-
-## License
-
-This plugin is licensed under the [GNU GPL v3 or later](LICENSE).
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
+[GNU GPL v3 or later](LICENSE).
