@@ -15,8 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Subplugin info and interface tests for tiny_justify.
- * Used by moodle-plugin-ci to verify plugin metadata.
+ * Tests of the plugin information class of tiny_justify.
  *
  * @package    tiny_justify
  * @copyright  2026 CTE-ZL IFRN
@@ -31,9 +30,11 @@ global $CFG;
 require_once($CFG->dirroot . '/lib/editor/tiny/lib.php');
 
 /**
- * Subplugin info test class for tiny_justify.
+ * Tests of the plugin information class of tiny_justify.
+ *
+ * @covers \tiny_justify\plugininfo
  */
-class subplugininfo_test extends \advanced_testcase {
+final class plugininfo_test extends \advanced_testcase {
     /**
      * Verify the plugin class exists and implements required interfaces.
      */
@@ -99,5 +100,23 @@ class subplugininfo_test extends \advanced_testcase {
             $items,
             'get_available_menuitems() must include "tiny_justify/alignjustify".'
         );
+    }
+
+    /**
+     * The plugin is enabled only for users with tiny/justify:use.
+     */
+    public function test_is_enabled_requires_capability(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $context = \context_course::instance($course->id);
+        $user = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $this->setUser($user);
+        $this->assertTrue(\tiny_justify\plugininfo::is_enabled($context, [], []));
+
+        $roleid = $DB->get_field('role', 'id', ['shortname' => 'editingteacher']);
+        assign_capability('tiny/justify:use', CAP_PROHIBIT, $roleid, $context->id, true);
+        $this->assertFalse(\tiny_justify\plugininfo::is_enabled($context, [], []));
     }
 }

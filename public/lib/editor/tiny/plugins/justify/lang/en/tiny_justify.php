@@ -29,5 +29,6 @@ $string['alignleft'] = 'Align left';
 $string['alignmenu'] = 'Align';
 $string['alignright'] = 'Align right';
 $string['helplinktext'] = 'Justify';
+$string['justify:use'] = 'Use the Justify button in the TinyMCE editor';
 $string['pluginname'] = 'Justify';
 $string['privacy:metadata'] = 'The tiny_justify plugin does not store any personal data.';

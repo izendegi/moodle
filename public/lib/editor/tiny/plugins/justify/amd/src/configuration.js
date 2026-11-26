@@ -45,7 +45,7 @@ export const configure = (instanceConfig) => {
     return {
         toolbar: addToolbarButton(instanceConfig.toolbar, 'alignment', COMMAND_ALIGNJUSTIFY, 'alignright'),
         menu,
-        quickbars_selection_toolbar: addQuickbarsToolbarItem(
+        'quickbars_selection_toolbar': addQuickbarsToolbarItem(
             instanceConfig.quickbars_selection_toolbar,
             '|',
             'alignleft',
